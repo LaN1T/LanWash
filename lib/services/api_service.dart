@@ -1,67 +1,436 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/service.dart';
+import '../models/appointment.dart';
+import '../models/log_entry.dart';
+import '../models/note.dart';
+import '../models/user.dart';
 
 class ApiService {
-  static const _url = 'https://jsonplaceholder.typicode.com/posts?_limit=4';
+  static const _baseUrl = 'http://localhost:8000/api';
 
-  // 4 акции согласно ТЗ
-  static const _promos = [
-    _Promo(
-      id: 'promo_1',
-      name: 'Акция недели: комплекс + ароматизация',
-      desc: 'Комплексная мойка и ароматизация салона по специальной цене недели.',
-      price: 1600,
-      duration: 75,
-    ),
-    _Promo(
-      id: 'promo_2',
-      name: 'Весенняя акция: мойка + воск',
-      desc: 'Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.',
-      price: 1500,
-      duration: 50,
-    ),
-    _Promo(
-      id: 'promo_3',
-      name: 'Выходной пакет: комплексная мойка -20%',
-      desc: 'Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.',
-      price: 1100,
-      duration: 60,
-    ),
-    _Promo(
-      id: 'promo_4',
-      name: 'Пакет для внедорожников',
-      desc: 'Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.',
-      price: 2000,
-      duration: 80,
-    ),
-  ];
-
-  Future<List<Service>> fetchPromoServices() async {
+  // ─── Auth ───────────────────────────────────────────────────────────────────
+  Future<User?> login(String username, String password) async {
     try {
-      // Обращаемся к API для выполнения требования ТЗ (работа с сетью)
-      await http
-          .get(Uri.parse(_url))
-          .timeout(const Duration(seconds: 10));
-    } catch (_) {
-      // Нет сети — возвращаем локальные акции
-    }
-    // Всегда возвращаем фиксированный список акций
-    return _promos.map((p) => Service(
-      id: p.id,
-      name: p.name,
-      description: p.desc,
-      price: p.price,
-      durationMinutes: p.duration,
-      category: 'Акции',
-      isFromApi: true,
-    )).toList();
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'password': password}),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return User.fromMap(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
   }
-}
 
-class _Promo {
-  final String id, name, desc;
-  final int price, duration;
-  const _Promo({required this.id, required this.name, required this.desc,
-      required this.price, required this.duration});
+  Future<Map<String, dynamic>?> register({
+    required String username,
+    required String password,
+    required String displayName,
+    String phone = '',
+    String carModel = '',
+    String carNumber = '',
+  }) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+          'displayName': displayName,
+          'phone': phone,
+          'carModel': carModel,
+          'carNumber': carNumber,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return {'user': jsonDecode(resp.body)};
+      }
+      final err = jsonDecode(resp.body);
+      return {'error': err['detail'] ?? 'Ошибка регистрации'};
+    } catch (e) {
+      return {'error': 'Нет связи с сервером'};
+    }
+  }
+
+  Future<User?> updateProfile(int userId, {
+    String? displayName,
+    String? phone,
+    String? carModel,
+    String? carNumber,
+    String? newPassword,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (displayName != null) body['displayName'] = displayName;
+      if (phone != null) body['phone'] = phone;
+      if (carModel != null) body['carModel'] = carModel;
+      if (carNumber != null) body['carNumber'] = carNumber;
+      if (newPassword != null) body['newPassword'] = newPassword;
+
+      final resp = await http.put(
+        Uri.parse('$_baseUrl/auth/profile/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return User.fromMap(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // ─── Appointments ───────────────────────────────────────────────────────────
+  Future<List<Appointment>> getAppointments() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/appointments/'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Appointment.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<Appointment>> getAppointmentsByOwner(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/appointments/by-owner/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Appointment.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> createAppointment(Appointment a) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/appointments/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(a.toMap()),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> updateAppointment(Appointment a) async {
+    try {
+      final resp = await http.put(
+        Uri.parse('$_baseUrl/appointments/${a.id}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(a.toMap()),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteAppointment(String id) async {
+    try {
+      final resp = await http.delete(Uri.parse('$_baseUrl/appointments/$id'))
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> toggleAppointmentFavorite(String id) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/appointments/$id/toggle-favorite'),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Map<String, int>> getAppointmentStats() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/appointments/stats'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final m = jsonDecode(resp.body);
+        return {
+          'total': m['total'] ?? 0,
+          'scheduled': m['scheduled'] ?? 0,
+          'completed': m['completed'] ?? 0,
+        };
+      }
+    } catch (_) {}
+    return {'total': 0, 'scheduled': 0, 'completed': 0};
+  }
+
+  // ─── Services ───────────────────────────────────────────────────────────────
+  Future<List<Service>> getServices() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/services/'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Service.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<String>> getServiceCategories() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/services/categories'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.cast<String>();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> createService(Service s) async {
+    try {
+      final body = s.toMap();
+      body['updatedAt'] = DateTime.now().toIso8601String();
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/services/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> updateService(Service s) async {
+    try {
+      final body = s.toMap();
+      body['updatedAt'] = DateTime.now().toIso8601String();
+      final resp = await http.put(
+        Uri.parse('$_baseUrl/services/${s.id}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteService(String id) async {
+    try {
+      final resp = await http.delete(Uri.parse('$_baseUrl/services/$id'))
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Service Favorites ────────────────────────────────────────────────────
+  Future<Set<String>> getServiceFavorites(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/services/favorites/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.cast<String>().toSet();
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<bool> toggleServiceFavorite(String username, String serviceId) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/services/favorites/toggle'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'serviceId': serviceId}),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Extra Favorites ──────────────────────────────────────────────────────
+  Future<Set<String>> getExtraFavorites(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/services/extra-favorites/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.cast<String>().toSet();
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<bool> toggleExtraFavorite(String username, String serviceName) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/services/extra-favorites/toggle'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'serviceName': serviceName}),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Logs ─────────────────────────────────────────────────────────────────
+  Future<List<LogEntry>> getLogs({int limit = 200}) async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/logs/?limit=$limit'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => LogEntry.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<LogEntry>> getLogsByUser(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/logs/by-user/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => LogEntry.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> createLog(String username, String action, String details) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/logs/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'action': action,
+          'details': details,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> clearLogs() async {
+    try {
+      final resp = await http.delete(Uri.parse('$_baseUrl/logs/'))
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Notes ────────────────────────────────────────────────────────────────
+  Future<List<Note>> getNotes() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/notes/'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Note.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<List<Note>> getNotesByUser(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/notes/by-user/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Note.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<int> getUnreadNotesCount() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/notes/unread-count'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return jsonDecode(resp.body)['count'] ?? 0;
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  Future<Note?> createNote(String username, String title, String message, String category) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/notes/?username=$username'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': title,
+          'message': message,
+          'category': category,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return Note.fromMap(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> markNoteRead(int noteId) async {
+    try {
+      final resp = await http.put(Uri.parse('$_baseUrl/notes/$noteId/read'))
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> markAllNotesRead() async {
+    try {
+      final resp = await http.put(Uri.parse('$_baseUrl/notes/read-all'))
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteNote(int noteId) async {
+    try {
+      final resp = await http.delete(Uri.parse('$_baseUrl/notes/$noteId'))
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Promos (legacy compatibility) ────────────────────────────────────────
+  Future<List<Service>> fetchPromoServices() async {
+    final services = await getServices();
+    return services.where((s) => s.isFromApi).toList();
+  }
 }

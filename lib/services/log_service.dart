@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/log_entry.dart';
-import '../repositories/log_repository.dart';
+import 'api_service.dart';
 
 /// Константы действий — чтобы не писать строки вручную везде
 class LogAction {
@@ -23,23 +23,17 @@ class LogService {
   static LogService get instance => _instance;
   LogService._();
 
-  final _repo = LogRepository();
+  final _api = ApiService();
 
   Future<void> log(String username, String action, String details) async {
     try {
-      await _repo.insert(LogEntry(
-        username: username.toLowerCase(),
-        action: action,
-        details: details,
-        timestamp: DateTime.now(),
-      ));
+      await _api.createLog(username.toLowerCase(), action, details);
     } catch (e) {
-      // Логирование не должно ломать основной поток
       debugPrint('[LogService] Ошибка записи лога: $e');
     }
   }
 
-  Future<List<LogEntry>> getAll({int limit = 200}) => _repo.getAll(limit: limit);
-  Future<List<LogEntry>> getByUser(String username) => _repo.getByUser(username);
-  Future<void> clearAll() => _repo.clearAll();
+  Future<List<LogEntry>> getAll({int limit = 200}) => _api.getLogs(limit: limit);
+  Future<List<LogEntry>> getByUser(String username) => _api.getLogsByUser(username);
+  Future<void> clearAll() => _api.clearLogs();
 }
