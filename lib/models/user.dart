@@ -1,7 +1,7 @@
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
-enum UserRole { client, admin }
+enum UserRole { client, admin, washer }
 
 class User {
   final int? id;

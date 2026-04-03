@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
 import '../models/user.dart';
-import '../repositories/user_repository.dart';
-import '../services/database_service.dart';
-import '../services/log_service.dart';
+import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final _repo = UserRepository();
+  final _api = ApiService();
 
   User? _user;
   bool _initialized = false;
@@ -18,12 +15,11 @@ class AuthProvider extends ChangeNotifier {
   bool    get isLoggedIn  => _user != null;
   bool    get isClient    => _user?.role == UserRole.client;
   bool    get isAdmin     => _user?.role == UserRole.admin;
+  bool    get isWasher    => _user?.role == UserRole.washer;
   String  get username    => _user?.displayName ?? '';
   String  get userLogin   => _user?.username ?? '';
 
   Future<void> init() async {
-    // Инициализируем БД при старте
-    await DatabaseService.instance.db;
     _initialized = true;
     notifyListeners();
   }
@@ -33,20 +29,18 @@ class AuthProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
 
-    final user = await _repo.login(username, password);
+    final user = await _api.login(username, password);
 
     _loading = false;
     if (user == null) {
       notifyListeners();
-      await LogService.instance.log(username, LogAction.loginFail,
-          'Логин: $username');
+      await _api.createLog(username, 'Неудачная попытка входа', 'Логин: $username');
       return 'Неверный логин или пароль';
     }
 
     _user = user;
     notifyListeners();
-    await LogService.instance.log(username, LogAction.loginSuccess,
-        'Роль: ${user.role.name}');
+    await _api.createLog(username, 'Вход в систему', 'Роль: ${user.role.name}');
     return null;
   }
 
@@ -62,7 +56,7 @@ class AuthProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
 
-    final error = await _repo.register(
+    final result = await _api.register(
       username: username,
       password: password,
       displayName: displayName,
@@ -72,16 +66,15 @@ class AuthProvider extends ChangeNotifier {
     );
 
     _loading = false;
-    if (error != null) {
+    if (result == null || result.containsKey('error')) {
       notifyListeners();
-      return error;
+      return result?['error'] ?? 'Ошибка регистрации';
     }
 
     // Автологин после регистрации
-    _user = await _repo.findByUsername(username);
+    _user = User.fromMap(result['user']);
     notifyListeners();
-    await LogService.instance.log(username, LogAction.register,
-        'Имя: ${_user?.displayName ?? displayName}');
+    await _api.createLog(username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
     return null;
   }
 
@@ -93,24 +86,24 @@ class AuthProvider extends ChangeNotifier {
     String? newPassword,
   }) async {
     if (_user == null) return;
-    final updated = _user!.copyWith(
+    final updated = await _api.updateProfile(
+      _user!.id!,
       displayName: displayName,
       phone: phone,
       carModel: carModel,
       carNumber: carNumber,
-      passwordHash: newPassword != null
-          ? User.hashPassword(newPassword) : null,
+      newPassword: newPassword,
     );
-    await _repo.updateProfile(updated);
-    _user = updated;
-    notifyListeners();
-    await LogService.instance.log(updated.username, LogAction.updateProfile,
-        'Имя: ${updated.displayName}');
+    if (updated != null) {
+      _user = updated;
+      notifyListeners();
+      await _api.createLog(updated.username, 'Обновление профиля', 'Имя: ${updated.displayName}');
+    }
   }
 
   void logout() {
     final who = _user?.username ?? 'unknown';
-    LogService.instance.log(who, LogAction.logout, '');
+    _api.createLog(who, 'Выход из системы', '');
     _user = null;
     notifyListeners();
   }

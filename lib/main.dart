@@ -8,6 +8,7 @@ import 'providers/app_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/client/client_shell.dart';
+import 'screens/washer/washer_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -151,10 +152,11 @@ class _AppRouterState extends State<_AppRouter> {
         provider.init(); // перезагрузить список услуг (без фильтрации)
       });
     }
-    // При входе админа — загружаем все записи
+    // При входе админа — загружаем все записи и заметки
     if (_wasLoggedIn == false && auth.isAdmin) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         provider.reloadAppointments();
+        provider.refreshUnreadCount();
       });
     }
     _wasLoggedIn = auth.isLoggedIn;
@@ -177,6 +179,7 @@ class _AppRouterState extends State<_AppRouter> {
 
     if (!auth.isLoggedIn) return const LoginScreen();
     if (auth.isClient)   return ClientShell(key: ClientShell.shellKey);
+    if (auth.isWasher)   return const WasherShell();
     return const HomeShell();
   }
 }
