@@ -112,6 +112,7 @@ class BookingWizardScreen extends StatefulWidget {
 
 class _BWState extends State<BookingWizardScreen> {
   final _pageCtrl = PageController();
+  final _step2ScrollCtrl = ScrollController();
   int _step = 0;
 
   late DateTime _selectedDate;
@@ -176,6 +177,7 @@ class _BWState extends State<BookingWizardScreen> {
   @override
   void dispose() {
     _pageCtrl.dispose();
+    _step2ScrollCtrl.dispose();
     _nameCtrl.dispose(); _carCtrl.dispose(); _numCtrl.dispose();
     super.dispose();
   }
@@ -217,8 +219,37 @@ class _BWState extends State<BookingWizardScreen> {
   int get _finalPrice => _isPromo ? _promo!.price + _extrasPrice : _regularPrice;
   bool get _hasDiscount => _isPromo && _promo!.price < _regularPrice;
 
+  /// Суммарное время: тип мойки + все выбранные доп. услуги
+  String get _totalDurationLabel {
+    int total = _washType.durationMinutes;
+    for (final e in _extras) {
+      final durStr = extraServiceDurations[e];
+      if (durStr == null) continue;
+      // Парсим строки вида "15 мин", "1 ч", "1.5 ч", "3 ч"
+      if (durStr.contains('ч') && durStr.contains('мин')) {
+        final parts = durStr.split(' ');
+        total += (double.tryParse(parts[0]) ?? 0).toInt() * 60 +
+                 (int.tryParse(parts[2]) ?? 0);
+      } else if (durStr.contains('ч')) {
+        final h = double.tryParse(durStr.split(' ')[0]) ?? 0;
+        total += (h * 60).round();
+      } else if (durStr.contains('мин')) {
+        total += int.tryParse(durStr.split(' ')[0]) ?? 0;
+      }
+    }
+    if (_isPromo) total = _promo!.durationMinutes; // для акции берём из promo
+    final h = total ~/ 60;
+    final m = total % 60;
+    if (h == 0) return '$m мин';
+    return m == 0 ? '$h ч' : '$h ч $m мин';
+  }
+
   void _next() {
-    if (_step == 1 && !_formKey.currentState!.validate()) return;
+    if (_step == 1 && !_formKey.currentState!.validate()) {
+      _step2ScrollCtrl.animateTo(0,
+          duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+      return;
+    }
     if (_step < 2) {
       setState(() => _step++);
       _pageCtrl.nextPage(
@@ -286,7 +317,7 @@ class _BWState extends State<BookingWizardScreen> {
           const Text('Запись на мойку',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600,
                   color: AppStyles.textPrimary)),
-          if (_isPromo) ...[ 
+          if (_isPromo) ...[
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -318,6 +349,7 @@ class _BWState extends State<BookingWizardScreen> {
                 onSlotChanged: (i) => setState(() => _selectedSlot = i),
               ),
               _Step2(
+                scrollCtrl: _step2ScrollCtrl,
                 formKey: _formKey,
                 washType: _washType,
                 extras: _extras,
@@ -350,7 +382,7 @@ class _BWState extends State<BookingWizardScreen> {
                 regularPrice: _regularPrice,
                 hasDiscount: _hasDiscount,
                 promoName: _isPromo ? _promo!.name : null,
-                promoDurationLabel: _isPromo ? _promo!.durationLabel : null,
+                totalDurationLabel: _totalDurationLabel,
               ),
             ],
           ),
@@ -560,6 +592,7 @@ class _Step1 extends StatelessWidget {
 
 // ─── Шаг 2: Услуги ───────────────────────────────────────────────────────────
 class _Step2 extends StatelessWidget {
+  final ScrollController? scrollCtrl;
   final GlobalKey<FormState> formKey;
   final WashType washType;
   final Set<String> extras;
@@ -569,7 +602,7 @@ class _Step2 extends StatelessWidget {
   final ValueChanged<WashType> onWashTypeChanged;
   final void Function(String, bool) onExtrasChanged;
 
-  const _Step2({required this.formKey, required this.washType, required this.extras,
+  _Step2({this.scrollCtrl, required this.formKey, required this.washType, required this.extras,
     required this.lockedExtras,
     required this.nameCtrl, required this.carCtrl, required this.numCtrl,
     required this.isPromo, required this.onWashTypeChanged,
@@ -580,6 +613,7 @@ class _Step2 extends StatelessWidget {
     final provider = context.watch<AppProvider>();
 
     return SingleChildScrollView(
+      controller: scrollCtrl,
       padding: const EdgeInsets.all(20),
       child: Form(
         key: formKey,
@@ -621,7 +655,7 @@ class _Step2 extends StatelessWidget {
           // Тип мойки
           Row(children: [
             const Text('Тип мойки', style: AppStyles.headingMedium),
-            if (isPromo) ...[ 
+            if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -707,7 +741,7 @@ class _Step2 extends StatelessWidget {
           // Доп. услуги
           Row(children: [
             const Text('Дополнительные услуги', style: AppStyles.headingMedium),
-            if (isPromo) ...[ 
+            if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -854,12 +888,12 @@ class _Step3 extends StatelessWidget {
   final int finalPrice, regularPrice;
   final bool hasDiscount;
   final String? promoName;
-  final String? promoDurationLabel;
+  final String totalDurationLabel;
 
   const _Step3({required this.date, required this.washType, required this.extras,
     required this.name, required this.car, required this.number,
     required this.finalPrice, required this.regularPrice,
-    required this.hasDiscount, this.promoName, this.promoDurationLabel});
+    required this.hasDiscount, this.promoName, required this.totalDurationLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -874,7 +908,7 @@ class _Step3 extends StatelessWidget {
         const Text('Проверьте данные перед записью', style: AppStyles.bodyMedium),
         const SizedBox(height: 20),
 
-        if (promoName != null) ...[ 
+        if (promoName != null) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -915,8 +949,8 @@ class _Step3 extends StatelessWidget {
                 washType.displayName),
             Container(height: 1, color: AppStyles.border),
             _ConfirmRow(Icons.access_time_rounded, 'Время',
-                promoDurationLabel ?? washType.durationLabel),
-            if (extras.isNotEmpty) ...[ 
+                totalDurationLabel),
+            if (extras.isNotEmpty) ...[
               Container(height: 1, color: AppStyles.border),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -976,7 +1010,7 @@ class _Step3 extends StatelessWidget {
             ]),
           ]),
         ),
-        if (hasDiscount) ...[ 
+        if (hasDiscount) ...[
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
