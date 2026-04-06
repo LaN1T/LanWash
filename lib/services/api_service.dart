@@ -144,6 +144,39 @@ class ApiService {
     }
   }
 
+  Future<bool> hasDeletedNotification(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return jsonDecode(resp.body)['hasNotification'] == true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> clearDeletedNotification(String username) async {
+    try {
+      final resp = await http.delete(
+        Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> clearAdminModifiedFlag(String id) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/appointments/$id/clear-admin-flag'),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> toggleAppointmentFavorite(String id) async {
     try {
       final resp = await http.post(
@@ -427,6 +460,7 @@ class ApiService {
       return false;
     }
   }
+
 
   // ─── Promos (legacy compatibility) ────────────────────────────────────────
   Future<List<Service>> fetchPromoServices() async {

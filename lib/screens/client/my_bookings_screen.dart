@@ -31,7 +31,13 @@ class _State extends State<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   @override
-  void initState() { super.initState(); _tab = TabController(length: 2, vsync: this); }
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppProvider>().clearDeletedByAdminFlag();
+    });
+  }
   @override
   void dispose() { _tab.dispose(); super.dispose(); }
 
@@ -118,11 +124,17 @@ class _BookingsList extends StatelessWidget {
     return ListView.builder(
       padding: AppStyles.pagePadding,
       itemCount: items.length,
-      itemBuilder: (_, i) {
+      itemBuilder: (ctx, i) {
         final a = items[i];
         final color   = AppStyles.statusColor(a.status);
         final bgColor = AppStyles.statusBgColor(a.status);
-        return Container(
+        return GestureDetector(
+          onTap: () {
+            if (a.isModifiedByAdmin) {
+              ctx.read<AppProvider>().clearAdminModifiedFlag(a.id);
+            }
+          },
+          child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: AppStyles.cardDecoration,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -146,6 +158,22 @@ class _BookingsList extends StatelessWidget {
                   Text('${a.carModel} · ${a.carNumber}',
                       style: AppStyles.bodySmall),
                 ])),
+                if (a.isModifiedByAdmin)
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    width: 24, height: 24,
+                    decoration: const BoxDecoration(
+                      color: AppStyles.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text('!', style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      )),
+                    ),
+                  ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -168,6 +196,15 @@ class _BookingsList extends StatelessWidget {
                     style: const TextStyle(color: AppStyles.primary,
                         fontSize: 12, fontWeight: FontWeight.w500)),
                 const Spacer(),
+                if (a.priceChanged) ...[
+                  Text('${a.originalPrice} ₽',
+                      style: const TextStyle(
+                          color: AppStyles.textSecondary,
+                          fontSize: 12,
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: AppStyles.textSecondary)),
+                  const SizedBox(width: 6),
+                ],
                 Text('${a.totalPrice} ₽',
                     style: const TextStyle(color: AppStyles.primary,
                         fontSize: 14, fontWeight: FontWeight.bold)),
@@ -188,7 +225,7 @@ class _BookingsList extends StatelessWidget {
                   )).toList()),
               ),
           ]),
-        );
+        ));
       },
     );
   }

@@ -58,7 +58,9 @@ class Appointment {
   bool isFavorite;
   String ownerUsername;
   int promoPrice;
-  int paidPrice; // Фактически оплаченная цена (сохраняется при создании)
+  int paidPrice;     // Актуальная цена (обновляется при изменении админом)
+  int originalPrice; // Цена при создании (никогда не меняется)
+  bool isModifiedByAdmin; // Флаг: запись изменена админом, клиент ещё не видел
 
   Appointment({
     required this.id,
@@ -74,6 +76,8 @@ class Appointment {
     this.ownerUsername = '',
     this.promoPrice = 0,
     this.paidPrice = 0,
+    this.originalPrice = 0,
+    this.isModifiedByAdmin = false,
   });
 
   Map<String, dynamic> toMap() => {
@@ -90,6 +94,8 @@ class Appointment {
     'ownerUsername': ownerUsername,
     'promoPrice': promoPrice,
     'paidPrice': paidPrice,
+    'originalPrice': originalPrice,
+    'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -106,13 +112,16 @@ class Appointment {
     ownerUsername: m['ownerUsername'] ?? '',
     promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
+    originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
+    isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
   );
 
   Appointment copyWith({
     String? clientName, String? carModel, String? carNumber,
     DateTime? dateTime, WashType? washType, List<String>? additionalServices,
     String? status, String? notes, bool? isFavorite,
-    String? ownerUsername, int? promoPrice, int? paidPrice,
+    String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
+    bool? isModifiedByAdmin,
   }) => Appointment(
     id: id,
     clientName: clientName ?? this.clientName,
@@ -127,7 +136,12 @@ class Appointment {
     ownerUsername: ownerUsername ?? this.ownerUsername,
     promoPrice: promoPrice ?? this.promoPrice,
     paidPrice: paidPrice ?? this.paidPrice,
+    originalPrice: originalPrice ?? this.originalPrice,
+    isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
   );
+
+  /// true если админ изменил цену относительно изначальной
+  bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
 
   /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем
   int get totalPrice {

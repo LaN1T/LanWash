@@ -49,6 +49,8 @@ async def init_db():
                 ownerUsername       TEXT    NOT NULL DEFAULT '',
                 promoPrice          INTEGER NOT NULL DEFAULT 0,
                 paidPrice           INTEGER NOT NULL DEFAULT 0,
+                isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
+                originalPrice       INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
             );
 
@@ -105,6 +107,12 @@ async def init_db():
                 createdAt TEXT    NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS deleted_notifications (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                username    TEXT NOT NULL,
+                createdAt   TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS consumables (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 mechanicName  TEXT    NOT NULL,
@@ -114,6 +122,27 @@ async def init_db():
                 createdAt     TEXT    NOT NULL
             );
         """)
+
+        # Миграция: таблица deleted_notifications
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS deleted_notifications (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                username    TEXT NOT NULL,
+                createdAt   TEXT NOT NULL
+            )
+        """)
+
+        # Миграция: добавить isModifiedByAdmin если колонки нет
+        try:
+            await db.execute("ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE appointments ADD COLUMN originalPrice INTEGER NOT NULL DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
 
         # Seed default data if empty
         cursor = await db.execute("SELECT COUNT(*) FROM users")

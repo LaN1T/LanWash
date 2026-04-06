@@ -52,6 +52,8 @@ class AppointmentRequest(BaseModel):
     ownerUsername: str = ""
     promoPrice: int = 0
     paidPrice: int = 0
+    isModifiedByAdmin: bool = False
+    originalPrice: int = 0
 
 
 class AppointmentResponse(BaseModel):
@@ -69,6 +71,8 @@ class AppointmentResponse(BaseModel):
     ownerUsername: str
     promoPrice: int
     paidPrice: int
+    isModifiedByAdmin: bool = False
+    originalPrice: int = 0
 
 
 # ─── Services ────────────────────────────────────────────────────────────────

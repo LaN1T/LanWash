@@ -36,6 +36,7 @@ class _ClientShellState extends State<ClientShell> {
     final auth     = context.watch<AuthProvider>();
     // Считаем только избранные каталожные услуги (не extra), чтобы не путать с admin
     final favCount = provider.favoriteServices.length;
+    final hasAdminModified = provider.appointments.any((a) => a.isModifiedByAdmin) || provider.hasDeletedByAdmin;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -79,7 +80,15 @@ class _ClientShellState extends State<ClientShell> {
         ),
         child: NavigationBar(
           selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
+          onDestinationSelected: (i) {
+            // 1. Обновляем текущую вкладку
+            setState(() => _index = i);
+
+            // 2. Сбрасываем только флаг удаления при переходе на "Записи"
+            if (i == 1) {
+              context.read<AppProvider>().clearDeletedByAdminFlag();
+            }
+          },
           backgroundColor: Colors.transparent,
           elevation: 0,
           indicatorColor: AppStyles.primaryBg,
@@ -90,10 +99,20 @@ class _ClientShellState extends State<ClientShell> {
               selectedIcon: Icon(Icons.home_rounded, color: AppStyles.primary),
               label: 'Главная',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_today_outlined),
-              selectedIcon: Icon(Icons.calendar_today_rounded,
-                  color: AppStyles.primary),
+            NavigationDestination(
+              icon: Badge(
+                isLabelVisible: hasAdminModified,
+                label: const Text('!'),
+                backgroundColor: AppStyles.danger,
+                child: const Icon(Icons.calendar_today_outlined),
+              ),
+              selectedIcon: Badge(
+                isLabelVisible: hasAdminModified,
+                label: const Text('!'),
+                backgroundColor: AppStyles.danger,
+                child: const Icon(Icons.calendar_today_rounded,
+                    color: AppStyles.primary),
+              ),
               label: 'Записи',
             ),
             NavigationDestination(

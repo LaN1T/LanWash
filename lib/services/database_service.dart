@@ -29,7 +29,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -98,6 +98,10 @@ class DatabaseService {
         )
       ''');
     }
+    if (oldVersion < 6) {
+      await db.execute(
+          'ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -134,6 +138,7 @@ class DatabaseService {
         ownerUsername       TEXT    NOT NULL DEFAULT '',
         promoPrice          INTEGER NOT NULL DEFAULT 0,
         paidPrice           INTEGER NOT NULL DEFAULT 0,
+        isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
       )
     ''');

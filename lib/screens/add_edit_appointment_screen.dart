@@ -261,11 +261,37 @@ class _State extends State<AddEditAppointmentScreen> {
     );
   }
 
+
+  /// Вычислить актуальную цену по текущим услугам
+  int _calcPrice() {
+    const extraPrices = {
+      'Чернение шин': 300, 'Ароматизация': 300, 'Пылесосная уборка': 500,
+      'Полировка стёкол': 500, 'Антидождь': 600, 'Обработка арок': 600,
+      'Удаление битума': 700, 'Озонирование': 1000, 'Нанесение воска': 1200,
+      'Мойка двигателя': 1500, 'Нанесение силанта': 2000, 'Нанесение тефлона': 3000,
+      'Химчистка салона': 3500, 'Химчистка кожи': 5000,
+      'Детейлинг кузова': 8000, 'Керамическое покрытие': 15000,
+    };
+    final included = _washType.includedExtras;
+    int p = _washType.basePrice;
+    for (final e in _selectedAddServices) {
+      if (!included.contains(e)) p += extraPrices[e] ?? 0;
+    }
+    return p;
+  }
+
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     final provider = context.read<AppProvider>();
 
     if (_isEditing) {
+      final newPrice = _calcPrice();
+      // originalPrice: сохраняем первую цену навсегда (если уже есть — не трогаем)
+      final origPrice = widget.appointment!.originalPrice > 0
+          ? widget.appointment!.originalPrice
+          : widget.appointment!.paidPrice > 0
+              ? widget.appointment!.paidPrice
+              : newPrice;
       provider.updateAppointment(widget.appointment!.copyWith(
         clientName: _nameCtrl.text.trim(),
         carModel: _modelCtrl.text.trim(),
@@ -275,6 +301,9 @@ class _State extends State<AddEditAppointmentScreen> {
         additionalServices: _selectedAddServices.toList(),
         status: _status,
         notes: _notesCtrl.text.trim(),
+        paidPrice: newPrice,
+        originalPrice: origPrice,
+        isModifiedByAdmin: true,
       ));
     } else {
       provider.addAppointment(Appointment(
