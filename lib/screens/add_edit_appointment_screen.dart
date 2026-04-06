@@ -275,6 +275,7 @@ class _State extends State<AddEditAppointmentScreen> {
         additionalServices: _selectedAddServices.toList(),
         status: _status,
         notes: _notesCtrl.text.trim(),
+        isModifiedByAdmin: true,
       ));
     } else {
       provider.addAppointment(Appointment(

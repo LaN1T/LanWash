@@ -21,6 +21,7 @@ def _from_row(row) -> dict:
         "ownerUsername": row["ownerUsername"],
         "promoPrice": row["promoPrice"],
         "paidPrice": row["paidPrice"],
+        "isModifiedByAdmin": bool(row["isModifiedByAdmin"]) if "isModifiedByAdmin" in row.keys() else False,
     }
 
 
@@ -56,12 +57,13 @@ async def create(req: AppointmentRequest):
         await db.execute(
             """INSERT OR REPLACE INTO appointments
                (id, userId, clientName, carModel, carNumber, dateTime, washType,
-                additionalServices, status, notes, isFavorite, ownerUsername, promoPrice, paidPrice)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                additionalServices, status, notes, isFavorite, ownerUsername, promoPrice, paidPrice, isModifiedByAdmin)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 req.id, None, req.clientName, req.carModel, req.carNumber,
                 req.dateTime, req.washType, req.additionalServices, req.status,
                 req.notes, int(req.isFavorite), req.ownerUsername, req.promoPrice, req.paidPrice,
+                int(req.isModifiedByAdmin),
             ),
         )
         await db.commit()
@@ -79,12 +81,12 @@ async def update(appt_id: str, req: AppointmentRequest):
         await db.execute(
             """UPDATE appointments SET clientName=?, carModel=?, carNumber=?, dateTime=?,
                washType=?, additionalServices=?, status=?, notes=?, isFavorite=?,
-               ownerUsername=?, promoPrice=?, paidPrice=? WHERE id=?""",
+               ownerUsername=?, promoPrice=?, paidPrice=?, isModifiedByAdmin=? WHERE id=?""",
             (
                 req.clientName, req.carModel, req.carNumber, req.dateTime,
                 req.washType, req.additionalServices, req.status, req.notes,
                 int(req.isFavorite), req.ownerUsername, req.promoPrice, req.paidPrice,
-                appt_id,
+                int(req.isModifiedByAdmin), appt_id,
             ),
         )
         await db.commit()
@@ -114,6 +116,20 @@ async def toggle_favorite(appt_id: str):
     try:
         await db.execute(
             "UPDATE appointments SET isFavorite = CASE WHEN isFavorite=1 THEN 0 ELSE 1 END WHERE id=?",
+            (appt_id,),
+        )
+        await db.commit()
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.post("/{appt_id}/clear-admin-flag")
+async def clear_admin_flag(appt_id: str):
+    db = await get_db()
+    try:
+        await db.execute(
+            "UPDATE appointments SET isModifiedByAdmin = 0 WHERE id=?",
             (appt_id,),
         )
         await db.commit()

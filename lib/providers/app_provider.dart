@@ -99,6 +99,15 @@ class AppProvider extends ChangeNotifier {
         '${appt.washType.displayName} · ${appt.carModel} ${appt.carNumber}');
   }
 
+  Future<void> clearAdminModifiedFlag(String id) async {
+    await _api.clearAdminModifiedFlag(id);
+    final i = _appointmentList.indexWhere((a) => a.id == id);
+    if (i != -1) {
+      _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false);
+      notifyListeners();
+    }
+  }
+
   Future<void> toggleAppointmentFavorite(String id) async {
     await _api.toggleAppointmentFavorite(id);
     final i = _appointmentList.indexWhere((a) => a.id == id);

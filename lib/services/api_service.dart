@@ -144,6 +144,17 @@ class ApiService {
     }
   }
 
+  Future<bool> clearAdminModifiedFlag(String id) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/appointments/$id/clear-admin-flag'),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> toggleAppointmentFavorite(String id) async {
     try {
       final resp = await http.post(

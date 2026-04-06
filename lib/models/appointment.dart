@@ -59,6 +59,7 @@ class Appointment {
   String ownerUsername;
   int promoPrice;
   int paidPrice; // Фактически оплаченная цена (сохраняется при создании)
+  bool isModifiedByAdmin; // Флаг: запись изменена админом, клиент ещё не видел
 
   Appointment({
     required this.id,
@@ -74,6 +75,7 @@ class Appointment {
     this.ownerUsername = '',
     this.promoPrice = 0,
     this.paidPrice = 0,
+    this.isModifiedByAdmin = false,
   });
 
   Map<String, dynamic> toMap() => {
@@ -90,6 +92,7 @@ class Appointment {
     'ownerUsername': ownerUsername,
     'promoPrice': promoPrice,
     'paidPrice': paidPrice,
+    'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -106,6 +109,7 @@ class Appointment {
     ownerUsername: m['ownerUsername'] ?? '',
     promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
+    isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
   );
 
   Appointment copyWith({
@@ -113,6 +117,7 @@ class Appointment {
     DateTime? dateTime, WashType? washType, List<String>? additionalServices,
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice,
+    bool? isModifiedByAdmin,
   }) => Appointment(
     id: id,
     clientName: clientName ?? this.clientName,
@@ -127,6 +132,7 @@ class Appointment {
     ownerUsername: ownerUsername ?? this.ownerUsername,
     promoPrice: promoPrice ?? this.promoPrice,
     paidPrice: paidPrice ?? this.paidPrice,
+    isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
   );
 
   /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем

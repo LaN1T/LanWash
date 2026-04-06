@@ -49,6 +49,7 @@ async def init_db():
                 ownerUsername       TEXT    NOT NULL DEFAULT '',
                 promoPrice          INTEGER NOT NULL DEFAULT 0,
                 paidPrice           INTEGER NOT NULL DEFAULT 0,
+                isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
             );
 
@@ -114,6 +115,13 @@ async def init_db():
                 createdAt     TEXT    NOT NULL
             );
         """)
+
+        # Миграция: добавить isModifiedByAdmin если колонки нет
+        try:
+            await db.execute("ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass  # Колонка уже существует
 
         # Seed default data if empty
         cursor = await db.execute("SELECT COUNT(*) FROM users")
