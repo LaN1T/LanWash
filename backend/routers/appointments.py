@@ -22,6 +22,7 @@ def _from_row(row) -> dict:
         "promoPrice": row["promoPrice"],
         "paidPrice": row["paidPrice"],
         "isModifiedByAdmin": bool(row["isModifiedByAdmin"]) if "isModifiedByAdmin" in row.keys() else False,
+        "originalPrice": row["originalPrice"] if "originalPrice" in row.keys() else 0,
     }
 
 
@@ -57,13 +58,13 @@ async def create(req: AppointmentRequest):
         await db.execute(
             """INSERT OR REPLACE INTO appointments
                (id, userId, clientName, carModel, carNumber, dateTime, washType,
-                additionalServices, status, notes, isFavorite, ownerUsername, promoPrice, paidPrice, isModifiedByAdmin)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                additionalServices, status, notes, isFavorite, ownerUsername, promoPrice, paidPrice, isModifiedByAdmin, originalPrice)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 req.id, None, req.clientName, req.carModel, req.carNumber,
                 req.dateTime, req.washType, req.additionalServices, req.status,
                 req.notes, int(req.isFavorite), req.ownerUsername, req.promoPrice, req.paidPrice,
-                int(req.isModifiedByAdmin),
+                int(req.isModifiedByAdmin), req.originalPrice,
             ),
         )
         await db.commit()
@@ -81,12 +82,12 @@ async def update(appt_id: str, req: AppointmentRequest):
         await db.execute(
             """UPDATE appointments SET clientName=?, carModel=?, carNumber=?, dateTime=?,
                washType=?, additionalServices=?, status=?, notes=?, isFavorite=?,
-               ownerUsername=?, promoPrice=?, paidPrice=?, isModifiedByAdmin=? WHERE id=?""",
+               ownerUsername=?, promoPrice=?, paidPrice=?, isModifiedByAdmin=?, originalPrice=? WHERE id=?""",
             (
                 req.clientName, req.carModel, req.carNumber, req.dateTime,
                 req.washType, req.additionalServices, req.status, req.notes,
                 int(req.isFavorite), req.ownerUsername, req.promoPrice, req.paidPrice,
-                int(req.isModifiedByAdmin), appt_id,
+                int(req.isModifiedByAdmin), req.originalPrice, appt_id,
             ),
         )
         await db.commit()

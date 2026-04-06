@@ -50,6 +50,7 @@ async def init_db():
                 promoPrice          INTEGER NOT NULL DEFAULT 0,
                 paidPrice           INTEGER NOT NULL DEFAULT 0,
                 isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
+                originalPrice       INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
             );
 
@@ -121,7 +122,12 @@ async def init_db():
             await db.execute("ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0")
             await db.commit()
         except Exception:
-            pass  # Колонка уже существует
+            pass
+        try:
+            await db.execute("ALTER TABLE appointments ADD COLUMN originalPrice INTEGER NOT NULL DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
 
         # Seed default data if empty
         cursor = await db.execute("SELECT COUNT(*) FROM users")

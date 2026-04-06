@@ -91,8 +91,19 @@ class AppProvider extends ChangeNotifier {
   Future<void> deleteAppointment(String id) async {
     final appt = _appointmentList.firstWhere((a) => a.id == id,
         orElse: () => _appointmentList.first);
-    await _api.deleteAppointment(id);
-    _appointmentList.removeWhere((a) => a.id == id);
+    // Если запись принадлежит клиенту — не удаляем, а помечаем как deleted
+    if (appt.ownerUsername.isNotEmpty) {
+      final marked = appt.copyWith(
+        status: 'deleted',
+        isModifiedByAdmin: true,
+      );
+      await _api.updateAppointment(marked);
+      final i = _appointmentList.indexWhere((a) => a.id == id);
+      if (i != -1) _appointmentList[i] = marked;
+    } else {
+      await _api.deleteAppointment(id);
+      _appointmentList.removeWhere((a) => a.id == id);
+    }
     notifyListeners();
     await _api.createLog(_currentUser.isNotEmpty ? _currentUser : 'admin',
         'Удаление записи',

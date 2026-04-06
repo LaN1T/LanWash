@@ -166,6 +166,7 @@ class AppStyles {
     'in_progress' => inProgress,
     'completed'   => success,
     'cancelled'   => danger,
+    'deleted'     => danger,
     _             => textSecondary,
   };
 
@@ -174,6 +175,7 @@ class AppStyles {
     'in_progress' => inProgressBg,
     'completed'   => successBg,
     'cancelled'   => dangerBg,
+    'deleted'     => dangerBg,
     _             => bgMuted,
   };
 
@@ -182,6 +184,7 @@ class AppStyles {
     'in_progress' => 'В процессе',
     'completed'   => 'Завершена',
     'cancelled'   => 'Отменена',
+    'deleted'     => 'Удалена',
     _             => s,
   };
 
@@ -190,6 +193,7 @@ class AppStyles {
     'in_progress' => Icons.autorenew_rounded,
     'completed'   => Icons.check_circle_rounded,
     'cancelled'   => Icons.cancel_rounded,
+    'deleted'     => Icons.delete_rounded,
     _             => Icons.help_outline,
   };
 
