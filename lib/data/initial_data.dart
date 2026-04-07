@@ -62,5 +62,4 @@ const List<String> statusOptions = [
   'in_progress',
   'completed',
   'cancelled',
-  'deleted',
 ];

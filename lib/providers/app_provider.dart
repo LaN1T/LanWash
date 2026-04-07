@@ -14,6 +14,7 @@ class AppProvider extends ChangeNotifier {
   Set<String>       _serviceFavSet   = {};
   String            _currentUser     = '';
   bool _loading    = true;
+  bool _hasDeletedByAdmin = false;
   bool _loadingApi = false;
   int  _unreadNotes = 0;
 
@@ -24,6 +25,8 @@ class AppProvider extends ChangeNotifier {
   bool              get loading        => _loading;
   bool              get loadingApi     => _loadingApi;
   int               get unreadNotes    => _unreadNotes;
+
+  bool get hasDeletedByAdmin => _hasDeletedByAdmin;
 
   List<Appointment> get favoriteAppointments =>
       _appointmentList.where((a) => a.isFavorite).toList();
@@ -52,6 +55,7 @@ class AppProvider extends ChangeNotifier {
     _appointmentList = await _api.getAppointmentsByOwner(_currentUser);
     _extraFavSet     = await _api.getExtraFavorites(_currentUser);
     _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
+    _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
     notifyListeners();
   }
 
@@ -62,6 +66,7 @@ class AppProvider extends ChangeNotifier {
     _serviceFavSet   = {};
     _currentUser     = '';
     _unreadNotes     = 0;
+    _hasDeletedByAdmin = false;
     notifyListeners();
   }
 
@@ -91,23 +96,20 @@ class AppProvider extends ChangeNotifier {
   Future<void> deleteAppointment(String id) async {
     final appt = _appointmentList.firstWhere((a) => a.id == id,
         orElse: () => _appointmentList.first);
-    // Если запись принадлежит клиенту — не удаляем, а помечаем как deleted
-    if (appt.ownerUsername.isNotEmpty) {
-      final marked = appt.copyWith(
-        status: 'deleted',
-        isModifiedByAdmin: true,
-      );
-      await _api.updateAppointment(marked);
-      final i = _appointmentList.indexWhere((a) => a.id == id);
-      if (i != -1) _appointmentList[i] = marked;
-    } else {
-      await _api.deleteAppointment(id);
-      _appointmentList.removeWhere((a) => a.id == id);
-    }
+    await _api.deleteAppointment(id);
+    _appointmentList.removeWhere((a) => a.id == id);
     notifyListeners();
     await _api.createLog(_currentUser.isNotEmpty ? _currentUser : 'admin',
         'Удаление записи',
         '${appt.washType.displayName} · ${appt.carModel} ${appt.carNumber}');
+  }
+
+  Future<void> clearDeletedByAdminFlag() async {
+    if (_hasDeletedByAdmin) {
+      await _api.clearDeletedNotification(_currentUser);
+      _hasDeletedByAdmin = false;
+      notifyListeners();
+    }
   }
 
   Future<void> clearAdminModifiedFlag(String id) async {

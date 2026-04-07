@@ -107,6 +107,12 @@ async def init_db():
                 createdAt TEXT    NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS deleted_notifications (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                username    TEXT NOT NULL,
+                createdAt   TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS consumables (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 mechanicName  TEXT    NOT NULL,
@@ -115,6 +121,15 @@ async def init_db():
                 telegramId    INTEGER NOT NULL DEFAULT 0,
                 createdAt     TEXT    NOT NULL
             );
+        """)
+
+        # Миграция: таблица deleted_notifications
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS deleted_notifications (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                username    TEXT NOT NULL,
+                createdAt   TEXT NOT NULL
+            )
         """)
 
         # Миграция: добавить isModifiedByAdmin если колонки нет

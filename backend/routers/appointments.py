@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from database import get_db
 from models import AppointmentRequest, AppointmentResponse
+from datetime import datetime
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
@@ -102,8 +103,17 @@ async def update(appt_id: str, req: AppointmentRequest):
 
 @router.delete("/{appt_id}")
 async def delete(appt_id: str):
+    from datetime import datetime
     db = await get_db()
     try:
+        # Проверяем есть ли владелец — если да, пишем уведомление
+        cursor = await db.execute("SELECT ownerUsername FROM appointments WHERE id = ?", (appt_id,))
+        row = await cursor.fetchone()
+        if row and row["ownerUsername"]:
+            await db.execute(
+                "INSERT INTO deleted_notifications (username, createdAt) VALUES (?, ?)",
+                (row["ownerUsername"], datetime.now().isoformat()),
+            )
         await db.execute("DELETE FROM appointments WHERE id = ?", (appt_id,))
         await db.commit()
         return {"ok": True}
@@ -118,6 +128,34 @@ async def toggle_favorite(appt_id: str):
         await db.execute(
             "UPDATE appointments SET isFavorite = CASE WHEN isFavorite=1 THEN 0 ELSE 1 END WHERE id=?",
             (appt_id,),
+        )
+        await db.commit()
+        return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.get("/deleted-notification/{username}")
+async def get_deleted_notification(username: str):
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT COUNT(*) FROM deleted_notifications WHERE username = ?",
+            (username.lower(),),
+        )
+        count = (await cursor.fetchone())[0]
+        return {"hasNotification": count > 0}
+    finally:
+        await db.close()
+
+
+@router.delete("/deleted-notification/{username}")
+async def clear_deleted_notification(username: str):
+    db = await get_db()
+    try:
+        await db.execute(
+            "DELETE FROM deleted_notifications WHERE username = ?",
+            (username.lower(),),
         )
         await db.commit()
         return {"ok": True}

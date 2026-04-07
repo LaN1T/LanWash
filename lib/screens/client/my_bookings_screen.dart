@@ -31,7 +31,13 @@ class _State extends State<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
   @override
-  void initState() { super.initState(); _tab = TabController(length: 2, vsync: this); }
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AppProvider>().clearDeletedByAdminFlag();
+    });
+  }
   @override
   void dispose() { _tab.dispose(); super.dispose(); }
 
@@ -55,7 +61,7 @@ class _State extends State<MyBookingsScreen>
         .where((a) => a.status == 'scheduled' || a.status == 'in_progress')
         .toList()..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     final history = all
-        .where((a) => a.status == 'completed' || a.status == 'cancelled' || a.status == 'deleted')
+        .where((a) => a.status == 'completed' || a.status == 'cancelled')
         .toList()..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
     return Container(
