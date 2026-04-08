@@ -198,15 +198,18 @@ class _BWState extends State<BookingWizardScreen> {
     return locked;
   }
 
+  // Полная цена без акции: базовая мойка + все доп. услуги
+  // (исключаем только авто-включённые в тип мойки, но НЕ исключаем прomo-locked)
   int get _regularPrice {
     int p = _washType.basePrice;
-    final locked = _lockedExtras;
+    final washIncluded = _washType.includedExtras;
     for (final e in _extras) {
-      if (!locked.contains(e)) p += extraServicePrices[e] ?? 0;
+      if (!washIncluded.contains(e)) p += extraServicePrices[e] ?? 0;
     }
     return p;
   }
 
+  // Цена только пользовательских доп. услуг (не входящих в акцию/тип мойки)
   int get _extrasPrice {
     int p = 0;
     final locked = _lockedExtras;
@@ -216,13 +219,24 @@ class _BWState extends State<BookingWizardScreen> {
     return p;
   }
 
-  int get _finalPrice => _isPromo ? _promo!.price + _extrasPrice : _regularPrice;
-  bool get _hasDiscount => _isPromo && _promo!.price < _regularPrice;
+  // Базовая цена акции: если задана % скидка — считаем от basePrice, иначе берём promo.price
+  int get _promoBasePrice {
+    final cfg = _isPromo ? getPromoConfig(_promo!.name) : null;
+    if (cfg != null && cfg.discountPercent > 0) {
+      return _washType.basePrice * (100 - cfg.discountPercent) ~/ 100;
+    }
+    return _promo!.price;
+  }
 
-  /// Суммарное время: тип мойки + все выбранные доп. услуги
+  int get _finalPrice => _isPromo ? _promoBasePrice + _extrasPrice : _regularPrice;
+  bool get _hasDiscount => _isPromo && _finalPrice < _regularPrice;
+
+  /// Суммарное время: тип мойки + доп. услуги (не считая авто-включённых в тип)
   String get _totalDurationLabel {
     int total = _washType.durationMinutes;
+    final washIncluded = _washType.includedExtras;
     for (final e in _extras) {
+      if (washIncluded.contains(e)) continue; // уже учтено в базовом времени типа
       final durStr = extraServiceDurations[e];
       if (durStr == null) continue;
       // Парсим строки вида "15 мин", "1 ч", "1.5 ч", "3 ч"
@@ -237,7 +251,6 @@ class _BWState extends State<BookingWizardScreen> {
         total += int.tryParse(durStr.split(' ')[0]) ?? 0;
       }
     }
-    if (_isPromo) total = _promo!.durationMinutes; // для акции берём из promo
     final h = total ~/ 60;
     final m = total % 60;
     if (h == 0) return '$m мин';

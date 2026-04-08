@@ -6,6 +6,7 @@ import '../app_styles.dart';
 import '../models/appointment.dart';
 import '../providers/app_provider.dart';
 import '../data/initial_data.dart';
+import '../models/service.dart';
 
 // ─── Форматтер гос. номера (синхронизирован с клиентом) ──────────────────────
 const _ruPlateLetters = 'АВЕКМНОРСТУХ';
@@ -262,8 +263,8 @@ class _State extends State<AddEditAppointmentScreen> {
   }
 
 
-  /// Вычислить актуальную цену по текущим услугам
-  /// Если запись по акции — базой берётся promoPrice, а не washType.basePrice
+  /// Вычислить актуальную цену по текущим услугам.
+  /// Для акционных записей: база = promoPrice, прomo-locked extras не прибавляются.
   int _calcPrice() {
     const extraPrices = {
       'Чернение шин': 300, 'Ароматизация': 300, 'Пылесосная уборка': 500,
@@ -273,12 +274,25 @@ class _State extends State<AddEditAppointmentScreen> {
       'Химчистка салона': 3500, 'Химчистка кожи': 5000,
       'Детейлинг кузова': 8000, 'Керамическое покрытие': 15000,
     };
-    final included = _washType.includedExtras;
-    // Для акционных записей база = promoPrice, для обычных = washType.basePrice
+
+    // Извлекаем имя акции из notes (формат: «Акция: <name>»)
+    final notes = widget.appointment?.notes ?? '';
+    PromoConfig? promoCfg;
+    if (notes.startsWith('Акция: ')) {
+      final promoName = notes.substring('Акция: '.length).trim();
+      promoCfg = getPromoConfig(promoName);
+    }
+
+    // Locked = авто-включённые в тип мойки + extras акции (за них платить не нужно)
+    final locked = <String>{
+      ..._washType.includedExtras,
+      ...?promoCfg?.extras,
+    };
+
     final promoBase = widget.appointment?.promoPrice ?? 0;
     int p = promoBase > 0 ? promoBase : _washType.basePrice;
     for (final e in _selectedAddServices) {
-      if (!included.contains(e)) p += extraPrices[e] ?? 0;
+      if (!locked.contains(e)) p += extraPrices[e] ?? 0;
     }
     return p;
   }

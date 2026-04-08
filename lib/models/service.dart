@@ -1,3 +1,5 @@
+import 'appointment.dart';
+
 class Service {
   final String id;
   String name;
@@ -71,11 +73,13 @@ class PromoConfig {
   final String washTypeName;
   final List<String> extras;
   final bool weekendOnly;
+  final int discountPercent; // 0 = фиксированная цена, >0 = скидка % от basePrice типа мойки
 
   const PromoConfig({
     required this.washTypeName,
     required this.extras,
     this.weekendOnly = false,
+    this.discountPercent = 0,
   });
 }
 
@@ -91,7 +95,7 @@ PromoConfig? getPromoConfig(String promoName) {
   }
   // Выходной пакет: комплексная мойка -20%
   if (n.contains('выходной') || n.contains('выходн')) {
-    return const PromoConfig(washTypeName: 'complex', extras: [], weekendOnly: true);
+    return const PromoConfig(washTypeName: 'complex', extras: [], weekendOnly: true, discountPercent: 20);
   }
   // Пакет для внедорожников
   if (n.contains('внедорожник') || n.contains('пакет для')) {
@@ -99,4 +103,37 @@ PromoConfig? getPromoConfig(String promoName) {
         extras: ['Чернение шин', 'Обработка арок']);
   }
   return null;
+}
+
+// ─── Хелперы для расчёта времени акции ───────────────────────────────────────
+const _extraDurationMinutes = {
+  'Полировка стёкол': 20,  'Нанесение воска': 45,   'Нанесение силанта': 90,
+  'Антидождь': 25,         'Чернение шин': 15,       'Ароматизация': 15,
+  'Озонирование': 60,      'Удаление битума': 30,    'Химчистка салона': 180,
+  'Пылесосная уборка': 25, 'Обработка арок': 20,     'Мойка двигателя': 60,
+  'Химчистка кожи': 240,   'Детейлинг кузова': 360,
+  'Керамическое покрытие': 480, 'Нанесение тефлона': 120,
+};
+
+/// Считает суммарное время акции в минутах:
+/// базовое время типа мойки + extras акции (исключая авто-включённые в тип).
+int getPromoDurationMinutes(String promoName) {
+  final cfg = getPromoConfig(promoName);
+  if (cfg == null) return 0;
+  final washType = WashTypeX.fromString(cfg.washTypeName);
+  final washIncluded = washType.includedExtras;
+  int total = washType.durationMinutes;
+  for (final e in cfg.extras) {
+    if (!washIncluded.contains(e)) total += _extraDurationMinutes[e] ?? 0;
+  }
+  return total;
+}
+
+String getPromoDurationLabel(String promoName) {
+  final mins = getPromoDurationMinutes(promoName);
+  if (mins == 0) return '—';
+  final h = mins ~/ 60;
+  final m = mins % 60;
+  if (h == 0) return '$m мин';
+  return m == 0 ? '$h ч' : '$h ч $m мин';
 }

@@ -178,7 +178,15 @@ class _AppointmentCard extends StatelessWidget {
             Row(children: [
               _info(Icons.local_car_wash, a.washType.displayName),
               const Spacer(),
-              Text('${a.totalPrice} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
+              if (a.priceChanged) Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text('${a.paidPrice} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
+                Text('${a.originalPrice} ₽', style: const TextStyle(
+                  fontSize: 12, color: AppStyles.textSecondary,
+                  decoration: TextDecoration.lineThrough,
+                  decorationColor: AppStyles.textSecondary,
+                )),
+              ]) else
+                Text('${a.totalPrice} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[
               const SizedBox(height: 6),
