@@ -145,6 +145,7 @@ class _HomeShellState extends State<HomeShell> {
         bottom: false,
         child: ListView(children: [
         Container(
+          width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           color: Colors.white,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

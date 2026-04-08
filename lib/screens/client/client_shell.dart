@@ -139,42 +139,37 @@ class _ClientShellState extends State<ClientShell> {
         child: Column(children: [
         // Шапка
         Container(
+          width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           color: Colors.white,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              width: 56, height: 56,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: AppStyles.primaryGradient,
                 boxShadow: [BoxShadow(
-                  color: AppStyles.primary.withOpacity(0.25),
-                  blurRadius: 16,
+                  color: AppStyles.primary.withOpacity(0.3),
+                  blurRadius: 20,
                 )],
               ),
               child: const Icon(Icons.local_car_wash,
-                  color: Colors.white, size: 28),
+                  color: Colors.white, size: 32),
             ),
             const SizedBox(height: 14),
-            const Text('LanWash', style: TextStyle(
-                color: AppStyles.textPrimary, fontSize: 20,
-                fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            const Text('LanWash',
+                style: TextStyle(color: AppStyles.textPrimary,
+                    fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: AppStyles.primaryBg,
+                color: AppStyles.primary.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.person_rounded,
-                    size: 12, color: AppStyles.primary),
-                const SizedBox(width: 4),
-                Text(auth.username, style: const TextStyle(
-                    color: AppStyles.primary, fontSize: 11,
-                    fontWeight: FontWeight.w600)),
-              ]),
+              child: Text(auth.username,
+                  style: const TextStyle(color: AppStyles.primary, fontSize: 11,
+                      fontWeight: FontWeight.w600)),
             ),
           ]),
         ),

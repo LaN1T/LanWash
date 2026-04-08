@@ -178,6 +178,7 @@ class _WasherShellState extends State<WasherShell> {
         bottom: false,
         child: Column(children: [
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             color: Colors.white,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
