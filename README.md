@@ -1,13 +1,3 @@
-Chrome
-cd ~/Desktop/autowash_app_fixed
-flutter run -d chrome
-
-MacOS
-flutter create --platforms=macos .
-
-БД
-Library/Containers/com.example.lanwash/Data/.dart_tool/sqflite_common_ffi/databases/lanwash.db
-
 # LanWash — приложение для записи на автомойку
 Учебный проект на Flutter/Dart. Приложение позволяет клиентам записываться на автомойку, а администратору управлять записями и каталогом услуг.
 - Платформы: iOS, macOS, Flutter Web (Chrome)

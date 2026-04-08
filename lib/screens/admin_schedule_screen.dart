@@ -95,7 +95,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                         top: 6,
                         right: 6,
                         child: Container(
-                          width: 22, height: 22,
+                          width: 30, height: 30,
                           decoration: BoxDecoration(
                             color: AppStyles.primary,
                             borderRadius: BorderRadius.circular(7),
@@ -103,7 +103,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                           child: Center(
                             child: Text('$count',
                               style: const TextStyle(
-                                color: Colors.white, fontSize: 11,
+                                color: Colors.white, fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

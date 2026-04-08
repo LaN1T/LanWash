@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../app_styles.dart';
 import '../models/note.dart';
+import '../models/user.dart';
 import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -13,6 +14,15 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   bool _loading = true;
+  List<User> _washers = [];
+
+  String _displayName(String username) {
+    final w = _washers.where((w) => w.username == username);
+    if (w.isNotEmpty) {
+      return w.first.displayName.isNotEmpty ? w.first.displayName : w.first.username;
+    }
+    return username;
+  }
 
   @override
   void initState() {
@@ -26,6 +36,7 @@ class _NotesScreenState extends State<NotesScreen> {
     final provider = context.read<AppProvider>();
     if (auth.isAdmin) {
       await provider.loadNotes();
+      _washers = await provider.getWashers();
     } else {
       await provider.loadNotes(username: auth.userLogin);
     }
@@ -165,6 +176,7 @@ class _NotesScreenState extends State<NotesScreen> {
               itemBuilder: (_, i) => _NoteCard(
                 note: notes[i],
                 isAdmin: auth.isAdmin,
+                displayName: _displayName(notes[i].username),
                 onRead: () => provider.markNoteRead(notes[i].id!),
                 onDelete: auth.isAdmin
                     ? () => provider.deleteNote(notes[i].id!)
@@ -178,12 +190,14 @@ class _NotesScreenState extends State<NotesScreen> {
 class _NoteCard extends StatelessWidget {
   final Note note;
   final bool isAdmin;
+  final String displayName;
   final VoidCallback onRead;
   final VoidCallback? onDelete;
 
   const _NoteCard({
     required this.note,
     required this.isAdmin,
+    required this.displayName,
     required this.onRead,
     this.onDelete,
   });
@@ -244,7 +258,7 @@ class _NoteCard extends StatelessWidget {
                       color: AppStyles.primaryBg,
                       borderRadius: BorderRadius.circular(5),
                     ),
-                    child: Text(note.username,
+                    child: Text(displayName,
                         style: const TextStyle(color: AppStyles.primary,
                             fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
