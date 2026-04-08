@@ -263,6 +263,7 @@ class _State extends State<AddEditAppointmentScreen> {
 
 
   /// Вычислить актуальную цену по текущим услугам
+  /// Если запись по акции — базой берётся promoPrice, а не washType.basePrice
   int _calcPrice() {
     const extraPrices = {
       'Чернение шин': 300, 'Ароматизация': 300, 'Пылесосная уборка': 500,
@@ -273,7 +274,9 @@ class _State extends State<AddEditAppointmentScreen> {
       'Детейлинг кузова': 8000, 'Керамическое покрытие': 15000,
     };
     final included = _washType.includedExtras;
-    int p = _washType.basePrice;
+    // Для акционных записей база = promoPrice, для обычных = washType.basePrice
+    final promoBase = widget.appointment?.promoPrice ?? 0;
+    int p = promoBase > 0 ? promoBase : _washType.basePrice;
     for (final e in _selectedAddServices) {
       if (!included.contains(e)) p += extraPrices[e] ?? 0;
     }

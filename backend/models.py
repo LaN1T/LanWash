@@ -54,6 +54,7 @@ class AppointmentRequest(BaseModel):
     paidPrice: int = 0
     isModifiedByAdmin: bool = False
     originalPrice: int = 0
+    assignedWasher: str = "[]"
 
 
 class AppointmentResponse(BaseModel):
@@ -73,6 +74,11 @@ class AppointmentResponse(BaseModel):
     paidPrice: int
     isModifiedByAdmin: bool = False
     originalPrice: int = 0
+    assignedWasher: str = "[]"
+
+
+class AssignWasherRequest(BaseModel):
+    washerUsername: str
 
 
 # ─── Services ────────────────────────────────────────────────────────────────

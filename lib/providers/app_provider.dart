@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/appointment.dart';
 import '../models/service.dart';
 import '../models/note.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -189,6 +190,30 @@ class AppProvider extends ChangeNotifier {
 
   bool isExtraFavorite(String serviceName) =>
       _extraFavSet.contains(serviceName);
+
+  // ─── Мойщики и назначения ─────────────────────────────────────────────────
+  Future<List<User>> getWashers() => _api.getWashers();
+
+  Future<List<Appointment>> getAppointmentsByWasher(String username) =>
+      _api.getAppointmentsByWasher(username);
+
+  Future<bool> assignWasher(String appointmentId, String washerUsername) async {
+    final ok = await _api.assignWasher(appointmentId, washerUsername);
+    if (ok) {
+      final i = _appointmentList.indexWhere((a) => a.id == appointmentId);
+      if (i != -1) {
+        final current = List<String>.from(_appointmentList[i].assignedWashers);
+        if (current.contains(washerUsername)) {
+          current.remove(washerUsername);
+        } else {
+          if (current.length < 3) current.add(washerUsername);
+        }
+        _appointmentList[i] = _appointmentList[i].copyWith(assignedWashers: current);
+        notifyListeners();
+      }
+    }
+    return ok;
+  }
 
   // ─── Заметки мойщика ──────────────────────────────────────────────────────
   Future<void> loadNotes({String? username}) async {

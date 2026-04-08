@@ -81,6 +81,19 @@ async def register(req: RegisterRequest):
         await db.close()
 
 
+@router.get("/washers", response_model=list[UserResponse])
+async def get_washers():
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT * FROM users WHERE role = 'washer' ORDER BY displayName ASC"
+        )
+        rows = await cursor.fetchall()
+        return [_user_from_row(r) for r in rows]
+    finally:
+        await db.close()
+
+
 @router.put("/profile/{user_id}", response_model=UserResponse)
 async def update_profile(user_id: int, req: UpdateProfileRequest):
     db = await get_db()

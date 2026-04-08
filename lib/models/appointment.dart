@@ -61,6 +61,7 @@ class Appointment {
   int paidPrice;     // Актуальная цена (обновляется при изменении админом)
   int originalPrice; // Цена при создании (никогда не меняется)
   bool isModifiedByAdmin; // Флаг: запись изменена админом, клиент ещё не видел
+  List<String> assignedWashers; // Назначенные мойщики (до 3, usernames)
 
   Appointment({
     required this.id,
@@ -78,7 +79,8 @@ class Appointment {
     this.paidPrice = 0,
     this.originalPrice = 0,
     this.isModifiedByAdmin = false,
-  });
+    List<String>? assignedWashers,
+  }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -96,6 +98,7 @@ class Appointment {
     'paidPrice': paidPrice,
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
+    'assignedWasher': jsonEncode(assignedWashers),
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -114,14 +117,30 @@ class Appointment {
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
+    assignedWashers: _parseWashers(m['assignedWasher']),
   );
+
+  static List<String> _parseWashers(dynamic v) {
+    if (v == null || v == '') return [];
+    if (v is List) return List<String>.from(v);
+    if (v is String) {
+      try {
+        final decoded = jsonDecode(v);
+        if (decoded is List) return List<String>.from(decoded);
+      } catch (_) {
+        // Старый формат — одно имя
+        if (v.isNotEmpty) return [v];
+      }
+    }
+    return [];
+  }
 
   Appointment copyWith({
     String? clientName, String? carModel, String? carNumber,
     DateTime? dateTime, WashType? washType, List<String>? additionalServices,
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
-    bool? isModifiedByAdmin,
+    bool? isModifiedByAdmin, List<String>? assignedWashers,
   }) => Appointment(
     id: id,
     clientName: clientName ?? this.clientName,
@@ -138,6 +157,7 @@ class Appointment {
     paidPrice: paidPrice ?? this.paidPrice,
     originalPrice: originalPrice ?? this.originalPrice,
     isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
+    assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
   );
 
   /// true если админ изменил цену относительно изначальной
@@ -146,7 +166,6 @@ class Appointment {
   /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем
   int get totalPrice {
     if (paidPrice > 0) return paidPrice;
-    if (promoPrice > 0) return promoPrice;
     const extraPrices = {
       'Чернение шин': 300,
       'Ароматизация': 300,
@@ -166,7 +185,8 @@ class Appointment {
       'Керамическое покрытие': 15000,
     };
     final included = washType.includedExtras;
-    int p = washType.basePrice;
+    // Для акций база = promoPrice, для обычных = washType.basePrice
+    int p = promoPrice > 0 ? promoPrice : washType.basePrice;
     for (final e in additionalServices) {
       if (!included.contains(e)) p += extraPrices[e] ?? 0;
     }

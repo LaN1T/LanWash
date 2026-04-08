@@ -51,6 +51,7 @@ async def init_db():
                 paidPrice           INTEGER NOT NULL DEFAULT 0,
                 isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
                 originalPrice       INTEGER NOT NULL DEFAULT 0,
+                assignedWasher      TEXT    NOT NULL DEFAULT '',
                 FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
             );
 
@@ -140,6 +141,11 @@ async def init_db():
             pass
         try:
             await db.execute("ALTER TABLE appointments ADD COLUMN originalPrice INTEGER NOT NULL DEFAULT 0")
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE appointments ADD COLUMN assignedWasher TEXT NOT NULL DEFAULT ''")
             await db.commit()
         except Exception:
             pass
