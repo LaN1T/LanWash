@@ -63,11 +63,13 @@ class AppointmentDetailScreen extends StatelessWidget {
 
           _Section(title: 'Тип мойки', children: [
             _Row(Icons.local_car_wash, 'Пакет', a.washType.displayName),
-            _Row(Icons.payments, 'Итого', '${a.totalPrice} ₽'),
+            _Row(Icons.payments, 'Итого', '${a.priceChanged ? a.paidPrice : a.totalPrice} ₽'),
+            if (a.priceChanged) _PriceChangedRow(
+              newPrice: a.paidPrice, oldPrice: a.originalPrice),
           ]),
           const SizedBox(height: 12),
 
-          if (a.additionalServices.isNotEmpty) ...[ 
+          if (a.additionalServices.isNotEmpty) ...[
             _SectionTitle('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -84,7 +86,7 @@ class AppointmentDetailScreen extends StatelessWidget {
             const SizedBox(height: 12),
           ],
 
-          if (a.notes.isNotEmpty) ...[ 
+          if (a.notes.isNotEmpty) ...[
             _SectionTitle('Заметки'),
             Container(
               width: double.infinity,
@@ -218,6 +220,31 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8, left: 4),
     child: Text(text, style: AppStyles.label.copyWith(fontSize: 13)),
+  );
+}
+
+class _PriceChangedRow extends StatelessWidget {
+  final int newPrice;
+  final int oldPrice;
+  const _PriceChangedRow({required this.newPrice, required this.oldPrice});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    child: Row(children: [
+      const Icon(Icons.edit_note_rounded, size: 18, color: AppStyles.primary),
+      const SizedBox(width: 12),
+      SizedBox(width: 100, child: Text('Изменено', style: AppStyles.bodyMedium)),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Text('$newPrice ₽', style: AppStyles.bodyLarge.copyWith(
+          fontWeight: FontWeight.w600, color: AppStyles.primary)),
+        Text('$oldPrice ₽', style: const TextStyle(
+          fontSize: 13, color: AppStyles.textSecondary,
+          decoration: TextDecoration.lineThrough,
+          decorationColor: AppStyles.textSecondary,
+        )),
+      ])),
+    ]),
   );
 }
 

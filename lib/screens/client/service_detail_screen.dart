@@ -76,7 +76,7 @@ class ServiceDetailScreen extends StatelessWidget {
                     '${s.price} ₽', s.isFromApi),
                 const SizedBox(width: 28),
                 _Stat(Icons.access_time_rounded, 'Время',
-                    s.durationLabel, s.isFromApi),
+                    s.isFromApi ? getPromoDurationLabel(s.name) : s.durationLabel, s.isFromApi),
               ]),
             ]),
           ),

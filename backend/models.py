@@ -136,23 +136,6 @@ class NoteResponse(BaseModel):
     createdAt: str
 
 
-# ─── Consumables (from bot) ─────────────────────────────────────────────────
-class ConsumableRequest(BaseModel):
-    mechanicName: str
-    item: str
-    quantity: str
-    telegramId: int = 0
-
-
-class ConsumableResponse(BaseModel):
-    id: int
-    mechanicName: str
-    item: str
-    quantity: str
-    telegramId: int
-    createdAt: str
-
-
 # ─── Favorites ───────────────────────────────────────────────────────────────
 class ToggleFavoriteRequest(BaseModel):
     username: str

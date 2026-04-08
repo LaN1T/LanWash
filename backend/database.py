@@ -114,14 +114,6 @@ async def init_db():
                 createdAt   TEXT NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS consumables (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                mechanicName  TEXT    NOT NULL,
-                item          TEXT    NOT NULL,
-                quantity      TEXT    NOT NULL,
-                telegramId    INTEGER NOT NULL DEFAULT 0,
-                createdAt     TEXT    NOT NULL
-            );
         """)
 
         # Миграция: таблица deleted_notifications

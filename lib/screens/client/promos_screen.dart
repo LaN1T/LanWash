@@ -137,7 +137,7 @@ class _PromoCard extends StatelessWidget {
                   const Icon(Icons.access_time_rounded,
                       size: 13, color: AppStyles.textSecondary),
                   const SizedBox(width: 3),
-                  Text(service.durationLabel, style: AppStyles.bodySmall),
+                  Text(getPromoDurationLabel(service.name), style: AppStyles.bodySmall),
                 ]),
               ]),
             ),

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 
@@ -19,9 +21,32 @@ class AuthProvider extends ChangeNotifier {
   String  get username    => _user?.displayName ?? '';
   String  get userLogin   => _user?.username ?? '';
 
+  static const _kUserKey = 'saved_user';
+
   Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_kUserKey);
+      if (json != null) {
+        _user = User.fromMap(jsonDecode(json));
+      }
+    } catch (_) {}
     _initialized = true;
     notifyListeners();
+  }
+
+  Future<void> _saveUser(User user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kUserKey, jsonEncode(user.toMap()));
+    } catch (_) {}
+  }
+
+  Future<void> _clearUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kUserKey);
+    } catch (_) {}
   }
 
   /// Возвращает null при успехе, иначе текст ошибки
@@ -39,6 +64,7 @@ class AuthProvider extends ChangeNotifier {
     }
 
     _user = user;
+    await _saveUser(user);
     notifyListeners();
     await _api.createLog(username, 'Вход в систему', 'Роль: ${user.role.name}');
     return null;
@@ -73,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
 
     // Автологин после регистрации
     _user = User.fromMap(result['user']);
+    await _saveUser(_user!);
     notifyListeners();
     await _api.createLog(username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
     return null;
@@ -96,6 +123,7 @@ class AuthProvider extends ChangeNotifier {
     );
     if (updated != null) {
       _user = updated;
+      await _saveUser(updated);
       notifyListeners();
       await _api.createLog(updated.username, 'Обновление профиля', 'Имя: ${updated.displayName}');
     }
@@ -105,6 +133,7 @@ class AuthProvider extends ChangeNotifier {
     final who = _user?.username ?? 'unknown';
     _api.createLog(who, 'Выход из системы', '');
     _user = null;
+    _clearUser();
     notifyListeners();
   }
 }

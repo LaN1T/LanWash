@@ -23,7 +23,7 @@ class ClientHomeScreen extends StatelessWidget {
 
           // ── Приветствие ──────────────────────────────────────────────────
           RichText(text: TextSpan(children: [
-            const TextSpan(text: 'Привет, ',
+            const TextSpan(text: 'Здравствуйте, ',
                 style: TextStyle(color: AppStyles.textSecondary, fontSize: 15)),
             TextSpan(text: auth.username,
                 style: const TextStyle(color: AppStyles.textPrimary,
