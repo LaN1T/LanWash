@@ -204,6 +204,44 @@ class ApiService {
     return {'total': 0, 'scheduled': 0, 'completed': 0};
   }
 
+  Future<List<Appointment>> getAppointmentsByWasher(String username) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/appointments/by-washer/$username'),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Appointment.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<bool> assignWasher(String appointmentId, String washerUsername) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/appointments/$appointmentId/assign-washer'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'washerUsername': washerUsername}),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<User>> getWashers() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/auth/washers'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => User.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // ─── Services ───────────────────────────────────────────────────────────────
   Future<List<Service>> getServices() async {
     try {

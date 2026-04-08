@@ -1,6 +1,7 @@
+import json
 from fastapi import APIRouter, HTTPException
 from database import get_db
-from models import AppointmentRequest, AppointmentResponse
+from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
 from datetime import datetime
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
@@ -24,6 +25,7 @@ def _from_row(row) -> dict:
         "paidPrice": row["paidPrice"],
         "isModifiedByAdmin": bool(row["isModifiedByAdmin"]) if "isModifiedByAdmin" in row.keys() else False,
         "originalPrice": row["originalPrice"] if "originalPrice" in row.keys() else 0,
+        "assignedWasher": row["assignedWasher"] if "assignedWasher" in row.keys() else "[]",
     }
 
 
@@ -52,6 +54,21 @@ async def get_by_owner(username: str):
         await db.close()
 
 
+@router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
+async def get_by_washer(username: str):
+    db = await get_db()
+    try:
+        # Search for username inside JSON array stored in assignedWasher
+        cursor = await db.execute(
+            "SELECT * FROM appointments WHERE assignedWasher LIKE ? ORDER BY dateTime ASC",
+            (f'%"{username.lower()}"%',),
+        )
+        rows = await cursor.fetchall()
+        return [_from_row(r) for r in rows]
+    finally:
+        await db.close()
+
+
 @router.post("/", response_model=AppointmentResponse)
 async def create(req: AppointmentRequest):
     db = await get_db()
@@ -59,13 +76,13 @@ async def create(req: AppointmentRequest):
         await db.execute(
             """INSERT OR REPLACE INTO appointments
                (id, userId, clientName, carModel, carNumber, dateTime, washType,
-                additionalServices, status, notes, isFavorite, ownerUsername, promoPrice, paidPrice, isModifiedByAdmin, originalPrice)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                additionalServices, status, notes, isFavorite, ownerUsername, promoPrice, paidPrice, isModifiedByAdmin, originalPrice, assignedWasher)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 req.id, None, req.clientName, req.carModel, req.carNumber,
                 req.dateTime, req.washType, req.additionalServices, req.status,
                 req.notes, int(req.isFavorite), req.ownerUsername, req.promoPrice, req.paidPrice,
-                int(req.isModifiedByAdmin), req.originalPrice,
+                int(req.isModifiedByAdmin), req.originalPrice, req.assignedWasher,
             ),
         )
         await db.commit()
@@ -83,12 +100,12 @@ async def update(appt_id: str, req: AppointmentRequest):
         await db.execute(
             """UPDATE appointments SET clientName=?, carModel=?, carNumber=?, dateTime=?,
                washType=?, additionalServices=?, status=?, notes=?, isFavorite=?,
-               ownerUsername=?, promoPrice=?, paidPrice=?, isModifiedByAdmin=?, originalPrice=? WHERE id=?""",
+               ownerUsername=?, promoPrice=?, paidPrice=?, isModifiedByAdmin=?, originalPrice=?, assignedWasher=? WHERE id=?""",
             (
                 req.clientName, req.carModel, req.carNumber, req.dateTime,
                 req.washType, req.additionalServices, req.status, req.notes,
                 int(req.isFavorite), req.ownerUsername, req.promoPrice, req.paidPrice,
-                int(req.isModifiedByAdmin), req.originalPrice, appt_id,
+                int(req.isModifiedByAdmin), req.originalPrice, req.assignedWasher, appt_id,
             ),
         )
         await db.commit()
@@ -131,6 +148,44 @@ async def toggle_favorite(appt_id: str):
         )
         await db.commit()
         return {"ok": True}
+    finally:
+        await db.close()
+
+
+@router.post("/{appt_id}/assign-washer")
+async def assign_washer(appt_id: str, req: AssignWasherRequest):
+    db = await get_db()
+    try:
+        cursor = await db.execute("SELECT * FROM appointments WHERE id = ?", (appt_id,))
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(404, "Запись не найдена")
+
+        # Parse current list
+        raw = row["assignedWasher"] if "assignedWasher" in row.keys() else "[]"
+        try:
+            current = json.loads(raw) if raw else []
+        except (json.JSONDecodeError, TypeError):
+            # Backward compat: old single-string format
+            current = [raw] if raw else []
+
+        username = req.washerUsername.lower()
+        if username in current:
+            # Already assigned — remove (toggle off)
+            current.remove(username)
+        else:
+            if len(current) >= 3:
+                raise HTTPException(400, "Максимум 3 мойщика на одну запись")
+            current.append(username)
+
+        await db.execute(
+            "UPDATE appointments SET assignedWasher = ? WHERE id = ?",
+            (json.dumps(current), appt_id),
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT * FROM appointments WHERE id = ?", (appt_id,))
+        row = await cursor.fetchone()
+        return _from_row(row)
     finally:
         await db.close()
 

@@ -11,6 +11,7 @@ import 'add_edit_appointment_screen.dart';
 import 'add_edit_service_screen.dart';
 import 'logs_screen.dart';
 import 'notes_screen.dart';
+import 'admin_schedule_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -186,6 +187,24 @@ class _HomeShellState extends State<HomeShell> {
         _drawerItem(ctx, 2, Icons.star_outline,
             Icons.star, 'Избранное', favCount > 0 ? '$favCount' : null),
         const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+        // Расписание
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: ListTile(
+            minLeadingWidth: 24,
+            leading: const Icon(Icons.calendar_month_outlined,
+                color: AppStyles.textSecondary, size: 22),
+            title: const Text('Расписание',
+                style: TextStyle(color: AppStyles.textPrimary)),
+            onTap: () {
+              Navigator.pop(ctx);
+              Navigator.push(ctx, MaterialPageRoute(
+                  builder: (_) => const AdminScheduleScreen()));
+            },
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
         // Заметки мойщиков
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
