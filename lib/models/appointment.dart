@@ -98,7 +98,7 @@ class Appointment {
     'paidPrice': paidPrice,
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
-    'assignedWasher': jsonEncode(assignedWashers),
+    'assignedWashers': jsonEncode(assignedWashers),
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -117,7 +117,7 @@ class Appointment {
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
-    assignedWashers: _parseWashers(m['assignedWasher']),
+    assignedWashers: _parseWashers(m['assignedWashers']),
   );
 
   static List<String> _parseWashers(dynamic v) {
@@ -163,32 +163,22 @@ class Appointment {
   /// true если админ изменил цену относительно изначальной
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
 
-  /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем
-  int get totalPrice {
+  /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем на основе каталога услуг
+  int calculateTotalPrice(List<dynamic> allServices) {
     if (paidPrice > 0) return paidPrice;
-    const extraPrices = {
-      'Чернение шин': 300,
-      'Ароматизация': 300,
-      'Пылесосная уборка': 500,
-      'Полировка стёкол': 500,
-      'Антидождь': 600,
-      'Обработка арок': 600,
-      'Удаление битума': 700,
-      'Озонирование': 1000,
-      'Нанесение воска': 1200,
-      'Мойка двигателя': 1500,
-      'Нанесение силанта': 2000,
-      'Нанесение тефлона': 3000,
-      'Химчистка салона': 3500,
-      'Химчистка кожи': 5000,
-      'Детейлинг кузова': 8000,
-      'Керамическое покрытие': 15000,
-    };
+    
     final included = washType.includedExtras;
-    // Для акций база = promoPrice, для обычных = washType.basePrice
     int p = promoPrice > 0 ? promoPrice : washType.basePrice;
+    
     for (final e in additionalServices) {
-      if (!included.contains(e)) p += extraPrices[e] ?? 0;
+      if (!included.contains(e)) {
+        final service = allServices.firstWhere(
+            (s) => s.name == e,
+            orElse: () => null);
+        if (service != null) {
+          p += (service.price as num).toInt();
+        }
+      }
     }
     return p;
   }

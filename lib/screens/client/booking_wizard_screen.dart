@@ -71,8 +71,14 @@ class _PlateInputFormatter extends TextInputFormatter {
   };
 
   String _toPlateChar(String c) {
-    if (_ruPlateLetters.contains(c)) return c;
-    return _enToRuPlate[c] ?? _ruLayoutToPlate[c] ?? '';
+    final upperC = c.toUpperCase();
+    if (_ruPlateLetters.contains(upperC)) return upperC;
+    
+    // Если ввели английский аналог или кириллицу через другую раскладку
+    final ruC = _enToRuPlate[upperC] ?? _ruLayoutToPlate[upperC];
+    if (ruC != null && _ruPlateLetters.contains(ruC)) return ruC;
+    
+    return ''; // Игнорируем недопустимые символы
   }
 
   @override

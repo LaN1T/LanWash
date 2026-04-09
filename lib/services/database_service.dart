@@ -29,7 +29,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -66,7 +66,7 @@ class DatabaseService {
       final promoData = [
         {'id':'promo_1','name':'Акция недели: комплекс + ароматизация','description':'Комплексная мойка и ароматизация салона по специальной цене недели.','price':1600,'durationMinutes':75,'category':'Акции','isFavorite':0,'isFromApi':1,'updatedAt':now},
         {'id':'promo_2','name':'Весенняя акция: мойка + воск','description':'Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.','price':1500,'durationMinutes':50,'category':'Акции','isFavorite':0,'isFromApi':1,'updatedAt':now},
-        {'id':'promo_3','name':'Выходной пакет: комплексная мойка -20%','description':'Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.','price':1100,'durationMinutes':60,'category':'Акции','isFavorite':0,'isFromApi':1,'updatedAt':now},
+        {'id':'promo_3','name':'Выходной пакет: комплексная мойка -20%','description':'Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.','price':1200,'durationMinutes':60,'category':'Акции','isFavorite':0,'isFromApi':1,'updatedAt':now},
         {'id':'promo_4','name':'Пакет для внедорожников','description':'Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.','price':2000,'durationMinutes':80,'category':'Акции','isFavorite':0,'isFromApi':1,'updatedAt':now},
       ];
       // Вставляем в services (isFromApi=1)
@@ -101,6 +101,15 @@ class DatabaseService {
     if (oldVersion < 6) {
       await db.execute(
           'ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 7) {
+      await db.execute(
+          'ALTER TABLE appointments ADD COLUMN assignedWashers TEXT NOT NULL DEFAULT "[]"');
+    }
+    if (oldVersion < 8) {
+      // Обновляем цену акции promo_3
+      await db.execute("UPDATE services SET price = 1200 WHERE id = 'promo_3'");
+      await db.execute("UPDATE promos SET price = 1200 WHERE id = 'promo_3'");
     }
   }
 
@@ -258,7 +267,7 @@ class DatabaseService {
   List<Map<String, dynamic>> _seedPromos() => [
     {'id':'promo_1','name':'Акция недели: комплекс + ароматизация','description':'Комплексная мойка и ароматизация салона по специальной цене недели.','price':1600,'durationMinutes':75,'category':'Акции','isFavorite':0,'isFromApi':1},
     {'id':'promo_2','name':'Весенняя акция: мойка + воск','description':'Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.','price':1500,'durationMinutes':50,'category':'Акции','isFavorite':0,'isFromApi':1},
-    {'id':'promo_3','name':'Выходной пакет: комплексная мойка -20%','description':'Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.','price':1100,'durationMinutes':60,'category':'Акции','isFavorite':0,'isFromApi':1},
+    {'id':'promo_3','name':'Выходной пакет: комплексная мойка -20%','description':'Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.','price':1200,'durationMinutes':60,'category':'Акции','isFavorite':0,'isFromApi':1},
     {'id':'promo_4','name':'Пакет для внедорожников','description':'Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.','price':2000,'durationMinutes':80,'category':'Акции','isFavorite':0,'isFromApi':1},
   ];
 
