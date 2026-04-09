@@ -22,15 +22,26 @@ class ClientHomeScreen extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
           // ── Приветствие ──────────────────────────────────────────────────
-          RichText(text: TextSpan(children: [
-            const TextSpan(text: 'Здравствуйте, ',
-                style: TextStyle(color: AppStyles.textSecondary, fontSize: 15)),
-            TextSpan(text: auth.username,
-                style: const TextStyle(color: AppStyles.textPrimary,
-                    fontSize: 15, fontWeight: FontWeight.w600)),
-            const TextSpan(text: ' 👋',
-                style: TextStyle(fontSize: 15)),
-          ])),
+          Builder(builder: (context) {
+            final hour = DateTime.now().hour;
+            String greeting;
+            if (hour < 6) {
+              greeting = 'Доброй ночи, ';
+            } else if (hour < 12) {
+              greeting = 'Доброе утро, ';
+            } else if (hour < 18) {
+              greeting = 'Добрый день, ';
+            } else {
+              greeting = 'Добрый вечер, ';
+            }
+            return RichText(text: TextSpan(children: [
+              TextSpan(text: greeting,
+                  style: const TextStyle(color: AppStyles.textSecondary, fontSize: 15)),
+              TextSpan(text: auth.username,
+                  style: const TextStyle(color: AppStyles.textPrimary,
+                      fontSize: 15, fontWeight: FontWeight.w600)),
+            ]));
+          }),
           const SizedBox(height: 20),
 
           // ── Большая кнопка записи ────────────────────────────────────────

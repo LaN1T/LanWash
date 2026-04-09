@@ -29,7 +29,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -101,6 +101,10 @@ class DatabaseService {
     if (oldVersion < 6) {
       await db.execute(
           'ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 7) {
+      await db.execute(
+          'ALTER TABLE appointments ADD COLUMN assignedWashers TEXT NOT NULL DEFAULT "[]"');
     }
   }
 

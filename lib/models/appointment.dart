@@ -98,7 +98,7 @@ class Appointment {
     'paidPrice': paidPrice,
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
-    'assignedWasher': jsonEncode(assignedWashers),
+    'assignedWashers': jsonEncode(assignedWashers),
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -117,7 +117,7 @@ class Appointment {
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
-    assignedWashers: _parseWashers(m['assignedWasher']),
+    assignedWashers: _parseWashers(m['assignedWashers']),
   );
 
   static List<String> _parseWashers(dynamic v) {
