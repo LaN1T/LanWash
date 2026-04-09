@@ -58,6 +58,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 itemCount: list.length,
                 itemBuilder: (ctx, i) => _AppointmentCard(
                   appointment: list[i],
+                  services: provider.services,
                   onFavorite: () => provider.toggleAppointmentFavorite(list[i].id),
                   onTap: () => Navigator.push(ctx,
                     MaterialPageRoute(builder: (_) => AppointmentDetailScreen(appointment: list[i]))),
@@ -115,10 +116,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 // ─── Карточка записи ─────────────────────────────────────────────────────────
 class _AppointmentCard extends StatelessWidget {
   final Appointment appointment;
+  final List<dynamic> services;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
 
-  const _AppointmentCard({required this.appointment, required this.onFavorite, required this.onTap});
+  const _AppointmentCard({required this.appointment, required this.services, required this.onFavorite, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +188,7 @@ class _AppointmentCard extends StatelessWidget {
                   decorationColor: AppStyles.textSecondary,
                 )),
               ]) else
-                Text('${a.totalPrice} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
+                Text('${a.calculateTotalPrice(services)} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[
               const SizedBox(height: 6),

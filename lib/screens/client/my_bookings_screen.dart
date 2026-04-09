@@ -84,9 +84,11 @@ class _State extends State<MyBookingsScreen>
         ),
         Expanded(child: TabBarView(controller: _tab, children: [
           _BookingsList(items: upcoming,
+              services: provider.services,
               emptyText: 'Нет активных записей',
               emptyIcon: Icons.calendar_today_outlined),
           _BookingsList(items: history,
+              services: provider.services,
               emptyText: 'История пуста',
               emptyIcon: Icons.history_rounded),
         ])),
@@ -97,9 +99,10 @@ class _State extends State<MyBookingsScreen>
 
 class _BookingsList extends StatelessWidget {
   final List<Appointment> items;
+  final List<dynamic> services;
   final String emptyText;
   final IconData emptyIcon;
-  const _BookingsList({required this.items, required this.emptyText,
+  const _BookingsList({required this.items, required this.services, required this.emptyText,
     required this.emptyIcon});
 
   @override
@@ -205,7 +208,7 @@ class _BookingsList extends StatelessWidget {
                           decorationColor: AppStyles.textSecondary)),
                   const SizedBox(width: 6),
                 ],
-                Text('${a.totalPrice} ₽',
+                Text('${a.calculateTotalPrice(services)} ₽',
                     style: const TextStyle(color: AppStyles.primary,
                         fontSize: 14, fontWeight: FontWeight.bold)),
               ]),

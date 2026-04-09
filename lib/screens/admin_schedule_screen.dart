@@ -353,6 +353,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                               final a = dayAppts[index];
                               return _AppointmentCard(
                                 appointment: a,
+                                services: provider.services,
                                 selectedWasher: _selectedWasher,
                                 washerDisplayName: _washerDisplayName,
                                 onAssign: () => _assignWasher(a),
@@ -493,6 +494,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
 // ─── Карточка записи ─────────────────────────────────────────────────────────
 class _AppointmentCard extends StatelessWidget {
   final Appointment appointment;
+  final List<dynamic> services;
   final String? selectedWasher;
   final String Function(String) washerDisplayName;
   final VoidCallback onAssign;
@@ -500,6 +502,7 @@ class _AppointmentCard extends StatelessWidget {
 
   const _AppointmentCard({
     required this.appointment,
+    required this.services,
     required this.selectedWasher,
     required this.washerDisplayName,
     required this.onAssign,
@@ -574,7 +577,7 @@ class _AppointmentCard extends StatelessWidget {
               Text(a.washType.displayName,
                   style: const TextStyle(fontSize: 12, color: AppStyles.textSecondary)),
               const Spacer(),
-              Text('${a.totalPrice} \u20BD',
+              Text('${a.calculateTotalPrice(services)} \u20BD',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
                       color: AppStyles.primary)),
             ]),

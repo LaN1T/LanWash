@@ -340,6 +340,7 @@ class _WasherAppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = appointment;
     final statusColor = AppStyles.statusColor(a.status);
+    final provider = context.watch<AppProvider>();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -351,7 +352,7 @@ class _WasherAppointmentCard extends StatelessWidget {
       elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => _showDetail(context, a),
+        onTap: () => _showDetail(context, a, provider.services),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -413,7 +414,7 @@ class _WasherAppointmentCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(child: Text(a.washType.displayName,
                     style: const TextStyle(fontSize: 13, color: AppStyles.textSecondary))),
-                Text('${a.totalPrice} \u20BD',
+                Text('${a.calculateTotalPrice(provider.services)} \u20BD',
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
                         color: AppStyles.primary)),
               ]),
@@ -440,7 +441,7 @@ class _WasherAppointmentCard extends StatelessWidget {
     );
   }
 
-  void _showDetail(BuildContext context, Appointment a) {
+  void _showDetail(BuildContext context, Appointment a, List<dynamic> services) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -471,7 +472,7 @@ class _WasherAppointmentCard extends StatelessWidget {
             _detailRow(Icons.person, 'Клиент', a.clientName),
             _detailRow(Icons.directions_car, 'Авто', '${a.carModel} ${a.carNumber}'),
             _detailRow(Icons.local_car_wash, 'Мойка', a.washType.displayName),
-            _detailRow(Icons.payments, 'Цена', '${a.totalPrice} \u20BD'),
+            _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services)} \u20BD'),
             if (a.additionalServices.isNotEmpty)
               _detailRow(Icons.add_circle_outline, 'Доп. услуги',
                   a.additionalServices.join(', ')),

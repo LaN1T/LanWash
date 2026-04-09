@@ -81,7 +81,7 @@ class AppProvider extends ChangeNotifier {
     }
     notifyListeners();
     await _api.createLog(_currentUser, 'Создание записи',
-        '${a.washType.displayName} · ${a.carModel} ${a.carNumber} · ${a.totalPrice}₽');
+        '${a.washType.displayName} · ${a.carModel} ${a.carNumber} · ${a.calculateTotalPrice(services)}₽');
   }
 
   Future<void> updateAppointment(Appointment a) async {
