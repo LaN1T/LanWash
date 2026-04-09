@@ -92,18 +92,18 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                   children: [
                     if (count > 0)
                       Positioned(
-                        top: 6,
-                        right: 6,
+                        top: 4,
+                        right: 4,
                         child: Container(
-                          width: 30, height: 30,
+                          width: 22, height: 22,
                           decoration: BoxDecoration(
                             color: AppStyles.primary,
-                            borderRadius: BorderRadius.circular(7),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: Center(
                             child: Text('$count',
                               style: const TextStyle(
-                                color: Colors.white, fontSize: 15,
+                                color: Colors.white, fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -517,7 +517,7 @@ class _AppointmentCard extends StatelessWidget {
         !a.assignedWashers.contains(selectedWasher);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -525,7 +525,7 @@ class _AppointmentCard extends StatelessWidget {
       ),
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -557,7 +557,7 @@ class _AppointmentCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 13, color: AppStyles.textPrimary),
                   overflow: TextOverflow.ellipsis)),
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             // Авто
             Row(children: [
               const Icon(Icons.directions_car, size: 15, color: AppStyles.textSecondary),
@@ -566,7 +566,7 @@ class _AppointmentCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: AppStyles.textSecondary),
                   overflow: TextOverflow.ellipsis)),
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             // Тип мойки + цена
             Row(children: [
               const Icon(Icons.local_car_wash, size: 15, color: AppStyles.textSecondary),
@@ -600,9 +600,9 @@ class _AppointmentCard extends StatelessWidget {
                           style: const TextStyle(fontSize: 11,
                               fontWeight: FontWeight.w600, color: AppStyles.success)),
                     ]),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     ...a.assignedWashers.map((username) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 16),
                       child: Row(children: [
                         const Icon(Icons.check_circle, size: 14, color: AppStyles.success),
                         const SizedBox(width: 6),
