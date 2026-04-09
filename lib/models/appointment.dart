@@ -19,7 +19,7 @@ extension WashTypeX on WashType {
   List<String> get includedExtras => switch (this) {
     WashType.basic   => [],
     WashType.complex => ['Пылесосная уборка'],
-    WashType.premium => ['Чернение шин', 'Ароматизация'],
+    WashType.premium => ['Чернение шин', 'Ароматизация', 'Пылесосная уборка'],
   };
 
   int get durationMinutes => switch (this) {

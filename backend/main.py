@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
-from routers import auth, appointments, services, logs, notes, consumables
+from routers import auth, appointments, services, logs, notes
 
 
 @asynccontextmanager
@@ -26,7 +26,6 @@ app.include_router(appointments.router)
 app.include_router(services.router)
 app.include_router(logs.router)
 app.include_router(notes.router)
-app.include_router(consumables.router)
 
 
 @app.get("/")
