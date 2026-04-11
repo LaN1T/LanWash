@@ -114,6 +114,32 @@ async def init_db():
                 createdAt   TEXT NOT NULL
             );
 
+            -- New tables for consumables
+            CREATE TABLE IF NOT EXISTS consumables (
+                id      TEXT PRIMARY KEY,
+                name    TEXT NOT NULL UNIQUE,
+                unit    TEXT NOT NULL DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS service_consumables (
+                serviceId         TEXT NOT NULL,
+                consumableId      TEXT NOT NULL,
+                quantity_per_service REAL NOT NULL,
+                PRIMARY KEY (serviceId, consumableId),
+                FOREIGN KEY (serviceId) REFERENCES services(id) ON DELETE CASCADE,
+                FOREIGN KEY (consumableId) REFERENCES consumables(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS consumable_usage_log (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointmentId TEXT    NOT NULL,
+                consumableId  TEXT    NOT NULL,
+                quantityUsed  REAL    NOT NULL,
+                timestamp     TEXT    NOT NULL,
+                FOREIGN KEY (appointmentId) REFERENCES appointments(id),
+                FOREIGN KEY (consumableId)  REFERENCES consumables(id)
+            );
+
         """)
 
         # Миграция: таблица deleted_notifications
@@ -147,6 +173,18 @@ async def init_db():
         count = (await cursor.fetchone())[0]
         if count == 0:
             await _seed(db)
+        
+        # Автоматическая проверка и добавление расходников, если их нет
+        cursor = await db.execute("SELECT COUNT(*) FROM consumables")
+        count = (await cursor.fetchone())[0]
+        if count == 0:
+            now = datetime.now().isoformat()
+            await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c1", "Чернитель шин", "мл"))
+            await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c2", "Антидождь", "мл"))
+            await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c3", "Воск", "мл"))
+            await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s14", "c1", 250))
+            await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s8", "c2", 50))
+            await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s9", "c3", 100))
 
         await db.commit()
     finally:
@@ -217,3 +255,13 @@ async def _seed(db: aiosqlite.Connection):
             "INSERT INTO promos (id, serviceId, name, description, price, duration, fetchedAt) VALUES (?,?,?,?,?,?,?)",
             (p[0], p[0], p[1], p[2], p[3], p[4], now),
         )
+
+    # Seed Consumables
+    await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c1", "Чернитель шин", "мл"))
+    await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c2", "Антидождь", "мл"))
+    await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c3", "Воск", "мл"))
+
+    # Link to services
+    await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s14", "c1", 250))
+    await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s8", "c2", 50))
+    await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s9", "c3", 100))

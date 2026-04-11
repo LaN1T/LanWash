@@ -93,10 +93,53 @@ async def create(req: AppointmentRequest):
         await db.close()
 
 
+
+async def _track_consumables_usage(db, appt_id, wash_type, additional_services_json):
+    # Получаем все услуги, нормализуем имена для поиска
+    cursor = await db.execute("SELECT id, name FROM services")
+    services = await cursor.fetchall()
+    service_map = {row["name"].strip().lower(): row["id"] for row in services}
+    # Собираем все оказанные услуги
+    all_services = [wash_type.strip().lower()]
+    try:
+        additional = json.loads(additional_services_json)
+        if isinstance(additional, list):
+            all_services.extend([s.strip().lower() for s in additional])
+    except:
+        pass
+
+    # Для каждой услуги ищем связанные расходники
+    for service_name in all_services:
+        service_id = None
+        service_words = set(service_name.split())
+        for name_in_db, id_in_db in service_map.items():
+            db_words = set(name_in_db.split())
+            if service_words.intersection(db_words):
+                service_id = id_in_db
+                break
+
+        if not service_id:
+            continue
+
+        cursor = await db.execute(
+            "SELECT consumableId, quantity_per_service FROM service_consumables WHERE serviceId = ?",
+            (service_id,)
+        )
+        consumables = await cursor.fetchall()
+        for c in consumables:
+            await db.execute(
+                "INSERT INTO consumable_usage_log (appointmentId, consumableId, quantityUsed, timestamp) VALUES (?,?,?,?)",
+                (appt_id, c["consumableId"], c["quantity_per_service"], datetime.now().isoformat())
+            )
+
 @router.put("/{appt_id}", response_model=AppointmentResponse)
 async def update(appt_id: str, req: AppointmentRequest):
     db = await get_db()
     try:
+        # Проверяем старый статус
+        cursor = await db.execute("SELECT status FROM appointments WHERE id = ?", (appt_id,))
+        old_row = await cursor.fetchone()
+        
         await db.execute(
             """UPDATE appointments SET clientName=?, carModel=?, carNumber=?, dateTime=?,
                washType=?, additionalServices=?, status=?, notes=?, isFavorite=?,
@@ -109,6 +152,12 @@ async def update(appt_id: str, req: AppointmentRequest):
             ),
         )
         await db.commit()
+        
+        # Если статус изменился на completed, трекаем расходники
+        if old_row and old_row["status"] != "completed" and req.status == "completed":
+            await _track_consumables_usage(db, appt_id, req.washType, req.additionalServices)
+            await db.commit()
+
         cursor = await db.execute("SELECT * FROM appointments WHERE id = ?", (appt_id,))
         row = await cursor.fetchone()
         if not row:

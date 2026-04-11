@@ -136,6 +136,27 @@ class NoteResponse(BaseModel):
     createdAt: str
 
 
+# ─── Consumables ─────────────────────────────────────────────────────────────
+class ConsumableRequest(BaseModel):
+    name: str
+    unit: str = ""
+
+class ConsumableResponse(BaseModel):
+    id: str
+    name: str
+    unit: str
+
+class ServiceConsumableRequest(BaseModel):
+    serviceId: str
+    consumableId: str
+    quantity_per_service: float
+
+class ServiceConsumableResponse(BaseModel):
+    serviceId: str
+    consumableId: str
+    quantity_per_service: float
+
+
 # ─── Favorites ───────────────────────────────────────────────────────────────
 class ToggleFavoriteRequest(BaseModel):
     username: str
