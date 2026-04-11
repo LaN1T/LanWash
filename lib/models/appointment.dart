@@ -1,18 +1,20 @@
 import 'dart:convert';
 
-enum WashType { basic, complex, premium }
+enum WashType { express, basic, complex, premium }
 
 extension WashTypeX on WashType {
   String get displayName => switch (this) {
     WashType.basic   => 'Базовая мойка',
     WashType.complex => 'Комплексная мойка',
     WashType.premium => 'Премиум мойка',
+    WashType.express => 'Экспресс-мойка',
   };
 
   String get description => switch (this) {
     WashType.basic   => 'Активная пена, тщательная ручная очистка и финальное ополаскивание с сушкой',
     WashType.complex => 'Базовая мойка + уборка салона, пылесос, чистка стёкол',
     WashType.premium => 'Комплексная мойка + уход за пластиком, резиной и ароматизация',
+    WashType.express => 'Быстрая наружная мойка без детальной обработки',
   };
 
   /// Услуги, автоматически включённые в тип мойки (не влияют на цену)
@@ -20,12 +22,14 @@ extension WashTypeX on WashType {
     WashType.basic   => [],
     WashType.complex => ['Пылесосная уборка'],
     WashType.premium => ['Чернение шин', 'Ароматизация', 'Пылесосная уборка'],
+    WashType.express => [],
   };
 
   int get durationMinutes => switch (this) {
     WashType.basic   => 30,
     WashType.complex => 60,
     WashType.premium => 90,
+    WashType.express => 15,
   };
 
   String get durationLabel {
@@ -39,6 +43,7 @@ extension WashTypeX on WashType {
     WashType.basic   => 800,
     WashType.complex => 1500,
     WashType.premium => 3000,
+    WashType.express => 500,
   };
 
   static WashType fromString(String v) =>
@@ -58,10 +63,10 @@ class Appointment {
   bool isFavorite;
   String ownerUsername;
   int promoPrice;
-  int paidPrice;     // Актуальная цена (обновляется при изменении админом)
-  int originalPrice; // Цена при создании (никогда не меняется)
-  bool isModifiedByAdmin; // Флаг: запись изменена админом, клиент ещё не видел
-  List<String> assignedWashers; // Назначенные мойщики (до 3, usernames)
+  int paidPrice;
+  int originalPrice;
+  bool isModifiedByAdmin;
+  List<String> assignedWashers;
 
   Appointment({
     required this.id,
@@ -128,7 +133,6 @@ class Appointment {
         final decoded = jsonDecode(v);
         if (decoded is List) return List<String>.from(decoded);
       } catch (_) {
-        // Старый формат — одно имя
         if (v.isNotEmpty) return [v];
       }
     }
@@ -160,10 +164,8 @@ class Appointment {
     assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
   );
 
-  /// true если админ изменил цену относительно изначальной
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
 
-  /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем на основе каталога услуг
   int calculateTotalPrice(List<dynamic> allServices) {
     if (paidPrice > 0) return paidPrice;
     

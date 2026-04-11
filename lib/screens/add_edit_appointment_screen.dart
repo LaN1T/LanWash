@@ -173,7 +173,7 @@ class _State extends State<AddEditAppointmentScreen> {
             ),
             const SizedBox(height: 20),
 
-            // ── Дополнительные услуги (синхронизированы с клиентом) ───
+            // ── Дополнительные услуги ───
             _sectionLabel('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -183,17 +183,13 @@ class _State extends State<AddEditAppointmentScreen> {
                   return CheckboxListTile(
                     value: _selectedAddServices.contains(s),
                     onChanged: (v) => setState(() {
-                      v! ? _selectedAddServices.add(s)
-                         : _selectedAddServices.remove(s);
+                      v! ? _selectedAddServices.add(s) : _selectedAddServices.remove(s);
                     }),
                     title: Text(s, style: AppStyles.bodyLarge),
-                    subtitle: price != null
-                        ? Text('+$price ₽', style: AppStyles.bodyMedium)
-                        : null,
+                    subtitle: price != null ? Text('+$price ₽', style: AppStyles.bodyMedium) : null,
                     activeColor: AppStyles.primary,
                     controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     dense: true,
                   );
                 }).toList(),

@@ -7,6 +7,7 @@ import '../profile_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
+import '../services_screen.dart';
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
@@ -182,6 +183,7 @@ class _ClientShellState extends State<ClientShell> {
         _drawerItem(ctx, 2, Icons.star_outline,
             Icons.star_rounded, 'Избранное',
             favCount > 0 ? '$favCount' : null),
+
         const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
         // Профиль
         Padding(
