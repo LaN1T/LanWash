@@ -7,7 +7,8 @@ import 'service_detail_screen.dart';
 import 'add_edit_service_screen.dart';
 
 class ServicesScreen extends StatefulWidget {
-  const ServicesScreen({super.key});
+  final bool showHelp;
+  const ServicesScreen({super.key, this.showHelp = false});
   @override State<ServicesScreen> createState() => _ServicesScreenState();
 }
 
@@ -52,17 +53,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
         ),
       ),
 
-      // API-индикатор
-      if (provider.loadingApi)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-            SizedBox(width: 8),
-            Text('Загружаем акции...', style: TextStyle(fontSize: 12, color: AppStyles.textSecondary)),
-          ]),
-        ),
-
       // Фильтр по категориям
       SizedBox(
         height: 48,
@@ -101,6 +91,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 itemCount: list.length,
                 itemBuilder: (ctx, i) => _ServiceCard(
                   service: list[i],
+                  showHelp: widget.showHelp,
                   isFavorite: provider.isServiceFavorite(list[i].id),
                   onFavorite: () => provider.toggleServiceFavorite(list[i].id),
                   onTap: () => Navigator.push(ctx,
@@ -116,10 +107,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
 class _ServiceCard extends StatelessWidget {
   final Service service;
   final bool isFavorite;
+  final bool showHelp;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
   const _ServiceCard({required this.service, required this.isFavorite,
-      required this.onFavorite, required this.onTap});
+      required this.showHelp, required this.onFavorite, required this.onTap});
 
   Color get _catColor => service.isFromApi ? AppStyles.apiTag : AppStyles.primary;
 
@@ -134,7 +126,6 @@ class _ServiceCard extends StatelessWidget {
         child: Padding(
           padding: AppStyles.cardPadding,
           child: Row(children: [
-            // Иконка категории
             Container(
               width: 48, height: 48,
               decoration: BoxDecoration(
@@ -149,6 +140,13 @@ class _ServiceCard extends StatelessWidget {
                 Expanded(child: Text(s.name,
                     style: AppStyles.headingMedium.copyWith(fontSize: 15),
                     overflow: TextOverflow.ellipsis)),
+                if (showHelp) ...[
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message: s.description,
+                    child: const Icon(Icons.help_outline, size: 14, color: AppStyles.textSecondary),
+                  ),
+                ],
                 IconButton(
                   icon: Icon(isFavorite ? Icons.star : Icons.star_border,
                       color: isFavorite ? AppStyles.favorite : AppStyles.textSecondary, size: 20),

@@ -8,12 +8,14 @@ import '../../providers/auth_provider.dart';
 
 // Хелпер — не зависит от extension, работает надёжно на web
 String _washName(WashType t) => switch (t) {
+  WashType.express => 'Экспресс-мойка',
   WashType.basic   => 'Базовая мойка',
   WashType.complex => 'Комплексная мойка',
   WashType.premium => 'Премиум мойка',
 };
 
 int _washPrice(WashType t) => switch (t) {
+  WashType.express => 500,
   WashType.basic   => 800,
   WashType.complex => 1500,
   WashType.premium => 3000,

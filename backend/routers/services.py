@@ -35,7 +35,7 @@ async def get_categories():
     db = await get_db()
     try:
         cursor = await db.execute(
-            "SELECT DISTINCT category FROM services WHERE isFromApi=0 ORDER BY category"
+            "SELECT DISTINCT category FROM services ORDER BY category"
         )
         rows = await cursor.fetchall()
         return [r["category"] for r in rows]
