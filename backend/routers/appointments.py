@@ -108,29 +108,24 @@ async def _track_consumables_usage(db, appt_id, wash_type, additional_services_j
     except:
         pass
 
-    print(f"DEBUG: All services extracted: {all_services}")
-    print(f"DEBUG: Available services in DB: {list(service_map.keys())}")
-
     # Для каждой услуги ищем связанные расходники
     for service_name in all_services:
         service_id = None
+        service_words = set(service_name.split())
         for name_in_db, id_in_db in service_map.items():
-            if name_in_db in service_name or service_name in name_in_db:
+            db_words = set(name_in_db.split())
+            if service_words.intersection(db_words):
                 service_id = id_in_db
                 break
 
         if not service_id:
-            print(f"DEBUG: Service NOT FOUND for name: '{service_name}'")
             continue
-
-        print(f"DEBUG: Found service '{service_name}' with ID '{service_id}'")
 
         cursor = await db.execute(
             "SELECT consumableId, quantity_per_service FROM service_consumables WHERE serviceId = ?",
             (service_id,)
         )
         consumables = await cursor.fetchall()
-        print(f"DEBUG: Found {len(consumables)} consumables for service '{service_name}'")
         for c in consumables:
             await db.execute(
                 "INSERT INTO consumable_usage_log (appointmentId, consumableId, quantityUsed, timestamp) VALUES (?,?,?,?)",
