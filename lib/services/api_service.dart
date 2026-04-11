@@ -1,14 +1,24 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../models/service.dart';
 import '../models/appointment.dart';
 import '../models/log_entry.dart';
 import '../models/note.dart';
 import '../models/user.dart';
+import '../models/report_entry.dart';
 
 class ApiService {
-  static const _baseUrl = 'http://localhost:8000/api';
-
+  static String get _baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8000/api';
+    } else if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000/api';
+    } else {
+      return 'http://127.0.0.1:8000/api';
+    }
+  }
   // ─── Auth ───────────────────────────────────────────────────────────────────
   Future<User?> login(String username, String password) async {
     try {
@@ -499,6 +509,49 @@ class ApiService {
     }
   }
 
+
+  // ─── Reports ───────────────────────────────────────────────────────────────
+  Future<MonthlyReport?> getMonthlyReport(String? month) async {
+    try {
+      final url = month != null 
+          ? '$_baseUrl/reports/monthly-check-vs-price/?month=$month'
+          : '$_baseUrl/reports/monthly-check-vs-price/';
+      final resp = await http.get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return MonthlyReport.fromJson(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<PopularServicesReport?> getPopularAdditionalServices(String? month) async {
+    try {
+      final url = month != null 
+          ? '$_baseUrl/reports/popular-additional-services/?month=$month'
+          : '$_baseUrl/reports/popular-additional-services/';
+      final resp = await http.get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return PopularServicesReport.fromJson(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<ConsumablesUsageReport?> getConsumablesUsage(String? month) async {
+    try {
+      final url = month != null 
+          ? '$_baseUrl/reports/consumables-usage/?month=$month'
+          : '$_baseUrl/reports/consumables-usage/';
+      final resp = await http.get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return ConsumablesUsageReport.fromJson(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
+  }
 
   // ─── Promos (legacy compatibility) ────────────────────────────────────────
   Future<List<Service>> fetchPromoServices() async {

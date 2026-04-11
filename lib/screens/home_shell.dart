@@ -12,10 +12,13 @@ import 'add_edit_service_screen.dart';
 import 'logs_screen.dart';
 import 'notes_screen.dart';
 import 'admin_schedule_screen.dart';
+import 'reports_shell_screen.dart'; // Импорт для отчетов
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
-  @override State<HomeShell> createState() => _HomeShellState();
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
 }
 
 class _HomeShellState extends State<HomeShell> {
@@ -202,8 +205,7 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.push(ctx, MaterialPageRoute(
                   builder: (_) => const AdminScheduleScreen()));
             },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
         // Заметки мойщиков
@@ -225,8 +227,7 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.push(ctx, MaterialPageRoute(
                   builder: (_) => const NotesScreen()));
             },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
         // Журнал действий
@@ -243,8 +244,24 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.push(ctx, MaterialPageRoute(
                   builder: (_) => const LogsScreen()));
             },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        // Отчёты
+        if (auth.isAdmin) Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: ListTile(
+            minLeadingWidth: 24,
+            leading: const Icon(Icons.show_chart_rounded,
+                color: AppStyles.textSecondary, size: 22),
+            title: const Text('Отчёты',
+                style: TextStyle(color: AppStyles.textPrimary)),
+            onTap: () {
+              Navigator.pop(ctx);
+              Navigator.push(ctx, MaterialPageRoute(
+                  builder: (_) => const ReportsShellScreen()));
+            },
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
         // Профиль
@@ -261,8 +278,7 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.push(ctx, MaterialPageRoute(
                   builder: (_) => const ProfileScreen()));
             },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
         Padding(
@@ -277,8 +293,7 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.pop(ctx);
               ctx.read<AuthProvider>().logout();
             },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
         const SizedBox(height: 16),
