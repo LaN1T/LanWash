@@ -29,7 +29,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -111,6 +111,53 @@ class DatabaseService {
       await db.execute("UPDATE services SET price = 1200 WHERE id = 'promo_3'");
       await db.execute("UPDATE promos SET price = 1200 WHERE id = 'promo_3'");
     }
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS consumables (
+          id    TEXT PRIMARY KEY,
+          name  TEXT NOT NULL,
+          unit  TEXT NOT NULL DEFAULT ''
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS service_consumables (
+          serviceId            TEXT NOT NULL,
+          consumableId         TEXT NOT NULL,
+          quantity_per_service REAL NOT NULL,
+          PRIMARY KEY (serviceId, consumableId),
+          FOREIGN KEY (serviceId)    REFERENCES services(id)    ON DELETE CASCADE,
+          FOREIGN KEY (consumableId) REFERENCES consumables(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS consumable_usage_log (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          appointmentId TEXT NOT NULL,
+          consumableId  TEXT NOT NULL,
+          quantityUsed  REAL NOT NULL,
+          timestamp     TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS washer_notes (
+          id        INTEGER PRIMARY KEY AUTOINCREMENT,
+          username  TEXT    NOT NULL,
+          title     TEXT    NOT NULL,
+          message   TEXT    NOT NULL DEFAULT '',
+          category  TEXT    NOT NULL DEFAULT 'general',
+          isRead    INTEGER NOT NULL DEFAULT 0,
+          createdAt TEXT    NOT NULL
+        )
+      ''');
+      try {
+        await db.execute(
+            'ALTER TABLE appointments ADD COLUMN originalPrice INTEGER NOT NULL DEFAULT 0');
+      } catch (_) {}
+      try {
+        await db.execute(
+            'ALTER TABLE appointments ADD COLUMN assignedWasher TEXT NOT NULL DEFAULT ""');
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -148,6 +195,8 @@ class DatabaseService {
         promoPrice          INTEGER NOT NULL DEFAULT 0,
         paidPrice           INTEGER NOT NULL DEFAULT 0,
         isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
+        originalPrice       INTEGER NOT NULL DEFAULT 0,
+        assignedWasher      TEXT    NOT NULL DEFAULT '',
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
       )
     ''');
@@ -210,6 +259,51 @@ class DatabaseService {
       )
     ''');
 
+    // ─── Расходники ─────────────────────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE consumables (
+        id    TEXT PRIMARY KEY,
+        name  TEXT NOT NULL,
+        unit  TEXT NOT NULL DEFAULT ''
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE service_consumables (
+        serviceId            TEXT NOT NULL,
+        consumableId         TEXT NOT NULL,
+        quantity_per_service REAL NOT NULL,
+        PRIMARY KEY (serviceId, consumableId),
+        FOREIGN KEY (serviceId)    REFERENCES services(id)     ON DELETE CASCADE,
+        FOREIGN KEY (consumableId) REFERENCES consumables(id)  ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE consumable_usage_log (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointmentId TEXT NOT NULL,
+        consumableId  TEXT NOT NULL,
+        quantityUsed  REAL NOT NULL,
+        timestamp     TEXT NOT NULL,
+        FOREIGN KEY (appointmentId) REFERENCES appointments(id),
+        FOREIGN KEY (consumableId)  REFERENCES consumables(id)
+      )
+    ''');
+
+    // ─── Заметки мойщика ────────────────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE washer_notes (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        username  TEXT    NOT NULL,
+        title     TEXT    NOT NULL,
+        message   TEXT    NOT NULL DEFAULT '',
+        category  TEXT    NOT NULL DEFAULT 'general',
+        isRead    INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT    NOT NULL
+      )
+    ''');
+
     // ─── Заполняем начальные данные ─────────────────────────────────────────
     await _seed(db);
   }
@@ -223,18 +317,6 @@ class DatabaseService {
       'passwordHash': User.hashPassword('admin'),
       'role': 'admin',
       'displayName': 'Администратор',
-      'phone': '',
-      'carModel': '',
-      'carNumber': '',
-      'createdAt': now,
-      'isFavoriteAdmin': 0,
-    });
-
-    await db.insert('users', {
-      'username': 'client',
-      'passwordHash': User.hashPassword('1234'),
-      'role': 'client',
-      'displayName': 'client',
       'phone': '',
       'carModel': '',
       'carNumber': '',
