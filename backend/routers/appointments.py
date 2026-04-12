@@ -99,12 +99,14 @@ async def _track_consumables_usage(db, appt_id, wash_type, additional_services_j
     cursor = await db.execute("SELECT id, name FROM services")
     services = await cursor.fetchall()
     service_map = {row["name"].strip().lower(): row["id"] for row in services}
-    # Собираем все оказанные услуги
-    all_services = [wash_type.strip().lower()]
+    
+    # Собираем уникальные услуги
+    all_services = {wash_type.strip().lower()}
     try:
         additional = json.loads(additional_services_json)
         if isinstance(additional, list):
-            all_services.extend([s.strip().lower() for s in additional])
+            for s in additional:
+                all_services.add(s.strip().lower())
     except:
         pass
 
