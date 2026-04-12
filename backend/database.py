@@ -173,18 +173,33 @@ async def init_db():
         count = (await cursor.fetchone())[0]
         if count == 0:
             await _seed(db)
-        
-        # Автоматическая проверка и добавление расходников, если их нет
-        cursor = await db.execute("SELECT COUNT(*) FROM consumables")
-        count = (await cursor.fetchone())[0]
-        if count == 0:
-            now = datetime.now().isoformat()
-            await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c1", "Чернитель шин", "мл"))
-            await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c2", "Антидождь", "мл"))
-            await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c3", "Воск", "мл"))
-            await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s14", "c1", 250))
-            await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s8", "c2", 50))
-            await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s9", "c3", 100))
+
+          # Инициализация и авто-обновление расходников
+        consumables_list = [
+            ("c_shampoo", "Автошампунь", "мл"), ("c_cleaner", "Очиститель салона", "мл"),
+            ("c_engine", "Очиститель ДВС", "мл"), ("c_glass_polish", "Паста для стекла", "мл"),
+            ("c_antidogd", "Антидождь", "мл"), ("c_wax", "Воск", "мл"),
+            ("c_silant", "Силант", "мл"), ("c_ceramic", "Керамика", "мл"),
+            ("c_teflon", "Тефлон", "мл"), ("c_bitumen", "Очиститель битума", "мл"),
+            ("c_tire_black", "Чернитель шин", "мл"), ("c_vac", "Ресурс пылесоса", "сеанс"),
+            ("c_chem", "Химия для химчистки", "мл"), ("c_leather", "Кондиционер для кожи", "мл"),
+            ("c_aroma", "Ароматизатор", "мл"), ("c_ozone", "Сеанс озонирования", "сеанс"),
+            ("c_polish", "Полировальная паста", "мл"), ("c_anticor", "Антикор", "мл"),
+        ]
+        for c in consumables_list:
+            await db.execute("INSERT OR IGNORE INTO consumables (id, name, unit) VALUES (?,?,?)", c)
+
+        service_links = [
+            ("s1", "c_shampoo", 100), ("s2", "c_shampoo", 100), ("s2", "c_cleaner", 150),
+            ("s3", "c_shampoo", 50), ("s4", "c_anticor", 1000), ("s5", "c_engine", 200), ("s6", "c_glass_polish", 30),
+            ("s7", "c_antidogd", 50), ("s8", "c_wax", 100), ("s9", "c_silant", 50),
+            ("s10", "c_ceramic", 30), ("s11", "c_teflon", 50), ("s12", "c_bitumen", 100),
+            ("s13", "c_tire_black", 50), ("s14", "c_vac", 1), ("s15", "c_chem", 300),
+            ("s16", "c_leather", 100), ("s17", "c_aroma", 10), ("s18", "c_ozone", 1),
+            ("s19", "c_polish", 50), ("s20", "c_polish", 50)
+        ]
+        for link in service_links:
+            await db.execute("INSERT OR REPLACE INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES(?, ?, ?)", link)
 
         await db.commit()
     finally:
@@ -199,69 +214,83 @@ async def _seed(db: aiosqlite.Connection):
         "INSERT INTO users (username, passwordHash, role, displayName, phone, carModel, carNumber, createdAt, isFavoriteAdmin) VALUES (?,?,?,?,?,?,?,?,?)",
         ("admin", hash_password("admin"), "admin", "Администратор", "", "", "", now, 0),
     )
-    await db.execute(
-        "INSERT INTO users (username, passwordHash, role, displayName, phone, carModel, carNumber, createdAt, isFavoriteAdmin) VALUES (?,?,?,?,?,?,?,?,?)",
-        ("client", hash_password("1234"), "client", "client", "", "", "", now, 0),
-    )
-    await db.execute(
-        "INSERT INTO users (username, passwordHash, role, displayName, phone, carModel, carNumber, createdAt, isFavoriteAdmin) VALUES (?,?,?,?,?,?,?,?,?)",
-        ("washer", hash_password("washer"), "washer", "Мойщик", "", "", "", now, 0),
-    )
 
     # Services
     services = [
-        ("s1", "Базовая мойка кузова", "Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.", 800, 30, "Мойка кузова"),
-        ("s2", "Комплексная мойка + салон", "Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.", 1500, 60, "Мойка кузова"),
-        ("s3", "Экспресс-мойка", "Быстрая наружная мойка без детальной обработки. Идеально для поддержания ежедневной чистоты.", 500, 15, "Мойка кузова"),
-        ("s4", "Мойка с активной пеной", "Мойка кузова с применением активной пены и профессиональной химии для стойких загрязнений.", 1100, 45, "Мойка кузова"),
-        ("s5", "Очистка колёсных дисков", "Специализированная чистка дисков от тормозной пыли и нагара.", 400, 20, "Мойка кузова"),
-        ("s6", "Мойка двигателя", "Профессиональная очистка двигательного отсека от масла и грязи.", 1500, 60, "Мойка кузова"),
-        ("s7", "Полировка стёкол снаружи", "Финальная полировка наружных стёкол для максимальной прозрачности и блеска.", 500, 20, "Обработка стёкол"),
-        ("s8", "Антидождь на стёкла", "Нанесение гидрофобного состава на стёкла, обеспечивающего отталкивание воды.", 600, 25, "Обработка стёкол"),
-        ("s9", "Нанесение защитного воска", "Нанесение профессионального защитного воска на кузов для защиты ЛКП.", 1200, 45, "Защитные покрытия"),
-        ("s10", "Нанесение силанта", "Нанесение силантового покрытия для долговременной защиты кузова. Срок действия до 6 месяцев.", 2000, 90, "Защитные покрытия"),
-        ("s11", "Керамическое покрытие", "Профессиональное нанесение керамического покрытия. Максимальная защита ЛКП сроком до 2 лет.", 15000, 480, "Защитные покрытия"),
-        ("s12", "Нанесение тефлона", "Нанесение тефлонового покрытия для защиты кузова и стойкого блеска.", 3000, 120, "Защитные покрытия"),
-        ("s13", "Удаление битума и смол", "Профессиональное удаление следов битума, смолы, насекомых с кузова.", 700, 30, "Специальные услуги"),
-        ("s14", "Чернение шин", "Нанесение специального состава на боковины шин — восстанавливает чёрный цвет и глянцевый блеск.", 300, 15, "Специальные услуги"),
-        ("s15", "Пылесосная уборка салона", "Тщательная пылесосная обработка салона: сиденья, напольные покрытия, багажник.", 500, 25, "Уход за салоном"),
-        ("s16", "Влажная уборка салона", "Обработка всех поверхностей салона специализированными средствами.", 800, 40, "Уход за салоном"),
-        ("s17", "Химчистка салона", "Глубокая чистка тканевых и кожаных поверхностей профессиональной химией.", 3500, 180, "Уход за салоном"),
-        ("s18", "Химчистка кожи", "Специализированная очистка и кондиционирование кожаного салона.", 5000, 240, "Уход за салоном"),
-        ("s19", "Ароматизация салона", "Нанесение стойкого ароматизатора. Широкий выбор ароматов.", 300, 15, "Уход за салоном"),
-        ("s20", "Озонирование салона", "Обработка салона озоном для полного устранения запахов и дезинфекции.", 1000, 60, "Уход за салоном"),
-        ("s21", "Детейлинг кузова", "Полный комплекс детальной обработки: полировка кузова, нанесение защитного покрытия.", 8000, 360, "Детейлинг"),
-        ("s22", "Полировка кузова", "Машинная полировка ЛКП для устранения мелких царапин и восстановления блеска.", 5000, 240, "Детейлинг"),
-    ]
+        {'id':'s1','name':'Базовая мойка кузова','description':'Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.','price':800,'durationMinutes':30,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
+        {'id':'s2','name':'Комплексная мойка + салон','description':'Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.','price':1500,'durationMinutes':60,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
+        {'id':'s3','name':'Экспресс-мойка','description':'Быстрая наружная мойка без детальной обработки. Идеально для поддержания ежедневной чистоты.','price':500,'durationMinutes':15,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
+        {'id':'s4','name':'Обработка арок','description':'Глубокая очистка колесных арок с применением специализированного состава. Удаляет дорожный битум, стойкие загрязнения,'
+        'тормозную пыль и реагенты. Предотвращает коррозию металла и придает деталям подвески ухоженный вид.','price':600,'durationMinutes':20,'category':'Специальные услуги','isFavorite':0,'isFromApi':0},
+        {'id':'s5','name':'Мойка двигателя','description':'Профессиональная очистка двигательного отсека от масла и грязи.','price':1500,'durationMinutes':60,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
+        {'id':'s6','name':'Полировка стёкол снаружи','description':'Финальная полировка наружных стёкол для максимальной прозрачности и блеска.','price':500,'durationMinutes':20,'category':'Обработка стёкол','isFavorite':0,'isFromApi':0},
+        {'id':'s7','name':'Антидождь на стёкла','description':'Нанесение гидрофобного состава на стёкла, обеспечивающего отталкивание воды.','price':600,'durationMinutes':25,'category':'Обработка стёкол','isFavorite':0,'isFromApi':0},
+        {'id':'s8','name':'Нанесение защитного воска','description':'Нанесение профессионального защитного воска на кузов для защиты ЛКП.','price':1200,'durationMinutes':45,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
+        {'id':'s9','name':'Нанесение силанта','description':'Нанесение силантового покрытия для долговременной защиты кузова. Срок действия до 6 месяцев.','price':2000,'durationMinutes':90,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
+        {'id':'s10','name':'Керамическое покрытие','description':'Профессиональное нанесение керамического покрытия. Максимальная защита ЛКП сроком до 2 лет.','price':15000,'durationMinutes':480,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
+        {'id':'s11','name':'Нанесение тефлона','description':'Нанесение тефлонового покрытия для защиты кузова и стойкого блеска.','price':3000,'durationMinutes':120,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
+        {'id':'s12','name':'Удаление битума и смол','description':'Профессиональное удаление следов битума, смолы, насекомых с кузова.','price':700,'durationMinutes':30,'category':'Специальные услуги','isFavorite':0,'isFromApi':0},
+        {'id':'s13','name':'Чернение шин','description':'Нанесение специального состава на боковины шин — восстанавливает чёрный цвет и глянцевый блеск.','price':300,'durationMinutes':15,'category':'Специальные услуги','isFavorite':0,'isFromApi':0},
+        {'id':'s14','name':'Пылесосная уборка салона','description':'Тщательная пылесосная обработка салона: сиденья, напольные покрытия, багажник.','price':500,'durationMinutes':25,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
+        {'id':'s15','name':'Химчистка салона','description':'Глубокая чистка тканевых и кожаных поверхностей профессиональной химией.','price':3500,'durationMinutes':180,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
+        {'id':'s16','name':'Химчистка кожи','description':'Специализированная очистка и кондиционирование кожаного салона.','price':5000,'durationMinutes':240,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
+        {'id':'s17','name':'Ароматизация салона','description':'Нанесение стойкого ароматизатора. Широкий выбор ароматов.','price':300,'durationMinutes':15,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
+        {'id':'s18','name':'Озонирование салона','description':'Обработка салона озоном для полного устранения запахов и дезинфекции.','price':1000,'durationMinutes':60,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
+        {'id':'s19','name':'Детейлинг кузова','description':'Полный комплекс детальной обработки: полировка кузова, нанесение защитного покрытия.','price':8000,'durationMinutes':360,'category':'Детейлинг','isFavorite':0,'isFromApi':0},
+        {'id':'s20','name':'Полировка кузова','description':'Машинная полировка ЛКП для устранения мелких царапин и восстановления блеска.','price':5000,'durationMinutes':240,'category':'Детейлинг','isFavorite':0,'isFromApi':0},
+      ]
     for s in services:
         await db.execute(
             "INSERT INTO services (id, name, description, price, durationMinutes, category, isFavorite, isFromApi, updatedAt) VALUES (?,?,?,?,?,?,0,0,?)",
-            (*s, now),
+            (s['id'], s['name'], s['description'], s['price'], s['durationMinutes'], s['category'], now),
         )
 
     # Promos
     promos = [
         ("promo_1", "Акция недели: комплекс + ароматизация", "Комплексная мойка и ароматизация салона по специальной цене недели.", 1600, 75, "Акции"),
         ("promo_2", "Весенняя акция: мойка + воск", "Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.", 1500, 50, "Акции"),
-        ("promo_3", "Выходной пакет: комплексная мойка -20%", "Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.", 1100, 60, "Акции"),
+        ("promo_3", "Выходной пакет: комплексная мойка -20%", "Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.", 1200, 60, "Акции"),
         ("promo_4", "Пакет для внедорожников", "Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.", 2000, 80, "Акции"),
     ]
     for p in promos:
         await db.execute(
-            "INSERT INTO services (id, name, description, price, durationMinutes, category, isFavorite, isFromApi, updatedAt) VALUES (?,?,?,?,?,?,0,1,?)",
-            (*p, now),
+            "INSERT INTO services (id, name, description, price, durationMinutes, category, isFavorite, isFromApi, updatedAt) VALUES(?, ?, ?, ?, ?, ?, 0, 1, ?)",
+            (p[0], p[1], p[2], p[3], p[4], p[5], now),
         )
+
         await db.execute(
-            "INSERT INTO promos (id, serviceId, name, description, price, duration, fetchedAt) VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO promos (id, serviceId, name, description, price, duration, fetchedAt) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (p[0], p[0], p[1], p[2], p[3], p[4], now),
-        )
+    )
 
-    # Seed Consumables
-    await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c1", "Чернитель шин", "мл"))
-    await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c2", "Антидождь", "мл"))
-    await db.execute("INSERT INTO consumables (id, name, unit) VALUES (?,?,?)", ("c3", "Воск", "мл"))
+    consumables_list = [
+        ("c_shampoo", "Автошампунь", "мл"), ("c_cleaner", "Очиститель салона", "мл"),
+        ("c_engine", "Очиститель ДВС", "мл"), ("c_glass_polish", "Паста для стекла", "мл"),
+        ("c_antidogd", "Антидождь", "мл"), ("c_wax", "Воск", "мл"),
+        ("c_silant", "Силант", "мл"), ("c_ceramic", "Керамика", "мл"),
+        ("c_teflon", "Тефлон", "мл"), ("c_bitumen", "Очиститель битума", "мл"),
+        ("c_tire_black", "Чернитель шин", "мл"), ("c_vac", "Ресурс пылесоса", "сеанс"),
+        ("c_chem", "Химия для химчистки", "мл"), ("c_leather", "Кондиционер для кожи", "мл"),
+        ("c_aroma", "Ароматизатор", "мл"), ("c_ozone", "Сеанс озонирования", "сеанс"),
+        ("c_polish", "Полировальная паста", "мл"), ("c_anticor", "Антикор", "мл")
+    ]
+    for c in consumables_list:
+        await db.execute("INSERT OR IGNORE INTO consumables (id, name, unit) VALUES (?,?,?)", c)
 
-    # Link to services
-    await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s14", "c1", 250))
-    await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s8", "c2", 50))
-    await db.execute("INSERT INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES (?,?,?)", ("s9", "c3", 100))
+    service_links = [
+        ("s1", "c_shampoo", 100), ("s2", "c_shampoo", 100), ("s2", "c_cleaner", 150),
+        ("s3", "c_shampoo", 50), ("s4", "c_anticor", 1000),
+        ("s5", "c_engine", 200), ("s6", "c_glass_polish", 30),
+        ("s7", "c_antidogd", 50), ("s8", "c_wax", 100), ("s9", "c_silant", 50),
+        ("s10", "c_ceramic", 30), ("s11", "c_teflon", 50), ("s12", "c_bitumen", 100),
+        ("s13", "c_tire_black", 50), ("s14", "c_vac", 1), ("s15", "c_chem", 300),
+        ("s16", "c_leather", 100), ("s17", "c_aroma", 10), ("s18", "c_ozone", 1),
+        ("s19", "c_polish", 50), ("s20", "c_polish", 50)
+    ]
+
+    for link in service_links:
+        await db.execute(
+            "INSERT OR REPLACE INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES(?, ?, ?)",
+            link)
+
+    await db.commit()

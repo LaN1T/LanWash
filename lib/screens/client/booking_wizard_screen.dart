@@ -828,18 +828,29 @@ class _Step2 extends StatelessWidget {
                                   )),
                                   const SizedBox(width: 6),
                                   Builder(builder: (context) {
+                                    final words = s.toLowerCase().split(' ');
                                     final svc = provider.services.firstWhere(
-                                      (srv) => srv.name == s,
-                                      orElse: () => Service(id: '0', name: s, description: 'Описание услуги пока не добавлено', price: 0,
-                          durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)
+                                      (srv) {
+                                        final srvName = srv.name.toLowerCase();
+                                        return words.any((word) => srvName.contains(word));
+                                      },
+                                      orElse: () => Service(
+                                        id: '0', 
+                                        name: s, 
+                                        description: 'Описание услуги пока не добавлено', 
+                                        price: 0,
+                                        durationMinutes: 0, 
+                                        category: '', 
+                                        isFavorite: false, 
+                                        isFromApi: false
+                                      )
                                     );
                                     return Tooltip(
                                       message: svc.description,
                                       triggerMode: TooltipTriggerMode.tap,
                                       child: const Icon(Icons.help_outline, size: 14, color: AppStyles.textSecondary),
                                     );
-                                  }),
-                                ],
+                                  }),                                ],
                               ),
                               if (dur != null)
                                 Text(dur, style: const TextStyle(color: AppStyles.textSecondary, fontSize: 11)),
