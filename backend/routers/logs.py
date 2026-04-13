@@ -1,72 +1,38 @@
-from fastapi import APIRouter
-from database import get_db
-from models import LogRequest, LogResponse
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
+from backend.database import get_db
+from backend.models import LogRequest, LogResponse
+from backend.db_models import LogEntry
 from datetime import datetime
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 
-
-def _from_row(row) -> dict:
-    return {
-        "id": row["id"],
-        "username": row["username"],
-        "action": row["action"],
-        "details": row["details"],
-        "timestamp": row["timestamp"],
-    }
-
-
 @router.get("/", response_model=list[LogResponse])
-async def get_all(limit: int = 200):
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?", (limit,)
-        )
-        rows = await cursor.fetchall()
-        return [_from_row(r) for r in rows]
-    finally:
-        await db.close()
-
+async def get_all(limit: int = 200, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(LogEntry).order_by(LogEntry.timestamp.desc()).limit(limit))
+    return result.scalars().all()
 
 @router.get("/by-user/{username}", response_model=list[LogResponse])
-async def get_by_user(username: str):
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT * FROM logs WHERE username = ? ORDER BY timestamp DESC",
-            (username.lower(),),
-        )
-        rows = await cursor.fetchall()
-        return [_from_row(r) for r in rows]
-    finally:
-        await db.close()
-
+async def get_by_user(username: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(LogEntry).where(LogEntry.username == username.lower()).order_by(LogEntry.timestamp.desc()))
+    return result.scalars().all()
 
 @router.post("/", response_model=LogResponse)
-async def create(req: LogRequest):
-    db = await get_db()
-    try:
-        now = datetime.now().isoformat()
-        cursor = await db.execute(
-            "INSERT INTO logs (username, action, details, timestamp) VALUES (?,?,?,?)",
-            (req.username.lower(), req.action, req.details, now),
-        )
-        await db.commit()
-        log_id = cursor.lastrowid
-        cursor2 = await db.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
-        row = await cursor2.fetchone()
-        return _from_row(row)
-    finally:
-        await db.close()
-
+async def create(req: LogRequest, db: AsyncSession = Depends(get_db)):
+    new_log = LogEntry(
+        username=req.username.lower(),
+        action=req.action,
+        details=req.details,
+        timestamp=datetime.now().isoformat()
+    )
+    db.add(new_log)
+    await db.commit()
+    await db.refresh(new_log)
+    return new_log
 
 @router.delete("/")
-async def clear_all():
-    db = await get_db()
-    try:
-        await db.execute("DELETE FROM logs")
-        await db.commit()
-        return {"ok": True}
-    finally:
-        await db.close()
+async def clear_all(db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(LogEntry))
+    await db.commit()
+    return {"ok": True}

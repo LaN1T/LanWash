@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../models/appointment.dart';
 import '../providers/app_provider.dart';
+import '../providers/auth_provider.dart';
 import '../data/initial_data.dart';
 import '../models/service.dart';
 
@@ -64,10 +65,15 @@ class _State extends State<AddEditAppointmentScreen> {
   late final TextEditingController _numberCtrl;
   late final TextEditingController _notesCtrl;
 
+  final _nameFocus = FocusNode();
+  final _modelFocus = FocusNode();
+  final _numberFocus = FocusNode();
+
   late WashType _washType;
   late Set<String> _selectedAddServices;
   late DateTime _dateTime;
   late String _status;
+  String? _selectedPromoName; // Выбранная акция
 
   bool get _isEditing => widget.appointment != null;
 
@@ -84,6 +90,12 @@ class _State extends State<AddEditAppointmentScreen> {
     _dateTime            = a?.dateTime ?? DateTime.now().add(
         const Duration(days: 1, hours: 10));
     _status              = a?.status   ?? 'scheduled';
+
+    // Извлечение акции из notes
+    final notes = a?.notes ?? '';
+    if (notes.startsWith('Акция: ')) {
+      _selectedPromoName = notes.substring('Акция: '.length).trim();
+    }
   }
 
   @override
@@ -95,6 +107,7 @@ class _State extends State<AddEditAppointmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final promoCfg = _selectedPromoName != null ? getPromoConfig(_selectedPromoName!) : null;
     return Scaffold(
       backgroundColor: AppStyles.background,
       appBar: AppBar(
@@ -116,6 +129,7 @@ class _State extends State<AddEditAppointmentScreen> {
             _sectionLabel('Клиент и автомобиль'),
             TextFormField(
               controller: _nameCtrl,
+              focusNode: _nameFocus,
               decoration: AppStyles.inputDecoration('Имя клиента',
                   icon: Icons.person),
               validator: (v) => (v == null || v.trim().isEmpty)
@@ -125,6 +139,7 @@ class _State extends State<AddEditAppointmentScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _modelCtrl,
+              focusNode: _modelFocus,
               decoration: AppStyles.inputDecoration('Марка и модель авто',
                   icon: Icons.directions_car),
               validator: (v) => (v == null || v.trim().isEmpty)
@@ -134,14 +149,19 @@ class _State extends State<AddEditAppointmentScreen> {
             // Гос номер с форматтером и постоянной подсказкой
             TextFormField(
               controller: _numberCtrl,
+              focusNode: _numberFocus,
               style: const TextStyle(
                   color: AppStyles.textPrimary,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600),
               decoration: _plateDecoration(),
               inputFormatters: [_PlateInputFormatter()],
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Введите номер' : null,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Введите номер';
+                final regex = RegExp(r'^[АВЕКМНОРСТУХ]{1}[0-9]{3}[АВЕКМНОРСТУХ]{2}[0-9]{2,3}$');
+                if (!regex.hasMatch(v.toUpperCase())) return 'Неверный формат номера';
+                return null;
+              },
             ),
             const SizedBox(height: 20),
 
@@ -161,7 +181,7 @@ class _State extends State<AddEditAppointmentScreen> {
                 children: WashType.values.map((wt) => RadioListTile<WashType>(
                   value: wt,
                   groupValue: _washType,
-                  onChanged: (v) => setState(() => _washType = v!),
+                  onChanged: _selectedPromoName != null ? null : (v) => setState(() => _washType = v!),
                   title: Text(wt.displayName, style: AppStyles.bodyLarge),
                   subtitle: Text('от ${wt.basePrice} ₽',
                       style: AppStyles.bodyMedium),
@@ -180,14 +200,19 @@ class _State extends State<AddEditAppointmentScreen> {
               child: Column(
                 children: additionalServiceOptions.map((s) {
                   final price = extraServicePrices[s];
+                  final isIncluded = _washType.includedExtras.contains(s) || (promoCfg?.extras.contains(s) ?? false);
+                  final isSelected = _selectedAddServices.contains(s) || isIncluded;
                   return CheckboxListTile(
-                    value: _selectedAddServices.contains(s),
-                    onChanged: (v) => setState(() {
+                    value: isSelected,
+                    onChanged: isIncluded ? null : (v) => setState(() {
                       v! ? _selectedAddServices.add(s) : _selectedAddServices.remove(s);
                     }),
-                    title: Text(s, style: AppStyles.bodyLarge),
-                    subtitle: price != null ? Text('+$price ₽', style: AppStyles.bodyMedium) : null,
-                    activeColor: AppStyles.primary,
+                    title: Text(s, style: AppStyles.bodyLarge.copyWith(
+                        color: isIncluded ? AppStyles.textSecondary : null)),
+                    subtitle: isIncluded 
+                      ? const Text('Включено в тариф/акцию', style: TextStyle(fontSize: 12, color: AppStyles.primary))
+                      : (price != null ? Text('+$price ₽', style: AppStyles.bodyMedium) : null),
+                    activeColor: isIncluded ? AppStyles.textSecondary : AppStyles.primary,
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     dense: true,
@@ -196,6 +221,41 @@ class _State extends State<AddEditAppointmentScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // ── Выбор акции (только для админа) ──
+            if (context.read<AuthProvider>().isAdmin) ...[
+              _sectionLabel('Применить акцию'),
+              DropdownButtonFormField<String?>(
+                value: _selectedPromoName,
+                decoration: AppStyles.inputDecoration('Выберите акцию', icon: Icons.discount),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Без акции')),
+                  const DropdownMenuItem(value: 'Акция недели', child: Text('Акция недели')),
+                  const DropdownMenuItem(value: 'Весенняя акция', child: Text('Весенняя акция')),
+                  const DropdownMenuItem(value: 'Выходной пакет', child: Text('Выходной пакет')),
+                  const DropdownMenuItem(value: 'Пакет для внедорожников', child: Text('Пакет для внедорожников')),
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _selectedPromoName = v;
+                    if (v != null) {
+                      final cfg = getPromoConfig(v);
+                      if (cfg != null) {
+                        if (cfg.washTypeName != null) {
+                          _washType = WashType.values.firstWhere((e) => e.name == cfg.washTypeName!);
+                        }
+                        _selectedAddServices.clear();
+                        _selectedAddServices.addAll(cfg.extras);
+                      }
+                    } else {
+                      _selectedPromoName = null;
+                      // Можно оставить текущие услуги, если нужно
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // ── Статус ────────────────────────────────────────────────
             _sectionLabel('Статус записи'),
@@ -223,6 +283,26 @@ class _State extends State<AddEditAppointmentScreen> {
               decoration: AppStyles.inputDecoration(
                   'Примечания для мойщика', icon: Icons.notes),
               maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+
+            // ── Итоговая цена ──
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppStyles.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppStyles.primary),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Итого к оплате:', style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                  Text('${_calcPrice()} ₽', style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -271,35 +351,84 @@ class _State extends State<AddEditAppointmentScreen> {
       'Детейлинг кузова': 8000, 'Керамическое покрытие': 15000,
     };
 
-    // Извлекаем имя акции из notes (формат: «Акция: <name>»)
-    final notes = widget.appointment?.notes ?? '';
     PromoConfig? promoCfg;
-    if (notes.startsWith('Акция: ')) {
-      final promoName = notes.substring('Акция: '.length).trim();
-      promoCfg = getPromoConfig(promoName);
+    if (_selectedPromoName != null) {
+      promoCfg = getPromoConfig(_selectedPromoName!);
     }
 
-    // Locked = авто-включённые в тип мойки + extras акции (за них платить не нужно)
+    // Базовая цена с учетом процента скидки или фиксированной цены акции
+    int p = _washType.basePrice;
+    
+    if (_selectedPromoName == 'Акция недели') {
+      p = 1600;
+    } else if (_selectedPromoName == 'Весенняя акция') {
+      p = 2000;
+    } else if (_selectedPromoName == 'Пакет для внедорожников') {
+      p = 2000;
+    } else if (promoCfg != null && promoCfg.discountPercent > 0) {
+      p = (p * (100 - promoCfg.discountPercent) / 100).round();
+    }
+
+    // Услуги, которые не оплачиваются отдельно
     final locked = <String>{
       ..._washType.includedExtras,
       ...?promoCfg?.extras,
     };
 
-    final promoBase = widget.appointment?.promoPrice ?? 0;
-    int p = promoBase > 0 ? promoBase : _washType.basePrice;
+    // Считаем только то, что НЕ входит в базу или акцию
     for (final e in _selectedAddServices) {
-      if (!locked.contains(e)) p += extraPrices[e] ?? 0;
+      if (!locked.contains(e)) {
+        p += extraPrices[e] ?? 0;
+      }
     }
     return p;
   }
 
   void _save() {
+    // 1. Явная проверка значений перед валидацией формы
+    if (_nameCtrl.text.trim().isEmpty) {
+      _nameFocus.requestFocus();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите имя клиента'), backgroundColor: AppStyles.danger));
+      return;
+    }
+    if (_modelCtrl.text.trim().isEmpty) {
+      _modelFocus.requestFocus();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите модель авто'), backgroundColor: AppStyles.danger));
+      return;
+    }
+    if (_numberCtrl.text.trim().isEmpty) {
+      _numberFocus.requestFocus();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введите гос. номер'), backgroundColor: AppStyles.danger));
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
+    
+    // 2. Валидация акции
+    if (_selectedPromoName != null) {
+      final cfg = getPromoConfig(_selectedPromoName!);
+      if (cfg != null) {
+        final error = _validatePromo(cfg);
+        if (error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(error),
+            backgroundColor: AppStyles.danger,
+          ));
+          return;
+        }
+      }
+    }
+
     final provider = context.read<AppProvider>();
+    final newPrice = _calcPrice();
+    
+    // Формируем примечание: сохраняем акцию, если выбрана
+    String finalNotes = _notesCtrl.text.trim();
+    if (_selectedPromoName != null) {
+      finalNotes = 'Акция: $_selectedPromoName\n$finalNotes'.trim();
+    }
 
     if (_isEditing) {
-      final newPrice = _calcPrice();
-      // originalPrice: сохраняем первую цену навсегда (если уже есть — не трогаем)
       final origPrice = widget.appointment!.originalPrice > 0
           ? widget.appointment!.originalPrice
           : widget.appointment!.paidPrice > 0
@@ -313,7 +442,7 @@ class _State extends State<AddEditAppointmentScreen> {
         washType: _washType,
         additionalServices: _selectedAddServices.toList(),
         status: _status,
-        notes: _notesCtrl.text.trim(),
+        notes: finalNotes,
         paidPrice: newPrice,
         originalPrice: origPrice,
         isModifiedByAdmin: true,
@@ -328,9 +457,12 @@ class _State extends State<AddEditAppointmentScreen> {
         washType: _washType,
         additionalServices: _selectedAddServices.toList(),
         status: _status,
-        notes: _notesCtrl.text.trim(),
-        ownerUsername: '', // admin-созданные записи — без владельца
+        notes: finalNotes,
+        ownerUsername: '',
         promoPrice: 0,
+        paidPrice: newPrice,
+        originalPrice: newPrice,
+        isModifiedByAdmin: true,
       ));
     }
     Navigator.pop(context);
@@ -338,6 +470,25 @@ class _State extends State<AddEditAppointmentScreen> {
       content: Text(_isEditing ? 'Запись обновлена' : 'Запись создана'),
       backgroundColor: AppStyles.success,
     ));
+  }
+
+  // Валидация условий акции
+  String? _validatePromo(PromoConfig cfg) {
+    if (cfg.washTypeName != null && _washType.name != cfg.washTypeName) {
+      return 'Акция "$_selectedPromoName" требует тип мойки: ${_getWashTypeDisplayName(cfg.washTypeName!)}';
+    }
+    if (cfg.weekendOnly) {
+      final weekday = _dateTime.weekday;
+      if (weekday != DateTime.saturday && weekday != DateTime.sunday) {
+        return 'Акция "$_selectedPromoName" действует только в выходные дни';
+      }
+    }
+    return null;
+  }
+  
+  String _getWashTypeDisplayName(String name) {
+    final t = WashType.values.firstWhere((e) => e.name == name, orElse: () => WashType.basic);
+    return t.displayName;
   }
 }
 
