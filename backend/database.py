@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
-from backend.db_models import Base, User, Service, Consumable, ServiceConsumable
+from backend.db_models import Base, User, Service, Consumable, ServiceConsumable, Promo
 from datetime import datetime
 import hashlib
 
@@ -30,10 +30,12 @@ async def seed_data():
             displayName="Администратор", createdAt=now
         ).on_conflict_do_nothing(index_elements=['username'])
         await session.execute(stmt)
+        await session.commit()
 
         # Services
         res = await session.execute(select(func.count(Service.id)))
         if res.scalar() == 0:
+            # 1. Services including promo placeholders
             services = [
                 Service(id='s1', name='Базовая мойка кузова', description='Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.', price=800, durationMinutes=30, category='Мойка кузова', updatedAt=now),
                 Service(id='s2', name='Комплексная мойка + салон', description='Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.', price=1500, durationMinutes=60, category='Мойка кузова', updatedAt=now),
@@ -45,7 +47,7 @@ async def seed_data():
                 Service(id='s8', name='Нанесение защитного воска', description='Нанесение профессионального защитного воска на кузов для защиты ЛКП.', price=1200, durationMinutes=45, category='Защитные покрытия', updatedAt=now),
                 Service(id='s9', name='Нанесение силанта', description='Нанесение силантового покрытия для долговременной защиты кузова. Срок действия до 6 месяцев.', price=2000, durationMinutes=90, category='Защитные покрытия', updatedAt=now),
                 Service(id='s10', name='Керамическое покрытие', description='Профессиональное нанесение керамического покрытия. Максимальная защита ЛКП сроком до 2 лет.', price=15000, durationMinutes=480, category='Защитные покрытия', updatedAt=now),
-                Service(id='s11', name='Нанесение тефлона', description='Нанесение тефлонового покрытия для защиты кузова и стойкого блеска.', price=3000, durationMinutes=120, category='Защитные покрытия', updatedAt=now),
+                Service(id='s11', name='Нанесение тефлона', description='Нанесение тефлоного покрытия для защиты кузова и стойкого блеска.', price=3000, durationMinutes=120, category='Защитные покрытия', updatedAt=now),
                 Service(id='s12', name='Удаление битума и смол', description='Профессиональное удаление следов битума, смолы, насекомых с кузова.', price=700, durationMinutes=30, category='Специальные услуги', updatedAt=now),
                 Service(id='s13', name='Чернение шин', description='Нанесение специального состава на боковины шин — восстанавливает чёрный цвет и глянцевый блеск.', price=300, durationMinutes=15, category='Специальные услуги', updatedAt=now),
                 Service(id='s14', name='Пылесосная уборка салона', description='Тщательная пылесосная обработка салона: сиденья, напольные покрытия, багажник.', price=500, durationMinutes=25, category='Уход за салоном', updatedAt=now),
@@ -55,10 +57,25 @@ async def seed_data():
                 Service(id='s18', name='Озонирование салона', description='Обработка салона озоном для полного устранения запахов и дезинфекции.', price=1000, durationMinutes=60, category='Уход за салоном', updatedAt=now),
                 Service(id='s19', name='Детейлинг кузова', description='Полный комплекс детальной обработки: полировка кузова, нанесение защитного покрытия.', price=8000, durationMinutes=360, category='Детейлинг', updatedAt=now),
                 Service(id='s20', name='Полировка кузова', description='Машинная полировка ЛКП для устранения мелких царапин и восстановления блеска.', price=5000, durationMinutes=240, category='Детейлинг', updatedAt=now),
+                
+                Service(id='promo_1', name='Акция недели: комплекс + ароматизация', description='Комплексная мойка и ароматизация салона по специальной цене недели.', price=1600, durationMinutes=75, category='Акции', isFromApi=1, updatedAt=now),
+                Service(id='promo_2', name='Весенняя акция: мойка + воск', description='Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.', price=1500, durationMinutes=50, category='Акции', isFromApi=1, updatedAt=now),
+                Service(id='promo_3', name='Выходной пакет: комплексная мойка -20%', description='Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.', price=1200, durationMinutes=60, category='Акции', isFromApi=1, updatedAt=now),
+                Service(id='promo_4', name='Пакет для внедорожников', description='Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.', price=2000, durationMinutes=80, category='Акции', isFromApi=1, updatedAt=now),
             ]
             session.add_all(services)
+            await session.flush() # ВАЖНО: Фиксируем услуги до добавления промо
+
+            # 2. Promos
+            session.add_all([
+                Promo(id='promo_1', serviceId='promo_1', name='Акция недели: комплекс + ароматизация', description='Комплексная мойка и ароматизация салона по специальной цене недели.', price=1600, duration=75, fetchedAt=now),
+                Promo(id='promo_2', serviceId='promo_2', name='Весенняя акция: мойка + воск', description='Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.', price=1500, duration=50, fetchedAt=now),
+                Promo(id='promo_3', serviceId='promo_3', name='Выходной пакет: комплексная мойка -20%', description='Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.', price=1200, duration=60, fetchedAt=now),
+                Promo(id='promo_4', serviceId='promo_4', name='Пакет для внедорожников', description='Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.', price=2000, duration=80, fetchedAt=now),
+            ])
             
-            consumables = [
+            # 3. Consumables & Links
+            session.add_all([
                 Consumable(id="c_shampoo", name="Автошампунь", unit="мл"),
                 Consumable(id="c_cleaner", name="Очиститель салона", unit="мл"),
                 Consumable(id="c_engine", name="Очиститель ДВС", unit="мл"),
@@ -77,10 +94,9 @@ async def seed_data():
                 Consumable(id="c_ozone", name="Сеанс озонирования", unit="сеанс"),
                 Consumable(id="c_polish", name="Полировальная паста", unit="мл"),
                 Consumable(id="c_anticor", name="Антикор", unit="мл"),
-            ]
-            session.add_all(consumables)
+            ])
             
-            service_links = [
+            session.add_all([
                 ServiceConsumable(serviceId="s1", consumableId="c_shampoo", quantity_per_service=100),
                 ServiceConsumable(serviceId="s2", consumableId="c_shampoo", quantity_per_service=100),
                 ServiceConsumable(serviceId="s2", consumableId="c_cleaner", quantity_per_service=150),
@@ -102,8 +118,7 @@ async def seed_data():
                 ServiceConsumable(serviceId="s18", consumableId="c_ozone", quantity_per_service=1),
                 ServiceConsumable(serviceId="s19", consumableId="c_polish", quantity_per_service=50),
                 ServiceConsumable(serviceId="s20", consumableId="c_polish", quantity_per_service=50),
-            ]
-            session.add_all(service_links)
+            ])
             
             await session.commit()
             print("База данных успешно инициализирована.")
