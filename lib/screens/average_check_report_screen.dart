@@ -16,7 +16,7 @@ class AverageCheckReportScreen extends StatefulWidget {
 
 class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   MonthlyReport? _report;
-  String _selectedMonth = DateFormat('yyyy-MM').format(DateTime.now());
+  String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   bool _isLoading = false;
   String? _error;
 
@@ -33,7 +33,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     });
     try {
       final apiService = ApiService();
-      final report = await apiService.getMonthlyReport(_selectedMonth);
+      final report = await apiService.getAverageCheckReport(_selectedDate);
       setState(() {
         _report = report;
       });
@@ -48,20 +48,31 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     }
   }
 
-  Future<void> _selectMonth(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.parse(_selectedMonth + '-01'),
-      firstDate: DateTime(2000),
+      initialDate: DateTime.tryParse(_selectedDate.length == 7 ? '$_selectedDate-01' : _selectedDate) ?? DateTime.now(),
+      firstDate: DateTime(2020),
       lastDate: DateTime(2100),
-      initialDatePickerMode: DatePickerMode.year,
+      initialDatePickerMode: DatePickerMode.day,
+      locale: const Locale('ru', 'RU'),
     );
-    if (picked != null && DateFormat('yyyy-MM').format(picked) != _selectedMonth) {
-      setState(() {
-        _selectedMonth = DateFormat('yyyy-MM').format(picked);
-      });
-      _fetchReport();
+    if (picked != null) {
+      final newDate = DateFormat('yyyy-MM-dd').format(picked);
+      if (newDate != _selectedDate) {
+        setState(() {
+          _selectedDate = newDate;
+        });
+        _fetchReport();
+      }
     }
+  }
+
+  Future<void> _setMonthMode() async {
+    setState(() {
+      _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
+    });
+    _fetchReport();
   }
 
   @override
@@ -72,83 +83,60 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
         title: const Text('Средний чек', style: TextStyle(color: Colors.white)),
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today, color: Colors.white),
-            onPressed: () => _selectMonth(context),
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null
-              ? Center(child: Text(_error!,
-                  style: const TextStyle(color: AppStyles.danger, fontSize: 16)))
-              : _report == null || _report!.data.isEmpty
-                  ? Center(child: Text(
-                      'Нет данных за выбранный месяц: $_selectedMonth',
-                      style: const TextStyle(color: AppStyles.textSecondary, fontSize: 16),
-                    ))
-                  : Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            () {
-                              final date = DateTime.parse(_selectedMonth + '-01');
-                              final month = DateFormat('MMMM', 'ru').format(date);
-                              final nominative = {
-                                'января': 'январь', 'февраля': 'февраль', 'марта': 'март',
-                                'апреля': 'апрель', 'мая': 'май', 'июня': 'июнь',
-                                'июля': 'июль', 'августа': 'август', 'сентября': 'сентябрь',
-                                'октября': 'октябрь', 'ноября': 'ноябрь', 'декабря': 'декабрь',
-                              }[month] ?? month;
-                              return 'Отчет за месяц: ${nominative[0].toUpperCase() + nominative.substring(1)} ${date.year}';
-                            }(),
-                            style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppStyles.textPrimary),
+              ? Center(child: Text(_error!, style: const TextStyle(color: AppStyles.danger, fontSize: 16)))
+              : Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      color: Colors.white,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedDate.length == 7
+                                  ? 'Отчет: ${DateFormat('MMMM yyyy', 'ru').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d MMMM yyyy', 'ru').format(DateTime.parse(_selectedDate))}',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: _report!.data.length,
-                            itemBuilder: (context, index) {
-                              final entry = _report!.data[index];
-                              return Card(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Модель авто: ${entry.carModel}',
-                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppStyles.textPrimary),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text('Количество посещений: ${entry.visitCount}',
-                                          style: const TextStyle(fontSize: 16, color: AppStyles.textSecondary)),
-                                      Text('Средний чек: ${entry.avgCheck.toStringAsFixed(2)} ₽',
-                                          style: const TextStyle(fontSize: 16, color: AppStyles.textSecondary)),
-                                      Text('Средняя цена авто (Auto.ru): ${entry.avgCarPrice} ₽',
-                                          style: const TextStyle(fontSize: 16, color: AppStyles.textSecondary)),
-                                      Text(
-                                        'Соотношение (чек к цене авто): ${entry.ratio.toStringAsFixed(2)} %',
-                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppStyles.primary),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                          IconButton(
+                            icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
+                            tooltip: 'Весь месяц',
+                            onPressed: _setMonthMode,
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            icon: const Icon(Icons.date_range, color: AppStyles.primary),
+                            tooltip: 'Выбрать день',
+                            onPressed: () => _selectDate(context),
+                          ),
+                        ],
+                      ),
                     ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: (_report == null || _report!.data.isEmpty)
+                          ? const Center(child: Text('Нет данных'))
+                          : ListView.builder(
+                              itemCount: _report!.data.length,
+                              itemBuilder: (context, index) {
+                                final entry = _report!.data[index];
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: ListTile(
+                                    title: Text(entry.carModel, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: Text('Чеков: ${entry.visitCount} | Чек: ${entry.avgCheck.toStringAsFixed(0)} ₽'),
+                                    trailing: Text('${entry.ratio.toStringAsFixed(1)} %', style: const TextStyle(color: AppStyles.primary, fontWeight: FontWeight.bold)),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
     );
   }
 }

@@ -511,10 +511,10 @@ class ApiService {
 
 
   // ─── Reports ───────────────────────────────────────────────────────────────
-  Future<MonthlyReport?> getMonthlyReport(String? month) async {
+  Future<MonthlyReport?> getAverageCheckReport(String? date) async {
     try {
-      final url = month != null 
-          ? '$_baseUrl/reports/monthly-check-vs-price/?month=$month'
+      final url = date != null 
+          ? '$_baseUrl/reports/monthly-check-vs-price/?date=$date'
           : '$_baseUrl/reports/monthly-check-vs-price/';
       final resp = await http.get(Uri.parse(url))
           .timeout(const Duration(seconds: 10));
@@ -525,10 +525,10 @@ class ApiService {
     return null;
   }
 
-  Future<PopularServicesReport?> getPopularAdditionalServices(String? month) async {
+  Future<PopularServicesReport?> getPopularAdditionalServices(String? date) async {
     try {
-      final url = month != null 
-          ? '$_baseUrl/reports/popular-additional-services/?month=$month'
+      final url = date != null 
+          ? '$_baseUrl/reports/popular-additional-services/?date=$date'
           : '$_baseUrl/reports/popular-additional-services/';
       final resp = await http.get(Uri.parse(url))
           .timeout(const Duration(seconds: 10));
@@ -539,10 +539,10 @@ class ApiService {
     return null;
   }
 
-  Future<ConsumablesUsageReport?> getConsumablesUsage(String? month) async {
+  Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date) async {
     try {
-      final url = month != null 
-          ? '$_baseUrl/reports/consumables-usage/?month=$month'
+      final url = date != null 
+          ? '$_baseUrl/reports/consumables-usage/?date=$date'
           : '$_baseUrl/reports/consumables-usage/';
       final resp = await http.get(Uri.parse(url))
           .timeout(const Duration(seconds: 10));
