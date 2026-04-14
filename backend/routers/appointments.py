@@ -3,16 +3,21 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, insert
 from sqlalchemy.exc import NoResultFound
-from backend.database import get_db
-from backend.models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
-from backend.db_models import Appointment, DeletedNotification, Service, ServiceConsumable, ConsumableUsageLog
+from database import get_db
+from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
+from db_models import Appointment, DeletedNotification, Service, ServiceConsumable, ConsumableUsageLog
 from datetime import datetime
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
 async def get_all(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Appointment).order_by(Appointment.dateTime.asc()))
+    from sqlalchemy import or_
+    result = await db.execute(
+        select(Appointment)
+        .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+        .order_by(Appointment.dateTime.asc())
+    )
     return result.scalars().all()
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
@@ -47,54 +52,81 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
         paidPrice=req.paidPrice,
         isModifiedByAdmin=int(req.isModifiedByAdmin),
         originalPrice=req.originalPrice,
-        assignedWasher=req.assignedWasher
+        assignedWasher=req.assignedWasher,
+        promoName=req.promoName
     )
     db.add(appt)
     await db.commit()
+
+    if req.status == "completed":
+        await _track_consumables_usage(db, req.id, req.washType, req.additionalServices)
+        await db.commit() # Commit again after tracking consumables
+
     await db.refresh(appt)
     return appt
 
-async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: str, additional_services_json: str):
-    # Fetch all services
-    result = await db.execute(select(Service))
-    services = result.scalars().all()
-    service_map = {s.name.strip().lower(): s.id for s in services}
+async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: str, additional_services):
+    import json
+    if isinstance(additional_services, str):
+        try:
+            additional_services = json.loads(additional_services)
+        except:
+            additional_services = []
     
-    all_service_names = {wash_type.strip().lower()}
-    try:
-        additional = json.loads(additional_services_json)
-        if isinstance(additional, list):
-            for s in additional:
-                all_service_names.add(s.strip().lower())
-    except:
-        pass
-
-    # Collect unique service IDs based on user input
+    print(f"DEBUG: Tracking usage for {appt_id}, wash_type: {wash_type}, services: {additional_services}")
     all_service_ids = set()
-    for service_name in all_service_names:
-        service_id = None
-        service_words = set(service_name.split())
-        for name_in_db, id_in_db in service_map.items():
-            db_words = set(name_in_db.split())
-            if service_words.intersection(db_words):
-                service_id = id_in_db
-                break
-        if service_id:
-            all_service_ids.add(service_id)
+    
+    # Map wash_type to ID
+    wash_map = {'express': 's3', 'basic': 's1', 'complex': 's2', 'premium': 's21'}
+    if wash_type.strip().lower() in wash_map:
+        all_service_ids.add(wash_map[wash_type.strip().lower()])
+
+    # Получаем мапу имя -> id для старых записей
+    from db_models import Service
+    svc_res = await db.execute(select(Service.id, Service.name))
+    svc_rows = svc_res.all()
+    name_to_id = {s.name.strip().lower(): s.id for s in svc_rows}
+    id_to_id = {s.id: s.id for s in svc_rows}
+
+    # Добавляем все ID услуг из списка
+    for s_item in additional_services:
+        # Проверяем, это ID или имя
+        if s_item in id_to_id:
+            all_service_ids.add(s_item)
+        elif s_item.strip().lower() in name_to_id:
+            all_service_ids.add(name_to_id[s_item.strip().lower()])
+        else:
+            all_service_ids.add(s_item) # Оставляем как есть, вдруг это новый ID
+
+    print(f"DEBUG: Final service IDs to track: {all_service_ids}")
+
+    # Find promo via Appointment.promoName
+    result_appt = await db.execute(select(Appointment.promoName).where(Appointment.id == appt_id))
+    promo_name = result_appt.scalar_one_or_none()
+    print(f"DEBUG: Promo name found: {promo_name}")
+    
+    if promo_name:
+        from db_models import Promo
+        res_promo = await db.execute(select(Promo).where(Promo.name == promo_name))
+        promo = res_promo.scalar_one_or_none()
+        if promo:
+            all_service_ids.add(promo.serviceId)
 
     # Accumulate consumable usage
     from collections import defaultdict
     consumable_totals = defaultdict(float)
     
     for s_id in all_service_ids:
+        # Важно: используем фильтр по атрибуту serviceId объекта ServiceConsumable
         result = await db.execute(select(ServiceConsumable).where(ServiceConsumable.serviceId == s_id))
         consumables = result.scalars().all()
+        print(f"DEBUG: Found {len(consumables)} consumables for service {s_id}")
         for c in consumables:
             if c.consumableId == "c_vac":
-                # Special handling for vacuum: max 1 per appointment
                 consumable_totals["c_vac"] = 1.0
             else:
                 consumable_totals[c.consumableId] += c.quantity_per_service
+    print(f"DEBUG: Consumable totals: {dict(consumable_totals)}")
 
     # Write logs
     for c_id, qty in consumable_totals.items():
@@ -129,10 +161,11 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
     appt.originalPrice = req.originalPrice
     appt.assignedWasher = req.assignedWasher
+    appt.promoName = req.promoName
     
     await db.commit()
     
-    if old_status != "completed" and req.status == "completed":
+    if req.status == "completed":
         await _track_consumables_usage(db, appt_id, req.washType, req.additionalServices)
         await db.commit()
         
@@ -147,7 +180,7 @@ async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db)):
     if owner:
         db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
         
-    await db.execute(delete(Appointment).where(Appointment.id == appt_id))
+    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()
     return {"ok": True}
 

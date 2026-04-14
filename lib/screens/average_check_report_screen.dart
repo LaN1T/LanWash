@@ -15,8 +15,12 @@ class AverageCheckReportScreen extends StatefulWidget {
 }
 
 class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
+  final List<String> _monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
   MonthlyReport? _report;
-  String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
   bool _isLoading = false;
   String? _error;
 
@@ -30,6 +34,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     setState(() {
       _isLoading = true;
       _error = null;
+      _report = null;
     });
     try {
       final apiService = ApiService();
@@ -79,11 +84,6 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
-      appBar: AppBar(
-        title: const Text('Средний чек', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null
@@ -98,8 +98,8 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                           Expanded(
                             child: Text(
                               _selectedDate.length == 7
-                                  ? 'Отчет: ${DateFormat('MMMM yyyy', 'ru').format(DateTime.parse('$_selectedDate-01'))}'
-                                  : 'Отчет: ${DateFormat('d MMMM yyyy', 'ru').format(DateTime.parse(_selectedDate))}',
+                                  ? 'Отчет: ${_monthNames[DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -128,8 +128,8 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   child: ListTile(
                                     title: Text(entry.carModel, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: Text('Чеков: ${entry.visitCount} | Чек: ${entry.avgCheck.toStringAsFixed(0)} ₽'),
-                                    trailing: Text('${entry.ratio.toStringAsFixed(1)} %', style: const TextStyle(color: AppStyles.primary, fontWeight: FontWeight.bold)),
+                                    subtitle: Text('Чеков: ${entry.visitCount}'),
+                                    trailing: Text('${entry.avgCheck.toStringAsFixed(0)} ₽', style: const TextStyle(color: AppStyles.primary, fontWeight: FontWeight.bold)),
                                   ),
                                 );
                               },

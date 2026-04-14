@@ -1,12 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, insert, func, distinct
-from backend.database import get_db
-from backend.models import ServiceRequest, ServiceResponse, ToggleFavoriteRequest, ToggleExtraFavoriteRequest
-from backend.db_models import Service, ServiceFavorite, ExtraFavorite
+from database import get_db
+from models import ServiceRequest, ServiceResponse, ToggleFavoriteRequest, ToggleExtraFavoriteRequest
+from db_models import Service, ServiceFavorite, ExtraFavorite, Promo
 from datetime import datetime
+import hashlib
 
 router = APIRouter(prefix="/api/services", tags=["services"])
+
+@router.get("/promos")
+async def get_promos(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Promo))
+    promos = result.scalars().all()
+    print(f"--- DEBUG: Returning {len(promos)} promos ---")
+    return promos
 
 @router.get("/", response_model=list[ServiceResponse])
 async def get_all(db: AsyncSession = Depends(get_db)):
@@ -16,7 +24,11 @@ async def get_all(db: AsyncSession = Depends(get_db)):
 @router.get("/categories")
 async def get_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(distinct(Service.category)).order_by(Service.category))
-    return [r[0] for r in result.all()]
+    categories = [r[0] for r in result.all()]
+    if 'Акции' not in categories:
+        categories.append('Акции')
+        categories.sort()
+    return categories
 
 @router.post("/", response_model=ServiceResponse)
 async def create(req: ServiceRequest, db: AsyncSession = Depends(get_db)):

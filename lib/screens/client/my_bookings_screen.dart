@@ -5,6 +5,7 @@ import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/service.dart';
 
 // Хелпер — не зависит от extension, работает надёжно на web
 String _washName(WashType t) => switch (t) {
@@ -219,15 +220,18 @@ class _BookingsList extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Wrap(spacing: 6, runSpacing: 4,
-                  children: a.additionalServices.map((s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppStyles.primaryBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(s, style: const TextStyle(
-                        color: AppStyles.primary, fontSize: 11)),
-                  )).toList()),
+                  children: a.additionalServices.map((id) {
+                    final service = context.watch<AppProvider>().services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primaryBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(service.name, style: const TextStyle(
+                          color: AppStyles.primary, fontSize: 11)),
+                    );
+                  }).toList()),
               ),
           ]),
         ));

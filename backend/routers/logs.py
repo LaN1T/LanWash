@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from backend.database import get_db
-from backend.models import LogRequest, LogResponse
-from backend.db_models import LogEntry
+from database import get_db
+from models import LogRequest, LogResponse
+from db_models import LogEntry
 from datetime import datetime
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])

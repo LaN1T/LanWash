@@ -20,8 +20,8 @@ extension WashTypeX on WashType {
   /// Услуги, автоматически включённые в тип мойки (не влияют на цену)
   List<String> get includedExtras => switch (this) {
     WashType.basic   => [],
-    WashType.complex => ['Пылесосная уборка'],
-    WashType.premium => ['Чернение шин', 'Ароматизация', 'Пылесосная уборка'],
+    WashType.complex => ['s14'], // ID для 'Пылесосная уборка салона'
+    WashType.premium => ['s13', 's17', 's14'], // ID для 'Чернение шин', 'Ароматизация', 'Пылесосная уборка салона'
     WashType.express => [],
   };
 
@@ -67,6 +67,7 @@ class Appointment {
   int originalPrice;
   bool isModifiedByAdmin;
   List<String> assignedWashers;
+  String? promoName;
 
   Appointment({
     required this.id,
@@ -85,6 +86,7 @@ class Appointment {
     this.originalPrice = 0,
     this.isModifiedByAdmin = false,
     List<String>? assignedWashers,
+    this.promoName,
   }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
@@ -104,6 +106,7 @@ class Appointment {
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
     'assignedWashers': jsonEncode(assignedWashers),
+    'promoName': promoName,
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -123,6 +126,7 @@ class Appointment {
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
     assignedWashers: _parseWashers(m['assignedWashers']),
+    promoName: m['promoName'],
   );
 
   static List<String> _parseWashers(dynamic v) {
@@ -145,6 +149,7 @@ class Appointment {
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
     bool? isModifiedByAdmin, List<String>? assignedWashers,
+    String? promoName,
   }) => Appointment(
     id: id,
     clientName: clientName ?? this.clientName,
@@ -162,6 +167,7 @@ class Appointment {
     originalPrice: originalPrice ?? this.originalPrice,
     isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
     assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
+    promoName: promoName ?? this.promoName,
   );
 
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
@@ -174,8 +180,9 @@ class Appointment {
     
     for (final e in additionalServices) {
       if (!included.contains(e)) {
+        // Search by ID first, then by Name
         final service = allServices.firstWhere(
-            (s) => s.name == e,
+            (s) => s.id == e || s.name == e,
             orElse: () => null);
         if (service != null) {
           p += (service.price as num).toInt();

@@ -2,9 +2,9 @@ import uuid
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
-from backend.database import get_db
-from backend.models import ConsumableRequest, ConsumableResponse, ServiceConsumableRequest, ServiceConsumableResponse
-from backend.db_models import Consumable, ServiceConsumable, Service
+from database import get_db
+from models import ConsumableRequest, ConsumableResponse, ServiceConsumableRequest, ServiceConsumableResponse
+from db_models import Consumable, ServiceConsumable, Service
 
 router = APIRouter(prefix="/api/consumables", tags=["consumables"])
 

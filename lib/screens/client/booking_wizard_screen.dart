@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../models/service.dart';
+import '../../models/promo.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../data/initial_data.dart';
@@ -111,8 +112,8 @@ String? _validatePlate(String? v) {
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
-  final Service? promoService;
-  const BookingWizardScreen({super.key, this.promoService});
+  final Promo? initialPromo;
+  const BookingWizardScreen({super.key, this.initialPromo});
   @override State<BookingWizardScreen> createState() => _BWState();
 }
 
@@ -136,7 +137,7 @@ class _BWState extends State<BookingWizardScreen> {
     '14:00','15:00','16:00','17:00','18:00',
   ];
 
-  Service? get _promo => widget.promoService;
+  Promo? get _promo => widget.initialPromo;
   bool    get _isPromo => _promo != null;
 
   bool get _weekendOnly {
