@@ -5,28 +5,47 @@ import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../providers/app_provider.dart';
 import '../services/api_service.dart';
-import '../models/report_entry.dart';
+import '../models/report_entry.dart'; // Импортируем новые модели
 
-class AverageCheckReportScreen extends StatefulWidget {
-  const AverageCheckReportScreen({super.key});
+class PopularServicesReportScreen extends StatefulWidget {
+  const PopularServicesReportScreen({super.key});
 
   @override
-  State<AverageCheckReportScreen> createState() => _AverageCheckReportScreenState();
+  State<PopularServicesReportScreen> createState() => _PopularServicesReportScreenState();
 }
 
-class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
-  MonthlyReport? _report;
+class _PopularServicesReportScreenState extends State<PopularServicesReportScreen> {
+  PopularServicesReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
+  String _selectedCategory = 'Все'; // Add state for selected category
+  List<String> _categories = ['Все']; // Add state for categories list
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _fetchReport();
+    // Fetch categories and then the report
+    _fetchCategoriesAndReport();
+  }
+
+  // New method to fetch categories first
+  Future<void> _fetchCategoriesAndReport() async {
+    try {
+      final appProvider = Provider.of<AppProvider>(context, listen: false);
+      _categories = ['Все', ...await appProvider.getServiceCategories()];
+      _categories.sort(); // Ensure categories are sorted
+      await _fetchReport();
+    } catch (e) {
+      setState(() {
+        _error = 'Не удалось загрузить категории или отчет: $e';
+      });
+      _isLoading = false; // Ensure loading is false on error
+    }
   }
 
   Future<void> _fetchReport() async {
+    if (_isLoading) return; // Prevent concurrent fetches
     setState(() {
       _isLoading = true;
       _error = null;
@@ -34,7 +53,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     });
     try {
       final apiService = ApiService();
-      final report = await apiService.getAverageCheckReport(_selectedDate);
+      final report = await apiService.getPopularAdditionalServices(_selectedDate, category: _selectedCategory);
       setState(() {
         _report = report;
       });
@@ -47,6 +66,14 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _setMonthMode() async {
+    final now = DateTime.now();
+    setState(() {
+      _selectedDate = DateFormat('yyyy-MM').format(now);
+    });
+    _fetchReport();
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -69,19 +96,12 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     }
   }
 
-  Future<void> _setMonthMode() async {
-    setState(() {
-      _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
-    });
-    _fetchReport();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
       appBar: AppBar(
-        title: const Text('Средний чек', style: TextStyle(color: Colors.white)),
+        title: const Text('Популярные услуги', style: TextStyle(color: Colors.white)),
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
       ),
@@ -106,15 +126,40 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
-                            tooltip: 'Весь месяц',
                             onPressed: _setMonthMode,
                           ),
                           IconButton(
                             icon: const Icon(Icons.date_range, color: AppStyles.primary),
-                            tooltip: 'Выбрать день',
                             onPressed: () => _selectDate(context),
                           ),
                         ],
+                      ),
+                    ),
+                    // Filter by Category
+                    SizedBox(
+                      height: 48,
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        scrollDirection: Axis.horizontal,
+                        children: _categories.map((cat) {
+                          final selected = _selectedCategory == cat;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(cat),
+                              selected: selected,
+                              onSelected: (_) {
+                                setState(() => _selectedCategory = cat);
+                                _fetchReport(); // Fetch report when category changes
+                              },
+                              selectedColor: AppStyles.primary,
+                              labelStyle: TextStyle(
+                                color: selected ? Colors.white : AppStyles.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
                     const Divider(height: 1),
@@ -128,9 +173,8 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                                 return Card(
                                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   child: ListTile(
-                                    title: Text(entry.carModel, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: Text('Чеков: ${entry.visitCount}'),
-                                    trailing: Text('${entry.avgCheck.toStringAsFixed(0)} ₽', style: const TextStyle(color: AppStyles.primary, fontWeight: FontWeight.bold)),
+                                    title: Text(entry.serviceName ?? 'Услуга'),
+                                    trailing: Text('${entry.count} раз'),
                                   ),
                                 );
                               },
