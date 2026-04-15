@@ -94,7 +94,11 @@ class _State extends State<AddEditAppointmentScreen> {
     // Извлечение акции из notes
     final notes = a?.notes ?? '';
     if (notes.startsWith('Акция: ')) {
-      _selectedPromoName = notes.substring('Акция: '.length).trim();
+      final fullName = notes.substring('Акция: '.length).split('\n')[0].trim();
+      if (fullName.contains('Акция недели')) _selectedPromoName = 'Акция недели';
+      else if (fullName.contains('Весенняя акция')) _selectedPromoName = 'Весенняя акция';
+      else if (fullName.contains('Выходной пакет')) _selectedPromoName = 'Выходной пакет';
+      else if (fullName.contains('Пакет для внедорожников')) _selectedPromoName = 'Пакет для внедорожников';
     }
   }
 
@@ -424,6 +428,12 @@ class _State extends State<AddEditAppointmentScreen> {
     
     // Формируем примечание: сохраняем акцию, если выбрана
     String finalNotes = _notesCtrl.text.trim();
+    
+    // Удаляем старую строку акции, если она есть
+    final lines = finalNotes.split('\n');
+    final cleanLines = lines.where((line) => !line.trim().startsWith('Акция: '));
+    finalNotes = cleanLines.join('\n').trim();
+
     if (_selectedPromoName != null) {
       finalNotes = 'Акция: $_selectedPromoName\n$finalNotes'.trim();
     }

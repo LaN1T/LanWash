@@ -35,43 +35,39 @@ async def seed_data():
         # Services
         res = await session.execute(select(func.count(Service.id)))
         if res.scalar() == 0:
-            # 1. Services including promo placeholders
+            # 1. Чистые услуги (без акций)
             services = [
-                Service(id='s1', name='Базовая мойка кузова', description='Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.', price=800, durationMinutes=30, category='Мойка кузова', updatedAt=now),
-                Service(id='s2', name='Комплексная мойка + салон', description='Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.', price=1500, durationMinutes=60, category='Мойка кузова', updatedAt=now),
+                Service(id='s1', name='Базовая мойка', description='Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.', price=800, durationMinutes=30, category='Мойка кузова', updatedAt=now),
+                Service(id='s2', name='Комплексная мойка', description='Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.', price=1500, durationMinutes=60, category='Мойка кузова', updatedAt=now),
                 Service(id='s3', name='Экспресс-мойка', description='Быстрая наружная мойка без детальной обработки. Идеально для поддержания ежедневной чистоты.', price=500, durationMinutes=15, category='Мойка кузова', updatedAt=now),
+                Service(id='s21', name='Премиум мойка', description='Комплексная мойка с глубокой очисткой салона, полировкой кузова и нанесением защитного покрытия.', price=3000, durationMinutes=90, category='Мойка кузова', updatedAt=now),
                 Service(id='s4', name='Обработка арок', description='Глубокая очистка колесных арок с применением специализированного состава. Удаляет дорожный битум, стойкие загрязнения, тормозную пыль и реагенты.', price=600, durationMinutes=20, category='Специальные услуги', updatedAt=now),
                 Service(id='s5', name='Мойка двигателя', description='Профессиональная очистка двигательного отсека от масла и грязи.', price=1500, durationMinutes=60, category='Мойка кузова', updatedAt=now),
-                Service(id='s6', name='Полировка стёкол снаружи', description='Финальная полировка наружных стёкол для максимальной прозрачности и блеска.', price=500, durationMinutes=20, category='Обработка стёкол', updatedAt=now),
-                Service(id='s7', name='Антидождь на стёкла', description='Нанесение гидрофобного состава на стёкла, обеспечивающего отталкивание воды.', price=600, durationMinutes=25, category='Обработка стёкол', updatedAt=now),
-                Service(id='s8', name='Нанесение защитного воска', description='Нанесение профессионального защитного воска на кузов для защиты ЛКП.', price=1200, durationMinutes=45, category='Защитные покрытия', updatedAt=now),
+                Service(id='s6', name='Полировка стёкол', description='Финальная полировка наружных стёкол для максимальной прозрачности и блеска.', price=500, durationMinutes=20, category='Обработка стёкол', updatedAt=now),
+                Service(id='s7', name='Антидождь', description='Нанесение гидрофобного состава на стёкла, обеспечивающего отталкивание воды.', price=600, durationMinutes=25, category='Обработка стёкол', updatedAt=now),
+                Service(id='s8', name='Нанесение воска', description='Нанесение профессионального защитного воска на кузов для защиты ЛКП.', price=1200, durationMinutes=45, category='Защитные покрытия', updatedAt=now),
                 Service(id='s9', name='Нанесение силанта', description='Нанесение силантового покрытия для долговременной защиты кузова. Срок действия до 6 месяцев.', price=2000, durationMinutes=90, category='Защитные покрытия', updatedAt=now),
                 Service(id='s10', name='Керамическое покрытие', description='Профессиональное нанесение керамического покрытия. Максимальная защита ЛКП сроком до 2 лет.', price=15000, durationMinutes=480, category='Защитные покрытия', updatedAt=now),
                 Service(id='s11', name='Нанесение тефлона', description='Нанесение тефлоного покрытия для защиты кузова и стойкого блеска.', price=3000, durationMinutes=120, category='Защитные покрытия', updatedAt=now),
-                Service(id='s12', name='Удаление битума и смол', description='Профессиональное удаление следов битума, смолы, насекомых с кузова.', price=700, durationMinutes=30, category='Специальные услуги', updatedAt=now),
+                Service(id='s12', name='Удаление битума', description='Профессиональное удаление следов битума, смолы, насекомых с кузова.', price=700, durationMinutes=30, category='Специальные услуги', updatedAt=now),
                 Service(id='s13', name='Чернение шин', description='Нанесение специального состава на боковины шин — восстанавливает чёрный цвет и глянцевый блеск.', price=300, durationMinutes=15, category='Специальные услуги', updatedAt=now),
                 Service(id='s14', name='Пылесосная уборка салона', description='Тщательная пылесосная обработка салона: сиденья, напольные покрытия, багажник.', price=500, durationMinutes=25, category='Уход за салоном', updatedAt=now),
                 Service(id='s15', name='Химчистка салона', description='Глубокая чистка тканевых и кожаных поверхностей профессиональной химией.', price=3500, durationMinutes=180, category='Уход за салоном', updatedAt=now),
                 Service(id='s16', name='Химчистка кожи', description='Специализированная очистка и кондиционирование кожаного салона.', price=5000, durationMinutes=240, category='Уход за салоном', updatedAt=now),
-                Service(id='s17', name='Ароматизация салона', description='Нанесение стойкого ароматизатора. Широкий выбор ароматов.', price=300, durationMinutes=15, category='Уход за салоном', updatedAt=now),
-                Service(id='s18', name='Озонирование салона', description='Обработка салона озоном для полного устранения запахов и дезинфекции.', price=1000, durationMinutes=60, category='Уход за салоном', updatedAt=now),
+                Service(id='s17', name='Ароматизация', description='Нанесение стойкого ароматизатора. Широкий выбор ароматов.', price=300, durationMinutes=15, category='Уход за салоном', updatedAt=now),
+                Service(id='s18', name='Озонирование', description='Обработка салона озоном для полного устранения запахов и дезинфекции.', price=1000, durationMinutes=60, category='Уход за салоном', updatedAt=now),
                 Service(id='s19', name='Детейлинг кузова', description='Полный комплекс детальной обработки: полировка кузова, нанесение защитного покрытия.', price=8000, durationMinutes=360, category='Детейлинг', updatedAt=now),
                 Service(id='s20', name='Полировка кузова', description='Машинная полировка ЛКП для устранения мелких царапин и восстановления блеска.', price=5000, durationMinutes=240, category='Детейлинг', updatedAt=now),
-                
-                Service(id='promo_1', name='Акция недели: комплекс + ароматизация', description='Комплексная мойка и ароматизация салона по специальной цене недели.', price=1600, durationMinutes=75, category='Акции', isFromApi=1, updatedAt=now),
-                Service(id='promo_2', name='Весенняя акция: мойка + воск', description='Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.', price=1500, durationMinutes=50, category='Акции', isFromApi=1, updatedAt=now),
-                Service(id='promo_3', name='Выходной пакет: комплексная мойка -20%', description='Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.', price=1200, durationMinutes=60, category='Акции', isFromApi=1, updatedAt=now),
-                Service(id='promo_4', name='Пакет для внедорожников', description='Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.', price=2000, durationMinutes=80, category='Акции', isFromApi=1, updatedAt=now),
             ]
             session.add_all(services)
-            await session.flush() # ВАЖНО: Фиксируем услуги до добавления промо
+            await session.flush()
 
-            # 2. Promos
+            # 2. Promos (Only in Promo table)
             session.add_all([
-                Promo(id='promo_1', serviceId='promo_1', name='Акция недели: комплекс + ароматизация', description='Комплексная мойка и ароматизация салона по специальной цене недели.', price=1600, duration=75, fetchedAt=now),
-                Promo(id='promo_2', serviceId='promo_2', name='Весенняя акция: мойка + воск', description='Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.', price=1500, duration=50, fetchedAt=now),
-                Promo(id='promo_3', serviceId='promo_3', name='Выходной пакет: комплексная мойка -20%', description='Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.', price=1200, duration=60, fetchedAt=now),
-                Promo(id='promo_4', serviceId='promo_4', name='Пакет для внедорожников', description='Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.', price=2000, duration=80, fetchedAt=now),
+                Promo(id='promo_1', serviceId='s2', name='Акция недели: комплекс + ароматизация', description='Комплексная мойка и ароматизация салона по специальной цене недели.', price=1600, duration=75, fetchedAt=now),
+                Promo(id='promo_2', serviceId='s1', name='Весенняя акция: мойка + воск', description='Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.', price=1500, duration=50, fetchedAt=now),
+                Promo(id='promo_3', serviceId='s2', name='Выходной пакет: комплексная мойка -20%', description='Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.', price=1200, duration=60, fetchedAt=now),
+                Promo(id='promo_4', serviceId='s2', name='Пакет для внедорожников', description='Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.', price=2000, duration=80, fetchedAt=now),
             ])
             
             # 3. Consumables & Links
@@ -118,10 +114,10 @@ async def seed_data():
                 ServiceConsumable(serviceId="s18", consumableId="c_ozone", quantity_per_service=1),
                 ServiceConsumable(serviceId="s19", consumableId="c_polish", quantity_per_service=50),
                 ServiceConsumable(serviceId="s20", consumableId="c_polish", quantity_per_service=50),
+                ServiceConsumable(serviceId="s21", consumableId="c_shampoo", quantity_per_service=150),
+                ServiceConsumable(serviceId="s21", consumableId="c_cleaner", quantity_per_service=200),
             ])
-            
             await session.commit()
-            print("База данных успешно инициализирована.")
 
 async def get_db():
     async with AsyncSessionLocal() as session:

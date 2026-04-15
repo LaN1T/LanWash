@@ -3,9 +3,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, insert
 from sqlalchemy.exc import NoResultFound
-from backend.database import get_db
-from backend.models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
-from backend.db_models import Appointment, DeletedNotification, Service, ServiceConsumable, ConsumableUsageLog
+from database import get_db
+from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
+from db_models import Appointment, DeletedNotification, Service, ServiceConsumable, ConsumableUsageLog
 from datetime import datetime
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])

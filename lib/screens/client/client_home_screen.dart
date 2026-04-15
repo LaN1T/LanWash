@@ -13,7 +13,7 @@ class ClientHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final auth     = context.watch<AuthProvider>();
-    final promos   = provider.services.where((s) => s.isFromApi).toList();
+    final promos   = provider.promos;
 
     return Container(
       color: AppStyles.bgPage,

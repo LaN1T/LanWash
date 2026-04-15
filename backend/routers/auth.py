@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from backend.database import get_db
-from backend.models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest
-from backend.db_models import User
+from database import get_db
+from models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest
+from db_models import User
 from datetime import datetime
 import hashlib
 

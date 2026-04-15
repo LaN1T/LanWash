@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func
-from backend.database import get_db
-from backend.models import NoteRequest, NoteResponse
-from backend.db_models import WasherNote
+from database import get_db
+from models import NoteRequest, NoteResponse
+from db_models import WasherNote
 from datetime import datetime
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
