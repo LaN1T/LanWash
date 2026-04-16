@@ -113,20 +113,33 @@ async def get_consumables_usage(date: str = None, category: str = None, db: Asyn
             cons_to_cats[c_id].add('Акции')
 
     # 3. Получаем логи использования
-    query = select(Consumable.id, Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed) \
+    query = select(Consumable.id, Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed, ConsumableUsageLog.appointmentId) \
             .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id) \
             .where(cast(ConsumableUsageLog.timestamp, String).like(f"{date}%"))
     
     logs = (await db.execute(query)).all()
     
+    appt_ids = list(set(r[4] for r in logs))
+    apps = (await db.execute(select(Appointment.id, Appointment.notes).where(Appointment.id.in_(appt_ids)))).all()
+    app_is_promo = {a.id: (a.notes and a.notes.startswith("Акция: ")) for a in apps}
+    
     sums = defaultdict(float)
     units = {}
     
     # 4. Фильтруем и суммируем
-    for c_id, name, unit, qty in logs:
+    for c_id, name, unit, qty, app_id in logs:
         cats = cons_to_cats.get(c_id, set())
+        is_promo = app_is_promo.get(app_id, False)
         
-        if category is None or category == 'Все' or category in cats:
+        matches_category = False
+        if category is None or category == 'Все':
+            matches_category = True
+        elif category == 'Акции':
+            matches_category = is_promo
+        else:
+            matches_category = category in cats
+            
+        if matches_category:
             sums[name] += float(qty)
             units[name] = unit
             
