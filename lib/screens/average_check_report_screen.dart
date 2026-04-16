@@ -80,11 +80,6 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
-      appBar: AppBar(
-        title: const Text('Средний чек', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null

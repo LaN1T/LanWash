@@ -30,11 +30,13 @@ class Appointment(Base):
     notes = Column(String, nullable=False, default='')
     isFavorite = Column(Integer, nullable=False, default=0)
     ownerUsername = Column(String, nullable=False, default='')
+    isHiddenFromAdmin = Column(Boolean, nullable=False, default=False)
     promoPrice = Column(Integer, nullable=False, default=0)
     paidPrice = Column(Integer, nullable=False, default=0)
     isModifiedByAdmin = Column(Integer, nullable=False, default=0)
     originalPrice = Column(Integer, nullable=False, default=0)
     assignedWasher = Column(String, nullable=False, default='')
+    promoName = Column(String, nullable=True)
 
 class Service(Base):
     __tablename__ = 'services'

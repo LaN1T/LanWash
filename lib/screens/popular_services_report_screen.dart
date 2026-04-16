@@ -100,11 +100,6 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
-      appBar: AppBar(
-        title: const Text('Популярные услуги', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null
@@ -170,15 +165,32 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                               itemCount: _report!.data.length,
                               itemBuilder: (context, index) {
                                 final entry = _report!.data[index];
+                                final name = entry.serviceName?.trim() ?? '';
+                                final isPromo = Provider.of<AppProvider>(context, listen: false).promos.any((p) {
+                                  return name.toLowerCase() == p.name.trim().toLowerCase();
+                                });
+                                
+                                int count = entry.count ?? 0;
+                                String countLabel;
+                                if (count % 10 == 1 && count % 100 != 11) {
+                                  countLabel = '$count раз';
+                                } else {
+                                  countLabel = '$count раза';
+                                }
+
                                 return Card(
                                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   child: ListTile(
-                                    title: Text(entry.serviceName ?? 'Услуга'),
-                                    trailing: Text('${entry.count} раз'),
+                                    title: Text(
+                                      entry.serviceName ?? 'Услуга',
+                                      style: TextStyle(
+                                        fontWeight: isPromo ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                    trailing: Text(countLabel),
                                   ),
                                 );
-                              },
-                            ),
+                              },                            ),
                     ),
                   ],
                 ),

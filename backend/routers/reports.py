@@ -60,31 +60,45 @@ async def get_popular_additional_services(date: str = None, category: str = None
     if not date: date = datetime.now().strftime("%Y-%m")
     
     all_services = (await db.execute(select(Service.name, Service.category))).all()
-    service_map = {name.strip(): cat for name, cat in all_services}
-    promos = (await db.execute(select(Promo.name))).scalars().all()
-    for p in promos:
-        service_map[p.strip()] = 'Акции'
+    service_map = {name.strip().lower(): cat for name, cat in all_services}
+    service_map['пылесосная уборка'] = 'Уход за салоном'
+    service_map['пылесосная уборка салона'] = 'Уход за салоном'
 
-    query = select(Appointment.additionalServices, Appointment.notes).where(
+    # Получаем все акции
+    all_promos = (await db.execute(select(Promo))).scalars().all()
+    promo_names = {p.name for p in all_promos}
+
+    query = select(Appointment.additionalServices, Appointment.promoName).where(
         and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{date}%"))
     )
     rows = (await db.execute(query)).all()
     service_counts = defaultdict(int)
     
-    for add_services_json, notes in rows:
+    for add_services_json, promo_name in rows:
+        is_promo = promo_name is not None and promo_name in promo_names
+        
         try:
             services = json.loads(add_services_json)
             for s in services:
-                s_stripped = s.strip()
-                cat = service_map.get(s_stripped, 'Прочее')
-                if category is None or category == 'Все' or cat == category:
-                    service_counts[s_stripped] += 1
+                s_name = s.strip()
+                s_key = s_name.lower()
+                cat = service_map.get(s_key, 'Прочее')
+                
+                # Если "Все" — учитываем один раз
+                if category is None or category == 'Все':
+                    service_counts[s_name] += 1
+                else:
+                    # Если фильтр активен — учитываем в родной категории
+                    if cat == category:
+                        service_counts[s_name] += 1
+                    # И если это акционная запись и фильтр "Акции" — учитываем там
+                    if is_promo and category == 'Акции':
+                        service_counts[s_name] += 1
         except: pass
 
-        if notes and notes.startswith("Акция: "):
-            promo_name = notes.replace("Акция: ", "").split('\n')[0].strip()
-            if category is None or category == 'Все' or category == 'Акции':
-                service_counts[promo_name] += 1
+        # Факт самой акции учитываем только если фильтр "Все" или "Акции"
+        if is_promo and (category is None or category == 'Все' or category == 'Акции'):
+            service_counts[promo_name] += 1
 
     report_data = [{"serviceName": name, "count": count} for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)]
     return {"date": date, "data": report_data}

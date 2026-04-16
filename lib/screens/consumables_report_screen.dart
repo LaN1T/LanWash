@@ -99,11 +99,6 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
-      appBar: AppBar(
-        title: const Text('Расходники', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null
@@ -171,17 +166,36 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                               itemCount: _report!.data.length,
                               itemBuilder: (context, index) {
                                 final entry = _report!.data[index];
+                                String unit = entry.unit;
+                                double value = entry.totalUsed;
+
+                                if (unit == 'мл' && value >= 1000) {
+                                  value /= 1000;
+                                  unit = 'л';
+                                }
+
+                                String countLabel;
+                                if (unit == 'сеанс') {
+                                  int val = value.toInt();
+                                  if (val % 10 == 1 && val % 100 != 11) {
+                                    countLabel = '$val сеанс';
+                                  } else if ([2, 3, 4].contains(val % 10) && ![12, 13, 14].contains(val % 100)) {
+                                    countLabel = '$val сеанса';
+                                  } else {
+                                    countLabel = '$val сеансов';
+                                  }
+                                } else {
+                                  countLabel = '${value.toStringAsFixed(value % 1 == 0 ? 0 : 2)} $unit';
+                                }
+
                                 return Card(
                                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   child: ListTile(
-                                    title: Text(entry.consumableName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    trailing: Text('${entry.totalUsed.toStringAsFixed(2)} ${entry.unit}',
-                                        style: const TextStyle(color: AppStyles.primary, fontWeight: FontWeight.bold)),
+                                    title: Text(entry.consumableName),
+                                    trailing: Text(countLabel),
                                   ),
                                 );
-                              },
-                            ),
+                              },                            ),
                     ),
                   ],
                 ),

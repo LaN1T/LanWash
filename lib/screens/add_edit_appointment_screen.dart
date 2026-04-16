@@ -234,9 +234,9 @@ class _State extends State<AddEditAppointmentScreen> {
                 decoration: AppStyles.inputDecoration('Выберите акцию', icon: Icons.discount),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Без акции')),
-                  const DropdownMenuItem(value: 'Акция недели', child: Text('Акция недели')),
-                  const DropdownMenuItem(value: 'Весенняя акция', child: Text('Весенняя акция')),
-                  const DropdownMenuItem(value: 'Выходной пакет', child: Text('Выходной пакет')),
+                  const DropdownMenuItem(value: 'Акция недели: комплекс + ароматизация', child: Text('Акция недели: комплекс + ароматизация')),
+                  const DropdownMenuItem(value: 'Весенняя акция: мойка + воск', child: Text('Весенняя акция: мойка + воск')),
+                  const DropdownMenuItem(value: 'Выходной пакет: комплексная мойка -20%', child: Text('Выходной пакет: комплексная мойка -20%')),
                   const DropdownMenuItem(value: 'Пакет для внедорожников', child: Text('Пакет для внедорожников')),
                 ],
                 onChanged: (v) {
@@ -251,9 +251,6 @@ class _State extends State<AddEditAppointmentScreen> {
                         _selectedAddServices.clear();
                         _selectedAddServices.addAll(cfg.extras);
                       }
-                    } else {
-                      _selectedPromoName = null;
-                      // Можно оставить текущие услуги, если нужно
                     }
                   });
                 },
@@ -366,7 +363,7 @@ class _State extends State<AddEditAppointmentScreen> {
     if (_selectedPromoName == 'Акция недели') {
       p = 1600;
     } else if (_selectedPromoName == 'Весенняя акция') {
-      p = 2000;
+      p = 1500;
     } else if (_selectedPromoName == 'Пакет для внедорожников') {
       p = 2000;
     } else if (promoCfg != null && promoCfg.discountPercent > 0) {
@@ -435,8 +432,14 @@ class _State extends State<AddEditAppointmentScreen> {
     finalNotes = cleanLines.join('\n').trim();
 
     if (_selectedPromoName != null) {
-      finalNotes = 'Акция: $_selectedPromoName\n$finalNotes'.trim();
+      finalNotes = '$_selectedPromoName\n$finalNotes'.trim();
     }
+
+    // Принудительно добавляем все услуги, включенные в тариф или акцию, в список
+    final promoCfg = _selectedPromoName != null ? getPromoConfig(_selectedPromoName!) : null;
+    final included = <String>{..._washType.includedExtras, ...?promoCfg?.extras};
+    final finalServices = Set<String>.from(_selectedAddServices);
+    finalServices.addAll(included);
 
     if (_isEditing) {
       final origPrice = widget.appointment!.originalPrice > 0
@@ -450,12 +453,13 @@ class _State extends State<AddEditAppointmentScreen> {
         carNumber: _numberCtrl.text.trim().toUpperCase(),
         dateTime: _dateTime,
         washType: _washType,
-        additionalServices: _selectedAddServices.toList(),
+        additionalServices: finalServices.toList(),
         status: _status,
         notes: finalNotes,
         paidPrice: newPrice,
         originalPrice: origPrice,
         isModifiedByAdmin: true,
+        promoName: _selectedPromoName,
       ));
     } else {
       provider.addAppointment(Appointment(
@@ -465,7 +469,7 @@ class _State extends State<AddEditAppointmentScreen> {
         carNumber: _numberCtrl.text.trim().toUpperCase(),
         dateTime: _dateTime,
         washType: _washType,
-        additionalServices: _selectedAddServices.toList(),
+        additionalServices: finalServices.toList(),
         status: _status,
         notes: finalNotes,
         ownerUsername: '',
@@ -473,6 +477,7 @@ class _State extends State<AddEditAppointmentScreen> {
         paidPrice: newPrice,
         originalPrice: newPrice,
         isModifiedByAdmin: true,
+        promoName: _selectedPromoName,
       ));
     }
     Navigator.pop(context);

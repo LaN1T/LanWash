@@ -12,7 +12,12 @@ router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
 async def get_all(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Appointment).order_by(Appointment.dateTime.asc()))
+    from sqlalchemy import or_
+    result = await db.execute(
+        select(Appointment)
+        .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+        .order_by(Appointment.dateTime.asc())
+    )
     return result.scalars().all()
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
@@ -47,7 +52,8 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
         paidPrice=req.paidPrice,
         isModifiedByAdmin=int(req.isModifiedByAdmin),
         originalPrice=req.originalPrice,
-        assignedWasher=req.assignedWasher
+        assignedWasher=req.assignedWasher,
+        promoName=req.promoName
     )
     db.add(appt)
     await db.commit()
@@ -158,6 +164,7 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
     appt.originalPrice = req.originalPrice
     appt.assignedWasher = req.assignedWasher
+    appt.promoName = req.promoName
     
     await db.commit()
     
@@ -176,7 +183,7 @@ async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db)):
     if owner:
         db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
         
-    await db.execute(delete(Appointment).where(Appointment.id == appt_id))
+    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()
     return {"ok": True}
 

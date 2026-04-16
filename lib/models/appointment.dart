@@ -67,6 +67,7 @@ class Appointment {
   int originalPrice;
   bool isModifiedByAdmin;
   List<String> assignedWashers;
+  String? promoName;
 
   Appointment({
     required this.id,
@@ -85,6 +86,7 @@ class Appointment {
     this.originalPrice = 0,
     this.isModifiedByAdmin = false,
     List<String>? assignedWashers,
+    this.promoName,
   }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
@@ -104,6 +106,7 @@ class Appointment {
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
     'assignedWashers': jsonEncode(assignedWashers),
+    'promoName': promoName,
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
@@ -123,6 +126,7 @@ class Appointment {
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
     assignedWashers: _parseWashers(m['assignedWashers']),
+    promoName: m['promoName'],
   );
 
   static List<String> _parseWashers(dynamic v) {
@@ -145,6 +149,7 @@ class Appointment {
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
     bool? isModifiedByAdmin, List<String>? assignedWashers,
+    String? promoName,
   }) => Appointment(
     id: id,
     clientName: clientName ?? this.clientName,
@@ -162,6 +167,7 @@ class Appointment {
     originalPrice: originalPrice ?? this.originalPrice,
     isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
     assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
+    promoName: promoName ?? this.promoName,
   );
 
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
