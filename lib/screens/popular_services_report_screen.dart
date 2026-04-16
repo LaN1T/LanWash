@@ -114,8 +114,14 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                           Expanded(
                             child: Text(
                               _selectedDate.length == 7
-                                  ? 'Отчет: ${DateFormat('MMMM yyyy', 'ru').format(DateTime.parse('$_selectedDate-01'))}'
-                                  : 'Отчет: ${DateFormat('d MMMM yyyy', 'ru').format(DateTime.parse(_selectedDate))}',
+                                  ? 'Отчет: ${[
+                                      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+                                    ][DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${[
+                                      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+                                    ][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -174,8 +180,10 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                                 String countLabel;
                                 if (count % 10 == 1 && count % 100 != 11) {
                                   countLabel = '$count раз';
-                                } else {
+                                } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
                                   countLabel = '$count раза';
+                                } else {
+                                  countLabel = '$count раз';
                                 }
 
                                 return Card(

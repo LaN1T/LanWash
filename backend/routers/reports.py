@@ -134,8 +134,9 @@ async def get_consumables_usage(date: str = None, category: str = None, db: Asyn
     logs = (await db.execute(query)).all()
     
     appt_ids = list(set(r[4] for r in logs))
-    apps = (await db.execute(select(Appointment.id, Appointment.notes).where(Appointment.id.in_(appt_ids)))).all()
-    app_is_promo = {a.id: (a.notes and a.notes.startswith("Акция: ")) for a in apps}
+    # Проверяем наличие promoName вместо notes
+    apps = (await db.execute(select(Appointment.id, Appointment.promoName).where(Appointment.id.in_(appt_ids)))).all()
+    app_is_promo = {a.id: (a.promoName is not None) for a in apps}
     
     sums = defaultdict(float)
     units = {}

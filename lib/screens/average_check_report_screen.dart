@@ -15,6 +15,10 @@ class AverageCheckReportScreen extends StatefulWidget {
 }
 
 class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
+  final List<String> _monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
   MonthlyReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
   bool _isLoading = false;
@@ -94,8 +98,8 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                           Expanded(
                             child: Text(
                               _selectedDate.length == 7
-                                  ? 'Отчет: ${DateFormat('MMMM yyyy', 'ru').format(DateTime.parse('$_selectedDate-01'))}'
-                                  : 'Отчет: ${DateFormat('d MMMM yyyy', 'ru').format(DateTime.parse(_selectedDate))}',
+                                  ? 'Отчет: ${_monthNames[DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),

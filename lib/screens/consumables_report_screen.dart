@@ -15,6 +15,10 @@ class ConsumablesReportScreen extends StatefulWidget {
 }
 
 class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
+  final List<String> _monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
   ConsumablesUsageReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
   String _selectedCategory = 'Все'; // Add state for selected category
@@ -113,8 +117,8 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                           Expanded(
                             child: Text(
                               _selectedDate.length == 7
-                                  ? 'Отчет: ${DateFormat('MMMM yyyy', 'ru').format(DateTime.parse('$_selectedDate-01'))}'
-                                  : 'Отчет: ${DateFormat('d MMMM yyyy', 'ru').format(DateTime.parse(_selectedDate))}',
+                                  ? 'Отчет: ${_monthNames[DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),

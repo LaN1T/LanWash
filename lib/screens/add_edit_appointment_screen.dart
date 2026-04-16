@@ -352,18 +352,30 @@ class _State extends State<AddEditAppointmentScreen> {
       'Детейлинг кузова': 8000, 'Керамическое покрытие': 15000,
     };
 
+    // ИСПРАВЛЕНИЕ: если запись уже завершена, жестко возвращаем старую цену
+    if (_isEditing && widget.appointment!.status == 'completed') {
+      return widget.appointment!.paidPrice;
+    }
+
+    // Если это новая запись, считаем цену стандартно
+    // Если редактируем незавершенную — тоже пересчитываем, чтобы админ мог менять услуги
     PromoConfig? promoCfg;
     if (_selectedPromoName != null) {
       promoCfg = getPromoConfig(_selectedPromoName!);
     }
 
-    // Базовая цена с учетом процента скидки или фиксированной цены акции
+    // Базовая цена (с учетом типа мойки, а не фиксированная)
     int p = _washType.basePrice;
     
-    if (_selectedPromoName == 'Акция недели') {
+    // Пытаемся взять базовую цену из типа мойки, если это комплекс/премиум
+    // Если акция - переопределяем базовую базу
+    if (_selectedPromoName == 'Акция недели: комплекс + ароматизация') {
       p = 1600;
-    } else if (_selectedPromoName == 'Весенняя акция') {
+    } else if (_selectedPromoName == 'Весенняя акция: мойка + воск') {
       p = 1500;
+    } else if (_selectedPromoName == 'Выходной пакет: комплексная мойка -20%') {
+      // Для комплекса база 1500, скидка 20% = 1200
+      p = 1200;
     } else if (_selectedPromoName == 'Пакет для внедорожников') {
       p = 2000;
     } else if (promoCfg != null && promoCfg.discountPercent > 0) {
@@ -421,7 +433,15 @@ class _State extends State<AddEditAppointmentScreen> {
     }
 
     final provider = context.read<AppProvider>();
-    final newPrice = _calcPrice();
+    
+    // Принудительно фиксируем цену при завершении: если меняем статус на 'completed',
+    // используем старую цену, если она уже была, чтобы не пересчитывать из-за смены тарифов.
+    int newPrice;
+    if (_isEditing && _status == 'completed' && widget.appointment!.paidPrice > 0) {
+      newPrice = widget.appointment!.paidPrice;
+    } else {
+      newPrice = _calcPrice();
+    }
     
     // Формируем примечание: сохраняем акцию, если выбрана
     String finalNotes = _notesCtrl.text.trim();

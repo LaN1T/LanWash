@@ -91,14 +91,11 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: st
 
     all_service_ids = set()
 
-    # Find promo in notes
-    # Assuming notes format "Акция: <Promo Name>\n..."
-    # We need to find the Service ID for this promo
-    result_appt = await db.execute(select(Appointment.notes).where(Appointment.id == appt_id))
-    notes = result_appt.scalar_one_or_none()
-    if notes and notes.startswith("Акция: "):
-        promo_name = notes.replace("Акция: ", "").split('\n')[0].strip()
-        # Find promo in DB
+    # Find promo via Appointment.promoName
+    result_appt = await db.execute(select(Appointment.promoName).where(Appointment.id == appt_id))
+    promo_name = result_appt.scalar_one_or_none()
+    
+    if promo_name:
         from db_models import Promo
         res_promo = await db.execute(select(Promo).where(Promo.name == promo_name))
         promo = res_promo.scalar_one_or_none()
