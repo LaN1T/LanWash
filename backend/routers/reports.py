@@ -93,48 +93,40 @@ async def get_popular_additional_services(date: str = None, category: str = None
 async def get_consumables_usage(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
     if not date: date = datetime.now().strftime("%Y-%m")
     
+    # 1. Получаем все услуги с их категориями
     all_services_res = await db.execute(select(Service.name, Service.category))
     service_map = {name.strip(): cat for name, cat in all_services_res.all()}
-    promos = (await db.execute(select(Promo.name))).scalars().all()
-    for p in promos:
-        service_map[p.strip()] = 'Акции'
+    
+    # 2. Получаем все связи расходников с услугами
+    all_links = await db.execute(select(Service.id, ServiceConsumable.consumableId, Service.category)
+                                 .join(ServiceConsumable, ServiceConsumable.serviceId == Service.id))
+    
+    # Получаем все услуги, которые участвуют в акциях
+    promo_services = (await db.execute(select(Promo.serviceId))).scalars().all()
+    promo_services_set = set(promo_services)
 
-    query = select(Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed, ConsumableUsageLog.appointmentId) \
+    # Словарь: consumable_id -> set of categories it belongs to
+    cons_to_cats = defaultdict(set)
+    for s_id, c_id, cat in all_links.all():
+        cons_to_cats[c_id].add(cat)
+        if s_id in promo_services_set:
+            cons_to_cats[c_id].add('Акции')
+
+    # 3. Получаем логи использования
+    query = select(Consumable.id, Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed) \
             .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id) \
             .where(cast(ConsumableUsageLog.timestamp, String).like(f"{date}%"))
     
     logs = (await db.execute(query)).all()
     
-    appt_ids = list(set(r[3] for r in logs))
-    if not appt_ids:
-        return {"date": date, "data": []}
-
-    apps = (await db.execute(select(Appointment.id, Appointment.notes, Appointment.washType, Appointment.additionalServices).where(Appointment.id.in_(appt_ids)))).all()
-    app_map = {a.id: (a.notes, a.washType, a.additionalServices) for a in apps}
-    
     sums = defaultdict(float)
     units = {}
     
-    for name, unit, qty, app_id in logs:
-        notes, wash_type, add_services = app_map.get(app_id, (None, None, "[]"))
+    # 4. Фильтруем и суммируем
+    for c_id, name, unit, qty in logs:
+        cats = cons_to_cats.get(c_id, set())
         
-        cats_in_app = set()
-        wash_map = {'express': 'Экспресс-мойка', 'basic': 'Базовая мойка', 'complex': 'Комплексная мойка', 'premium': 'Премиум мойка'}
-        if wash_type and wash_type in wash_map:
-            wash_name = wash_map[wash_type]
-            cats_in_app.add(service_map.get(wash_name, 'Мойка кузова'))
-        
-        try:
-            if add_services:
-                services = json.loads(add_services)
-                for s in services:
-                    cats_in_app.add(service_map.get(s.strip(), 'Прочее'))
-        except: pass
-        
-        if notes and notes.startswith("Акция: "):
-            cats_in_app.add('Акции')
-
-        if category is None or category == 'Все' or category in cats_in_app:
+        if category is None or category == 'Все' or category in cats:
             sums[name] += float(qty)
             units[name] = unit
             
