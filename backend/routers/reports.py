@@ -10,6 +10,25 @@ from collections import defaultdict
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
+class CarPriceService:
+    @staticmethod
+    async def get_average_price(car_model: str) -> int:
+        base_prices = {
+            "toyota camry": 2500000,
+            "bmw x5": 6000000,
+            "mercedes-benz e-class": 4500000,
+            "hyundai solaris": 1200000,
+            "kia rio": 1100000,
+            "lada vesta": 1000000,
+            "volkswagen tiguan": 3000000,
+            "skoda octavia": 2000000,
+        }
+        model_lower = car_model.lower()
+        for key, price in base_prices.items():
+            if key in model_lower:
+                return price + random.randint(-100000, 100000)
+        return random.randint(1500000, 3500000)
+
 @router.get("/monthly-check-vs-price/")
 async def monthly_report(date: str = None, db: AsyncSession = Depends(get_db)):
     if not date: date = datetime.now().strftime("%Y-%m")
@@ -41,36 +60,32 @@ async def get_popular_additional_services(date: str = None, category: str = None
     if not date: date = datetime.now().strftime("%Y-%m")
     
     all_services = (await db.execute(select(Service.name, Service.category))).all()
-    service_map = {name: cat for name, cat in all_services}
+    service_map = {name.strip(): cat for name, cat in all_services}
     promos = (await db.execute(select(Promo.name))).scalars().all()
     for p in promos:
-        service_map[p] = 'Акции'
+        service_map[p.strip()] = 'Акции'
 
     query = select(Appointment.additionalServices, Appointment.notes).where(
         and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{date}%"))
     )
     rows = (await db.execute(query)).all()
-    print(f"DEBUG: Found {len(rows)} completed appointments for {date}")
     service_counts = defaultdict(int)
     
     for add_services_json, notes in rows:
-        print(f"DEBUG: Processing row - add_services: {add_services_json}, notes: {notes}")
         try:
             services = json.loads(add_services_json)
             for s in services:
-                cat = service_map.get(s, 'Прочее')
-                # Исправлено: добавлена проверка на None
+                s_stripped = s.strip()
+                cat = service_map.get(s_stripped, 'Прочее')
                 if category is None or category == 'Все' or cat == category:
-                    service_counts[s] += 1
+                    service_counts[s_stripped] += 1
         except: pass
 
         if notes and notes.startswith("Акция: "):
             promo_name = notes.replace("Акция: ", "").split('\n')[0].strip()
-            # Исправлено: добавлена проверка на None
             if category is None or category == 'Все' or category == 'Акции':
                 service_counts[promo_name] += 1
-    
-    print(f"DEBUG: Service counts: {dict(service_counts)}")
+
     report_data = [{"serviceName": name, "count": count} for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)]
     return {"date": date, "data": report_data}
 
@@ -79,10 +94,10 @@ async def get_consumables_usage(date: str = None, category: str = None, db: Asyn
     if not date: date = datetime.now().strftime("%Y-%m")
     
     all_services_res = await db.execute(select(Service.name, Service.category))
-    service_map = {name: cat for name, cat in all_services_res.all()}
+    service_map = {name.strip(): cat for name, cat in all_services_res.all()}
     promos = (await db.execute(select(Promo.name))).scalars().all()
     for p in promos:
-        service_map[p] = 'Акции'
+        service_map[p.strip()] = 'Акции'
 
     query = select(Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed, ConsumableUsageLog.appointmentId) \
             .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id) \
@@ -90,51 +105,38 @@ async def get_consumables_usage(date: str = None, category: str = None, db: Asyn
     
     logs = (await db.execute(query)).all()
     
-    if category and category != 'Все':
-        appt_ids = list(set(r[3] for r in logs))
-        apps = (await db.execute(select(Appointment.id, Appointment.notes, Appointment.washType, Appointment.additionalServices).where(Appointment.id.in_(appt_ids)))).all()
-        app_map = {a.id: (a.notes, a.washType, a.additionalServices) for a in apps}
+    appt_ids = list(set(r[3] for r in logs))
+    if not appt_ids:
+        return {"date": date, "data": []}
+
+    apps = (await db.execute(select(Appointment.id, Appointment.notes, Appointment.washType, Appointment.additionalServices).where(Appointment.id.in_(appt_ids)))).all()
+    app_map = {a.id: (a.notes, a.washType, a.additionalServices) for a in apps}
+    
+    sums = defaultdict(float)
+    units = {}
+    
+    for name, unit, qty, app_id in logs:
+        notes, wash_type, add_services = app_map.get(app_id, (None, None, "[]"))
         
-        sums = defaultdict(float)
-        units = {}
-        for name, unit, qty, app_id in logs:
-            notes, wash_type, add_services = app_map.get(app_id, (None, None, "[]"))
-            in_app = []
-            if wash_type: in_app.append({'name': {'express': 'Экспресс-мойка', 'basic': 'Базовая мойка', 'complex': 'Комплексная мойка', 'premium': 'Премиум мойка'}.get(wash_type, ''), 'is_promo': False})
-            try:
-                for s in json.loads(add_services): in_app.append({'name': s, 'is_promo': s in promos})
-            except: pass
-            if notes and notes.startswith("Акция: "): in_app.append({'name': notes.replace("Акция: ", "").split('\n')[0].strip(), 'is_promo': True})
-            
-            if any((cat == category) for s in in_app for cat in (['Акции'] if s['is_promo'] else [service_map.get(s['name'], 'Прочее')])):
-                sums[name] += float(qty)
-                units[name] = unit
-        data = [{"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)} for n, v in sums.items()]
-    else:
-        sums = defaultdict(float)
-        units = {}
-        for name, unit, qty, _ in logs:
+        cats_in_app = set()
+        wash_map = {'express': 'Экспресс-мойка', 'basic': 'Базовая мойка', 'complex': 'Комплексная мойка', 'premium': 'Премиум мойка'}
+        if wash_type and wash_type in wash_map:
+            wash_name = wash_map[wash_type]
+            cats_in_app.add(service_map.get(wash_name, 'Мойка кузова'))
+        
+        try:
+            if add_services:
+                services = json.loads(add_services)
+                for s in services:
+                    cats_in_app.add(service_map.get(s.strip(), 'Прочее'))
+        except: pass
+        
+        if notes and notes.startswith("Акция: "):
+            cats_in_app.add('Акции')
+
+        if category is None or category == 'Все' or category in cats_in_app:
             sums[name] += float(qty)
             units[name] = unit
-        data = [{"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)} for n, v in sums.items()]
-
+            
+    data = [{"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)} for n, v in sums.items()]
     return {"date": date, "data": sorted(data, key=lambda x: x['totalUsed'], reverse=True)}
-
-class CarPriceService:
-    @staticmethod
-    async def get_average_price(car_model: str) -> int:
-        base_prices = {
-            "toyota camry": 2500000,
-            "bmw x5": 6000000,
-            "mercedes-benz e-class": 4500000,
-            "hyundai solaris": 1200000,
-            "kia rio": 1100000,
-            "lada vesta": 1000000,
-            "volkswagen tiguan": 3000000,
-            "skoda octavia": 2000000,
-        }
-        model_lower = car_model.lower()
-        for key, price in base_prices.items():
-            if key in model_lower:
-                return price + random.randint(-100000, 100000)
-        return random.randint(1500000, 3500000)

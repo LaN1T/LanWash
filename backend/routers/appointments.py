@@ -60,7 +60,21 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: st
     services = result.scalars().all()
     service_map = {s.name.strip().lower(): s.id for s in services}
     
-    all_service_names = {wash_type.strip().lower()}
+    # Map wash_type to Russian name
+    wash_map = {
+        'express': 'Экспресс-мойка',
+        'basic': 'Базовая мойка',
+        'complex': 'Комплексная мойка',
+        'premium': 'Премиум мойка'
+    }
+    
+    all_service_names = set()
+    mapped_wash = wash_map.get(wash_type.strip().lower())
+    if mapped_wash:
+        all_service_names.add(mapped_wash.strip().lower())
+    else:
+        all_service_names.add(wash_type.strip().lower())
+
     try:
         additional = json.loads(additional_services_json)
         if isinstance(additional, list):
@@ -69,8 +83,23 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: st
     except:
         pass
 
-    # Collect unique service IDs based on user input
     all_service_ids = set()
+
+    # Find promo in notes
+    # Assuming notes format "Акция: <Promo Name>\n..."
+    # We need to find the Service ID for this promo
+    result_appt = await db.execute(select(Appointment.notes).where(Appointment.id == appt_id))
+    notes = result_appt.scalar_one_or_none()
+    if notes and notes.startswith("Акция: "):
+        promo_name = notes.replace("Акция: ", "").split('\n')[0].strip()
+        # Find promo in DB
+        from db_models import Promo
+        res_promo = await db.execute(select(Promo).where(Promo.name == promo_name))
+        promo = res_promo.scalar_one_or_none()
+        if promo:
+            all_service_ids.add(promo.serviceId)
+
+    # Collect unique service IDs based on user input
     for service_name in all_service_names:
         service_id = None
         service_words = set(service_name.split())
