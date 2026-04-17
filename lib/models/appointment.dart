@@ -20,8 +20,8 @@ extension WashTypeX on WashType {
   /// Услуги, автоматически включённые в тип мойки (не влияют на цену)
   List<String> get includedExtras => switch (this) {
     WashType.basic   => [],
-    WashType.complex => ['Пылесосная уборка'],
-    WashType.premium => ['Чернение шин', 'Ароматизация', 'Пылесосная уборка'],
+    WashType.complex => ['s14'], // ID для 'Пылесосная уборка салона'
+    WashType.premium => ['s13', 's17', 's14'], // ID для 'Чернение шин', 'Ароматизация', 'Пылесосная уборка салона'
     WashType.express => [],
   };
 
@@ -180,8 +180,9 @@ class Appointment {
     
     for (final e in additionalServices) {
       if (!included.contains(e)) {
+        // Search by ID first, then by Name
         final service = allServices.firstWhere(
-            (s) => s.name == e,
+            (s) => s.id == e || s.name == e,
             orElse: () => null);
         if (service != null) {
           p += (service.price as num).toInt();

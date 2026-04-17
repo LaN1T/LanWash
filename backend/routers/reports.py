@@ -59,12 +59,12 @@ async def monthly_report(date: str = None, db: AsyncSession = Depends(get_db)):
 async def get_popular_additional_services(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
     if not date: date = datetime.now().strftime("%Y-%m")
     
-    all_services = (await db.execute(select(Service.name, Service.category))).all()
-    service_map = {name.strip().lower(): cat for name, cat in all_services}
-    service_map['пылесосная уборка'] = 'Уход за салоном'
-    service_map['пылесосная уборка салона'] = 'Уход за салоном'
+    # 1. Читаем всё из базы для маппинга
+    all_services = (await db.execute(select(Service.id, Service.name, Service.category))).all()
+    id_to_name = {s.id: s.name for s in all_services}
+    id_to_cat = {s.id: s.category for s in all_services}
+    name_to_id = {s.name.strip().lower(): s.id for s in all_services}
 
-    # Получаем все акции
     all_promos = (await db.execute(select(Promo))).scalars().all()
     promo_names = {p.name for p in all_promos}
 
@@ -79,21 +79,26 @@ async def get_popular_additional_services(date: str = None, category: str = None
         
         try:
             services = json.loads(add_services_json)
-            for s in services:
-                s_name = s.strip()
-                s_key = s_name.lower()
-                cat = service_map.get(s_key, 'Прочее')
+            for s_item in services:
+                # Определяем имя и категорию, учитывая что в базе может быть и ID и Имя
+                final_name = s_item
+                final_cat = 'Прочее'
                 
-                # Если "Все" — учитываем один раз
+                if s_item in id_to_name:
+                    final_name = id_to_name[s_item]
+                    final_cat = id_to_cat[s_item]
+                elif s_item.strip().lower() in name_to_id:
+                    sid = name_to_id[s_item.strip().lower()]
+                    final_name = id_to_name[sid]
+                    final_cat = id_to_cat[sid]
+                
+                # Фильтр: или Все, или родная категория, или Акции
                 if category is None or category == 'Все':
-                    service_counts[s_name] += 1
-                else:
-                    # Если фильтр активен — учитываем в родной категории
-                    if cat == category:
-                        service_counts[s_name] += 1
-                    # И если это акционная запись и фильтр "Акции" — учитываем там
-                    if is_promo and category == 'Акции':
-                        service_counts[s_name] += 1
+                    service_counts[final_name] += 1
+                elif category == 'Акции' and is_promo:
+                    service_counts[final_name] += 1
+                elif final_cat == category:
+                    service_counts[final_name] += 1
         except: pass
 
         # Факт самой акции учитываем только если фильтр "Все" или "Акции"
@@ -107,34 +112,32 @@ async def get_popular_additional_services(date: str = None, category: str = None
 async def get_consumables_usage(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
     if not date: date = datetime.now().strftime("%Y-%m")
     
-    # 1. Получаем все услуги с их категориями
-    all_services_res = await db.execute(select(Service.name, Service.category))
-    service_map = {name.strip(): cat for name, cat in all_services_res.all()}
+    # 1. Получаем услуги и их категории напрямую из БД
+    all_services = (await db.execute(select(Service.id, Service.name, Service.category))).all()
+    id_to_cat = {s.id: s.category for s in all_services}
+    name_to_id = {s.name.strip().lower(): s.id for s in all_services}
     
     # 2. Получаем все связи расходников с услугами
-    all_links = await db.execute(select(Service.id, ServiceConsumable.consumableId, Service.category)
-                                 .join(ServiceConsumable, ServiceConsumable.serviceId == Service.id))
+    all_links = (await db.execute(select(ServiceConsumable.serviceId, ServiceConsumable.consumableId))).all()
     
-    # Получаем все услуги, которые участвуют в акциях
-    promo_services = (await db.execute(select(Promo.serviceId))).scalars().all()
-    promo_services_set = set(promo_services)
-
-    # Словарь: consumable_id -> set of categories it belongs to
+    # Получаем услуги, участвующие в акциях
+    promo_service_ids = (await db.execute(select(Promo.serviceId))).scalars().all()
+    
+    # Словарь: consumable_id -> set of categories
     cons_to_cats = defaultdict(set)
-    for s_id, c_id, cat in all_links.all():
+    for s_id, c_id in all_links:
+        cat = id_to_cat.get(s_id, 'Прочее')
         cons_to_cats[c_id].add(cat)
-        if s_id in promo_services_set:
+        if s_id in promo_service_ids:
             cons_to_cats[c_id].add('Акции')
 
     # 3. Получаем логи использования
     query = select(Consumable.id, Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed, ConsumableUsageLog.appointmentId) \
             .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id) \
             .where(cast(ConsumableUsageLog.timestamp, String).like(f"{date}%"))
-    
     logs = (await db.execute(query)).all()
     
     appt_ids = list(set(r[4] for r in logs))
-    # Проверяем наличие promoName вместо notes
     apps = (await db.execute(select(Appointment.id, Appointment.promoName).where(Appointment.id.in_(appt_ids)))).all()
     app_is_promo = {a.id: (a.promoName is not None) for a in apps}
     

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../models/appointment.dart';
 import '../providers/app_provider.dart';
+import '../models/service.dart';
 import 'add_edit_appointment_screen.dart';
 
 class AppointmentDetailScreen extends StatelessWidget {
@@ -76,11 +77,14 @@ class AppointmentDetailScreen extends StatelessWidget {
               padding: AppStyles.cardPadding,
               child: Wrap(
                 spacing: 8, runSpacing: 8,
-                children: a.additionalServices.map((s) => Chip(
-                  label: Text(s, style: const TextStyle(fontSize: 13)),
-                  backgroundColor: AppStyles.primary.withOpacity(0.1),
-                  side: BorderSide(color: AppStyles.primary.withOpacity(0.3)),
-                )).toList(),
+                children: a.additionalServices.map((id) {
+                  final service = context.watch<AppProvider>().services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                  return Chip(
+                    label: Text(service.name, style: const TextStyle(fontSize: 13)),
+                    backgroundColor: AppStyles.primary.withOpacity(0.1),
+                    side: BorderSide(color: AppStyles.primary.withOpacity(0.3)),
+                  );
+                }).toList(),
               ),
             ),
             const SizedBox(height: 12),
