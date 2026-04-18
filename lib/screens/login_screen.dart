@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_styles.dart';
+import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 
@@ -42,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    context.read<AppProvider>().clearData();
     setState(() { _loading = true; _error = null; });
     final err = await context.read<AuthProvider>()
         .login(_loginCtrl.text, _passCtrl.text);

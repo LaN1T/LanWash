@@ -46,9 +46,7 @@ class ClientFavoritesScreen extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 10),
               onTap: () => Navigator.push(ctx,
-                MaterialPageRoute(builder: (_) => BookingWizardScreen(
-                  promoService: s.isFromApi ? s : null,
-                ))),
+                MaterialPageRoute(builder: (_) => const BookingWizardScreen())),
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(

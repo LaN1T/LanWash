@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../models/appointment.dart';
 import '../providers/app_provider.dart';
+import '../providers/auth_provider.dart';
 import '../data/initial_data.dart';
 import '../models/service.dart';
 
@@ -64,10 +65,15 @@ class _State extends State<AddEditAppointmentScreen> {
   late final TextEditingController _numberCtrl;
   late final TextEditingController _notesCtrl;
 
+  final _nameFocus = FocusNode();
+  final _modelFocus = FocusNode();
+  final _numberFocus = FocusNode();
+
   late WashType _washType;
   late Set<String> _selectedAddServices;
   late DateTime _dateTime;
   late String _status;
+  String? _selectedPromoName;
 
   bool get _isEditing => widget.appointment != null;
 
@@ -80,10 +86,35 @@ class _State extends State<AddEditAppointmentScreen> {
     _numberCtrl = TextEditingController(text: a?.carNumber  ?? '');
     _notesCtrl  = TextEditingController(text: a?.notes      ?? '');
     _washType            = a?.washType ?? WashType.basic;
-    _selectedAddServices = Set.from(a?.additionalServices ?? []);
+
+    final allServices = context.read<AppProvider>().services;
+    final Set<String> ids = {};
+    for (var item in (a?.additionalServices ?? [])) {
+      final service = allServices.firstWhere(
+        (s) => s.id == item || s.name.trim().toLowerCase() == item.trim().toLowerCase(),
+        orElse: () => Service(id: item, name: item, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)
+      );
+      ids.add(service.id);
+    }
+    _selectedAddServices = ids;
+
     _dateTime            = a?.dateTime ?? DateTime.now().add(
         const Duration(days: 1, hours: 10));
     _status              = a?.status   ?? 'scheduled';
+
+    final notes = a?.notes ?? '';
+    final promoNames = [
+      'Акция недели: комплекс + ароматизация',
+      'Весенняя акция: мойка + воск',
+      'Выходной пакет: комплексная мойка -20%',
+      'Пакет для внедорожников'
+    ];
+    for (var p in promoNames) {
+      if (notes.startsWith(p)) {
+        _selectedPromoName = p;
+        break;
+      }
+    }
   }
 
   @override
@@ -95,6 +126,9 @@ class _State extends State<AddEditAppointmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final promoCfg = _selectedPromoName != null ? getPromoConfig(_selectedPromoName!) : null;
+    final allServices = context.watch<AppProvider>().services;
+    
     return Scaffold(
       backgroundColor: AppStyles.background,
       appBar: AppBar(
@@ -112,48 +146,42 @@ class _State extends State<AddEditAppointmentScreen> {
         child: ListView(
           padding: AppStyles.pagePadding,
           children: [
-            // ── Клиент и авто ──────────────────────────────────────────
             _sectionLabel('Клиент и автомобиль'),
             TextFormField(
               controller: _nameCtrl,
-              decoration: AppStyles.inputDecoration('Имя клиента',
-                  icon: Icons.person),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Введите имя' : null,
+              focusNode: _nameFocus,
+              decoration: AppStyles.inputDecoration('Имя клиента', icon: Icons.person),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _modelCtrl,
-              decoration: AppStyles.inputDecoration('Марка и модель авто',
-                  icon: Icons.directions_car),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Введите модель' : null,
+              focusNode: _modelFocus,
+              decoration: AppStyles.inputDecoration('Марка и модель авто', icon: Icons.directions_car),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
             ),
             const SizedBox(height: 12),
-            // Гос номер с форматтером и постоянной подсказкой
             TextFormField(
               controller: _numberCtrl,
-              style: const TextStyle(
-                  color: AppStyles.textPrimary,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600),
+              focusNode: _numberFocus,
+              style: const TextStyle(color: AppStyles.textPrimary, letterSpacing: 1.5, fontWeight: FontWeight.w600),
               decoration: _plateDecoration(),
               inputFormatters: [_PlateInputFormatter()],
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Введите номер' : null,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Введите номер';
+                final regex = RegExp(r'^[АВЕКМНОРСТУХ]{1}[0-9]{3}[АВЕКМНОРСТУХ]{2}[0-9]{2,3}$');
+                if (!regex.hasMatch(v.toUpperCase())) return 'Неверный формат номера';
+                return null;
+              },
             ),
             const SizedBox(height: 20),
-
-            // ── Дата и время ───────────────────────────────────────────
             _sectionLabel('Дата и время визита'),
             _DateTimeRow(
               dateTime: _dateTime,
               onChanged: (dt) => setState(() => _dateTime = dt),
             ),
             const SizedBox(height: 20),
-
-            // ── Тип мойки ─────────────────────────────────────────────
             _sectionLabel('Тип мойки'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -161,33 +189,32 @@ class _State extends State<AddEditAppointmentScreen> {
                 children: WashType.values.map((wt) => RadioListTile<WashType>(
                   value: wt,
                   groupValue: _washType,
-                  onChanged: (v) => setState(() => _washType = v!),
+                  onChanged: _selectedPromoName != null ? null : (v) => setState(() => _washType = v!),
                   title: Text(wt.displayName, style: AppStyles.bodyLarge),
-                  subtitle: Text('от ${wt.basePrice} ₽',
-                      style: AppStyles.bodyMedium),
+                  subtitle: Text('от ${wt.basePrice} ₽', style: AppStyles.bodyMedium),
                   activeColor: AppStyles.primary,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 )).toList(),
               ),
             ),
             const SizedBox(height: 20),
-
-            // ── Дополнительные услуги ───
             _sectionLabel('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
               child: Column(
-                children: additionalServiceOptions.map((s) {
-                  final price = extraServicePrices[s];
+                children: allServices.map((s) {
+                  final isIncluded = _washType.includedExtras.contains(s.name) || (promoCfg?.extras.contains(s.name) ?? false);
+                  final isSelected = _selectedAddServices.contains(s.id) || isIncluded;
                   return CheckboxListTile(
-                    value: _selectedAddServices.contains(s),
-                    onChanged: (v) => setState(() {
-                      v! ? _selectedAddServices.add(s) : _selectedAddServices.remove(s);
+                    value: isSelected,
+                    onChanged: isIncluded ? null : (v) => setState(() {
+                      v! ? _selectedAddServices.add(s.id) : _selectedAddServices.remove(s.id);
                     }),
-                    title: Text(s, style: AppStyles.bodyLarge),
-                    subtitle: price != null ? Text('+$price ₽', style: AppStyles.bodyMedium) : null,
-                    activeColor: AppStyles.primary,
+                    title: Text(s.name, style: AppStyles.bodyLarge.copyWith(color: isIncluded ? AppStyles.textSecondary : null)),
+                    subtitle: isIncluded 
+                      ? const Text('Включено в тариф/акцию', style: TextStyle(fontSize: 12, color: AppStyles.primary))
+                      : Text('+${s.price} ₽', style: AppStyles.bodyMedium),
+                    activeColor: isIncluded ? AppStyles.textSecondary : AppStyles.primary,
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     dense: true,
@@ -196,8 +223,39 @@ class _State extends State<AddEditAppointmentScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // ── Статус ────────────────────────────────────────────────
+            if (context.read<AuthProvider>().isAdmin) ...[
+              _sectionLabel('Применить акцию'),
+              DropdownButtonFormField<String?>(
+                value: _selectedPromoName,
+                decoration: AppStyles.inputDecoration('Выберите акцию', icon: Icons.discount),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Без акции')),
+                  const DropdownMenuItem(value: 'Акция недели: комплекс + ароматизация', child: Text('Акция недели: комплекс + ароматизация')),
+                  const DropdownMenuItem(value: 'Весенняя акция: мойка + воск', child: Text('Весенняя акция: мойка + воск')),
+                  const DropdownMenuItem(value: 'Выходной пакет: комплексная мойка -20%', child: Text('Выходной пакет: комплексная мойка -20%')),
+                  const DropdownMenuItem(value: 'Пакет для внедорожников', child: Text('Пакет для внедорожников')),
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _selectedPromoName = v;
+                    if (v != null) {
+                      final cfg = getPromoConfig(v);
+                      if (cfg != null) {
+                        if (cfg.washTypeName != null) {
+                          _washType = WashType.values.firstWhere((e) => e.name == cfg.washTypeName!);
+                        }
+                        _selectedAddServices.clear();
+                        _selectedAddServices.addAll(cfg.extras.map((e) {
+                          final s = allServices.firstWhere((s) => s.name == e, orElse: () => Service(id: e, name: e, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false));
+                          return s.id;
+                        }));
+                      }
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
             _sectionLabel('Статус записи'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -206,30 +264,39 @@ class _State extends State<AddEditAppointmentScreen> {
                   value: s,
                   groupValue: _status,
                   onChanged: (v) => setState(() => _status = v!),
-                  title: Text(AppStyles.statusLabel(s),
-                      style: AppStyles.bodyLarge),
+                  title: Text(AppStyles.statusLabel(s), style: AppStyles.bodyLarge),
                   activeColor: AppStyles.statusColor(s),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 )).toList(),
               ),
             ),
             const SizedBox(height: 20),
-
-            // ── Заметки ───────────────────────────────────────────────
             _sectionLabel('Заметки (необязательно)'),
             TextFormField(
               controller: _notesCtrl,
-              decoration: AppStyles.inputDecoration(
-                  'Примечания для мойщика', icon: Icons.notes),
+              decoration: AppStyles.inputDecoration('Примечания для мойщика', icon: Icons.notes),
               maxLines: 3,
             ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppStyles.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppStyles.primary),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Итого к оплате:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                  Text('${_calcPrice()} ₽', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
-
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
-              label: Text(_isEditing
-                  ? 'Сохранить изменения' : 'Создать запись'),
+              label: Text(_isEditing ? 'Сохранить изменения' : 'Создать запись'),
               style: AppStyles.primaryButton,
               onPressed: _save,
             ),
@@ -242,81 +309,94 @@ class _State extends State<AddEditAppointmentScreen> {
 
   Widget _sectionLabel(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 8, left: 2),
-    child: Text(text,
-        style: AppStyles.label.copyWith(
-            fontSize: 13, color: AppStyles.primary)),
+    child: Text(text, style: AppStyles.label.copyWith(fontSize: 13, color: AppStyles.primary)),
   );
 
   static InputDecoration _plateDecoration() {
-    final base = AppStyles.inputDecoration('Гос. номер',
-        hint: 'А000АА777', icon: Icons.pin);
+    final base = AppStyles.inputDecoration('Гос. номер', hint: 'А000АА777', icon: Icons.pin);
     return base.copyWith(
       floatingLabelBehavior: FloatingLabelBehavior.always,
       helperText: 'Формат: А000АА777 · EN→RU авто',
-      helperStyle: const TextStyle(
-          color: AppStyles.textSecondary, fontSize: 11),
+      helperStyle: const TextStyle(color: AppStyles.textSecondary, fontSize: 11),
     );
   }
 
-
-  /// Вычислить актуальную цену по текущим услугам.
-  /// Для акционных записей: база = promoPrice, прomo-locked extras не прибавляются.
   int _calcPrice() {
-    const extraPrices = {
-      'Чернение шин': 300, 'Ароматизация': 300, 'Пылесосная уборка': 500,
-      'Полировка стёкол': 500, 'Антидождь': 600, 'Обработка арок': 600,
-      'Удаление битума': 700, 'Озонирование': 1000, 'Нанесение воска': 1200,
-      'Мойка двигателя': 1500, 'Нанесение силанта': 2000, 'Нанесение тефлона': 3000,
-      'Химчистка салона': 3500, 'Химчистка кожи': 5000,
-      'Детейлинг кузова': 8000, 'Керамическое покрытие': 15000,
-    };
-
-    // Извлекаем имя акции из notes (формат: «Акция: <name>»)
-    final notes = widget.appointment?.notes ?? '';
-    PromoConfig? promoCfg;
-    if (notes.startsWith('Акция: ')) {
-      final promoName = notes.substring('Акция: '.length).trim();
-      promoCfg = getPromoConfig(promoName);
+    final allServices = context.read<AppProvider>().services;
+    if (_isEditing && widget.appointment!.status == 'completed') {
+      return widget.appointment!.paidPrice;
     }
-
-    // Locked = авто-включённые в тип мойки + extras акции (за них платить не нужно)
-    final locked = <String>{
+    PromoConfig? promoCfg;
+    if (_selectedPromoName != null) {
+      promoCfg = getPromoConfig(_selectedPromoName!);
+    }
+    int p = _washType.basePrice;
+    if (_selectedPromoName == 'Акция недели: комплекс + ароматизация') {
+      p = 1600;
+    } else if (_selectedPromoName == 'Весенняя акция: мойка + воск') {
+      p = 1500;
+    } else if (_selectedPromoName == 'Выходной пакет: комплексная мойка -20%') {
+      p = 1200;
+    } else if (_selectedPromoName == 'Пакет для внедорожников') {
+      p = 2000;
+    } else if (promoCfg != null && promoCfg.discountPercent > 0) {
+      p = (p * (100 - promoCfg.discountPercent) / 100).round();
+    }
+    final lockedNames = <String>{
       ..._washType.includedExtras,
       ...?promoCfg?.extras,
     };
-
-    final promoBase = widget.appointment?.promoPrice ?? 0;
-    int p = promoBase > 0 ? promoBase : _washType.basePrice;
-    for (final e in _selectedAddServices) {
-      if (!locked.contains(e)) p += extraPrices[e] ?? 0;
+    for (final serviceId in _selectedAddServices) {
+      final s = allServices.firstWhere((s) => s.id == serviceId, orElse: () => Service(id: serviceId, name: '?', description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false));
+      if (!lockedNames.contains(s.name)) {
+        p += s.price;
+      }
     }
     return p;
   }
 
   void _save() {
+    if (_nameCtrl.text.trim().isEmpty) { _nameFocus.requestFocus(); return; }
+    if (_modelCtrl.text.trim().isEmpty) { _modelFocus.requestFocus(); return; }
+    if (_numberCtrl.text.trim().isEmpty) { _numberFocus.requestFocus(); return; }
     if (!_formKey.currentState!.validate()) return;
+    
     final provider = context.read<AppProvider>();
+    int newPrice;
+    if (_isEditing && _status == 'completed' && widget.appointment!.paidPrice > 0) {
+      newPrice = widget.appointment!.paidPrice;
+    } else {
+      newPrice = _calcPrice();
+    }
+    
+    String finalNotes = _notesCtrl.text.trim();
+    if (_selectedPromoName != null) {
+      finalNotes = '$_selectedPromoName\n$finalNotes'.trim();
+    }
+
+    final promoCfg = _selectedPromoName != null ? getPromoConfig(_selectedPromoName!) : null;
+    final included = <String>{..._washType.includedExtras, ...?promoCfg?.extras};
+    final allServices = context.read<AppProvider>().services;
+    final Set<String> finalServices = Set<String>.from(_selectedAddServices);
+    
+    for (var name in included) {
+      final s = allServices.firstWhere((s) => s.name == name, orElse: () => Service(id: name, name: name, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false));
+      finalServices.add(s.id);
+    }
 
     if (_isEditing) {
-      final newPrice = _calcPrice();
-      // originalPrice: сохраняем первую цену навсегда (если уже есть — не трогаем)
-      final origPrice = widget.appointment!.originalPrice > 0
-          ? widget.appointment!.originalPrice
-          : widget.appointment!.paidPrice > 0
-              ? widget.appointment!.paidPrice
-              : newPrice;
       provider.updateAppointment(widget.appointment!.copyWith(
         clientName: _nameCtrl.text.trim(),
         carModel: _modelCtrl.text.trim(),
         carNumber: _numberCtrl.text.trim().toUpperCase(),
         dateTime: _dateTime,
         washType: _washType,
-        additionalServices: _selectedAddServices.toList(),
+        additionalServices: finalServices.toList(),
         status: _status,
-        notes: _notesCtrl.text.trim(),
+        notes: finalNotes,
         paidPrice: newPrice,
-        originalPrice: origPrice,
-        isModifiedByAdmin: true,
+        originalPrice: newPrice,
+        promoName: _selectedPromoName,
       ));
     } else {
       provider.addAppointment(Appointment(
@@ -326,27 +406,24 @@ class _State extends State<AddEditAppointmentScreen> {
         carNumber: _numberCtrl.text.trim().toUpperCase(),
         dateTime: _dateTime,
         washType: _washType,
-        additionalServices: _selectedAddServices.toList(),
+        additionalServices: finalServices.toList(),
         status: _status,
-        notes: _notesCtrl.text.trim(),
-        ownerUsername: '', // admin-созданные записи — без владельца
+        notes: finalNotes,
+        ownerUsername: '',
         promoPrice: 0,
+        paidPrice: newPrice,
+        originalPrice: newPrice,
+        promoName: _selectedPromoName,
       ));
     }
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(_isEditing ? 'Запись обновлена' : 'Запись создана'),
-      backgroundColor: AppStyles.success,
-    ));
   }
 }
 
-// ─── Выбор даты и времени ─────────────────────────────────────────────────────
 class _DateTimeRow extends StatelessWidget {
   final DateTime dateTime;
   final ValueChanged<DateTime> onChanged;
   const _DateTimeRow({required this.dateTime, required this.onChanged});
-
   @override
   Widget build(BuildContext context) {
     return Row(children: [
@@ -360,8 +437,7 @@ class _DateTimeRow extends StatelessWidget {
             firstDate: DateTime.now().subtract(const Duration(days: 365)),
             lastDate: DateTime.now().add(const Duration(days: 365)),
           );
-          if (d != null) onChanged(DateTime(d.year, d.month, d.day,
-              dateTime.hour, dateTime.minute));
+          if (d != null) onChanged(DateTime(d.year, d.month, d.day, dateTime.hour, dateTime.minute));
         },
       )),
       const SizedBox(width: 12),
@@ -369,12 +445,8 @@ class _DateTimeRow extends StatelessWidget {
         icon: Icons.access_time,
         label: DateFormat('HH:mm').format(dateTime),
         onTap: () async {
-          final t = await showTimePicker(
-            context: context,
-            initialTime: TimeOfDay.fromDateTime(dateTime),
-          );
-          if (t != null) onChanged(DateTime(dateTime.year, dateTime.month,
-              dateTime.day, t.hour, t.minute));
+          final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(dateTime));
+          if (t != null) onChanged(DateTime(dateTime.year, dateTime.month, dateTime.day, t.hour, t.minute));
         },
       )),
     ]);
@@ -386,22 +458,16 @@ class _Picker extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const _Picker({required this.icon, required this.label, required this.onTap});
-
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppStyles.divider),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppStyles.divider)),
       child: Row(children: [
         Icon(icon, size: 18, color: AppStyles.primary),
         const SizedBox(width: 8),
-        Expanded(child: Text(label, style: AppStyles.bodyLarge,
-            overflow: TextOverflow.ellipsis)),
+        Expanded(child: Text(label, style: AppStyles.bodyLarge, overflow: TextOverflow.ellipsis)),
       ]),
     ),
   );

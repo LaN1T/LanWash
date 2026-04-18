@@ -5,6 +5,7 @@ import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/service.dart';
 import '../profile_screen.dart';
 import '../notes_screen.dart';
 
@@ -423,15 +424,18 @@ class _WasherAppointmentCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6, runSpacing: 4,
-                  children: a.additionalServices.map((s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppStyles.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(s, style: const TextStyle(fontSize: 11,
-                        color: AppStyles.primary)),
-                  )).toList(),
+                  children: a.additionalServices.map((id) {
+                    final service = context.watch<AppProvider>().services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(service.name, style: const TextStyle(fontSize: 11,
+                          color: AppStyles.primary)),
+                    );
+                  }).toList(),
                 ),
               ],
             ],
@@ -475,7 +479,7 @@ class _WasherAppointmentCard extends StatelessWidget {
             _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services)} \u20BD'),
             if (a.additionalServices.isNotEmpty)
               _detailRow(Icons.add_circle_outline, 'Доп. услуги',
-                  a.additionalServices.join(', ')),
+                  a.additionalServices.map((id) => services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).name).join(', ')),
             if (a.notes.isNotEmpty)
               _detailRow(Icons.note, 'Заметка', a.notes),
             const SizedBox(height: 12),

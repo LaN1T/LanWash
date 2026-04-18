@@ -1,0 +1,82 @@
+import uuid
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update, delete
+from database import get_db
+from models import ConsumableRequest, ConsumableResponse, ServiceConsumableRequest, ServiceConsumableResponse
+from db_models import Consumable, ServiceConsumable, Service
+
+router = APIRouter(prefix="/api/consumables", tags=["consumables"])
+
+@router.get("/", response_model=list[ConsumableResponse])
+async def get_all_consumables(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Consumable).order_by(Consumable.name.asc()))
+    return result.scalars().all()
+
+@router.get("/by-service/{service_id}", response_model=list[ServiceConsumableResponse])
+async def get_consumables_by_service(service_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ServiceConsumable).where(ServiceConsumable.serviceId == service_id).order_by(ServiceConsumable.consumableId.asc()))
+    return result.scalars().all()
+
+@router.get("/{consumable_id}", response_model=ConsumableResponse)
+async def get_consumable(consumable_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
+    consumable = result.scalar_one_or_none()
+    if not consumable:
+        raise HTTPException(404, "Расходник не найден")
+    return consumable
+
+@router.post("/", response_model=ConsumableResponse)
+async def create_consumable(req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
+    new_consumable = Consumable(id=str(uuid.uuid4()), name=req.name, unit=req.unit)
+    db.add(new_consumable)
+    await db.commit()
+    await db.refresh(new_consumable)
+    return new_consumable
+
+@router.put("/{consumable_id}", response_model=ConsumableResponse)
+async def update_consumable(consumable_id: str, req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(update(Consumable).where(Consumable.id == consumable_id).values(name=req.name, unit=req.unit))
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(404, "Расходник не найден")
+    return await get_consumable(consumable_id, db)
+
+@router.delete("/{consumable_id}")
+async def delete_consumable(consumable_id: str, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(ServiceConsumable).where(ServiceConsumable.consumableId == consumable_id))
+    result = await db.execute(delete(Consumable).where(Consumable.id == consumable_id))
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(404, "Расходник не найден")
+    return {"ok": True}
+
+@router.post("/service-link", response_model=ServiceConsumableResponse)
+async def link_consumable_to_service(req: ServiceConsumableRequest, db: AsyncSession = Depends(get_db)):
+    # Проверка существования service и consumable
+    res_s = await db.execute(select(Service).where(Service.id == req.serviceId))
+    if not res_s.scalar_one_or_none():
+        raise HTTPException(404, f"Услуга с id={req.serviceId} не найдена")
+
+    res_c = await db.execute(select(Consumable).where(Consumable.id == req.consumableId))
+    if not res_c.scalar_one_or_none():
+        raise HTTPException(404, f"Расходник с id={req.consumableId} не найден")
+
+    # В SQLAlchemy upsert для простых таблиц
+    existing = await db.execute(select(ServiceConsumable).where(ServiceConsumable.serviceId == req.serviceId, ServiceConsumable.consumableId == req.consumableId))
+    link = existing.scalar_one_or_none()
+    if link:
+        link.quantity_per_service = req.quantity_per_service
+    else:
+        db.add(ServiceConsumable(serviceId=req.serviceId, consumableId=req.consumableId, quantity_per_service=req.quantity_per_service))
+    
+    await db.commit()
+    return {"serviceId": req.serviceId, "consumableId": req.consumableId, "quantity_per_service": req.quantity_per_service}
+
+@router.delete("/service-link/{service_id}/{consumable_id}")
+async def unlink_consumable_from_service(service_id: str, consumable_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(delete(ServiceConsumable).where(ServiceConsumable.serviceId == service_id, ServiceConsumable.consumableId == consumable_id))
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(404, "Связь расходника и услуги не найдена")
+    return {"ok": True}
