@@ -1,20 +1,34 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, insert, func, distinct
+from sqlalchemy import select, delete, distinct
 from database import get_db
-from models import ServiceRequest, ServiceResponse, ToggleFavoriteRequest, ToggleExtraFavoriteRequest
-from db_models import Service, ServiceFavorite, ExtraFavorite, Promo
+from models import ServiceRequest, ServiceResponse, ToggleFavoriteRequest, ToggleExtraFavoriteRequest, PromoResponse
+from db_models import Service, ServiceFavorite, ExtraFavorite, Promo, PromoIncludedExtra
 from datetime import datetime
-import hashlib
 
 router = APIRouter(prefix="/api/services", tags=["services"])
 
-@router.get("/promos")
+@router.get("/promos", response_model=list[PromoResponse])
 async def get_promos(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Promo))
     promos = result.scalars().all()
-    print(f"--- DEBUG: Returning {len(promos)} promos ---")
-    return promos
+    out = []
+    for p in promos:
+        extras_res = await db.execute(
+            select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == p.id)
+        )
+        out.append({
+            "id": p.id,
+            "washTypeId": p.washTypeId,
+            "name": p.name,
+            "description": p.description,
+            "price": p.price,
+            "discountPercent": p.discountPercent,
+            "duration": p.duration,
+            "weekendOnly": p.weekendOnly,
+            "includedExtraIds": [r[0] for r in extras_res.all()],
+        })
+    return out
 
 @router.get("/", response_model=list[ServiceResponse])
 async def get_all(db: AsyncSession = Depends(get_db)):
@@ -54,7 +68,7 @@ async def update_service(service_id: str, req: ServiceRequest, db: AsyncSession 
     service = result.scalar_one_or_none()
     if not service:
         raise HTTPException(404, "Услуга не найдена")
-    
+
     service.name = req.name
     service.description = req.description
     service.price = req.price
@@ -63,7 +77,7 @@ async def update_service(service_id: str, req: ServiceRequest, db: AsyncSession 
     service.isFavorite = int(req.isFavorite)
     service.isFromApi = int(req.isFromApi)
     service.updatedAt = datetime.now().isoformat()
-    
+
     await db.commit()
     await db.refresh(service)
     return service
@@ -96,22 +110,22 @@ async def toggle_service_favorite(req: ToggleFavoriteRequest, db: AsyncSession =
     await db.commit()
     return {"ok": True, "isFavorite": is_fav}
 
-# ─── Extra Favorites ─────────────────────────────────────────────────────────
+# ─── Extra Favorites (по id доп.услуги) ──────────────────────────────────────
 @router.get("/extra-favorites/{username}")
 async def get_extra_favorites(username: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ExtraFavorite.serviceName).where(ExtraFavorite.username == username.lower()))
+    result = await db.execute(select(ExtraFavorite.serviceId).where(ExtraFavorite.username == username.lower()))
     return result.scalars().all()
 
 @router.post("/extra-favorites/toggle")
 async def toggle_extra_favorite(req: ToggleExtraFavoriteRequest, db: AsyncSession = Depends(get_db)):
     username = req.username.lower()
-    res = await db.execute(select(ExtraFavorite).where(ExtraFavorite.username == username, ExtraFavorite.serviceName == req.serviceName))
+    res = await db.execute(select(ExtraFavorite).where(ExtraFavorite.username == username, ExtraFavorite.serviceId == req.serviceId))
     fav = res.scalar_one_or_none()
     if fav:
-        await db.execute(delete(ExtraFavorite).where(ExtraFavorite.username == username, ExtraFavorite.serviceName == req.serviceName))
+        await db.execute(delete(ExtraFavorite).where(ExtraFavorite.username == username, ExtraFavorite.serviceId == req.serviceId))
         is_fav = False
     else:
-        db.add(ExtraFavorite(username=username, serviceName=req.serviceName))
+        db.add(ExtraFavorite(username=username, serviceId=req.serviceId))
         is_fav = True
     await db.commit()
     return {"ok": True, "isFavorite": is_fav}

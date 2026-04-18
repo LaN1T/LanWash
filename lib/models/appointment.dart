@@ -1,54 +1,6 @@
 import 'dart:convert';
-
-enum WashType { express, basic, complex, premium }
-
-extension WashTypeX on WashType {
-  String get displayName => switch (this) {
-    WashType.basic   => 'Базовая мойка',
-    WashType.complex => 'Комплексная мойка',
-    WashType.premium => 'Премиум мойка',
-    WashType.express => 'Экспресс-мойка',
-  };
-
-  String get description => switch (this) {
-    WashType.basic   => 'Активная пена, тщательная ручная очистка и финальное ополаскивание с сушкой',
-    WashType.complex => 'Базовая мойка + уборка салона, пылесос, чистка стёкол',
-    WashType.premium => 'Комплексная мойка + уход за пластиком, резиной и ароматизация',
-    WashType.express => 'Быстрая наружная мойка без детальной обработки',
-  };
-
-  /// Услуги, автоматически включённые в тип мойки (не влияют на цену)
-  List<String> get includedExtras => switch (this) {
-    WashType.basic   => [],
-    WashType.complex => ['s14'], // ID для 'Пылесосная уборка салона'
-    WashType.premium => ['s13', 's17', 's14'], // ID для 'Чернение шин', 'Ароматизация', 'Пылесосная уборка салона'
-    WashType.express => [],
-  };
-
-  int get durationMinutes => switch (this) {
-    WashType.basic   => 30,
-    WashType.complex => 60,
-    WashType.premium => 90,
-    WashType.express => 15,
-  };
-
-  String get durationLabel {
-    final h = durationMinutes ~/ 60;
-    final m = durationMinutes % 60;
-    if (h == 0) return '$m мин';
-    return m == 0 ? '$h ч' : '$h ч $m мин';
-  }
-
-  int get basePrice => switch (this) {
-    WashType.basic   => 800,
-    WashType.complex => 1500,
-    WashType.premium => 3000,
-    WashType.express => 500,
-  };
-
-  static WashType fromString(String v) =>
-      WashType.values.firstWhere((e) => e.name == v, orElse: () => WashType.basic);
-}
+import 'service.dart';
+import 'wash_type.dart';
 
 class Appointment {
   final String id;
@@ -56,8 +8,8 @@ class Appointment {
   String carModel;
   String carNumber;
   DateTime dateTime;
-  WashType washType;
-  List<String> additionalServices;
+  String washTypeId;                  // FK → wash_types.id
+  List<String> additionalServices;    // id доп.услуг (services.id)
   String status;
   String notes;
   bool isFavorite;
@@ -67,7 +19,7 @@ class Appointment {
   int originalPrice;
   bool isModifiedByAdmin;
   List<String> assignedWashers;
-  String? promoName;
+  String? promoId;                    // FK → promos.id
 
   Appointment({
     required this.id,
@@ -75,7 +27,7 @@ class Appointment {
     required this.carModel,
     required this.carNumber,
     required this.dateTime,
-    required this.washType,
+    required this.washTypeId,
     required this.additionalServices,
     required this.status,
     this.notes = '',
@@ -86,7 +38,7 @@ class Appointment {
     this.originalPrice = 0,
     this.isModifiedByAdmin = false,
     List<String>? assignedWashers,
-    this.promoName,
+    this.promoId,
   }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
@@ -95,39 +47,52 @@ class Appointment {
     'carModel': carModel,
     'carNumber': carNumber,
     'dateTime': dateTime.toIso8601String(),
-    'washType': washType.name,
+    'washTypeId': washTypeId,
     'additionalServices': jsonEncode(additionalServices),
     'status': status,
     'notes': notes,
-    'isFavorite': isFavorite ? 1 : 0,
+    'isFavorite': isFavorite,
     'ownerUsername': ownerUsername,
     'promoPrice': promoPrice,
     'paidPrice': paidPrice,
     'originalPrice': originalPrice,
-    'isModifiedByAdmin': isModifiedByAdmin ? 1 : 0,
-    'assignedWashers': jsonEncode(assignedWashers),
-    'promoName': promoName,
+    'isModifiedByAdmin': isModifiedByAdmin,
+    'assignedWasher': jsonEncode(assignedWashers),
+    'promoId': promoId,
   };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
     id: m['id'],
-    clientName: m['clientName'],
-    carModel: m['carModel'],
-    carNumber: m['carNumber'],
+    clientName: m['clientName'] ?? '',
+    carModel: m['carModel'] ?? '',
+    carNumber: m['carNumber'] ?? '',
     dateTime: DateTime.parse(m['dateTime']),
-    washType: WashTypeX.fromString(m['washType']),
-    additionalServices: List<String>.from(jsonDecode(m['additionalServices'])),
-    status: m['status'],
+    washTypeId: m['washTypeId']?.toString() ?? '',
+    additionalServices: _parseExtras(m['additionalServices']),
+    status: m['status'] ?? 'scheduled',
     notes: m['notes'] ?? '',
-    isFavorite: m['isFavorite'] == 1,
+    isFavorite: m['isFavorite'] == 1 || m['isFavorite'] == true,
     ownerUsername: m['ownerUsername'] ?? '',
     promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
-    assignedWashers: _parseWashers(m['assignedWashers']),
-    promoName: m['promoName'],
+    assignedWashers: _parseWashers(m['assignedWasher']),
+    promoId: m['promoId']?.toString(),
   );
+
+  static List<String> _parseExtras(dynamic v) {
+    if (v == null) return [];
+    if (v is List) return v.map((e) => e.toString()).toList();
+    if (v is String) {
+      if (v.isEmpty) return [];
+      try {
+        final decoded = jsonDecode(v);
+        if (decoded is List) return decoded.map((e) => e.toString()).toList();
+      } catch (_) {}
+    }
+    return [];
+  }
 
   static List<String> _parseWashers(dynamic v) {
     if (v == null || v == '') return [];
@@ -145,18 +110,18 @@ class Appointment {
 
   Appointment copyWith({
     String? clientName, String? carModel, String? carNumber,
-    DateTime? dateTime, WashType? washType, List<String>? additionalServices,
+    DateTime? dateTime, String? washTypeId, List<String>? additionalServices,
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
     bool? isModifiedByAdmin, List<String>? assignedWashers,
-    String? promoName,
+    String? promoId,
   }) => Appointment(
     id: id,
     clientName: clientName ?? this.clientName,
     carModel: carModel ?? this.carModel,
     carNumber: carNumber ?? this.carNumber,
     dateTime: dateTime ?? this.dateTime,
-    washType: washType ?? this.washType,
+    washTypeId: washTypeId ?? this.washTypeId,
     additionalServices: additionalServices ?? this.additionalServices,
     status: status ?? this.status,
     notes: notes ?? this.notes,
@@ -167,28 +132,32 @@ class Appointment {
     originalPrice: originalPrice ?? this.originalPrice,
     isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
     assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
-    promoName: promoName ?? this.promoName,
+    promoId: promoId ?? this.promoId,
   );
 
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
 
-  int calculateTotalPrice(List<dynamic> allServices) {
+  /// Итоговая цена — если сохранена, возвращаем её, иначе считаем
+  /// по типу мойки и списку доп.услуг (исключая включённые автоматически).
+  int calculateTotalPrice(List<Service> allServices, WashType? washType) {
     if (paidPrice > 0) return paidPrice;
-    
-    final included = washType.includedExtras;
-    int p = promoPrice > 0 ? promoPrice : washType.basePrice;
-    
-    for (final e in additionalServices) {
-      if (!included.contains(e)) {
-        // Search by ID first, then by Name
-        final service = allServices.firstWhere(
-            (s) => s.id == e || s.name == e,
-            orElse: () => null);
-        if (service != null) {
-          p += (service.price as num).toInt();
-        }
-      }
+
+    final base = promoPrice > 0 ? promoPrice : (washType?.basePrice ?? 0);
+    final included = washType?.includedExtraIds.toSet() ?? <String>{};
+
+    int p = base;
+    for (final id in additionalServices) {
+      if (included.contains(id)) continue;
+      final svc = _findService(allServices, id);
+      if (svc != null) p += svc.price;
     }
     return p;
+  }
+
+  static Service? _findService(List<Service> services, String id) {
+    for (final s in services) {
+      if (s.id == id) return s;
+    }
+    return null;
   }
 }

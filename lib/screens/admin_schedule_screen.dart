@@ -574,10 +574,10 @@ class _AppointmentCard extends StatelessWidget {
             Row(children: [
               const Icon(Icons.local_car_wash, size: 15, color: AppStyles.textSecondary),
               const SizedBox(width: 4),
-              Text(a.washType.displayName,
+              Text(context.watch<AppProvider>().washTypeName(a.washTypeId),
                   style: const TextStyle(fontSize: 12, color: AppStyles.textSecondary)),
               const Spacer(),
-              Text('${a.calculateTotalPrice(services)} \u20BD',
+              Text('${a.calculateTotalPrice(services.cast(), context.watch<AppProvider>().washTypeById(a.washTypeId))} \u20BD',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
                       color: AppStyles.primary)),
             ]),

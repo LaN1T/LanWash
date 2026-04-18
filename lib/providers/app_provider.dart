@@ -4,6 +4,7 @@ import '../models/service.dart';
 import '../models/promo.dart';
 import '../models/note.dart';
 import '../models/user.dart';
+import '../models/wash_type.dart';
 import '../services/api_service.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -12,6 +13,7 @@ class AppProvider extends ChangeNotifier {
   List<Appointment> _appointmentList = [];
   List<Service>     _serviceList     = [];
   List<Promo>       _promoList       = [];
+  List<WashType>    _washTypeList    = [];
   List<Note>        _noteList        = [];
   Set<String>       _extraFavSet     = {};
   Set<String>       _serviceFavSet   = {};
@@ -24,6 +26,7 @@ class AppProvider extends ChangeNotifier {
   List<Appointment> get appointments   => _appointmentList;
   List<Service>     get services       => _serviceList;
   List<Promo>       get promos         => _promoList;
+  List<WashType>    get washTypes      => _washTypeList;
   List<Note>        get notes          => _noteList;
   Set<String>       get extraFavorites => _extraFavSet;
   bool              get loading        => _loading;
@@ -40,12 +43,39 @@ class AppProvider extends ChangeNotifier {
 
   bool isServiceFavorite(String id) => _serviceFavSet.contains(id);
 
+  /// Поиск типа мойки по id (w1..w4)
+  WashType? washTypeById(String id) {
+    for (final w in _washTypeList) {
+      if (w.id == id) return w;
+    }
+    return null;
+  }
+
+  /// Поиск типа мойки по code (express/basic/complex/premium)
+  WashType? washTypeByCode(String code) {
+    for (final w in _washTypeList) {
+      if (w.code == code) return w;
+    }
+    return null;
+  }
+
+  /// Имя типа мойки для отображения (fallback — id)
+  String washTypeName(String id) => washTypeById(id)?.name ?? id;
+
+  Promo? promoById(String id) {
+    for (final p in _promoList) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
   Future<void> init() async {
     _loading = true;
     notifyListeners();
 
-    _serviceList = await _api.getServices();
-    _promoList   = await _api.getPromos();
+    _serviceList  = await _api.getServices();
+    _promoList    = await _api.getPromos();
+    _washTypeList = await _api.getWashTypes();
     _loading = false;
     notifyListeners();
   }
@@ -84,8 +114,9 @@ class AppProvider extends ChangeNotifier {
       _appointmentList = await _api.getAppointments();
     }
     notifyListeners();
+    final wt = washTypeById(a.washTypeId);
     await _api.createLog(_currentUser, 'Создание записи',
-        '${a.washType.displayName} · ${a.carModel} ${a.carNumber} · ${a.calculateTotalPrice(services)}₽');
+        '${wt?.name ?? a.washTypeId} · ${a.carModel} ${a.carNumber} · ${a.calculateTotalPrice(services, wt)}₽');
   }
 
   Future<void> updateAppointment(Appointment a) async {
@@ -93,9 +124,10 @@ class AppProvider extends ChangeNotifier {
     final i = _appointmentList.indexWhere((x) => x.id == a.id);
     if (i != -1) _appointmentList[i] = a;
     notifyListeners();
+    final wt = washTypeById(a.washTypeId);
     await _api.createLog(_currentUser.isNotEmpty ? _currentUser : 'admin',
         'Редактирование записи',
-        '${a.washType.displayName} · ${a.carModel} · статус: ${a.status}');
+        '${wt?.name ?? a.washTypeId} · ${a.carModel} · статус: ${a.status}');
   }
 
   Future<void> deleteAppointment(String id) async {
@@ -104,9 +136,10 @@ class AppProvider extends ChangeNotifier {
     await _api.deleteAppointment(id);
     _appointmentList.removeWhere((a) => a.id == id);
     notifyListeners();
+    final wt = washTypeById(appt.washTypeId);
     await _api.createLog(_currentUser.isNotEmpty ? _currentUser : 'admin',
         'Удаление записи',
-        '${appt.washType.displayName} · ${appt.carModel} ${appt.carNumber}');
+        '${wt?.name ?? appt.washTypeId} · ${appt.carModel} ${appt.carNumber}');
   }
 
   Future<void> clearDeletedByAdminFlag() async {
@@ -176,24 +209,54 @@ class AppProvider extends ChangeNotifier {
 
   Future<List<String>> getServiceCategories() => _api.getServiceCategories();
 
-  // ─── Избранные доп. услуги ─────────────────────────────────────────────
-  Future<void> toggleExtraFavorite(String serviceName) async {
+  // ─── Избранные доп. услуги (по id) ────────────────────────────────────────
+  Future<void> toggleExtraFavorite(String serviceId) async {
     if (_currentUser.isEmpty) return;
-    final wasFav = _extraFavSet.contains(serviceName);
-    await _api.toggleExtraFavorite(_currentUser, serviceName);
+    final wasFav = _extraFavSet.contains(serviceId);
+    await _api.toggleExtraFavorite(_currentUser, serviceId);
     if (wasFav) {
-      _extraFavSet.remove(serviceName);
+      _extraFavSet.remove(serviceId);
     } else {
-      _extraFavSet.add(serviceName);
+      _extraFavSet.add(serviceId);
     }
     notifyListeners();
+    final svc = _serviceList.firstWhere((s) => s.id == serviceId,
+        orElse: () => Service(id: serviceId, name: serviceId, description: '',
+            price: 0, durationMinutes: 0, category: ''));
     await _api.createLog(_currentUser,
         wasFav ? 'Доп. услуга убрана из избранного' : 'Доп. услуга добавлена в избранное',
-        serviceName);
+        svc.name);
   }
 
-  bool isExtraFavorite(String serviceName) =>
-      _extraFavSet.contains(serviceName);
+  bool isExtraFavorite(String serviceId) =>
+      _extraFavSet.contains(serviceId);
+
+  // ─── Wash Types ──────────────────────────────────────────────────────────
+  Future<void> reloadWashTypes() async {
+    _washTypeList = await _api.getWashTypes();
+    notifyListeners();
+  }
+
+  Future<bool> updateWashType(WashType wt) async {
+    final updated = await _api.updateWashType(wt);
+    if (updated != null) {
+      final i = _washTypeList.indexWhere((x) => x.id == updated.id);
+      if (i != -1) {
+        _washTypeList[i] = updated;
+      } else {
+        _washTypeList.add(updated);
+      }
+      _washTypeList.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      notifyListeners();
+      await _api.createLog(
+        _currentUser.isNotEmpty ? _currentUser : 'admin',
+        'Изменение типа мойки',
+        '${updated.name} · ${updated.basePrice}₽ · ${updated.durationMinutes} мин',
+      );
+      return true;
+    }
+    return false;
+  }
 
   // ─── Мойщики и назначения ─────────────────────────────────────────────────
   Future<List<User>> getWashers() => _api.getWashers();

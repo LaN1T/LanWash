@@ -9,6 +9,7 @@ import '../models/note.dart';
 import '../models/user.dart';
 import '../models/report_entry.dart';
 import '../models/promo.dart';
+import '../models/wash_type.dart';
 
 class ApiService {
   static String get _baseUrl {
@@ -359,12 +360,12 @@ class ApiService {
     return {};
   }
 
-  Future<bool> toggleExtraFavorite(String username, String serviceName) async {
+  Future<bool> toggleExtraFavorite(String username, String serviceId) async {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/services/extra-favorites/toggle'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'serviceName': serviceName}),
+        body: jsonEncode({'username': username, 'serviceId': serviceId}),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -383,6 +384,33 @@ class ApiService {
       }
     } catch (_) {}
     return [];
+  }
+
+  // ─── Wash Types ────────────────────────────────────────────────────────────
+  Future<List<WashType>> getWashTypes() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/wash-types/'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => WashType.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  Future<WashType?> updateWashType(WashType wt) async {
+    try {
+      final resp = await http.put(
+        Uri.parse('$_baseUrl/wash-types/${wt.id}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(wt.toMap()),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return WashType.fromMap(jsonDecode(resp.body));
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ─── Logs ─────────────────────────────────────────────────────────────────

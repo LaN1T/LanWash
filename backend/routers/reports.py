@@ -2,13 +2,19 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, cast, String
 from database import get_db
-from db_models import Appointment, Consumable, ConsumableUsageLog, Service, ServiceConsumable, Promo
+from db_models import (
+    Appointment, Consumable, ConsumableUsageLog, Service, ServiceConsumable,
+    Promo, WashType, WashTypeConsumable,
+)
 from datetime import datetime
 import json
 import random
 from collections import defaultdict
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+WASH_CATEGORY = "Мойка кузова"
+
 
 class CarPriceService:
     @staticmethod
@@ -29,13 +35,15 @@ class CarPriceService:
                 return price + random.randint(-100000, 100000)
         return random.randint(1500000, 3500000)
 
+
 @router.get("/monthly-check-vs-price/")
 async def monthly_report(date: str = None, db: AsyncSession = Depends(get_db)):
-    if not date: date = datetime.now().strftime("%Y-%m")
+    if not date:
+        date = datetime.now().strftime("%Y-%m")
     result = await db.execute(
         select(
-            Appointment.carModel, 
-            func.avg(Appointment.paidPrice).label("avgCheck"), 
+            Appointment.carModel,
+            func.avg(Appointment.paidPrice).label("avgCheck"),
             func.count(Appointment.id).label("visitCount")
         )
         .where(and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{date}%")))
@@ -55,111 +63,143 @@ async def monthly_report(date: str = None, db: AsyncSession = Depends(get_db)):
         })
     return {"date": date, "data": report}
 
+
 @router.get("/popular-additional-services/")
 async def get_popular_additional_services(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
-    if not date: date = datetime.now().strftime("%Y-%m")
-    
-    # 1. Читаем всё из базы для маппинга
+    if not date:
+        date = datetime.now().strftime("%Y-%m")
+
+    # Справочники услуг
     all_services = (await db.execute(select(Service.id, Service.name, Service.category))).all()
     id_to_name = {s.id: s.name for s in all_services}
     id_to_cat = {s.id: s.category for s in all_services}
-    name_to_id = {s.name.strip().lower(): s.id for s in all_services}
 
-    all_promos = (await db.execute(select(Promo))).scalars().all()
-    promo_names = {p.name for p in all_promos}
+    # Типы мойки считаем в категории «Мойка кузова»
+    all_wash_types = (await db.execute(select(WashType.id, WashType.name))).all()
+    wt_id_to_name = {w.id: w.name for w in all_wash_types}
 
-    query = select(Appointment.additionalServices, Appointment.promoName).where(
+    # Промо (если фильтр "Акции")
+    all_promos = (await db.execute(select(Promo.id, Promo.name))).all()
+    promo_id_to_name = {p.id: p.name for p in all_promos}
+
+    query = select(
+        Appointment.additionalServices,
+        Appointment.promoId,
+        Appointment.washTypeId,
+    ).where(
         and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{date}%"))
     )
     rows = (await db.execute(query)).all()
-    service_counts = defaultdict(int)
-    
-    for add_services_json, promo_name in rows:
-        is_promo = promo_name is not None and promo_name in promo_names
-        
+
+    service_counts: dict[str, int] = defaultdict(int)
+
+    for add_services_json, promo_id, wash_type_id in rows:
+        is_promo = promo_id is not None
+
+        # Тип мойки учитывается как услуга категории «Мойка кузова»
+        if wash_type_id in wt_id_to_name:
+            wt_name = wt_id_to_name[wash_type_id]
+            if category is None or category == 'Все':
+                service_counts[wt_name] += 1
+            elif category == 'Акции' and is_promo:
+                service_counts[wt_name] += 1
+            elif category == WASH_CATEGORY:
+                service_counts[wt_name] += 1
+
         try:
-            services = json.loads(add_services_json)
-            for s_item in services:
-                # Определяем имя и категорию, учитывая что в базе может быть и ID и Имя
-                final_name = s_item
-                final_cat = 'Прочее'
-                
-                if s_item in id_to_name:
-                    final_name = id_to_name[s_item]
-                    final_cat = id_to_cat[s_item]
-                elif s_item.strip().lower() in name_to_id:
-                    sid = name_to_id[s_item.strip().lower()]
-                    final_name = id_to_name[sid]
-                    final_cat = id_to_cat[sid]
-                
-                # Фильтр: или Все, или родная категория, или Акции
-                if category is None or category == 'Все':
-                    service_counts[final_name] += 1
-                elif category == 'Акции' and is_promo:
-                    service_counts[final_name] += 1
-                elif final_cat == category:
-                    service_counts[final_name] += 1
-        except: pass
+            services = json.loads(add_services_json or "[]")
+        except Exception:
+            services = []
 
-        # Факт самой акции учитываем только если фильтр "Все" или "Акции"
+        for s_id in services:
+            if s_id not in id_to_name:
+                continue
+            final_name = id_to_name[s_id]
+            final_cat = id_to_cat[s_id]
+
+            if category is None or category == 'Все':
+                service_counts[final_name] += 1
+            elif category == 'Акции' and is_promo:
+                service_counts[final_name] += 1
+            elif final_cat == category:
+                service_counts[final_name] += 1
+
+        # Сам факт акции
         if is_promo and (category is None or category == 'Все' or category == 'Акции'):
-            service_counts[promo_name] += 1
+            promo_name = promo_id_to_name.get(promo_id)
+            if promo_name:
+                service_counts[promo_name] += 1
 
-    report_data = [{"serviceName": name, "count": count} for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)]
+    report_data = [
+        {"serviceName": name, "count": count}
+        for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)
+    ]
     return {"date": date, "data": report_data}
+
 
 @router.get("/consumables-usage/")
 async def get_consumables_usage(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
-    if not date: date = datetime.now().strftime("%Y-%m")
-    
-    # 1. Получаем услуги и их категории напрямую из БД
-    all_services = (await db.execute(select(Service.id, Service.name, Service.category))).all()
+    if not date:
+        date = datetime.now().strftime("%Y-%m")
+
+    # Категории для услуг
+    all_services = (await db.execute(select(Service.id, Service.category))).all()
     id_to_cat = {s.id: s.category for s in all_services}
-    name_to_id = {s.name.strip().lower(): s.id for s in all_services}
-    
-    # 2. Получаем все связи расходников с услугами
-    all_links = (await db.execute(select(ServiceConsumable.serviceId, ServiceConsumable.consumableId))).all()
-    
-    # Получаем услуги, участвующие в акциях
-    promo_service_ids = (await db.execute(select(Promo.serviceId))).scalars().all()
-    
-    # Словарь: consumable_id -> set of categories
-    cons_to_cats = defaultdict(set)
-    for s_id, c_id in all_links:
+
+    # Связка consumable -> множество категорий (по использующим его услугам)
+    cons_to_cats: dict[str, set[str]] = defaultdict(set)
+
+    sc_links = (await db.execute(select(ServiceConsumable.serviceId, ServiceConsumable.consumableId))).all()
+    for s_id, c_id in sc_links:
         cat = id_to_cat.get(s_id, 'Прочее')
         cons_to_cats[c_id].add(cat)
-        if s_id in promo_service_ids:
-            cons_to_cats[c_id].add('Акции')
 
-    # 3. Получаем логи использования
-    query = select(Consumable.id, Consumable.name, Consumable.unit, ConsumableUsageLog.quantityUsed, ConsumableUsageLog.appointmentId) \
-            .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id) \
-            .where(cast(ConsumableUsageLog.timestamp, String).like(f"{date}%"))
+    wt_links = (await db.execute(select(WashTypeConsumable.consumableId))).all()
+    for (c_id,) in wt_links:
+        cons_to_cats[c_id].add(WASH_CATEGORY)
+
+    # Логи использования за месяц
+    query = (
+        select(
+            Consumable.id,
+            Consumable.name,
+            Consumable.unit,
+            ConsumableUsageLog.quantityUsed,
+            ConsumableUsageLog.appointmentId,
+        )
+        .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
+        .where(cast(ConsumableUsageLog.timestamp, String).like(f"{date}%"))
+    )
     logs = (await db.execute(query)).all()
-    
-    appt_ids = list(set(r[4] for r in logs))
-    apps = (await db.execute(select(Appointment.id, Appointment.promoName).where(Appointment.id.in_(appt_ids)))).all()
-    app_is_promo = {a.id: (a.promoName is not None) for a in apps}
-    
-    sums = defaultdict(float)
-    units = {}
-    
-    # 4. Фильтруем и суммируем
+
+    appt_ids = list({r[4] for r in logs})
+    app_is_promo: dict[str, bool] = {}
+    if appt_ids:
+        apps = (await db.execute(
+            select(Appointment.id, Appointment.promoId).where(Appointment.id.in_(appt_ids))
+        )).all()
+        app_is_promo = {a.id: (a.promoId is not None) for a in apps}
+
+    sums: dict[str, float] = defaultdict(float)
+    units: dict[str, str] = {}
+
     for c_id, name, unit, qty, app_id in logs:
         cats = cons_to_cats.get(c_id, set())
         is_promo = app_is_promo.get(app_id, False)
-        
-        matches_category = False
+
         if category is None or category == 'Все':
-            matches_category = True
+            matches = True
         elif category == 'Акции':
-            matches_category = is_promo
+            matches = is_promo
         else:
-            matches_category = category in cats
-            
-        if matches_category:
+            matches = category in cats
+
+        if matches:
             sums[name] += float(qty)
             units[name] = unit
-            
-    data = [{"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)} for n, v in sums.items()]
+
+    data = [
+        {"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)}
+        for n, v in sums.items()
+    ]
     return {"date": date, "data": sorted(data, key=lambda x: x['totalUsed'], reverse=True)}

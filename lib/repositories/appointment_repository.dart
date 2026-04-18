@@ -3,6 +3,7 @@ import '../models/appointment.dart';
 import 'package:sqflite/sqflite.dart';
 import '../services/database_service.dart';
 
+// Legacy repository (unused — приложение работает через REST). Оставлен для совместимости.
 class AppointmentRepository {
   final _db = DatabaseService.instance;
 
@@ -13,7 +14,7 @@ class AppointmentRepository {
     'carModel': a.carModel,
     'carNumber': a.carNumber,
     'dateTime': a.dateTime.toIso8601String(),
-    'washType': a.washType.name,
+    'washTypeId': a.washTypeId,
     'additionalServices': jsonEncode(a.additionalServices),
     'status': a.status,
     'notes': a.notes,
@@ -29,7 +30,7 @@ class AppointmentRepository {
     carModel: r['carModel'],
     carNumber: r['carNumber'],
     dateTime: DateTime.parse(r['dateTime']),
-    washType: WashTypeX.fromString(r['washType']),
+    washTypeId: r['washTypeId']?.toString() ?? '',
     additionalServices: List<String>.from(
         jsonDecode(r['additionalServices'] ?? '[]')),
     status: r['status'],

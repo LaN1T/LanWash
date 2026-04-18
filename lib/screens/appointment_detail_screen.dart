@@ -63,8 +63,8 @@ class AppointmentDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           _Section(title: 'Тип мойки', children: [
-            _Row(Icons.local_car_wash, 'Пакет', a.washType.displayName),
-            _Row(Icons.payments, 'Итого', '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services)} ₽'),
+            _Row(Icons.local_car_wash, 'Пакет', provider.washTypeName(a.washTypeId)),
+            _Row(Icons.payments, 'Итого', '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
             if (a.priceChanged) _PriceChangedRow(
               newPrice: a.paidPrice, oldPrice: a.originalPrice),
           ]),

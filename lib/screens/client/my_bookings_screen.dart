@@ -7,22 +7,6 @@ import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 
-// Хелпер — не зависит от extension, работает надёжно на web
-String _washName(WashType t) => switch (t) {
-  WashType.express => 'Экспресс-мойка',
-  WashType.basic   => 'Базовая мойка',
-  WashType.complex => 'Комплексная мойка',
-  WashType.premium => 'Премиум мойка',
-};
-
-int _washPrice(WashType t) => switch (t) {
-  WashType.express => 500,
-  WashType.basic   => 800,
-  WashType.complex => 1500,
-  WashType.premium => 3000,
-};
-
-// Цены доп. услуг (дублируем чтобы не зависеть от booking_wizard)
 
 
 class MyBookingsScreen extends StatefulWidget {
@@ -157,7 +141,7 @@ class _BookingsList extends StatelessWidget {
                 const SizedBox(width: 14),
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_washName(a.washType),
+                  Text(ctx.watch<AppProvider>().washTypeName(a.washTypeId),
                       style: const TextStyle(color: AppStyles.textPrimary,
                           fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 3),
@@ -211,7 +195,7 @@ class _BookingsList extends StatelessWidget {
                           decorationColor: AppStyles.textSecondary)),
                   const SizedBox(width: 6),
                 ],
-                Text('${a.calculateTotalPrice(services)} ₽',
+                Text('${a.calculateTotalPrice(services.cast<Service>(), context.watch<AppProvider>().washTypeById(a.washTypeId))} ₽',
                     style: const TextStyle(color: AppStyles.primary,
                         fontSize: 14, fontWeight: FontWeight.bold)),
               ]),

@@ -1,18 +1,21 @@
 import json
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, insert
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy import select, update, delete, func, or_
 from database import get_db
 from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
-from db_models import Appointment, DeletedNotification, Service, ServiceConsumable, ConsumableUsageLog
+from db_models import (
+    Appointment, DeletedNotification, Service, ServiceConsumable,
+    ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
+    WashTypeIncludedExtra,
+)
 from datetime import datetime
+from collections import defaultdict
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
 async def get_all(db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import or_
     result = await db.execute(
         select(Appointment)
         .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
@@ -27,10 +30,11 @@ async def get_by_owner(username: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
 async def get_by_washer(username: str, db: AsyncSession = Depends(get_db)):
-    # PostgreSQL supports JSONB or string operations. 
-    # For simple string array in JSON, we use LIKE for compatibility.
+    # JSON-массив в строке. Используем LIKE по точному токену "username"
     result = await db.execute(
-        select(Appointment).where(Appointment.assignedWasher.like(f'%"{username.lower()}"%')).order_by(Appointment.dateTime.asc())
+        select(Appointment)
+        .where(Appointment.assignedWasher.like(f'%"{username.lower()}"%'))
+        .order_by(Appointment.dateTime.asc())
     )
     return result.scalars().all()
 
@@ -42,7 +46,7 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
         carModel=req.carModel,
         carNumber=req.carNumber,
         dateTime=req.dateTime,
-        washType=req.washType,
+        washTypeId=req.washTypeId,
         additionalServices=req.additionalServices,
         status=req.status,
         notes=req.notes,
@@ -53,82 +57,69 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
         isModifiedByAdmin=int(req.isModifiedByAdmin),
         originalPrice=req.originalPrice,
         assignedWasher=req.assignedWasher,
-        promoName=req.promoName
+        promoId=req.promoId,
     )
     db.add(appt)
     await db.commit()
 
     if req.status == "completed":
-        await _track_consumables_usage(db, req.id, req.washType, req.additionalServices)
-        await db.commit() # Commit again after tracking consumables
+        await _track_consumables_usage(db, req.id, req.washTypeId, req.additionalServices, req.promoId)
+        await db.commit()
 
     await db.refresh(appt)
     return appt
 
-async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: str, additional_services):
-    import json
+
+async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services, promo_id: str | None):
+    """Списание расходников: по типу мойки + по каждой доп.услуге (по id)."""
     if isinstance(additional_services, str):
         try:
             additional_services = json.loads(additional_services)
-        except:
+        except Exception:
             additional_services = []
-    
-    print(f"DEBUG: Tracking usage for {appt_id}, wash_type: {wash_type}, services: {additional_services}")
-    all_service_ids = set()
-    
-    # Map wash_type to ID
-    wash_map = {'express': 's3', 'basic': 's1', 'complex': 's2', 'premium': 's21'}
-    if wash_type.strip().lower() in wash_map:
-        all_service_ids.add(wash_map[wash_type.strip().lower()])
 
-    # Получаем мапу имя -> id для старых записей
-    from db_models import Service
-    svc_res = await db.execute(select(Service.id, Service.name))
-    svc_rows = svc_res.all()
-    name_to_id = {s.name.strip().lower(): s.id for s in svc_rows}
-    id_to_id = {s.id: s.id for s in svc_rows}
+    extra_ids = set(additional_services or [])
 
-    # Добавляем все ID услуг из списка
-    for s_item in additional_services:
-        # Проверяем, это ID или имя
-        if s_item in id_to_id:
-            all_service_ids.add(s_item)
-        elif s_item.strip().lower() in name_to_id:
-            all_service_ids.add(name_to_id[s_item.strip().lower()])
-        else:
-            all_service_ids.add(s_item) # Оставляем как есть, вдруг это новый ID
+    # Доп. услуги акции тоже учитываются
+    if promo_id:
+        res_promo_extras = await db.execute(
+            select(PromoIncludedExtra.extraServiceId)
+            .where(PromoIncludedExtra.promoId == promo_id)
+        )
+        for (eid,) in res_promo_extras.all():
+            extra_ids.add(eid)
 
-    print(f"DEBUG: Final service IDs to track: {all_service_ids}")
+    # Включённые в тип мойки доп.услуги тоже учитываются
+    res_wt_extras = await db.execute(
+        select(WashTypeIncludedExtra.extraServiceId)
+        .where(WashTypeIncludedExtra.washTypeId == wash_type_id)
+    )
+    for (eid,) in res_wt_extras.all():
+        extra_ids.add(eid)
 
-    # Find promo via Appointment.promoName
-    result_appt = await db.execute(select(Appointment.promoName).where(Appointment.id == appt_id))
-    promo_name = result_appt.scalar_one_or_none()
-    print(f"DEBUG: Promo name found: {promo_name}")
-    
-    if promo_name:
-        from db_models import Promo
-        res_promo = await db.execute(select(Promo).where(Promo.name == promo_name))
-        promo = res_promo.scalar_one_or_none()
-        if promo:
-            all_service_ids.add(promo.serviceId)
+    consumable_totals: dict[str, float] = defaultdict(float)
 
-    # Accumulate consumable usage
-    from collections import defaultdict
-    consumable_totals = defaultdict(float)
-    
-    for s_id in all_service_ids:
-        # Важно: используем фильтр по атрибуту serviceId объекта ServiceConsumable
-        result = await db.execute(select(ServiceConsumable).where(ServiceConsumable.serviceId == s_id))
-        consumables = result.scalars().all()
-        print(f"DEBUG: Found {len(consumables)} consumables for service {s_id}")
-        for c in consumables:
-            if c.consumableId == "c_vac":
-                consumable_totals["c_vac"] = 1.0
+    # Расходники типа мойки
+    res_wt_cons = await db.execute(
+        select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service)
+        .where(WashTypeConsumable.washTypeId == wash_type_id)
+    )
+    for c_id, qty in res_wt_cons.all():
+        consumable_totals[c_id] += float(qty)
+
+    # Расходники доп.услуг
+    if extra_ids:
+        res_sc = await db.execute(
+            select(ServiceConsumable.consumableId, ServiceConsumable.quantity_per_service, ServiceConsumable.serviceId)
+            .where(ServiceConsumable.serviceId.in_(extra_ids))
+        )
+        for c_id, qty, _s_id in res_sc.all():
+            if c_id == "c_vac":
+                # Пылесос — один ресурс за запись
+                consumable_totals[c_id] = max(consumable_totals[c_id], 1.0)
             else:
-                consumable_totals[c.consumableId] += c.quantity_per_service
-    print(f"DEBUG: Consumable totals: {dict(consumable_totals)}")
+                consumable_totals[c_id] += float(qty)
 
-    # Write logs
     for c_id, qty in consumable_totals.items():
         db.add(ConsumableUsageLog(
             appointmentId=appt_id,
@@ -137,20 +128,19 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type: st
             timestamp=datetime.now().isoformat()
         ))
 
+
 @router.put("/{appt_id}", response_model=AppointmentResponse)
 async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
-    
-    old_status = appt.status
-    
+
     appt.clientName = req.clientName
     appt.carModel = req.carModel
     appt.carNumber = req.carNumber
     appt.dateTime = req.dateTime
-    appt.washType = req.washType
+    appt.washTypeId = req.washTypeId
     appt.additionalServices = req.additionalServices
     appt.status = req.status
     appt.notes = req.notes
@@ -161,14 +151,16 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
     appt.originalPrice = req.originalPrice
     appt.assignedWasher = req.assignedWasher
-    appt.promoName = req.promoName
-    
+    appt.promoId = req.promoId
+
     await db.commit()
-    
+
     if req.status == "completed":
-        await _track_consumables_usage(db, appt_id, req.washType, req.additionalServices)
+        # Удаляем предыдущие записи расхода перед пересчётом
+        await db.execute(delete(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
+        await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
         await db.commit()
-        
+
     await db.refresh(appt)
     return appt
 
@@ -176,10 +168,10 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
 async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
     owner = result.scalar_one_or_none()
-    
+
     if owner:
         db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
-        
+
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()
     return {"ok": True}
@@ -199,7 +191,7 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
 
     try:
         current = json.loads(appt.assignedWasher) if appt.assignedWasher else []
-    except:
+    except Exception:
         current = []
 
     username = req.washerUsername.lower()
@@ -239,7 +231,7 @@ async def stats(db: AsyncSession = Depends(get_db)):
     res_sched = await db.execute(select(func.count(Appointment.id)).where(Appointment.status == 'scheduled'))
     res_comp = await db.execute(select(func.count(Appointment.id)).where(Appointment.status == 'completed'))
     return {
-        "total": res_total.scalar(), 
-        "scheduled": res_sched.scalar(), 
+        "total": res_total.scalar(),
+        "scheduled": res_sched.scalar(),
         "completed": res_comp.scalar()
     }
