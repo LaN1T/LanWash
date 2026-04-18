@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
-from routers import auth, appointments, services, logs, notes, reports, consumables
+from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,6 +41,7 @@ app.include_router(logs.router)
 app.include_router(notes.router)
 app.include_router(reports.router)
 app.include_router(consumables.router)
+app.include_router(wash_types.router)
 
 @app.get("/debug/routes")
 async def get_routes():

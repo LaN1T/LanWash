@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -37,6 +37,29 @@ class UpdateProfileRequest(BaseModel):
     newPassword: Optional[str] = None
 
 
+# ─── Wash Types ──────────────────────────────────────────────────────────────
+class WashTypeRequest(BaseModel):
+    id: str
+    code: str
+    name: str
+    description: str = ""
+    basePrice: int = 0
+    durationMinutes: int = 30
+    sortOrder: int = 0
+    includedExtraIds: List[str] = []
+
+
+class WashTypeResponse(BaseModel):
+    id: str
+    code: str
+    name: str
+    description: str
+    basePrice: int
+    durationMinutes: int
+    sortOrder: int
+    includedExtraIds: List[str] = []
+
+
 # ─── Appointments ────────────────────────────────────────────────────────────
 class AppointmentRequest(BaseModel):
     id: str
@@ -44,7 +67,7 @@ class AppointmentRequest(BaseModel):
     carModel: str
     carNumber: str
     dateTime: str
-    washType: str
+    washTypeId: str
     additionalServices: str = "[]"
     status: str = "scheduled"
     notes: str = ""
@@ -55,7 +78,7 @@ class AppointmentRequest(BaseModel):
     isModifiedByAdmin: bool = False
     originalPrice: int = 0
     assignedWasher: str = "[]"
-    promoName: Optional[str] = None
+    promoId: Optional[str] = None
 
 
 class AppointmentResponse(BaseModel):
@@ -65,7 +88,7 @@ class AppointmentResponse(BaseModel):
     carModel: str
     carNumber: str
     dateTime: str
-    washType: str
+    washTypeId: str
     additionalServices: str
     status: str
     notes: str
@@ -76,7 +99,7 @@ class AppointmentResponse(BaseModel):
     isModifiedByAdmin: bool = False
     originalPrice: int = 0
     assignedWasher: str = "[]"
-    promoName: Optional[str] = None
+    promoId: Optional[str] = None
 
 
 class AssignWasherRequest(BaseModel):
@@ -104,6 +127,19 @@ class ServiceResponse(BaseModel):
     category: str
     isFavorite: bool
     isFromApi: bool
+
+
+# ─── Promos ──────────────────────────────────────────────────────────────────
+class PromoResponse(BaseModel):
+    id: str
+    washTypeId: str
+    name: str
+    description: str
+    price: int
+    discountPercent: int
+    duration: int
+    weekendOnly: bool
+    includedExtraIds: List[str] = []
 
 
 # ─── Logs ────────────────────────────────────────────────────────────────────
@@ -167,4 +203,4 @@ class ToggleFavoriteRequest(BaseModel):
 
 class ToggleExtraFavoriteRequest(BaseModel):
     username: str
-    serviceName: str
+    serviceId: str
