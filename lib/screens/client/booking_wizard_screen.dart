@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
-import '../../models/service.dart';
 import '../../models/promo.dart';
+import '../../models/service.dart';
+import '../../models/wash_type.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../data/initial_data.dart';
 import 'client_shell.dart';
 
 // ─── Транслитерация ───────────────────────────────────────────────────────────
@@ -56,7 +56,6 @@ void _applyTranslitEn(TextEditingController ctrl, String v) {
   }
 }
 
-// ─── Строгий форматтер А000АА000 ─────────────────────────────────────────────
 const _ruPlateLetters = 'АВЕКМНОРСТУХ';
 
 class _PlateInputFormatter extends TextInputFormatter {
@@ -74,12 +73,9 @@ class _PlateInputFormatter extends TextInputFormatter {
   String _toPlateChar(String c) {
     final upperC = c.toUpperCase();
     if (_ruPlateLetters.contains(upperC)) return upperC;
-    
-    // Если ввели английский аналог или кириллицу через другую раскладку
     final ruC = _enToRuPlate[upperC] ?? _ruLayoutToPlate[upperC];
     if (ruC != null && _ruPlateLetters.contains(ruC)) return ruC;
-    
-    return ''; // Игнорируем недопустимые символы
+    return '';
   }
 
   @override
@@ -125,12 +121,12 @@ class _BWState extends State<BookingWizardScreen> {
   late DateTime _selectedDate;
   int _selectedSlot = 2;
 
-  late WashType _washType;
+  String _washTypeId = '';
   late Set<String> _extras;
   late TextEditingController _nameCtrl;
   late TextEditingController _carCtrl;
   late TextEditingController _numCtrl;
-  final _formKey  = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
 
   static const _slots = [
     '09:00','10:00','11:00','12:00','13:00',
@@ -138,12 +134,9 @@ class _BWState extends State<BookingWizardScreen> {
   ];
 
   Promo? get _promo => widget.initialPromo;
-  bool    get _isPromo => _promo != null;
+  bool   get _isPromo => _promo != null;
 
-  bool get _weekendOnly {
-    if (!_isPromo) return false;
-    return getPromoConfig(_promo!.name)?.weekendOnly ?? false;
-  }
+  bool get _weekendOnly => _promo?.weekendOnly ?? false;
 
   DateTime _nextValidDate() {
     DateTime d = DateTime.now().add(const Duration(days: 1));
@@ -162,23 +155,33 @@ class _BWState extends State<BookingWizardScreen> {
   @override
   void initState() {
     super.initState();
-    // Предзаполнить из профиля
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
     _carCtrl  = TextEditingController(text: user?.carModel    ?? '');
     _numCtrl  = TextEditingController(text: user?.carNumber   ?? '');
-
-    if (_isPromo) {
-      final cfg = getPromoConfig(_promo!.name);
-      _washType = WashTypeX.fromString(cfg?.washTypeName ?? 'basic');
-      _extras   = Set.from(cfg?.extras ?? []);
-    } else {
-      _washType = WashType.basic;
-      _extras   = {};
-    }
-    // Добавить автовключаемые услуги для начального типа
-    _extras.addAll(_washType.includedExtras);
+    _extras = {};
     _selectedDate = _nextValidDate();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initFromProvider());
+  }
+
+  void _initFromProvider() {
+    final provider = context.read<AppProvider>();
+    if (_isPromo) {
+      _washTypeId = _promo!.washTypeId;
+      _extras = Set.from(_promo!.includedExtraIds);
+    } else {
+      final basic = provider.washTypeByCode('basic')
+          ?? (provider.washTypes.isNotEmpty ? provider.washTypes.first : null);
+      _washTypeId = basic?.id ?? '';
+    }
+    _addIncludedExtras();
+    if (mounted) setState(() {});
+  }
+
+  void _addIncludedExtras() {
+    final wt = context.read<AppProvider>().washTypeById(_washTypeId);
+    if (wt != null) _extras.addAll(wt.includedExtraIds);
   }
 
   @override
@@ -195,42 +198,57 @@ class _BWState extends State<BookingWizardScreen> {
         int.parse(p[0]), int.parse(p[1]));
   }
 
-  /// Все услуги, включённые «бесплатно» (тип мойки + extras акции)
-  Set<String> get _lockedExtras {
-    final locked = <String>{..._washType.includedExtras};
-    if (_isPromo) {
-      final cfg = getPromoConfig(_promo!.name);
-      if (cfg != null) locked.addAll(cfg.extras);
-    }
+  WashType? get _washType =>
+      context.read<AppProvider>().washTypeById(_washTypeId);
+
+  Set<String> _lockedExtras() {
+    final locked = <String>{...?_washType?.includedExtraIds};
+    if (_isPromo) locked.addAll(_promo!.includedExtraIds);
     return locked;
   }
 
-  // Полная цена без акции: базовая мойка + все доп. услуги
-  // (исключаем только авто-включённые в тип мойки, но НЕ исключаем прomo-locked)
+  int _extraPrice(String id) {
+    final svc = context.read<AppProvider>().services.firstWhere(
+      (s) => s.id == id,
+      orElse: () => Service(id: id, name: id, description: '',
+          price: 0, durationMinutes: 0, category: ''),
+    );
+    return svc.price;
+  }
+
+  int _extraDuration(String id) {
+    final svc = context.read<AppProvider>().services.firstWhere(
+      (s) => s.id == id,
+      orElse: () => Service(id: id, name: id, description: '',
+          price: 0, durationMinutes: 0, category: ''),
+    );
+    return svc.durationMinutes;
+  }
+
   int get _regularPrice {
-    int p = _washType.basePrice;
-    final washIncluded = _washType.includedExtras;
-    for (final e in _extras) {
-      if (!washIncluded.contains(e)) p += extraServicePrices[e] ?? 0;
+    final wt = _washType;
+    int p = wt?.basePrice ?? 0;
+    final washIncluded = wt?.includedExtraIds.toSet() ?? <String>{};
+    for (final id in _extras) {
+      if (!washIncluded.contains(id)) p += _extraPrice(id);
     }
     return p;
   }
 
-  // Цена только пользовательских доп. услуг (не входящих в акцию/тип мойки)
   int get _extrasPrice {
     int p = 0;
-    final locked = _lockedExtras;
-    for (final e in _extras) {
-      if (!locked.contains(e)) p += extraServicePrices[e] ?? 0;
+    final locked = _lockedExtras();
+    for (final id in _extras) {
+      if (!locked.contains(id)) p += _extraPrice(id);
     }
     return p;
   }
 
-  // Базовая цена акции: если задана % скидка — считаем от basePrice, иначе берём promo.price
   int get _promoBasePrice {
-    final cfg = _isPromo ? getPromoConfig(_promo!.name) : null;
-    if (cfg != null && cfg.discountPercent > 0) {
-      return _washType.basePrice * (100 - cfg.discountPercent) ~/ 100;
+    if (!_isPromo) return 0;
+    if (_promo!.discountPercent > 0) {
+      final base = _washType?.basePrice ?? 0;
+      return base * (100 - _promo!.discountPercent) ~/ 100;
     }
     return _promo!.price;
   }
@@ -238,25 +256,13 @@ class _BWState extends State<BookingWizardScreen> {
   int get _finalPrice => _isPromo ? _promoBasePrice + _extrasPrice : _regularPrice;
   bool get _hasDiscount => _isPromo && _finalPrice < _regularPrice;
 
-  /// Суммарное время: тип мойки + доп. услуги (не считая авто-включённых в тип)
   String get _totalDurationLabel {
-    int total = _washType.durationMinutes;
-    final washIncluded = _washType.includedExtras;
-    for (final e in _extras) {
-      if (washIncluded.contains(e)) continue; // уже учтено в базовом времени типа
-      final durStr = extraServiceDurations[e];
-      if (durStr == null) continue;
-      // Парсим строки вида "15 мин", "1 ч", "1.5 ч", "3 ч"
-      if (durStr.contains('ч') && durStr.contains('мин')) {
-        final parts = durStr.split(' ');
-        total += (double.tryParse(parts[0]) ?? 0).toInt() * 60 +
-                 (int.tryParse(parts[2]) ?? 0);
-      } else if (durStr.contains('ч')) {
-        final h = double.tryParse(durStr.split(' ')[0]) ?? 0;
-        total += (h * 60).round();
-      } else if (durStr.contains('мин')) {
-        total += int.tryParse(durStr.split(' ')[0]) ?? 0;
-      }
+    final wt = _washType;
+    int total = wt?.durationMinutes ?? 0;
+    final washIncluded = wt?.includedExtraIds.toSet() ?? <String>{};
+    for (final id in _extras) {
+      if (washIncluded.contains(id)) continue;
+      total += _extraDuration(id);
     }
     final h = total ~/ 60;
     final m = total % 60;
@@ -288,7 +294,6 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   void _confirm() {
-    // Используем login (не displayName) для ownerUsername — гарантируем совпадение
     final login = context.read<AuthProvider>().userLogin.toLowerCase();
     context.read<AppProvider>().addAppointment(Appointment(
       id: 'a_${DateTime.now().millisecondsSinceEpoch}',
@@ -296,15 +301,15 @@ class _BWState extends State<BookingWizardScreen> {
       carModel: _carCtrl.text.trim(),
       carNumber: _numCtrl.text.trim().toUpperCase(),
       dateTime: _finalDateTime,
-      washType: _washType,
+      washTypeId: _washTypeId,
       additionalServices: _extras.toList(),
       status: 'scheduled',
       notes: _isPromo ? 'Акция: ${_promo!.name}' : '',
       ownerUsername: login,
-      promoPrice: _isPromo ? _promo!.price : 0,
+      promoPrice: _isPromo ? (_promo!.price > 0 ? _promo!.price : _promoBasePrice) : 0,
       paidPrice: _finalPrice,
+      promoId: _promo?.id,
     ));
-    // Закрываем все экраны до ClientShell (включая папку акций)
     Navigator.of(context).popUntil((route) => route.isFirst);
     ClientShell.shellKey.currentState?.switchToBookings();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -320,6 +325,17 @@ class _BWState extends State<BookingWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final washTypes = [...provider.washTypes]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+    if (_washTypeId.isEmpty && washTypes.isNotEmpty) {
+      _washTypeId = _isPromo
+          ? _promo!.washTypeId
+          : (provider.washTypeByCode('basic')?.id ?? washTypes.first.id);
+      _addIncludedExtras();
+    }
+
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
       appBar: AppBar(
@@ -371,30 +387,30 @@ class _BWState extends State<BookingWizardScreen> {
               _Step2(
                 scrollCtrl: _step2ScrollCtrl,
                 formKey: _formKey,
-                washType: _washType,
+                washTypes: washTypes,
+                washTypeId: _washTypeId,
                 extras: _extras,
-                lockedExtras: _lockedExtras,
+                lockedExtras: _lockedExtras(),
                 nameCtrl: _nameCtrl,
                 carCtrl: _carCtrl,
                 numCtrl: _numCtrl,
                 isPromo: _isPromo,
                 onWashTypeChanged: (wt) => setState(() {
-                  // Убрать включённые услуги старого типа (если не выбраны вручную)
-                  _extras.removeAll(_washType.includedExtras);
-                  _washType = wt;
-                  // Добавить включённые услуги нового типа
-                  _extras.addAll(wt.includedExtras);
+                  final oldWt = provider.washTypeById(_washTypeId);
+                  if (oldWt != null) _extras.removeAll(oldWt.includedExtraIds);
+                  _washTypeId = wt.id;
+                  _extras.addAll(wt.includedExtraIds);
                 }),
-                onExtrasChanged: (s, v) => setState(() {
-                  // Не позволяем снять заблокированные услуги (тип мойки + акция)
-                  if (!v && _lockedExtras.contains(s)) return;
-                  v ? _extras.add(s) : _extras.remove(s);
+                onExtrasChanged: (id, v) => setState(() {
+                  if (!v && _lockedExtras().contains(id)) return;
+                  v ? _extras.add(id) : _extras.remove(id);
                 }),
               ),
               _Step3(
                 date: DateFormat('d MMMM yyyy, HH:mm', 'ru').format(_finalDateTime),
                 washType: _washType,
                 extras: _extras.toList(),
+                services: provider.services,
                 name: _nameCtrl.text,
                 car: _carCtrl.text,
                 number: _numCtrl.text,
@@ -614,16 +630,17 @@ class _Step1 extends StatelessWidget {
 class _Step2 extends StatelessWidget {
   final ScrollController? scrollCtrl;
   final GlobalKey<FormState> formKey;
-  final WashType washType;
+  final List<WashType> washTypes;
+  final String washTypeId;
   final Set<String> extras;
   final Set<String> lockedExtras;
   final TextEditingController nameCtrl, carCtrl, numCtrl;
   final bool isPromo;
   final ValueChanged<WashType> onWashTypeChanged;
-  final void Function(String, bool) onExtrasChanged;
+  final void Function(String id, bool value) onExtrasChanged;
 
-  _Step2({this.scrollCtrl, required this.formKey, required this.washType, required this.extras,
-    required this.lockedExtras,
+  const _Step2({this.scrollCtrl, required this.formKey, required this.washTypes,
+    required this.washTypeId, required this.extras, required this.lockedExtras,
     required this.nameCtrl, required this.carCtrl, required this.numCtrl,
     required this.isPromo, required this.onWashTypeChanged,
     required this.onExtrasChanged});
@@ -631,6 +648,10 @@ class _Step2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final extraServices = provider.services
+        .where((s) => s.category != 'Акции')
+        .toList()
+      ..sort((a, b) => a.price.compareTo(b.price));
 
     return SingleChildScrollView(
       controller: scrollCtrl,
@@ -638,7 +659,6 @@ class _Step2 extends StatelessWidget {
       child: Form(
         key: formKey,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Данные авто
           const Text('Ваши данные', style: AppStyles.headingMedium),
           const SizedBox(height: 14),
           TextFormField(
@@ -661,7 +681,6 @@ class _Step2 extends StatelessWidget {
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
           ),
           const SizedBox(height: 12),
-          // Гос номер: hint всегда виден через helperText
           TextFormField(
             controller: numCtrl,
             style: const TextStyle(color: AppStyles.textPrimary,
@@ -672,7 +691,6 @@ class _Step2 extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Тип мойки
           Row(children: [
             const Text('Тип мойки', style: AppStyles.headingMedium),
             if (isPromo) ...[
@@ -690,10 +708,10 @@ class _Step2 extends StatelessWidget {
           const SizedBox(height: 12),
           Container(
             decoration: AppStyles.cardDecoration,
-            child: Column(children: WashType.values.asMap().entries.map((entry) {
-              final wt  = entry.value;
-              final sel = washType == wt;
-              final last = entry.key == WashType.values.length - 1;
+            child: Column(children: washTypes.asMap().entries.map((entry) {
+              final wt   = entry.value;
+              final sel  = washTypeId == wt.id;
+              final last = entry.key == washTypes.length - 1;
               return Column(children: [
                 GestureDetector(
                   onTap: isPromo ? null : () => onWashTypeChanged(wt),
@@ -725,7 +743,7 @@ class _Step2 extends StatelessWidget {
                       Expanded(child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(wt.displayName, style: TextStyle(
+                          Text(wt.name, style: TextStyle(
                             color: sel ? AppStyles.primary : AppStyles.textPrimary,
                             fontSize: 15,
                             fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
@@ -758,7 +776,6 @@ class _Step2 extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Доп. услуги
           Row(children: [
             const Text('Дополнительные услуги', style: AppStyles.headingMedium),
             if (isPromo) ...[
@@ -777,25 +794,23 @@ class _Step2 extends StatelessWidget {
           Container(
             decoration: AppStyles.cardDecoration,
             child: Column(
-              children: additionalServiceOptions.asMap().entries.map((entry) {
-                final i        = entry.key;
-                final s        = entry.value;
-                final checked  = extras.contains(s);
-                final last     = i == additionalServiceOptions.length - 1;
-                final price    = extraServicePrices[s];
-                final dur      = extraServiceDurations[s];
-                final isFav    = provider.isExtraFavorite(s);
-                final isWashIncluded = washType.includedExtras.contains(s);
-                final isPromoIncluded = lockedExtras.contains(s) && !isWashIncluded;
-                final locked   = lockedExtras.contains(s);
+              children: extraServices.asMap().entries.map((entry) {
+                final i       = entry.key;
+                final svc     = entry.value;
+                final checked = extras.contains(svc.id);
+                final last    = i == extraServices.length - 1;
+                final isFav   = provider.isExtraFavorite(svc.id);
+                final wt      = provider.washTypeById(washTypeId);
+                final isWashIncluded  = wt?.includedExtraIds.contains(svc.id) ?? false;
+                final isPromoIncluded = lockedExtras.contains(svc.id) && !isWashIncluded;
+                final locked  = lockedExtras.contains(svc.id);
                 return Column(children: [
                   InkWell(
-                    onTap: locked ? null : () => onExtrasChanged(s, !checked),
+                    onTap: locked ? null : () => onExtrasChanged(svc.id, !checked),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       child: Row(children: [
-                        // Чекбокс
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           width: 20, height: 20,
@@ -815,50 +830,34 @@ class _Step2 extends StatelessWidget {
                                   color: Colors.white, size: 13) : null,
                         ),
                         const SizedBox(width: 12),
-                        // Название + иконка помощи
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Text(s, style: TextStyle(
+                                  Flexible(child: Text(svc.name, style: TextStyle(
                                     color: checked ? AppStyles.primary : AppStyles.textPrimary,
                                     fontSize: 14,
                                     fontWeight: checked ? FontWeight.w500 : FontWeight.normal,
-                                  )),
+                                  ))),
                                   const SizedBox(width: 6),
-                                  Builder(builder: (context) {
-                                    final words = s.toLowerCase().split(' ');
-                                    final svc = provider.services.firstWhere(
-                                      (srv) {
-                                        final srvName = srv.name.toLowerCase();
-                                        return words.any((word) => srvName.contains(word));
-                                      },
-                                      orElse: () => Service(
-                                        id: '0', 
-                                        name: s, 
-                                        description: 'Описание услуги пока не добавлено', 
-                                        price: 0,
-                                        durationMinutes: 0, 
-                                        category: '', 
-                                        isFavorite: false, 
-                                        isFromApi: false
-                                      )
-                                    );
-                                    return Tooltip(
-                                      message: svc.description,
-                                      triggerMode: TooltipTriggerMode.tap,
-                                      child: const Icon(Icons.help_outline, size: 14, color: AppStyles.textSecondary),
-                                    );
-                                  }),                                ],
+                                  Tooltip(
+                                    message: svc.description.isNotEmpty
+                                        ? svc.description
+                                        : 'Описание услуги пока не добавлено',
+                                    triggerMode: TooltipTriggerMode.tap,
+                                    child: const Icon(Icons.help_outline,
+                                        size: 14, color: AppStyles.textSecondary),
+                                  ),
+                                ],
                               ),
-                              if (dur != null)
-                                Text(dur, style: const TextStyle(color: AppStyles.textSecondary, fontSize: 11)),
+                              Text(svc.durationLabel,
+                                  style: const TextStyle(
+                                      color: AppStyles.textSecondary, fontSize: 11)),
                             ],
                           ),
                         ),
-                        // Метка: «Включено», «Задано акцией» или цена
                         if (isWashIncluded)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -883,15 +882,14 @@ class _Step2 extends StatelessWidget {
                                 style: TextStyle(color: AppStyles.favorite,
                                     fontSize: 10, fontWeight: FontWeight.w600)),
                           )
-                        else if (price != null)
-                          Text('+$price ₽', style: TextStyle(
+                        else
+                          Text('+${svc.price} ₽', style: TextStyle(
                             color: checked ? AppStyles.primary : AppStyles.textSecondary,
                             fontSize: 13, fontWeight: FontWeight.w600,
                           )),
                         const SizedBox(width: 8),
-                        // Кнопка избранного
                         GestureDetector(
-                          onTap: () => provider.toggleExtraFavorite(s),
+                          onTap: () => provider.toggleExtraFavorite(svc.id),
                           behavior: HitTestBehavior.opaque,
                           child: Padding(
                             padding: const EdgeInsets.all(4),
@@ -933,17 +931,26 @@ class _Step2 extends StatelessWidget {
 // ─── Шаг 3: Подтверждение ────────────────────────────────────────────────────
 class _Step3 extends StatelessWidget {
   final String date, name, car, number;
-  final WashType washType;
+  final WashType? washType;
   final List<String> extras;
+  final List<Service> services;
   final int finalPrice, regularPrice;
   final bool hasDiscount;
   final String? promoName;
   final String totalDurationLabel;
 
   const _Step3({required this.date, required this.washType, required this.extras,
+    required this.services,
     required this.name, required this.car, required this.number,
     required this.finalPrice, required this.regularPrice,
     required this.hasDiscount, this.promoName, required this.totalDurationLabel});
+
+  String _serviceName(String id) {
+    for (final s in services) {
+      if (s.id == id) return s.name;
+    }
+    return id;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -996,7 +1003,7 @@ class _Step3 extends StatelessWidget {
           decoration: AppStyles.cardDecoration,
           child: Column(children: [
             _ConfirmRow(Icons.local_car_wash_rounded, 'Тип мойки',
-                washType.displayName),
+                washType?.name ?? '—'),
             Container(height: 1, color: AppStyles.border),
             _ConfirmRow(Icons.access_time_rounded, 'Время',
                 totalDurationLabel),
@@ -1015,7 +1022,7 @@ class _Step3 extends StatelessWidget {
                   ]),
                   const SizedBox(height: 10),
                   Wrap(spacing: 8, runSpacing: 6,
-                    children: extras.map((e) => Container(
+                    children: extras.map((id) => Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
@@ -1024,7 +1031,7 @@ class _Step3 extends StatelessWidget {
                         border: Border.all(
                             color: AppStyles.primary.withOpacity(0.2)),
                       ),
-                      child: Text(e, style: const TextStyle(
+                      child: Text(_serviceName(id), style: const TextStyle(
                           color: AppStyles.primary, fontSize: 12,
                           fontWeight: FontWeight.w500)),
                     )).toList()),

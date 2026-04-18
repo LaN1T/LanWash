@@ -179,7 +179,7 @@ class _AppointmentCard extends StatelessWidget {
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              _info(Icons.local_car_wash, a.washType.displayName),
+              _info(Icons.local_car_wash, context.watch<AppProvider>().washTypeName(a.washTypeId)),
               const Spacer(),
               if (a.priceChanged) Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text('${a.paidPrice} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
@@ -189,13 +189,13 @@ class _AppointmentCard extends StatelessWidget {
                   decorationColor: AppStyles.textSecondary,
                 )),
               ]) else
-                Text('${a.calculateTotalPrice(services)} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
+                Text('${a.calculateTotalPrice(services.cast<Service>(), context.watch<AppProvider>().washTypeById(a.washTypeId))} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: a.additionalServices.map((id) {
                 final service = services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
-                final name = service?.name ?? id;
+                final name = service.name;
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(

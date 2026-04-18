@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/promo.dart';
 import '../../providers/app_provider.dart';
-import 'promo_detail_screen.dart';
+import 'booking_wizard_screen.dart';
 
 class PromosScreen extends StatelessWidget {
   const PromosScreen({super.key});
@@ -28,10 +28,10 @@ class PromosScreen extends StatelessWidget {
           ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
           : promos.isEmpty
           ? Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.local_offer_outlined, size: 44, color: AppStyles.primary),
-                const SizedBox(height: 16),
-                const Text('Нет активных акций', style: TextStyle(color: AppStyles.textSecondary, fontSize: 16)),
+              child: Column(mainAxisSize: MainAxisSize.min, children: const [
+                Icon(Icons.local_offer_outlined, size: 44, color: AppStyles.primary),
+                SizedBox(height: 16),
+                Text('Нет активных акций', style: TextStyle(color: AppStyles.textSecondary, fontSize: 16)),
               ]),
             )
           : ListView.builder(
@@ -49,11 +49,14 @@ class _PromoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final wt = provider.washTypeById(promo.washTypeId);
+    final displayPrice = promo.discountPercent > 0 && wt != null
+        ? wt.basePrice * (100 - promo.discountPercent) ~/ 100
+        : promo.price;
     return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(
-            builder: (_) => PromoDetailScreen(promo: promo)));
-      },
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => BookingWizardScreen(initialPromo: promo))),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: AppStyles.cardDecoration,
@@ -95,7 +98,7 @@ class _PromoCard extends StatelessWidget {
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 10),
                 Row(children: [
-                  Text('${promo.price} ₽', style: const TextStyle(
+                  Text('$displayPrice ₽', style: const TextStyle(
                       color: AppStyles.primary, fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(width: 8),
                   const Icon(Icons.access_time_rounded, size: 13, color: AppStyles.textSecondary),

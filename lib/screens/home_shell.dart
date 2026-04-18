@@ -13,6 +13,7 @@ import 'logs_screen.dart';
 import 'notes_screen.dart';
 import 'admin_schedule_screen.dart';
 import 'reports_shell_screen.dart'; // Импорт для отчетов
+import 'wash_type_settings_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -260,6 +261,23 @@ class _HomeShellState extends State<HomeShell> {
               Navigator.pop(ctx);
               Navigator.push(ctx, MaterialPageRoute(
                   builder: (_) => const ReportsShellScreen()));
+            },
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        // Настройки
+        if (auth.isAdmin) Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: ListTile(
+            minLeadingWidth: 24,
+            leading: const Icon(Icons.settings_rounded,
+                color: AppStyles.textSecondary, size: 22),
+            title: const Text('Настройки',
+                style: TextStyle(color: AppStyles.textPrimary)),
+            onTap: () {
+              Navigator.pop(ctx);
+              Navigator.push(ctx, MaterialPageRoute(
+                  builder: (_) => const WashTypeSettingsScreen()));
             },
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),

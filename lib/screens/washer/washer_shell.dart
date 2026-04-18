@@ -413,9 +413,9 @@ class _WasherAppointmentCard extends StatelessWidget {
               Row(children: [
                 const Icon(Icons.local_car_wash, size: 16, color: AppStyles.textSecondary),
                 const SizedBox(width: 6),
-                Expanded(child: Text(a.washType.displayName,
+                Expanded(child: Text(provider.washTypeName(a.washTypeId),
                     style: const TextStyle(fontSize: 13, color: AppStyles.textSecondary))),
-                Text('${a.calculateTotalPrice(provider.services)} \u20BD',
+                Text('${a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} \u20BD',
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
                         color: AppStyles.primary)),
               ]),
@@ -446,6 +446,9 @@ class _WasherAppointmentCard extends StatelessWidget {
   }
 
   void _showDetail(BuildContext context, Appointment a, List<dynamic> services) {
+    final provider = context.read<AppProvider>();
+    final washType = provider.washTypeById(a.washTypeId);
+    final washName = provider.washTypeName(a.washTypeId);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -475,8 +478,8 @@ class _WasherAppointmentCard extends StatelessWidget {
                 DateFormat('d MMMM yyyy, HH:mm', 'ru').format(a.dateTime)),
             _detailRow(Icons.person, 'Клиент', a.clientName),
             _detailRow(Icons.directions_car, 'Авто', '${a.carModel} ${a.carNumber}'),
-            _detailRow(Icons.local_car_wash, 'Мойка', a.washType.displayName),
-            _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services)} \u20BD'),
+            _detailRow(Icons.local_car_wash, 'Мойка', washName),
+            _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services.cast(), washType)} \u20BD'),
             if (a.additionalServices.isNotEmpty)
               _detailRow(Icons.add_circle_outline, 'Доп. услуги',
                   a.additionalServices.map((id) => services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).name).join(', ')),
