@@ -6,6 +6,7 @@ import '../models/appointment.dart';
 import '../providers/app_provider.dart';
 import 'appointment_detail_screen.dart';
 import 'add_edit_appointment_screen.dart';
+import '../models/service.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
@@ -192,16 +193,18 @@ class _AppointmentCard extends StatelessWidget {
             ]),
             if (a.additionalServices.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 4, children: a.additionalServices.map((s) =>
-                Container(
+              Wrap(spacing: 6, runSpacing: 4, children: a.additionalServices.map((id) {
+                final service = services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                final name = service?.name ?? id;
+                return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppStyles.primaryLight.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(s, style: const TextStyle(fontSize: 11, color: AppStyles.primary)),
-                ),
-              ).toList()),
+                  child: Text(name, style: AppStyles.bodySmall.copyWith(color: AppStyles.primaryDark)),
+                );
+              }).toList()),
             ],
           ]),
         ),

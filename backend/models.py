@@ -55,6 +55,7 @@ class AppointmentRequest(BaseModel):
     isModifiedByAdmin: bool = False
     originalPrice: int = 0
     assignedWasher: str = "[]"
+    promoName: Optional[str] = None
 
 
 class AppointmentResponse(BaseModel):
@@ -75,6 +76,7 @@ class AppointmentResponse(BaseModel):
     isModifiedByAdmin: bool = False
     originalPrice: int = 0
     assignedWasher: str = "[]"
+    promoName: Optional[str] = None
 
 
 class AssignWasherRequest(BaseModel):

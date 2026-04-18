@@ -1,296 +1,124 @@
-import aiosqlite
-import hashlib
 import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select, func
+from sqlalchemy.dialects.postgresql import insert
+from backend.db_models import Base, User, Service, Consumable, ServiceConsumable, Promo
 from datetime import datetime
+import hashlib
 
-DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(__file__), "lanwash.db"))
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://lanwash_user:lanwash_password@localhost:5432/lanwash_db")
 
+engine = create_async_engine(DATABASE_URL, echo=True)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-
-async def get_db() -> aiosqlite.Connection:
-    db = await aiosqlite.connect(DB_PATH)
-    db.row_factory = aiosqlite.Row
-    await db.execute("PRAGMA foreign_keys = ON")
-    return db
-
-
 async def init_db():
-    db = await get_db()
-    try:
-        await db.executescript("""
-            CREATE TABLE IF NOT EXISTS users (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                username      TEXT    NOT NULL UNIQUE,
-                passwordHash  TEXT    NOT NULL,
-                role          TEXT    NOT NULL DEFAULT 'client',
-                displayName   TEXT    NOT NULL,
-                phone         TEXT    NOT NULL DEFAULT '',
-                carModel      TEXT    NOT NULL DEFAULT '',
-                carNumber     TEXT    NOT NULL DEFAULT '',
-                createdAt     TEXT    NOT NULL,
-                isFavoriteAdmin INTEGER NOT NULL DEFAULT 0
-            );
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await seed_data()
 
-            CREATE TABLE IF NOT EXISTS appointments (
-                id                  TEXT    PRIMARY KEY,
-                userId              INTEGER,
-                clientName          TEXT    NOT NULL,
-                carModel            TEXT    NOT NULL,
-                carNumber           TEXT    NOT NULL,
-                dateTime            TEXT    NOT NULL,
-                washType            TEXT    NOT NULL,
-                additionalServices  TEXT    NOT NULL DEFAULT '[]',
-                status              TEXT    NOT NULL DEFAULT 'scheduled',
-                notes               TEXT    NOT NULL DEFAULT '',
-                isFavorite          INTEGER NOT NULL DEFAULT 0,
-                ownerUsername       TEXT    NOT NULL DEFAULT '',
-                promoPrice          INTEGER NOT NULL DEFAULT 0,
-                paidPrice           INTEGER NOT NULL DEFAULT 0,
-                isModifiedByAdmin   INTEGER NOT NULL DEFAULT 0,
-                originalPrice       INTEGER NOT NULL DEFAULT 0,
-                assignedWasher      TEXT    NOT NULL DEFAULT '',
-                FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
-            );
+async def seed_data():
+    async with AsyncSessionLocal() as session:
+        now = datetime.now().isoformat()
+        
+        # Admin User (Upsert)
+        stmt = insert(User).values(
+            username="admin", passwordHash=hash_password("admin"), role="admin", 
+            displayName="Администратор", createdAt=now
+        ).on_conflict_do_nothing(index_elements=['username'])
+        await session.execute(stmt)
+        await session.commit()
 
-            CREATE TABLE IF NOT EXISTS services (
-                id              TEXT    PRIMARY KEY,
-                name            TEXT    NOT NULL,
-                description     TEXT    NOT NULL DEFAULT '',
-                price           INTEGER NOT NULL DEFAULT 0,
-                durationMinutes INTEGER NOT NULL DEFAULT 30,
-                category        TEXT    NOT NULL DEFAULT '',
-                isFavorite      INTEGER NOT NULL DEFAULT 0,
-                isFromApi       INTEGER NOT NULL DEFAULT 0,
-                updatedAt       TEXT    NOT NULL
-            );
+        # Services
+        res = await session.execute(select(func.count(Service.id)))
+        if res.scalar() == 0:
+            # 1. Чистые услуги (без акций)
+            services = [
+                Service(id='s1', name='Базовая мойка', description='Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.', price=800, durationMinutes=30, category='Мойка кузова', updatedAt=now),
+                Service(id='s2', name='Комплексная мойка', description='Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.', price=1500, durationMinutes=60, category='Мойка кузова', updatedAt=now),
+                Service(id='s3', name='Экспресс-мойка', description='Быстрая наружная мойка без детальной обработки. Идеально для поддержания ежедневной чистоты.', price=500, durationMinutes=15, category='Мойка кузова', updatedAt=now),
+                Service(id='s21', name='Премиум мойка', description='Комплексная мойка с глубокой очисткой салона, полировкой кузова и нанесением защитного покрытия.', price=3000, durationMinutes=90, category='Мойка кузова', updatedAt=now),
+                Service(id='s4', name='Обработка арок', description='Глубокая очистка колесных арок с применением специализированного состава. Удаляет дорожный битум, стойкие загрязнения, тормозную пыль и реагенты.', price=600, durationMinutes=20, category='Специальные услуги', updatedAt=now),
+                Service(id='s5', name='Мойка двигателя', description='Профессиональная очистка двигательного отсека от масла и грязи.', price=1500, durationMinutes=60, category='Мойка кузова', updatedAt=now),
+                Service(id='s6', name='Полировка стёкол', description='Финальная полировка наружных стёкол для максимальной прозрачности и блеска.', price=500, durationMinutes=20, category='Обработка стёкол', updatedAt=now),
+                Service(id='s7', name='Антидождь', description='Нанесение гидрофобного состава на стёкла, обеспечивающего отталкивание воды.', price=600, durationMinutes=25, category='Обработка стёкол', updatedAt=now),
+                Service(id='s8', name='Нанесение воска', description='Нанесение профессионального защитного воска на кузов для защиты ЛКП.', price=1200, durationMinutes=45, category='Защитные покрытия', updatedAt=now),
+                Service(id='s9', name='Нанесение силанта', description='Нанесение силантового покрытия для долговременной защиты кузова. Срок действия до 6 месяцев.', price=2000, durationMinutes=90, category='Защитные покрытия', updatedAt=now),
+                Service(id='s10', name='Керамическое покрытие', description='Профессиональное нанесение керамического покрытия. Максимальная защита ЛКП сроком до 2 лет.', price=15000, durationMinutes=480, category='Защитные покрытия', updatedAt=now),
+                Service(id='s11', name='Нанесение тефлона', description='Нанесение тефлоного покрытия для защиты кузова и стойкого блеска.', price=3000, durationMinutes=120, category='Защитные покрытия', updatedAt=now),
+                Service(id='s12', name='Удаление битума', description='Профессиональное удаление следов битума, смолы, насекомых с кузова.', price=700, durationMinutes=30, category='Специальные услуги', updatedAt=now),
+                Service(id='s13', name='Чернение шин', description='Нанесение специального состава на боковины шин — восстанавливает чёрный цвет и глянцевый блеск.', price=300, durationMinutes=15, category='Специальные услуги', updatedAt=now),
+                Service(id='s14', name='Пылесосная уборка салона', description='Тщательная пылесосная обработка салона: сиденья, напольные покрытия, багажник.', price=500, durationMinutes=25, category='Уход за салоном', updatedAt=now),
+                Service(id='s15', name='Химчистка салона', description='Глубокая чистка тканевых и кожаных поверхностей профессиональной химией.', price=3500, durationMinutes=180, category='Уход за салоном', updatedAt=now),
+                Service(id='s16', name='Химчистка кожи', description='Специализированная очистка и кондиционирование кожаного салона.', price=5000, durationMinutes=240, category='Уход за салоном', updatedAt=now),
+                Service(id='s17', name='Ароматизация', description='Нанесение стойкого ароматизатора. Широкий выбор ароматов.', price=300, durationMinutes=15, category='Уход за салоном', updatedAt=now),
+                Service(id='s18', name='Озонирование', description='Обработка салона озоном для полного устранения запахов и дезинфекции.', price=1000, durationMinutes=60, category='Уход за салоном', updatedAt=now),
+                Service(id='s19', name='Детейлинг кузова', description='Полный комплекс детальной обработки: полировка кузова, нанесение защитного покрытия.', price=8000, durationMinutes=360, category='Детейлинг', updatedAt=now),
+                Service(id='s20', name='Полировка кузова', description='Машинная полировка ЛКП для устранения мелких царапин и восстановления блеска.', price=5000, durationMinutes=240, category='Детейлинг', updatedAt=now),
+            ]
+            session.add_all(services)
+            await session.flush()
 
-            CREATE TABLE IF NOT EXISTS promos (
-                id          TEXT    PRIMARY KEY,
-                serviceId   TEXT    NOT NULL,
-                name        TEXT    NOT NULL,
-                description TEXT    NOT NULL DEFAULT '',
-                price       INTEGER NOT NULL DEFAULT 0,
-                duration    INTEGER NOT NULL DEFAULT 30,
-                fetchedAt   TEXT    NOT NULL,
-                FOREIGN KEY (serviceId) REFERENCES services(id) ON DELETE CASCADE
-            );
+            # 2. Promos (Only in Promo table)
+            session.add_all([
+                Promo(id='promo_1', serviceId='s2', name='Акция недели: комплекс + ароматизация', description='Комплексная мойка и ароматизация салона по специальной цене недели.', price=1600, duration=75, fetchedAt=now),
+                Promo(id='promo_2', serviceId='s1', name='Весенняя акция: мойка + воск', description='Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.', price=1500, duration=50, fetchedAt=now),
+                Promo(id='promo_3', serviceId='s2', name='Выходной пакет: комплексная мойка -20%', description='Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.', price=1200, duration=60, fetchedAt=now),
+                Promo(id='promo_4', serviceId='s2', name='Пакет для внедорожников', description='Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.', price=2000, duration=80, fetchedAt=now),
+            ])
+            
+            # 3. Consumables & Links
+            session.add_all([
+                Consumable(id="c_shampoo", name="Автошампунь", unit="мл"),
+                Consumable(id="c_cleaner", name="Очиститель салона", unit="мл"),
+                Consumable(id="c_engine", name="Очиститель ДВС", unit="мл"),
+                Consumable(id="c_glass_polish", name="Паста для стекла", unit="мл"),
+                Consumable(id="c_antidogd", name="Антидождь", unit="мл"),
+                Consumable(id="c_wax", name="Воск", unit="мл"),
+                Consumable(id="c_silant", name="Силант", unit="мл"),
+                Consumable(id="c_ceramic", name="Керамика", unit="мл"),
+                Consumable(id="c_teflon", name="Тефлон", unit="мл"),
+                Consumable(id="c_bitumen", name="Очиститель битума", unit="мл"),
+                Consumable(id="c_tire_black", name="Чернитель шин", unit="мл"),
+                Consumable(id="c_vac", name="Ресурс пылесоса", unit="сеанс"),
+                Consumable(id="c_chem", name="Химия для химчистки", unit="мл"),
+                Consumable(id="c_leather", name="Кондиционер для кожи", unit="мл"),
+                Consumable(id="c_aroma", name="Ароматизатор", unit="мл"),
+                Consumable(id="c_ozone", name="Сеанс озонирования", unit="сеанс"),
+                Consumable(id="c_polish", name="Полировальная паста", unit="мл"),
+                Consumable(id="c_anticor", name="Антикор", unit="мл"),
+            ])
+            
+            session.add_all([
+                ServiceConsumable(serviceId="s1", consumableId="c_shampoo", quantity_per_service=100),
+                ServiceConsumable(serviceId="s2", consumableId="c_shampoo", quantity_per_service=100),
+                ServiceConsumable(serviceId="s2", consumableId="c_cleaner", quantity_per_service=150),
+                ServiceConsumable(serviceId="s3", consumableId="c_shampoo", quantity_per_service=50),
+                ServiceConsumable(serviceId="s4", consumableId="c_anticor", quantity_per_service=1000),
+                ServiceConsumable(serviceId="s5", consumableId="c_engine", quantity_per_service=200),
+                ServiceConsumable(serviceId="s6", consumableId="c_glass_polish", quantity_per_service=30),
+                ServiceConsumable(serviceId="s7", consumableId="c_antidogd", quantity_per_service=50),
+                ServiceConsumable(serviceId="s8", consumableId="c_wax", quantity_per_service=100),
+                ServiceConsumable(serviceId="s9", consumableId="c_silant", quantity_per_service=50),
+                ServiceConsumable(serviceId="s10", consumableId="c_ceramic", quantity_per_service=30),
+                ServiceConsumable(serviceId="s11", consumableId="c_teflon", quantity_per_service=50),
+                ServiceConsumable(serviceId="s12", consumableId="c_bitumen", quantity_per_service=100),
+                ServiceConsumable(serviceId="s13", consumableId="c_tire_black", quantity_per_service=50),
+                ServiceConsumable(serviceId="s14", consumableId="c_vac", quantity_per_service=1),
+                ServiceConsumable(serviceId="s15", consumableId="c_chem", quantity_per_service=300),
+                ServiceConsumable(serviceId="s16", consumableId="c_leather", quantity_per_service=100),
+                ServiceConsumable(serviceId="s17", consumableId="c_aroma", quantity_per_service=10),
+                ServiceConsumable(serviceId="s18", consumableId="c_ozone", quantity_per_service=1),
+                ServiceConsumable(serviceId="s19", consumableId="c_polish", quantity_per_service=50),
+                ServiceConsumable(serviceId="s20", consumableId="c_polish", quantity_per_service=50),
+                ServiceConsumable(serviceId="s21", consumableId="c_shampoo", quantity_per_service=150),
+                ServiceConsumable(serviceId="s21", consumableId="c_cleaner", quantity_per_service=200),
+            ])
+            await session.commit()
 
-            CREATE TABLE IF NOT EXISTS logs (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                username  TEXT NOT NULL,
-                action    TEXT NOT NULL,
-                details   TEXT NOT NULL DEFAULT '',
-                timestamp TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS service_favorites (
-                username  TEXT NOT NULL,
-                serviceId TEXT NOT NULL,
-                PRIMARY KEY (username, serviceId)
-            );
-
-            CREATE TABLE IF NOT EXISTS extra_favorites (
-                username    TEXT NOT NULL,
-                serviceName TEXT NOT NULL,
-                PRIMARY KEY (username, serviceName)
-            );
-
-            CREATE TABLE IF NOT EXISTS washer_notes (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                username  TEXT    NOT NULL,
-                title     TEXT    NOT NULL,
-                message   TEXT    NOT NULL DEFAULT '',
-                category  TEXT    NOT NULL DEFAULT 'general',
-                isRead    INTEGER NOT NULL DEFAULT 0,
-                createdAt TEXT    NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS deleted_notifications (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                username    TEXT NOT NULL,
-                createdAt   TEXT NOT NULL
-            );
-
-            -- New tables for consumables
-            CREATE TABLE IF NOT EXISTS consumables (
-                id      TEXT PRIMARY KEY,
-                name    TEXT NOT NULL UNIQUE,
-                unit    TEXT NOT NULL DEFAULT ''
-            );
-
-            CREATE TABLE IF NOT EXISTS service_consumables (
-                serviceId         TEXT NOT NULL,
-                consumableId      TEXT NOT NULL,
-                quantity_per_service REAL NOT NULL,
-                PRIMARY KEY (serviceId, consumableId),
-                FOREIGN KEY (serviceId) REFERENCES services(id) ON DELETE CASCADE,
-                FOREIGN KEY (consumableId) REFERENCES consumables(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS consumable_usage_log (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                appointmentId TEXT    NOT NULL,
-                consumableId  TEXT    NOT NULL,
-                quantityUsed  REAL    NOT NULL,
-                timestamp     TEXT    NOT NULL,
-                FOREIGN KEY (appointmentId) REFERENCES appointments(id),
-                FOREIGN KEY (consumableId)  REFERENCES consumables(id)
-            );
-
-        """)
-
-        # Миграция: таблица deleted_notifications
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS deleted_notifications (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                username    TEXT NOT NULL,
-                createdAt   TEXT NOT NULL
-            )
-        """)
-
-        # Миграция: добавить isModifiedByAdmin если колонки нет
-        try:
-            await db.execute("ALTER TABLE appointments ADD COLUMN isModifiedByAdmin INTEGER NOT NULL DEFAULT 0")
-            await db.commit()
-        except Exception:
-            pass
-        try:
-            await db.execute("ALTER TABLE appointments ADD COLUMN originalPrice INTEGER NOT NULL DEFAULT 0")
-            await db.commit()
-        except Exception:
-            pass
-        try:
-            await db.execute("ALTER TABLE appointments ADD COLUMN assignedWasher TEXT NOT NULL DEFAULT ''")
-            await db.commit()
-        except Exception:
-            pass
-
-        # Seed default data if empty
-        cursor = await db.execute("SELECT COUNT(*) FROM users")
-        count = (await cursor.fetchone())[0]
-        if count == 0:
-            await _seed(db)
-
-          # Инициализация и авто-обновление расходников
-        consumables_list = [
-            ("c_shampoo", "Автошампунь", "мл"), ("c_cleaner", "Очиститель салона", "мл"),
-            ("c_engine", "Очиститель ДВС", "мл"), ("c_glass_polish", "Паста для стекла", "мл"),
-            ("c_antidogd", "Антидождь", "мл"), ("c_wax", "Воск", "мл"),
-            ("c_silant", "Силант", "мл"), ("c_ceramic", "Керамика", "мл"),
-            ("c_teflon", "Тефлон", "мл"), ("c_bitumen", "Очиститель битума", "мл"),
-            ("c_tire_black", "Чернитель шин", "мл"), ("c_vac", "Ресурс пылесоса", "сеанс"),
-            ("c_chem", "Химия для химчистки", "мл"), ("c_leather", "Кондиционер для кожи", "мл"),
-            ("c_aroma", "Ароматизатор", "мл"), ("c_ozone", "Сеанс озонирования", "сеанс"),
-            ("c_polish", "Полировальная паста", "мл"), ("c_anticor", "Антикор", "мл"),
-        ]
-        for c in consumables_list:
-            await db.execute("INSERT OR IGNORE INTO consumables (id, name, unit) VALUES (?,?,?)", c)
-
-        service_links = [
-            ("s1", "c_shampoo", 100), ("s2", "c_shampoo", 100), ("s2", "c_cleaner", 150),
-            ("s3", "c_shampoo", 50), ("s4", "c_anticor", 1000), ("s5", "c_engine", 200), ("s6", "c_glass_polish", 30),
-            ("s7", "c_antidogd", 50), ("s8", "c_wax", 100), ("s9", "c_silant", 50),
-            ("s10", "c_ceramic", 30), ("s11", "c_teflon", 50), ("s12", "c_bitumen", 100),
-            ("s13", "c_tire_black", 50), ("s14", "c_vac", 1), ("s15", "c_chem", 300),
-            ("s16", "c_leather", 100), ("s17", "c_aroma", 10), ("s18", "c_ozone", 1),
-            ("s19", "c_polish", 50), ("s20", "c_polish", 50)
-        ]
-        for link in service_links:
-            await db.execute("INSERT OR REPLACE INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES(?, ?, ?)", link)
-
-        await db.commit()
-    finally:
-        await db.close()
-
-
-async def _seed(db: aiosqlite.Connection):
-    now = datetime.now().isoformat()
-
-    # Default users
-    await db.execute(
-        "INSERT INTO users (username, passwordHash, role, displayName, phone, carModel, carNumber, createdAt, isFavoriteAdmin) VALUES (?,?,?,?,?,?,?,?,?)",
-        ("admin", hash_password("admin"), "admin", "Администратор", "", "", "", now, 0),
-    )
-
-    # Services
-    services = [
-        {'id':'s1','name':'Базовая мойка кузова','description':'Предварительная обработка, ручная мойка с профессиональными средствами, полоскание, очистка дисков и арок, сушка.','price':800,'durationMinutes':30,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
-        {'id':'s2','name':'Комплексная мойка + салон','description':'Внешняя мойка кузова плюс полная уборка салона: пылесосная обработка, влажная уборка всех поверхностей, чистка стёкол изнутри.','price':1500,'durationMinutes':60,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
-        {'id':'s3','name':'Экспресс-мойка','description':'Быстрая наружная мойка без детальной обработки. Идеально для поддержания ежедневной чистоты.','price':500,'durationMinutes':15,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
-        {'id':'s4','name':'Обработка арок','description':'Глубокая очистка колесных арок с применением специализированного состава. Удаляет дорожный битум, стойкие загрязнения,'
-        'тормозную пыль и реагенты. Предотвращает коррозию металла и придает деталям подвески ухоженный вид.','price':600,'durationMinutes':20,'category':'Специальные услуги','isFavorite':0,'isFromApi':0},
-        {'id':'s5','name':'Мойка двигателя','description':'Профессиональная очистка двигательного отсека от масла и грязи.','price':1500,'durationMinutes':60,'category':'Мойка кузова','isFavorite':0,'isFromApi':0},
-        {'id':'s6','name':'Полировка стёкол снаружи','description':'Финальная полировка наружных стёкол для максимальной прозрачности и блеска.','price':500,'durationMinutes':20,'category':'Обработка стёкол','isFavorite':0,'isFromApi':0},
-        {'id':'s7','name':'Антидождь на стёкла','description':'Нанесение гидрофобного состава на стёкла, обеспечивающего отталкивание воды.','price':600,'durationMinutes':25,'category':'Обработка стёкол','isFavorite':0,'isFromApi':0},
-        {'id':'s8','name':'Нанесение защитного воска','description':'Нанесение профессионального защитного воска на кузов для защиты ЛКП.','price':1200,'durationMinutes':45,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
-        {'id':'s9','name':'Нанесение силанта','description':'Нанесение силантового покрытия для долговременной защиты кузова. Срок действия до 6 месяцев.','price':2000,'durationMinutes':90,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
-        {'id':'s10','name':'Керамическое покрытие','description':'Профессиональное нанесение керамического покрытия. Максимальная защита ЛКП сроком до 2 лет.','price':15000,'durationMinutes':480,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
-        {'id':'s11','name':'Нанесение тефлона','description':'Нанесение тефлонового покрытия для защиты кузова и стойкого блеска.','price':3000,'durationMinutes':120,'category':'Защитные покрытия','isFavorite':0,'isFromApi':0},
-        {'id':'s12','name':'Удаление битума и смол','description':'Профессиональное удаление следов битума, смолы, насекомых с кузова.','price':700,'durationMinutes':30,'category':'Специальные услуги','isFavorite':0,'isFromApi':0},
-        {'id':'s13','name':'Чернение шин','description':'Нанесение специального состава на боковины шин — восстанавливает чёрный цвет и глянцевый блеск.','price':300,'durationMinutes':15,'category':'Специальные услуги','isFavorite':0,'isFromApi':0},
-        {'id':'s14','name':'Пылесосная уборка салона','description':'Тщательная пылесосная обработка салона: сиденья, напольные покрытия, багажник.','price':500,'durationMinutes':25,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
-        {'id':'s15','name':'Химчистка салона','description':'Глубокая чистка тканевых и кожаных поверхностей профессиональной химией.','price':3500,'durationMinutes':180,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
-        {'id':'s16','name':'Химчистка кожи','description':'Специализированная очистка и кондиционирование кожаного салона.','price':5000,'durationMinutes':240,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
-        {'id':'s17','name':'Ароматизация салона','description':'Нанесение стойкого ароматизатора. Широкий выбор ароматов.','price':300,'durationMinutes':15,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
-        {'id':'s18','name':'Озонирование салона','description':'Обработка салона озоном для полного устранения запахов и дезинфекции.','price':1000,'durationMinutes':60,'category':'Уход за салоном','isFavorite':0,'isFromApi':0},
-        {'id':'s19','name':'Детейлинг кузова','description':'Полный комплекс детальной обработки: полировка кузова, нанесение защитного покрытия.','price':8000,'durationMinutes':360,'category':'Детейлинг','isFavorite':0,'isFromApi':0},
-        {'id':'s20','name':'Полировка кузова','description':'Машинная полировка ЛКП для устранения мелких царапин и восстановления блеска.','price':5000,'durationMinutes':240,'category':'Детейлинг','isFavorite':0,'isFromApi':0},
-      ]
-    for s in services:
-        await db.execute(
-            "INSERT INTO services (id, name, description, price, durationMinutes, category, isFavorite, isFromApi, updatedAt) VALUES (?,?,?,?,?,?,0,0,?)",
-            (s['id'], s['name'], s['description'], s['price'], s['durationMinutes'], s['category'], now),
-        )
-
-    # Promos
-    promos = [
-        ("promo_1", "Акция недели: комплекс + ароматизация", "Комплексная мойка и ароматизация салона по специальной цене недели.", 1600, 75, "Акции"),
-        ("promo_2", "Весенняя акция: мойка + воск", "Базовая мойка кузова + нанесение защитного воска. Специальная цена до конца месяца.", 1500, 50, "Акции"),
-        ("promo_3", "Выходной пакет: комплексная мойка -20%", "Комплексная мойка кузова со скидкой 20%. Только по выходным — суббота и воскресенье.", 1200, 60, "Акции"),
-        ("promo_4", "Пакет для внедорожников", "Полный уход для крупных автомобилей: внедорожников и минивэнов. Тщательная мойка колёс и арок.", 2000, 80, "Акции"),
-    ]
-    for p in promos:
-        await db.execute(
-            "INSERT INTO services (id, name, description, price, durationMinutes, category, isFavorite, isFromApi, updatedAt) VALUES(?, ?, ?, ?, ?, ?, 0, 1, ?)",
-            (p[0], p[1], p[2], p[3], p[4], p[5], now),
-        )
-
-        await db.execute(
-            "INSERT INTO promos (id, serviceId, name, description, price, duration, fetchedAt) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (p[0], p[0], p[1], p[2], p[3], p[4], now),
-    )
-
-    consumables_list = [
-        ("c_shampoo", "Автошампунь", "мл"), ("c_cleaner", "Очиститель салона", "мл"),
-        ("c_engine", "Очиститель ДВС", "мл"), ("c_glass_polish", "Паста для стекла", "мл"),
-        ("c_antidogd", "Антидождь", "мл"), ("c_wax", "Воск", "мл"),
-        ("c_silant", "Силант", "мл"), ("c_ceramic", "Керамика", "мл"),
-        ("c_teflon", "Тефлон", "мл"), ("c_bitumen", "Очиститель битума", "мл"),
-        ("c_tire_black", "Чернитель шин", "мл"), ("c_vac", "Ресурс пылесоса", "сеанс"),
-        ("c_chem", "Химия для химчистки", "мл"), ("c_leather", "Кондиционер для кожи", "мл"),
-        ("c_aroma", "Ароматизатор", "мл"), ("c_ozone", "Сеанс озонирования", "сеанс"),
-        ("c_polish", "Полировальная паста", "мл"), ("c_anticor", "Антикор", "мл")
-    ]
-    for c in consumables_list:
-        await db.execute("INSERT OR IGNORE INTO consumables (id, name, unit) VALUES (?,?,?)", c)
-
-    service_links = [
-        ("s1", "c_shampoo", 100), ("s2", "c_shampoo", 100), ("s2", "c_cleaner", 150),
-        ("s3", "c_shampoo", 50), ("s4", "c_anticor", 1000),
-        ("s5", "c_engine", 200), ("s6", "c_glass_polish", 30),
-        ("s7", "c_antidogd", 50), ("s8", "c_wax", 100), ("s9", "c_silant", 50),
-        ("s10", "c_ceramic", 30), ("s11", "c_teflon", 50), ("s12", "c_bitumen", 100),
-        ("s13", "c_tire_black", 50), ("s14", "c_vac", 1), ("s15", "c_chem", 300),
-        ("s16", "c_leather", 100), ("s17", "c_aroma", 10), ("s18", "c_ozone", 1),
-        ("s19", "c_polish", 50), ("s20", "c_polish", 50)
-    ]
-
-    for link in service_links:
-        await db.execute(
-            "INSERT OR REPLACE INTO service_consumables (serviceId, consumableId, quantity_per_service) VALUES(?, ?, ?)",
-            link)
-
-    await db.commit()
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session

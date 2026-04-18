@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/appointment.dart';
 import '../models/service.dart';
+import '../models/promo.dart';
 import '../models/note.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
@@ -10,6 +11,7 @@ class AppProvider extends ChangeNotifier {
 
   List<Appointment> _appointmentList = [];
   List<Service>     _serviceList     = [];
+  List<Promo>       _promoList       = [];
   List<Note>        _noteList        = [];
   Set<String>       _extraFavSet     = {};
   Set<String>       _serviceFavSet   = {};
@@ -21,6 +23,7 @@ class AppProvider extends ChangeNotifier {
 
   List<Appointment> get appointments   => _appointmentList;
   List<Service>     get services       => _serviceList;
+  List<Promo>       get promos         => _promoList;
   List<Note>        get notes          => _noteList;
   Set<String>       get extraFavorites => _extraFavSet;
   bool              get loading        => _loading;
@@ -42,6 +45,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
 
     _serviceList = await _api.getServices();
+    _promoList   = await _api.getPromos();
     _loading = false;
     notifyListeners();
   }

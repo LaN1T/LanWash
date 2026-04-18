@@ -1,177 +1,117 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, insert, func, distinct
 from database import get_db
 from models import ServiceRequest, ServiceResponse, ToggleFavoriteRequest, ToggleExtraFavoriteRequest
+from db_models import Service, ServiceFavorite, ExtraFavorite, Promo
 from datetime import datetime
+import hashlib
 
 router = APIRouter(prefix="/api/services", tags=["services"])
 
-
-def _from_row(row) -> dict:
-    return {
-        "id": row["id"],
-        "name": row["name"],
-        "description": row["description"],
-        "price": row["price"],
-        "durationMinutes": row["durationMinutes"],
-        "category": row["category"],
-        "isFavorite": bool(row["isFavorite"]),
-        "isFromApi": bool(row["isFromApi"]),
-    }
-
+@router.get("/promos")
+async def get_promos(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Promo))
+    promos = result.scalars().all()
+    print(f"--- DEBUG: Returning {len(promos)} promos ---")
+    return promos
 
 @router.get("/", response_model=list[ServiceResponse])
-async def get_all():
-    db = await get_db()
-    try:
-        cursor = await db.execute("SELECT * FROM services ORDER BY category ASC, name ASC")
-        rows = await cursor.fetchall()
-        return [_from_row(r) for r in rows]
-    finally:
-        await db.close()
-
+async def get_all(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Service).order_by(Service.category.asc(), Service.name.asc()))
+    return result.scalars().all()
 
 @router.get("/categories")
-async def get_categories():
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT DISTINCT category FROM services ORDER BY category"
-        )
-        rows = await cursor.fetchall()
-        return [r["category"] for r in rows]
-    finally:
-        await db.close()
-
+async def get_categories(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(distinct(Service.category)).order_by(Service.category))
+    categories = [r[0] for r in result.all()]
+    if 'Акции' not in categories:
+        categories.append('Акции')
+        categories.sort()
+    return categories
 
 @router.post("/", response_model=ServiceResponse)
-async def create(req: ServiceRequest):
-    db = await get_db()
-    try:
-        now = datetime.now().isoformat()
-        await db.execute(
-            """INSERT OR REPLACE INTO services
-               (id, name, description, price, durationMinutes, category, isFavorite, isFromApi, updatedAt)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (req.id, req.name, req.description, req.price, req.durationMinutes,
-             req.category, int(req.isFavorite), int(req.isFromApi), now),
-        )
-        await db.commit()
-        cursor = await db.execute("SELECT * FROM services WHERE id = ?", (req.id,))
-        row = await cursor.fetchone()
-        return _from_row(row)
-    finally:
-        await db.close()
-
+async def create(req: ServiceRequest, db: AsyncSession = Depends(get_db)):
+    new_service = Service(
+        id=req.id,
+        name=req.name,
+        description=req.description,
+        price=req.price,
+        durationMinutes=req.durationMinutes,
+        category=req.category,
+        isFavorite=int(req.isFavorite),
+        isFromApi=int(req.isFromApi),
+        updatedAt=datetime.now().isoformat()
+    )
+    db.add(new_service)
+    await db.commit()
+    await db.refresh(new_service)
+    return new_service
 
 @router.put("/{service_id}", response_model=ServiceResponse)
-async def update(service_id: str, req: ServiceRequest):
-    db = await get_db()
-    try:
-        now = datetime.now().isoformat()
-        await db.execute(
-            """UPDATE services SET name=?, description=?, price=?, durationMinutes=?,
-               category=?, isFavorite=?, isFromApi=?, updatedAt=? WHERE id=?""",
-            (req.name, req.description, req.price, req.durationMinutes,
-             req.category, int(req.isFavorite), int(req.isFromApi), now, service_id),
-        )
-        await db.commit()
-        cursor = await db.execute("SELECT * FROM services WHERE id = ?", (service_id,))
-        row = await cursor.fetchone()
-        if not row:
-            raise HTTPException(404, "Услуга не найдена")
-        return _from_row(row)
-    finally:
-        await db.close()
-
+async def update_service(service_id: str, req: ServiceRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Service).where(Service.id == service_id))
+    service = result.scalar_one_or_none()
+    if not service:
+        raise HTTPException(404, "Услуга не найдена")
+    
+    service.name = req.name
+    service.description = req.description
+    service.price = req.price
+    service.durationMinutes = req.durationMinutes
+    service.category = req.category
+    service.isFavorite = int(req.isFavorite)
+    service.isFromApi = int(req.isFromApi)
+    service.updatedAt = datetime.now().isoformat()
+    
+    await db.commit()
+    await db.refresh(service)
+    return service
 
 @router.delete("/{service_id}")
-async def delete(service_id: str):
-    db = await get_db()
-    try:
-        await db.execute("DELETE FROM services WHERE id = ?", (service_id,))
-        await db.commit()
-        return {"ok": True}
-    finally:
-        await db.close()
-
+async def delete_service(service_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(delete(Service).where(Service.id == service_id))
+    await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(404, "Услуга не найдена")
+    return {"ok": True}
 
 # ─── Service Favorites ───────────────────────────────────────────────────────
 @router.get("/favorites/{username}")
-async def get_service_favorites(username: str):
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT serviceId FROM service_favorites WHERE username = ?",
-            (username.lower(),),
-        )
-        rows = await cursor.fetchall()
-        return [r["serviceId"] for r in rows]
-    finally:
-        await db.close()
-
+async def get_service_favorites(username: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ServiceFavorite.serviceId).where(ServiceFavorite.username == username.lower()))
+    return result.scalars().all()
 
 @router.post("/favorites/toggle")
-async def toggle_service_favorite(req: ToggleFavoriteRequest):
-    db = await get_db()
-    try:
-        username = req.username.lower()
-        cursor = await db.execute(
-            "SELECT 1 FROM service_favorites WHERE username=? AND serviceId=?",
-            (username, req.serviceId),
-        )
-        exists = await cursor.fetchone()
-        if exists:
-            await db.execute(
-                "DELETE FROM service_favorites WHERE username=? AND serviceId=?",
-                (username, req.serviceId),
-            )
-        else:
-            await db.execute(
-                "INSERT INTO service_favorites (username, serviceId) VALUES (?,?)",
-                (username, req.serviceId),
-            )
-        await db.commit()
-        return {"ok": True, "isFavorite": not exists}
-    finally:
-        await db.close()
-
+async def toggle_service_favorite(req: ToggleFavoriteRequest, db: AsyncSession = Depends(get_db)):
+    username = req.username.lower()
+    res = await db.execute(select(ServiceFavorite).where(ServiceFavorite.username == username, ServiceFavorite.serviceId == req.serviceId))
+    fav = res.scalar_one_or_none()
+    if fav:
+        await db.execute(delete(ServiceFavorite).where(ServiceFavorite.username == username, ServiceFavorite.serviceId == req.serviceId))
+        is_fav = False
+    else:
+        db.add(ServiceFavorite(username=username, serviceId=req.serviceId))
+        is_fav = True
+    await db.commit()
+    return {"ok": True, "isFavorite": is_fav}
 
 # ─── Extra Favorites ─────────────────────────────────────────────────────────
 @router.get("/extra-favorites/{username}")
-async def get_extra_favorites(username: str):
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT serviceName FROM extra_favorites WHERE username = ?",
-            (username.lower(),),
-        )
-        rows = await cursor.fetchall()
-        return [r["serviceName"] for r in rows]
-    finally:
-        await db.close()
-
+async def get_extra_favorites(username: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ExtraFavorite.serviceName).where(ExtraFavorite.username == username.lower()))
+    return result.scalars().all()
 
 @router.post("/extra-favorites/toggle")
-async def toggle_extra_favorite(req: ToggleExtraFavoriteRequest):
-    db = await get_db()
-    try:
-        username = req.username.lower()
-        cursor = await db.execute(
-            "SELECT 1 FROM extra_favorites WHERE username=? AND serviceName=?",
-            (username, req.serviceName),
-        )
-        exists = await cursor.fetchone()
-        if exists:
-            await db.execute(
-                "DELETE FROM extra_favorites WHERE username=? AND serviceName=?",
-                (username, req.serviceName),
-            )
-        else:
-            await db.execute(
-                "INSERT INTO extra_favorites (username, serviceName) VALUES (?,?)",
-                (username, req.serviceName),
-            )
-        await db.commit()
-        return {"ok": True, "isFavorite": not exists}
-    finally:
-        await db.close()
+async def toggle_extra_favorite(req: ToggleExtraFavoriteRequest, db: AsyncSession = Depends(get_db)):
+    username = req.username.lower()
+    res = await db.execute(select(ExtraFavorite).where(ExtraFavorite.username == username, ExtraFavorite.serviceName == req.serviceName))
+    fav = res.scalar_one_or_none()
+    if fav:
+        await db.execute(delete(ExtraFavorite).where(ExtraFavorite.username == username, ExtraFavorite.serviceName == req.serviceName))
+        is_fav = False
+    else:
+        db.add(ExtraFavorite(username=username, serviceName=req.serviceName))
+        is_fav = True
+    await db.commit()
+    return {"ok": True, "isFavorite": is_fav}

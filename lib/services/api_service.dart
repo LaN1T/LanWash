@@ -8,6 +8,7 @@ import '../models/log_entry.dart';
 import '../models/note.dart';
 import '../models/user.dart';
 import '../models/report_entry.dart';
+import '../models/promo.dart';
 
 class ApiService {
   static String get _baseUrl {
@@ -371,6 +372,19 @@ class ApiService {
     }
   }
 
+  // ─── Promos ────────────────────────────────────────────────────────────────
+  Future<List<Promo>> getPromos() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/services/promos'))
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final list = jsonDecode(resp.body) as List;
+        return list.map((m) => Promo.fromMap(m)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // ─── Logs ─────────────────────────────────────────────────────────────────
   Future<List<LogEntry>> getLogs({int limit = 200}) async {
     try {
@@ -511,10 +525,10 @@ class ApiService {
 
 
   // ─── Reports ───────────────────────────────────────────────────────────────
-  Future<MonthlyReport?> getMonthlyReport(String? month) async {
+  Future<MonthlyReport?> getAverageCheckReport(String? date) async {
     try {
-      final url = month != null 
-          ? '$_baseUrl/reports/monthly-check-vs-price/?month=$month'
+      final url = date != null 
+          ? '$_baseUrl/reports/monthly-check-vs-price/?date=$date'
           : '$_baseUrl/reports/monthly-check-vs-price/';
       final resp = await http.get(Uri.parse(url))
           .timeout(const Duration(seconds: 10));
@@ -525,11 +539,14 @@ class ApiService {
     return null;
   }
 
-  Future<PopularServicesReport?> getPopularAdditionalServices(String? month) async {
+  Future<PopularServicesReport?> getPopularAdditionalServices(String? date, {String? category}) async {
     try {
-      final url = month != null 
-          ? '$_baseUrl/reports/popular-additional-services/?month=$month'
+      String url = date != null 
+          ? '$_baseUrl/reports/popular-additional-services/?date=$date'
           : '$_baseUrl/reports/popular-additional-services/';
+      if (category != null && category != 'Все') {
+        url += '&category=$category';
+      }
       final resp = await http.get(Uri.parse(url))
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
@@ -539,11 +556,17 @@ class ApiService {
     return null;
   }
 
-  Future<ConsumablesUsageReport?> getConsumablesUsage(String? month) async {
+  Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date, {String? category}) async {
     try {
-      final url = month != null 
-          ? '$_baseUrl/reports/consumables-usage/?month=$month'
-          : '$_baseUrl/reports/consumables-usage/';
+      var url = '$_baseUrl/reports/consumables-usage/';
+      final params = <String>[];
+      if (date != null) params.add('date=$date');
+      if (category != null && category != 'Все') params.add('category=$category');
+      
+      if (params.isNotEmpty) {
+        url += '?${params.join('&')}';
+      }
+      
       final resp = await http.get(Uri.parse(url))
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
@@ -551,11 +574,5 @@ class ApiService {
       }
     } catch (_) {}
     return null;
-  }
-
-  // ─── Promos (legacy compatibility) ────────────────────────────────────────
-  Future<List<Service>> fetchPromoServices() async {
-    final services = await getServices();
-    return services.where((s) => s.isFromApi).toList();
   }
 }
