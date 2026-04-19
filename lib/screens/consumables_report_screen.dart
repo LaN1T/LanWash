@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 
 import '../app_styles.dart';
 import '../services/api_service.dart';
@@ -71,7 +73,7 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
     }
   }
 
-  Future<void> _downloadPdf() async {
+  Future<void> downloadPdf() async {
     if (_report == null) return;
     final headers = ['Расходник', 'Ед.', 'Всего'];
     final data = _report!.data.map((e) => [
@@ -80,13 +82,23 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
       e.totalUsed.toString()
     ]).toList();
     
-    await PdfExportService.showExportDialog(
-      context,
-      title: 'Отчет: Расходники за $_selectedDate ($_selectedCategory)',
-      fileName: 'Расходники_${_selectedDate}_$_selectedCategory',
-      headers: headers,
-      data: data,
+    final fileName = 'Расходники_${_selectedDate}_$_selectedCategory';
+    
+    final pdfBytes = await PdfExportService.createPdfBytes(
+      'Отчет: Расходники за $_selectedDate ($_selectedCategory)', headers, data
     );
+
+    if (kIsWeb) {
+      await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+    } else {
+      if (!mounted) return;
+      await PdfExportService.showExportDialog(
+        context,
+        title: 'Отчет: Расходники за $_selectedDate ($_selectedCategory)',
+        fileName: fileName,
+        pdfBytes: pdfBytes,
+      );
+    }
   }
 
   Future<void> _setMonthMode() async {
@@ -143,7 +155,7 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                           IconButton(
                             icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
                             tooltip: 'Скачать отчет',
-                            onPressed: _downloadPdf,
+                            onPressed: downloadPdf,
                           ),
                           IconButton(
                             icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
