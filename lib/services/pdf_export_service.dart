@@ -77,24 +77,29 @@ class PdfExportService {
     required String fileName,
     required Uint8List pdfBytes,
   }) async {
+    final isMobile = Platform.isIOS || Platform.isAndroid;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Экспорт отчета'),
-        content: const Text('Выберите действие:'),
+        content: const Text('Подтвердите действие:'),
         actions: [
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                String? outputFile = await FilePicker.platform.saveFile(
-                  dialogTitle: 'Сохранить отчёт как...',
-                  fileName: '$fileName.pdf',
-                  type: FileType.custom,
-                  allowedExtensions: ['pdf'],
-                );
-                if (outputFile != null) {
-                  await File(outputFile).writeAsBytes(pdfBytes);
+                if (isMobile) {
+                  await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+                } else {
+                  String? outputFile = await FilePicker.platform.saveFile(
+                    dialogTitle: 'Сохранить отчёт как...',
+                    fileName: '$fileName.pdf',
+                    type: FileType.custom,
+                    allowedExtensions: ['pdf'],
+                  );
+                  if (outputFile != null) {
+                    await File(outputFile).writeAsBytes(pdfBytes);
+                  }
                 }
               } catch (e) {
                 print("Ошибка сохранения: $e");
@@ -102,13 +107,14 @@ class PdfExportService {
             },
             child: const Text('Скачать'),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
-            },
-            child: const Text('Поделиться'),
-          ),
+          if (!isMobile)
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+              },
+              child: const Text('Поделиться'),
+            ),
         ],
       ),
     );
