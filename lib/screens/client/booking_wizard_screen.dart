@@ -127,7 +127,7 @@ class _BWState extends State<BookingWizardScreen> {
   bool get _weekendOnly => _promo?.weekendOnly ?? false;
 
   DateTime _nextValidDate() {
-    DateTime d = DateTime.now().add(const Duration(days: 1));
+    DateTime d = DateTime.now();
     if (!_weekendOnly) return d;
     while (d.weekday != DateTime.saturday && d.weekday != DateTime.sunday) {
       d = d.add(const Duration(days: 1));
@@ -494,7 +494,7 @@ class _Step1 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = List.generate(14, (i) =>
-        DateTime.now().add(Duration(days: i + 1)));
+        DateTime.now().add(Duration(days: i)));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
