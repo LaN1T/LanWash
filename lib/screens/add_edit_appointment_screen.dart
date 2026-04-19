@@ -10,43 +10,88 @@ import '../data/initial_data.dart';
 
 const _ruPlateLetters = 'АВЕКМНОРСТУХ';
 
-class _PlateInputFormatter extends TextInputFormatter {
-  static const _enToRuPlate = {
-    'A':'А','B':'В','E':'Е','K':'К','M':'М','H':'Н',
-    'O':'О','P':'Р','C':'С','T':'Т','Y':'У','X':'Х',
-  };
-  static const _ruLayoutToPlate = {
-    'ф':'А','и':'В','у':'Е','р':'К','ь':'М','т':'Н',
-    'щ':'О','з':'Р','с':'С','е':'Т','г':'У','ч':'Х',
-    'Ф':'А','И':'В','У':'Е','Р':'К','Ь':'М','Т':'Н',
-    'Щ':'О','З':'Р','С':'С','Е':'Т','Г':'У','Ч':'Х',
-  };
-
-  String _toPlateChar(String c) {
-    if (_ruPlateLetters.contains(c)) return c;
-    return _enToRuPlate[c] ?? _ruLayoutToPlate[c] ?? '';
+String? _validatePlate(String? v) {
+  if (v == null || v.length < 8) {
+    return 'Слишком короткий номер';
   }
+  if (!RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$').hasMatch(v.toUpperCase())) {
+    return 'Неверный формат (напр. А000АА77)';
+  }
+  return null;
+}
+
+class _PlateInputFormatter extends TextInputFormatter {
+  static const _map = {
+    'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 'M': 'М', 'H': 'Н',
+    'O': 'О', 'P': 'Р', 'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х',
+  };
 
   @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final raw = newValue.text.toUpperCase();
     final buf = StringBuffer();
     int pos = 0;
     for (int i = 0; i < raw.length && pos < 9; i++) {
-      final c = raw[i];
+      String c = raw[i];
+      if (_map.containsKey(c)) c = _map[c]!;
+      
       if (pos == 0 || pos == 4 || pos == 5) {
-        final ruC = _toPlateChar(c);
-        if (ruC.isNotEmpty) { buf.write(ruC); pos++; }
+        if (RegExp(r'[АВЕКМНОРСТУХ]').hasMatch(c)) { buf.write(c); pos++; }
       } else if ((pos >= 1 && pos <= 3) || (pos >= 6 && pos <= 8)) {
         if (RegExp(r'[0-9]').hasMatch(c)) { buf.write(c); pos++; }
       }
     }
     final result = buf.toString();
-    return newValue.copyWith(
+    return TextEditingValue(
       text: result,
       selection: TextSelection.collapsed(offset: result.length),
     );
+  }
+}
+
+// ─── Транслитерация ───────────────────────────────────────────────────────────
+const _enToRu = {
+  'q':'й','w':'ц','e':'у','r':'к','t':'е','y':'н','u':'г','i':'ш','o':'щ','p':'з',
+  '[':'х',']':'ъ','a':'ф','s':'ы','d':'в','f':'а','g':'п','h':'р','j':'о','k':'л',
+  'l':'д',';':'ж',"'":'э','z':'я','x':'ч','c':'с','v':'м','b':'и','n':'т','m':'ь',
+  ',':'б','.':'ю',
+  'Q':'Й','W':'Ц','E':'У','R':'К','T':'Е','Y':'Н','U':'Г','I':'Ш','O':'Щ','P':'З',
+  'A':'Ф','S':'Ы','D':'В','F':'А','G':'П','H':'Р','J':'О','K':'Л','L':'Д',
+  'Z':'Я','X':'Ч','C':'С','V':'М','B':'И','N':'Т','M':'Ь',
+};
+const _ruToEn = {
+  'й':'q','ц':'w','у':'e','к':'r','е':'t','н':'y','г':'u','ш':'i','щ':'o','з':'p',
+  'ф':'a','ы':'s','в':'d','а':'f','п':'g','р':'h','о':'j','л':'k',
+  'д':'l','я':'z','ч':'x','с':'c','м':'v','и':'b','т':'n','ь':'m',
+  'Й':'Q','Ц':'W','У':'E','К':'R','Е':'T','Н':'Y','Г':'U','Ш':'I','Щ':'O','З':'P',
+  'Ф':'A','Ы':'S','В':'D','А':'F','П':'G','Р':'H','О':'J','Л':'K','Д':'L',
+  'Я':'Z','Ч':'X','С':'C','М':'V','И':'B','Т':'N','Ь':'M',
+};
+
+String _translitToRu(String input) => input.split('').map((c) => _enToRu[c] ?? c).join();
+String _translitToEn(String input) => input.split('').map((c) => _ruToEn[c] ?? c).join();
+
+void _applyTranslitRu(TextEditingController ctrl, String v) {
+  final converted = _translitToRu(v);
+  if (converted != v) {
+    ctrl.value = TextEditingValue(text: converted, selection: TextSelection.collapsed(offset: converted.length));
+  }
+}
+void _applyTranslitEn(TextEditingController ctrl, String v) {
+  final converted = _translitToEn(v);
+  if (converted != v) {
+    ctrl.value = TextEditingValue(text: converted, selection: TextSelection.collapsed(offset: converted.length));
+  }
+}
+
+void _applyTranslitPlate(TextEditingController ctrl, String v) {
+  final enToRu = {
+    'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 'M': 'М', 'H': 'Н',
+    'O': 'О', 'P': 'Р', 'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х',
+  };
+  String converted = v.toUpperCase().split('').map((c) => enToRu[c] ?? c).join();
+  if (converted != v) {
+    ctrl.value = TextEditingValue(text: converted, selection: TextSelection.collapsed(offset: converted.length));
   }
 }
 
@@ -58,6 +103,7 @@ class AddEditAppointmentScreen extends StatefulWidget {
 
 class _State extends State<AddEditAppointmentScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollCtrl = ScrollController();
   late final TextEditingController _nameCtrl;
   late final TextEditingController _modelCtrl;
   late final TextEditingController _numberCtrl;
@@ -68,6 +114,7 @@ class _State extends State<AddEditAppointmentScreen> {
   late DateTime _dateTime;
   late String _status;
   String? _selectedPromoId;
+  String? _plateError;
 
   bool get _isEditing => widget.appointment != null;
 
@@ -146,6 +193,7 @@ class _State extends State<AddEditAppointmentScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
+          controller: _scrollCtrl,
           padding: AppStyles.pagePadding,
           children: [
             _sectionLabel('Клиент и автомобиль'),
@@ -156,6 +204,7 @@ class _State extends State<AddEditAppointmentScreen> {
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Введите имя' : null,
               textCapitalization: TextCapitalization.words,
+              onChanged: (v) => _applyTranslitRu(_nameCtrl, v),
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -164,6 +213,7 @@ class _State extends State<AddEditAppointmentScreen> {
                   icon: Icons.directions_car),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Введите модель' : null,
+              onChanged: (v) => _applyTranslitEn(_modelCtrl, v),
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -172,10 +222,12 @@ class _State extends State<AddEditAppointmentScreen> {
                   color: AppStyles.textPrimary,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600),
-              decoration: _plateDecoration(),
+              decoration: _plateDecoration().copyWith(errorText: _plateError),
               inputFormatters: [_PlateInputFormatter()],
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Введите номер' : null,
+              validator: _validatePlate,
+              onChanged: (v) {
+                if (_plateError != null) setState(() => _plateError = null);
+              },
             ),
             const SizedBox(height: 20),
 
@@ -382,7 +434,18 @@ class _State extends State<AddEditAppointmentScreen> {
   }
 
   void _save() {
-    if (!_formKey.currentState!.validate()) return;
+    final v = _numberCtrl.text.toUpperCase();
+    if (v.length < 8 || !RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$').hasMatch(v)) {
+      setState(() => _plateError = 'Неверный формат (напр. А000АА77)');
+      _scrollCtrl.animateTo(120, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      return;
+    }
+    setState(() => _plateError = null);
+
+    if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
+      print("Валидация не пройдена");
+      return;
+    }
     final provider = context.read<AppProvider>();
 
     final newPrice = _calcPrice(provider);

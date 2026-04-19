@@ -58,52 +58,40 @@ void _applyTranslitEn(TextEditingController ctrl, String v) {
 
 const _ruPlateLetters = 'АВЕКМНОРСТУХ';
 
-class _PlateInputFormatter extends TextInputFormatter {
-  static const _enToRuPlate = {
-    'A':'А','B':'В','E':'Е','K':'К','M':'М','H':'Н',
-    'O':'О','P':'Р','C':'С','T':'Т','Y':'У','X':'Х',
-  };
-  static const _ruLayoutToPlate = {
-    'ф':'А','и':'В','у':'Е','р':'К','ь':'М','т':'Н',
-    'щ':'О','з':'Р','с':'С','е':'Т','г':'У','ч':'Х',
-    'Ф':'А','И':'В','У':'Е','Р':'К','Ь':'М','Т':'Н',
-    'Щ':'О','З':'Р','С':'С','Е':'Т','Г':'У','Ч':'Х',
-  };
-
-  String _toPlateChar(String c) {
-    final upperC = c.toUpperCase();
-    if (_ruPlateLetters.contains(upperC)) return upperC;
-    final ruC = _enToRuPlate[upperC] ?? _ruLayoutToPlate[upperC];
-    if (ruC != null && _ruPlateLetters.contains(ruC)) return ruC;
-    return '';
+String? _validatePlate(String? v) {
+  if (v == null || !RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$').hasMatch(v.toUpperCase())) {
+    return 'Неверный формат (напр. А000АА77)';
   }
+  return null;
+}
+
+class _PlateInputFormatter extends TextInputFormatter {
+  static const _map = {
+    'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 'M': 'М', 'H': 'Н',
+    'O': 'О', 'P': 'Р', 'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х',
+  };
 
   @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final raw = newValue.text.toUpperCase();
     final buf = StringBuffer();
     int pos = 0;
     for (int i = 0; i < raw.length && pos < 9; i++) {
-      final c = raw[i];
+      String c = raw[i];
+      if (_map.containsKey(c)) c = _map[c]!;
+      
       if (pos == 0 || pos == 4 || pos == 5) {
-        final ruC = _toPlateChar(c);
-        if (ruC.isNotEmpty) { buf.write(ruC); pos++; }
+        if (RegExp(r'[АВЕКМНОРСТУХ]').hasMatch(c)) { buf.write(c); pos++; }
       } else if ((pos >= 1 && pos <= 3) || (pos >= 6 && pos <= 8)) {
         if (RegExp(r'[0-9]').hasMatch(c)) { buf.write(c); pos++; }
       }
     }
     final result = buf.toString();
-    return newValue.copyWith(
+    return TextEditingValue(
       text: result,
       selection: TextSelection.collapsed(offset: result.length),
     );
   }
-}
-
-String? _validatePlate(String? v) {
-  if (v == null || v.trim().isEmpty) return 'Введите номер';
-  return null;
 }
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
@@ -139,7 +127,7 @@ class _BWState extends State<BookingWizardScreen> {
   bool get _weekendOnly => _promo?.weekendOnly ?? false;
 
   DateTime _nextValidDate() {
-    DateTime d = DateTime.now().add(const Duration(days: 1));
+    DateTime d = DateTime.now();
     if (!_weekendOnly) return d;
     while (d.weekday != DateTime.saturday && d.weekday != DateTime.sunday) {
       d = d.add(const Duration(days: 1));
@@ -264,10 +252,17 @@ class _BWState extends State<BookingWizardScreen> {
       if (washIncluded.contains(id)) continue;
       total += _extraDuration(id);
     }
-    final h = total ~/ 60;
+
+    final d = total ~/ (24 * 60);
+    final h = (total % (24 * 60)) ~/ 60;
     final m = total % 60;
-    if (h == 0) return '$m мин';
-    return m == 0 ? '$h ч' : '$h ч $m мин';
+
+    final parts = <String>[];
+    if (d > 0) parts.add('$d д');
+    if (h > 0) parts.add('$h ч');
+    if (m > 0) parts.add('$m мин');
+    
+    return parts.isEmpty ? '0 мин' : parts.join(' ');
   }
 
   void _next() {
@@ -499,7 +494,7 @@ class _Step1 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = List.generate(14, (i) =>
-        DateTime.now().add(Duration(days: i + 1)));
+        DateTime.now().add(Duration(days: i)));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
