@@ -6,6 +6,7 @@ import '../app_styles.dart';
 import '../services/api_service.dart';
 import '../models/report_entry.dart';
 import '../providers/app_provider.dart';
+import '../services/pdf_export_service.dart';
 
 class ConsumablesReportScreen extends StatefulWidget {
   const ConsumablesReportScreen({super.key});
@@ -21,8 +22,8 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
   ];
   ConsumablesUsageReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
-  String _selectedCategory = 'Все'; // Add state for selected category
-  List<String> _categories = ['Все']; // Add state for categories list
+  String _selectedCategory = 'Все';
+  List<String> _categories = ['Все'];
   bool _isLoading = false;
   String? _error;
 
@@ -32,23 +33,22 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
     _fetchCategoriesAndReport();
   }
 
-  // New method to fetch categories first
   Future<void> _fetchCategoriesAndReport() async {
     try {
       final appProvider = Provider.of<AppProvider>(context, listen: false);
       _categories = ['Все', ...await appProvider.getServiceCategories()];
-      _categories.sort(); // Ensure categories are sorted
+      _categories.sort();
       await _fetchReport();
     } catch (e) {
       setState(() {
         _error = 'Не удалось загрузить категории или отчет: $e';
       });
-      _isLoading = false; // Ensure loading is false on error
+      _isLoading = false;
     }
   }
 
   Future<void> _fetchReport() async {
-    if (_isLoading) return; // Prevent concurrent fetches
+    if (_isLoading) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -69,6 +69,22 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _downloadPdf() async {
+    if (_report == null) return;
+    final headers = ['Расходник', 'Ед.', 'Всего'];
+    final data = _report!.data.map((e) => [
+      e.consumableName,
+      e.unit,
+      e.totalUsed.toString()
+    ]).toList();
+    
+    await PdfExportService.generateReport(
+      title: 'Отчет: Расходники за $_selectedDate',
+      headers: headers,
+      data: data,
+    );
   }
 
   Future<void> _setMonthMode() async {
@@ -123,6 +139,11 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                             ),
                           ),
                           IconButton(
+                            icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
+                            tooltip: 'Скачать отчет',
+                            onPressed: _downloadPdf,
+                          ),
+                          IconButton(
                             icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
                             tooltip: 'Весь месяц',
                             onPressed: _setMonthMode,
@@ -135,7 +156,6 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                         ],
                       ),
                     ),
-                    // Filter by Category
                     SizedBox(
                       height: 48,
                       child: ListView(
@@ -150,7 +170,7 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                               selected: selected,
                               onSelected: (_) {
                                 setState(() => _selectedCategory = cat);
-                                _fetchReport(); // Fetch report when category changes
+                                _fetchReport();
                               },
                               selectedColor: AppStyles.primary,
                               labelStyle: TextStyle(
@@ -199,7 +219,8 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                                     trailing: Text(countLabel),
                                   ),
                                 );
-                              },                            ),
+                              },
+                            ),
                     ),
                   ],
                 ),
