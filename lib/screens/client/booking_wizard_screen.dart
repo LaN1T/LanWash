@@ -264,10 +264,17 @@ class _BWState extends State<BookingWizardScreen> {
       if (washIncluded.contains(id)) continue;
       total += _extraDuration(id);
     }
-    final h = total ~/ 60;
+
+    final d = total ~/ (24 * 60);
+    final h = (total % (24 * 60)) ~/ 60;
     final m = total % 60;
-    if (h == 0) return '$m мин';
-    return m == 0 ? '$h ч' : '$h ч $m мин';
+
+    final parts = <String>[];
+    if (d > 0) parts.add('$d д');
+    if (h > 0) parts.add('$h ч');
+    if (m > 0) parts.add('$m мин');
+    
+    return parts.isEmpty ? '0 мин' : parts.join(' ');
   }
 
   void _next() {
