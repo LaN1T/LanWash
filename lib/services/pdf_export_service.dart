@@ -1,18 +1,24 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:io';
 
 class PdfExportService {
   static Future<Uint8List> createPdfBytes(String title, List<String> headers, List<List<String>> data) async {
     final pdf = pw.Document();
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
+
+    final logoImage = pw.MemoryImage(
+      (await rootBundle.load('assets/icon/icon.png')).buffer.asUint8List(),
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -34,10 +40,12 @@ class PdfExportService {
                   pw.Text('LanWash - Система управления автомойкой', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
                   pw.Text('Официальный отчет', style: const pw.TextStyle(fontSize: 10)),
                 ]),
-                pw.Container(
-                  width: 45, height: 45,
-                  decoration: const pw.BoxDecoration(color: PdfColors.blue800, shape: pw.BoxShape.circle),
-                  child: pw.Center(child: pw.Text('LW', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 16))),
+                pw.ClipOval(
+                  child: pw.Container(
+                    width: 45,
+                    height: 45,
+                    child: pw.Image(logoImage, fit: pw.BoxFit.cover),
+                  ),
                 ),
               ],
             ),
