@@ -65,6 +65,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     
     await PdfExportService.generateReport(
       title: 'Отчет: Средний чек за $_selectedDate',
+      fileName: 'Средний_чек_$_selectedDate',
       headers: headers,
       data: data,
     );

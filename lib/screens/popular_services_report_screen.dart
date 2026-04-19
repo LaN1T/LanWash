@@ -76,7 +76,8 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
     ]).toList();
     
     await PdfExportService.generateReport(
-      title: 'Отчет: Популярные услуги за $_selectedDate',
+      title: 'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)',
+      fileName: 'Популярные_услуги_$_selectedDate$_selectedCategory',
       headers: headers,
       data: data,
     );
