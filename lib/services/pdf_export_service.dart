@@ -5,11 +5,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
-import 'package:file_saver/file_saver.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PdfExportService {
-  static Future<Uint8List> _createPdf(String title, List<String> headers, List<List<String>> data) async {
+  static Future<Uint8List> createPdfBytes(String title, List<String> headers, List<List<String>> data) async {
     final pdf = pw.Document();
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -67,11 +67,8 @@ class PdfExportService {
   static Future<void> showExportDialog(BuildContext context, {
     required String title,
     required String fileName,
-    required List<String> headers,
-    required List<List<String>> data,
+    required Uint8List pdfBytes,
   }) async {
-    final pdfBytes = await _createPdf(title, headers, data);
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -82,16 +79,17 @@ class PdfExportService {
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                print("PDF: Попытка сохранения через saveAs");
-                final path = await FileSaver.instance.saveAs(
-                  name: fileName,
-                  bytes: pdfBytes,
-                  fileExtension: 'pdf',
-                  mimeType: MimeType.pdf,
+                String? outputFile = await FilePicker.platform.saveFile(
+                  dialogTitle: 'Сохранить отчёт как...',
+                  fileName: '$fileName.pdf',
+                  type: FileType.custom,
+                  allowedExtensions: ['pdf'],
                 );
-                print("PDF: Файл сохранен по пути: $path");
+                if (outputFile != null) {
+                  await File(outputFile).writeAsBytes(pdfBytes);
+                }
               } catch (e) {
-                print("PDF: Ошибка при сохранении: $e");
+                print("Ошибка сохранения: $e");
               }
             },
             child: const Text('Скачать'),
@@ -99,7 +97,6 @@ class PdfExportService {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              // Используем нативный Printing для шаринга - это безопасный путь для Sandbox
               await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
             },
             child: const Text('Поделиться'),

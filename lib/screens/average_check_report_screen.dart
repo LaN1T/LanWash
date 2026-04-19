@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
 import '../app_styles.dart';
 import '../providers/app_provider.dart';
@@ -55,11 +57,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   }
 
   Future<void> downloadPdf() async {
-    print("PDF: Кнопка нажата");
-    if (_report == null) {
-      print("PDF: Отчет пуст");
-      return;
-    }
+    if (_report == null) return;
     final headers = ['Модель авто', 'Кол-во записей', 'Средний чек (₽)'];
     final data = _report!.data.map((e) => [
       e.carModel,
@@ -67,17 +65,20 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
       e.avgCheck.toStringAsFixed(0)
     ]).toList();
     
-    try {
-      print("PDF: Генерация...");
+    final pdfBytes = await PdfExportService.createPdfBytes(
+      'Отчет: Средний чек за $_selectedDate', headers, data
+    );
+
+    if (kIsWeb) {
+      await Printing.sharePdf(bytes: pdfBytes, filename: 'Средний чек_${_selectedDate}.pdf');
+    } else {
+      if (!mounted) return;
       await PdfExportService.showExportDialog(
         context,
         title: 'Отчет: Средний чек за $_selectedDate',
-        fileName: 'Средний_чек_${_selectedDate}',
-        headers: headers,
-        data: data,
-      );      print("PDF: Успешно");
-    } catch (e) {
-      print("PDF: Ошибка $e");
+        fileName: 'Средний чек_${_selectedDate}',
+        pdfBytes: pdfBytes,
+      );
     }
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
 import '../app_styles.dart';
 import '../providers/app_provider.dart';
@@ -67,7 +69,7 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
     }
   }
 
-  Future<void> _downloadPdf() async {
+  Future<void> downloadPdf() async {
     if (_report == null) return;
     final headers = ['Услуга', 'Количество'];
     final data = _report!.data.map((e) => [
@@ -75,13 +77,23 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
       (e.count ?? 0).toString()
     ]).toList();
     
-    await PdfExportService.showExportDialog(
-      context,
-      title: 'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)',
-      fileName: 'Популярные_услуги_${_selectedDate}_$_selectedCategory',
-      headers: headers,
-      data: data,
+    final fileName = 'Популярные услуги_${_selectedDate}_$_selectedCategory';
+
+    final pdfBytes = await PdfExportService.createPdfBytes(
+      'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)', headers, data
     );
+
+    if (kIsWeb) {
+      await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+    } else {
+      if (!mounted) return;
+      await PdfExportService.showExportDialog(
+        context,
+        title: 'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)',
+        fileName: fileName,
+        pdfBytes: pdfBytes,
+      );
+    }
   }
 
   Future<void> _setMonthMode() async {
@@ -138,7 +150,7 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                           IconButton(
                             icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
                             tooltip: 'Скачать отчет',
-                            onPressed: _downloadPdf,
+                            onPressed: downloadPdf,
                           ),
                           IconButton(
                             icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
