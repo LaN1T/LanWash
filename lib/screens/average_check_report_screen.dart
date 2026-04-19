@@ -6,6 +6,7 @@ import '../app_styles.dart';
 import '../providers/app_provider.dart';
 import '../services/api_service.dart';
 import '../models/report_entry.dart';
+import '../services/pdf_export_service.dart';
 
 class AverageCheckReportScreen extends StatefulWidget {
   const AverageCheckReportScreen({super.key});
@@ -51,6 +52,22 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> downloadPdf() async {
+    if (_report == null) return;
+    final headers = ['Модель авто', 'Кол-во записей', 'Средний чек (₽)'];
+    final data = _report!.data.map((e) => [
+      e.carModel,
+      e.visitCount.toString(),
+      e.avgCheck.toStringAsFixed(0)
+    ]).toList();
+    
+    await PdfExportService.generateReport(
+      title: 'Отчет: Средний чек за $_selectedDate',
+      headers: headers,
+      data: data,
+    );
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -102,6 +119,11 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                                   : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
+                            tooltip: 'Скачать отчет',
+                            onPressed: downloadPdf,
                           ),
                           IconButton(
                             icon: const Icon(Icons.calendar_month, color: AppStyles.primary),

@@ -21,6 +21,9 @@ dependencies:
   crypto: ^3.0.3
   shared_preferences: ^2.3.2
   cupertino_icons: ^1.0.6
+  pdf: ^3.11.0
+  printing: ^5.13.0
+  share_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
@@ -44,3 +47,13 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/fonts/
+
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
