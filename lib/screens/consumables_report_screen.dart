@@ -80,9 +80,10 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
       e.totalUsed.toString()
     ]).toList();
     
-    await PdfExportService.generateReport(
+    await PdfExportService.showExportDialog(
+      context,
       title: 'Отчет: Расходники за $_selectedDate ($_selectedCategory)',
-      fileName: 'Расходники_$_selectedDate$_selectedCategory',
+      fileName: 'Расходники_${_selectedDate}_$_selectedCategory',
       headers: headers,
       data: data,
     );

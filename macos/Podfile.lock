@@ -1,4 +1,6 @@
 PODS:
+  - file_saver (0.0.1):
+    - FlutterMacOS
   - FlutterMacOS (1.0.0)
   - printing (1.0.0):
     - FlutterMacOS
@@ -12,6 +14,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
+  - file_saver (from `Flutter/ephemeral/.symlinks/plugins/file_saver/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - printing (from `Flutter/ephemeral/.symlinks/plugins/printing/macos`)
   - share_plus (from `Flutter/ephemeral/.symlinks/plugins/share_plus/macos`)
@@ -19,6 +22,8 @@ DEPENDENCIES:
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
 
 EXTERNAL SOURCES:
+  file_saver:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_saver/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
   printing:
@@ -31,6 +36,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin
 
 SPEC CHECKSUMS:
+  file_saver: e35bd97de451dde55ff8c38862ed7ad0f3418d0f
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   printing: c4cf83c78fd684f9bc318e6aadc18972aa48f617
   share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
