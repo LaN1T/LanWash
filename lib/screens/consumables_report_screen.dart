@@ -81,7 +81,8 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
     ]).toList();
     
     await PdfExportService.generateReport(
-      title: 'Отчет: Расходники за $_selectedDate',
+      title: 'Отчет: Расходники за $_selectedDate ($_selectedCategory)',
+      fileName: 'Расходники_$_selectedDate$_selectedCategory',
       headers: headers,
       data: data,
     );
