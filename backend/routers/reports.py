@@ -166,9 +166,14 @@ async def get_consumables_usage(date: str = None, category: str = None, db: Asyn
             Consumable.unit,
             ConsumableUsageLog.quantityUsed,
             ConsumableUsageLog.appointmentId,
+            Appointment.dateTime, # Include Appointment.dateTime for filtering
         )
         .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
-        .where(cast(ConsumableUsageLog.timestamp, String).like(f"{date}%"))
+        .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id) # Join with Appointment
+        .where(and_(
+            cast(Appointment.dateTime, String).like(f"{date}%"), # Filter by Appointment.dateTime
+            Appointment.status == 'completed' # Ensure only completed appointments are considered
+        ))
     )
     logs = (await db.execute(query)).all()
 
@@ -183,7 +188,7 @@ async def get_consumables_usage(date: str = None, category: str = None, db: Asyn
     sums: dict[str, float] = defaultdict(float)
     units: dict[str, str] = {}
 
-    for c_id, name, unit, qty, app_id in logs:
+    for c_id, name, unit, qty, app_id, _ in logs:
         cats = cons_to_cats.get(c_id, set())
         is_promo = app_is_promo.get(app_id, False)
 
