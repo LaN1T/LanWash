@@ -55,7 +55,11 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   }
 
   Future<void> downloadPdf() async {
-    if (_report == null) return;
+    print("PDF: Кнопка нажата");
+    if (_report == null) {
+      print("PDF: Отчет пуст");
+      return;
+    }
     final headers = ['Модель авто', 'Кол-во записей', 'Средний чек (₽)'];
     final data = _report!.data.map((e) => [
       e.carModel,
@@ -63,12 +67,18 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
       e.avgCheck.toStringAsFixed(0)
     ]).toList();
     
-    await PdfExportService.generateReport(
-      title: 'Отчет: Средний чек за $_selectedDate',
-      fileName: 'Средний_чек_$_selectedDate',
-      headers: headers,
-      data: data,
-    );
+    try {
+      print("PDF: Генерация...");
+      await PdfExportService.showExportDialog(
+        context,
+        title: 'Отчет: Средний чек за $_selectedDate',
+        fileName: 'Средний_чек_${_selectedDate}',
+        headers: headers,
+        data: data,
+      );      print("PDF: Успешно");
+    } catch (e) {
+      print("PDF: Ошибка $e");
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
