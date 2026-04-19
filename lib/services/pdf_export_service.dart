@@ -86,7 +86,7 @@ class PdfExportService {
                 final path = await FileSaver.instance.saveAs(
                   name: fileName,
                   bytes: pdfBytes,
-                  ext: 'pdf',
+                  fileExtension: 'pdf',
                   mimeType: MimeType.pdf,
                 );
                 print("PDF: Файл сохранен по пути: $path");
