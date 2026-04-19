@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../providers/app_provider.dart';
 import '../services/api_service.dart';
-import '../models/report_entry.dart'; // Импортируем новые модели
+import '../models/report_entry.dart';
+import '../services/pdf_export_service.dart';
 
 class PopularServicesReportScreen extends StatefulWidget {
   const PopularServicesReportScreen({super.key});
@@ -17,35 +18,33 @@ class PopularServicesReportScreen extends StatefulWidget {
 class _PopularServicesReportScreenState extends State<PopularServicesReportScreen> {
   PopularServicesReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
-  String _selectedCategory = 'Все'; // Add state for selected category
-  List<String> _categories = ['Все']; // Add state for categories list
+  String _selectedCategory = 'Все';
+  List<String> _categories = ['Все'];
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    // Fetch categories and then the report
     _fetchCategoriesAndReport();
   }
 
-  // New method to fetch categories first
   Future<void> _fetchCategoriesAndReport() async {
     try {
       final appProvider = Provider.of<AppProvider>(context, listen: false);
       _categories = ['Все', ...await appProvider.getServiceCategories()];
-      _categories.sort(); // Ensure categories are sorted
+      _categories.sort();
       await _fetchReport();
     } catch (e) {
       setState(() {
         _error = 'Не удалось загрузить категории или отчет: $e';
       });
-      _isLoading = false; // Ensure loading is false on error
+      _isLoading = false;
     }
   }
 
   Future<void> _fetchReport() async {
-    if (_isLoading) return; // Prevent concurrent fetches
+    if (_isLoading) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -66,6 +65,21 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _downloadPdf() async {
+    if (_report == null) return;
+    final headers = ['Услуга', 'Количество'];
+    final data = _report!.data.map((e) => [
+      e.serviceName ?? 'Услуга',
+      (e.count ?? 0).toString()
+    ]).toList();
+    
+    await PdfExportService.generateReport(
+      title: 'Отчет: Популярные услуги за $_selectedDate',
+      headers: headers,
+      data: data,
+    );
   }
 
   Future<void> _setMonthMode() async {
@@ -114,16 +128,15 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                           Expanded(
                             child: Text(
                               _selectedDate.length == 7
-                                  ? 'Отчет: ${[
-                                      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-                                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-                                    ][DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
-                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${[
-                                      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-                                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-                                    ][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
+                                  ? 'Отчет: ${['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'][DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
+                            tooltip: 'Скачать отчет',
+                            onPressed: _downloadPdf,
                           ),
                           IconButton(
                             icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
@@ -136,7 +149,6 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                         ],
                       ),
                     ),
-                    // Filter by Category
                     SizedBox(
                       height: 48,
                       child: ListView(
@@ -151,7 +163,7 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                               selected: selected,
                               onSelected: (_) {
                                 setState(() => _selectedCategory = cat);
-                                _fetchReport(); // Fetch report when category changes
+                                _fetchReport();
                               },
                               selectedColor: AppStyles.primary,
                               labelStyle: TextStyle(
@@ -198,7 +210,8 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                                     trailing: Text(countLabel),
                                   ),
                                 );
-                              },                            ),
+                              },
+                            ),
                     ),
                   ],
                 ),
