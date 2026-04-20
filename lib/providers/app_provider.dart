@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/appointment.dart';
 import '../models/service.dart';
@@ -6,9 +7,11 @@ import '../models/note.dart';
 import '../models/user.dart';
 import '../models/wash_type.dart';
 import '../services/api_service.dart';
+import 'auth_provider.dart';
 
 class AppProvider extends ChangeNotifier {
   final _api = ApiService();
+  Timer? _refreshTimer;
 
   List<Appointment> _appointmentList = [];
   List<Service>     _serviceList     = [];
@@ -19,8 +22,8 @@ class AppProvider extends ChangeNotifier {
   Set<String>       _serviceFavSet   = {};
   String            _currentUser     = '';
   bool _loading    = true;
-  bool _hasDeletedByAdmin = false;
   bool _loadingApi = false;
+  bool _hasDeletedByAdmin = false;
   int  _unreadNotes = 0;
 
   List<Appointment> get appointments   => _appointmentList;
@@ -32,50 +35,78 @@ class AppProvider extends ChangeNotifier {
   bool              get loading        => _loading;
   bool              get loadingApi     => _loadingApi;
   int               get unreadNotes    => _unreadNotes;
+  bool              get hasDeletedByAdmin => _hasDeletedByAdmin;
 
-  bool get hasDeletedByAdmin => _hasDeletedByAdmin;
-
-  List<Appointment> get favoriteAppointments =>
-      _appointmentList.where((a) => a.isFavorite).toList();
-
-  List<Service> get favoriteServices =>
-      _serviceList.where((s) => _serviceFavSet.contains(s.id)).toList();
-
+  List<Appointment> get favoriteAppointments => _appointmentList.where((a) => a.isFavorite).toList();
+  List<Service> get favoriteServices => _serviceList.where((s) => _serviceFavSet.contains(s.id)).toList();
   bool isServiceFavorite(String id) => _serviceFavSet.contains(id);
+  bool isExtraFavorite(String serviceId) => _extraFavSet.contains(serviceId);
 
-  /// Поиск типа мойки по id (w1..w4)
   WashType? washTypeById(String id) {
-    for (final w in _washTypeList) {
-      if (w.id == id) return w;
-    }
-    return null;
+    final results = _washTypeList.where((w) => w.id == id);
+    return results.isNotEmpty ? results.first : null;
   }
-
-  /// Поиск типа мойки по code (express/basic/complex/premium)
   WashType? washTypeByCode(String code) {
-    for (final w in _washTypeList) {
-      if (w.code == code) return w;
-    }
-    return null;
+    final results = _washTypeList.where((w) => w.code == code);
+    return results.isNotEmpty ? results.first : null;
+  }
+  String washTypeName(String id) => washTypeById(id)?.name ?? id;
+  Promo? promoById(String id) {
+    final results = _promoList.where((p) => p.id == id);
+    return results.isNotEmpty ? results.first : null;
   }
 
-  /// Имя типа мойки для отображения (fallback — id)
-  String washTypeName(String id) => washTypeById(id)?.name ?? id;
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
-  Promo? promoById(String id) {
-    for (final p in _promoList) {
-      if (p.id == id) return p;
-    }
-    return null;
+  void startAutoRefresh(AuthProvider auth) {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
+      final userLogin = auth.userLogin;
+      List<Appointment> newAppointments;
+
+      if (auth.isAdmin) {
+        newAppointments = await _api.getAppointments();
+      } else if (auth.isWasher) {
+        newAppointments = await _api.getAppointmentsByWasher(userLogin);
+      } else if (userLogin.isNotEmpty) {
+        newAppointments = await _api.getAppointmentsByOwner(userLogin);
+      } else {
+        return;
+      }
+
+      bool hasChanges = newAppointments.length != _appointmentList.length;
+      if (!hasChanges) {
+        for (int i = 0; i < newAppointments.length; i++) {
+          if (newAppointments[i].id != _appointmentList[i].id || 
+              newAppointments[i].status != _appointmentList[i].status) {
+            hasChanges = true;
+            break;
+          }
+        }
+      }
+
+      if (hasChanges) {
+        _appointmentList = newAppointments;
+        notifyListeners();
+      }
+    });
   }
 
   Future<void> init() async {
     _loading = true;
     notifyListeners();
-
-    _serviceList  = await _api.getServices();
-    _promoList    = await _api.getPromos();
-    _washTypeList = await _api.getWashTypes();
+    try {
+      _serviceList  = await _api.getServices();
+      _promoList    = await _api.getPromos();
+      _washTypeList = await _api.getWashTypes();
+      _appointmentList = await _api.getAppointments();
+    } catch (e) {
+      debugPrint('[AppProvider] init error: $e');
+    }
     _loading = false;
     notifyListeners();
   }
@@ -86,7 +117,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> reloadForUser(String username) async {
-    _currentUser     = username.toLowerCase();
+    _currentUser = username.toLowerCase();
     _appointmentList = await _api.getAppointmentsByOwner(_currentUser);
     _extraFavSet     = await _api.getExtraFavorites(_currentUser);
     _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
@@ -95,28 +126,15 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> clearData() async {
-    _appointmentList = [];
-    _noteList        = [];
-    _extraFavSet     = {};
-    _serviceFavSet   = {};
-    _currentUser     = '';
-    _unreadNotes     = 0;
-    _hasDeletedByAdmin = false;
+    _appointmentList = []; _noteList = []; _extraFavSet = {}; _serviceFavSet = {};
+    _currentUser = ''; _unreadNotes = 0; _hasDeletedByAdmin = false;
     notifyListeners();
   }
 
-  // ─── Записи ──────────────────────────────────────────────────────────────
   Future<void> addAppointment(Appointment a) async {
     await _api.createAppointment(a);
-    if (_currentUser.isNotEmpty) {
-      _appointmentList = await _api.getAppointmentsByOwner(_currentUser);
-    } else {
-      _appointmentList = await _api.getAppointments();
-    }
+    _appointmentList = await _api.getAppointments();
     notifyListeners();
-    final wt = washTypeById(a.washTypeId);
-    await _api.createLog(_currentUser, 'Создание записи',
-        '${wt?.name ?? a.washTypeId} · ${a.carModel} ${a.carNumber} · ${a.calculateTotalPrice(services, wt)}₽');
   }
 
   Future<void> updateAppointment(Appointment a) async {
@@ -124,54 +142,23 @@ class AppProvider extends ChangeNotifier {
     final i = _appointmentList.indexWhere((x) => x.id == a.id);
     if (i != -1) _appointmentList[i] = a;
     notifyListeners();
-    final wt = washTypeById(a.washTypeId);
-    await _api.createLog(_currentUser.isNotEmpty ? _currentUser : 'admin',
-        'Редактирование записи',
-        '${wt?.name ?? a.washTypeId} · ${a.carModel} · статус: ${a.status}');
   }
 
   Future<void> deleteAppointment(String id) async {
-    final appt = _appointmentList.firstWhere((a) => a.id == id,
-        orElse: () => _appointmentList.first);
     await _api.deleteAppointment(id);
     _appointmentList.removeWhere((a) => a.id == id);
     notifyListeners();
-    final wt = washTypeById(appt.washTypeId);
-    await _api.createLog(_currentUser.isNotEmpty ? _currentUser : 'admin',
-        'Удаление записи',
-        '${wt?.name ?? appt.washTypeId} · ${appt.carModel} ${appt.carNumber}');
-  }
-
-  Future<void> clearDeletedByAdminFlag() async {
-    if (_hasDeletedByAdmin) {
-      await _api.clearDeletedNotification(_currentUser);
-      _hasDeletedByAdmin = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> clearAdminModifiedFlag(String id) async {
-    await _api.clearAdminModifiedFlag(id);
-    final i = _appointmentList.indexWhere((a) => a.id == id);
-    if (i != -1) {
-      _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false);
-      notifyListeners();
-    }
   }
 
   Future<void> toggleAppointmentFavorite(String id) async {
     await _api.toggleAppointmentFavorite(id);
     final i = _appointmentList.indexWhere((a) => a.id == id);
     if (i != -1) {
-      _appointmentList[i] = _appointmentList[i].copyWith(
-          isFavorite: !_appointmentList[i].isFavorite);
+      _appointmentList[i] = _appointmentList[i].copyWith(isFavorite: !_appointmentList[i].isFavorite);
       notifyListeners();
     }
   }
 
-  Future<Map<String, int>> getStats() => _api.getAppointmentStats();
-
-  // ─── Услуги ──────────────────────────────────────────────────────────────
   Future<void> addService(Service s) async {
     await _api.createService(s);
     _serviceList = await _api.getServices();
@@ -193,45 +180,20 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> toggleServiceFavorite(String id) async {
     if (_currentUser.isEmpty) return;
-    final wasFav = _serviceFavSet.contains(id);
     await _api.toggleServiceFavorite(_currentUser, id);
-    if (wasFav) {
-      _serviceFavSet.remove(id);
-    } else {
-      _serviceFavSet.add(id);
-    }
+    if (_serviceFavSet.contains(id)) _serviceFavSet.remove(id); else _serviceFavSet.add(id);
     notifyListeners();
-    final svc = _serviceList.firstWhere((s) => s.id == id,
-        orElse: () => _serviceList.first);
-    await _api.createLog(_currentUser,
-        wasFav ? 'Убрано из избранного' : 'Добавлено в избранное', svc.name);
+  }
+
+  Future<void> toggleExtraFavorite(String serviceId) async {
+    if (_currentUser.isEmpty) return;
+    await _api.toggleExtraFavorite(_currentUser, serviceId);
+    if (_extraFavSet.contains(serviceId)) _extraFavSet.remove(serviceId); else _extraFavSet.add(serviceId);
+    notifyListeners();
   }
 
   Future<List<String>> getServiceCategories() => _api.getServiceCategories();
 
-  // ─── Избранные доп. услуги (по id) ────────────────────────────────────────
-  Future<void> toggleExtraFavorite(String serviceId) async {
-    if (_currentUser.isEmpty) return;
-    final wasFav = _extraFavSet.contains(serviceId);
-    await _api.toggleExtraFavorite(_currentUser, serviceId);
-    if (wasFav) {
-      _extraFavSet.remove(serviceId);
-    } else {
-      _extraFavSet.add(serviceId);
-    }
-    notifyListeners();
-    final svc = _serviceList.firstWhere((s) => s.id == serviceId,
-        orElse: () => Service(id: serviceId, name: serviceId, description: '',
-            price: 0, durationMinutes: 0, category: ''));
-    await _api.createLog(_currentUser,
-        wasFav ? 'Доп. услуга убрана из избранного' : 'Доп. услуга добавлена в избранное',
-        svc.name);
-  }
-
-  bool isExtraFavorite(String serviceId) =>
-      _extraFavSet.contains(serviceId);
-
-  // ─── Wash Types ──────────────────────────────────────────────────────────
   Future<void> reloadWashTypes() async {
     _washTypeList = await _api.getWashTypes();
     notifyListeners();
@@ -241,28 +203,16 @@ class AppProvider extends ChangeNotifier {
     final updated = await _api.updateWashType(wt);
     if (updated != null) {
       final i = _washTypeList.indexWhere((x) => x.id == updated.id);
-      if (i != -1) {
-        _washTypeList[i] = updated;
-      } else {
-        _washTypeList.add(updated);
-      }
+      if (i != -1) _washTypeList[i] = updated; else _washTypeList.add(updated);
       _washTypeList.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       notifyListeners();
-      await _api.createLog(
-        _currentUser.isNotEmpty ? _currentUser : 'admin',
-        'Изменение типа мойки',
-        '${updated.name} · ${updated.basePrice}₽ · ${updated.durationMinutes} мин',
-      );
       return true;
     }
     return false;
   }
 
-  // ─── Мойщики и назначения ─────────────────────────────────────────────────
   Future<List<User>> getWashers() => _api.getWashers();
-
-  Future<List<Appointment>> getAppointmentsByWasher(String username) =>
-      _api.getAppointmentsByWasher(username);
+  Future<List<Appointment>> getAppointmentsByWasher(String username) => _api.getAppointmentsByWasher(username);
 
   Future<bool> assignWasher(String appointmentId, String washerUsername) async {
     final ok = await _api.assignWasher(appointmentId, washerUsername);
@@ -273,7 +223,7 @@ class AppProvider extends ChangeNotifier {
         if (current.contains(washerUsername)) {
           current.remove(washerUsername);
         } else {
-          if (current.length < 3) current.add(washerUsername);
+          current.add(washerUsername);
         }
         _appointmentList[i] = _appointmentList[i].copyWith(assignedWashers: current);
         notifyListeners();
@@ -282,13 +232,8 @@ class AppProvider extends ChangeNotifier {
     return ok;
   }
 
-  // ─── Заметки мойщика ──────────────────────────────────────────────────────
   Future<void> loadNotes({String? username}) async {
-    if (username != null) {
-      _noteList = await _api.getNotesByUser(username);
-    } else {
-      _noteList = await _api.getNotes();
-    }
+    _noteList = username != null ? await _api.getNotesByUser(username) : await _api.getNotes();
     _unreadNotes = _noteList.where((n) => !n.isRead).length;
     notifyListeners();
   }
@@ -300,43 +245,19 @@ class AppProvider extends ChangeNotifier {
 
   Future<Note?> addNote(String username, String title, String message, String category) async {
     final note = await _api.createNote(username, title, message, category);
-    if (note != null) {
-      _noteList.insert(0, note);
-      notifyListeners();
-      await _api.createLog(username, 'Создание заметки', title);
-    }
+    if (note != null) { _noteList.insert(0, note); notifyListeners(); }
     return note;
   }
 
   Future<void> markNoteRead(int noteId) async {
     await _api.markNoteRead(noteId);
     final i = _noteList.indexWhere((n) => n.id == noteId);
-    if (i != -1) {
-      _noteList[i] = Note(
-        id: _noteList[i].id,
-        username: _noteList[i].username,
-        title: _noteList[i].title,
-        message: _noteList[i].message,
-        category: _noteList[i].category,
-        isRead: true,
-        createdAt: _noteList[i].createdAt,
-      );
-      _unreadNotes = _noteList.where((n) => !n.isRead).length;
-      notifyListeners();
-    }
+    if (i != -1) { _noteList[i] = _noteList[i].copyWith(isRead: true); _unreadNotes = _noteList.where((n) => !n.isRead).length; notifyListeners(); }
   }
 
   Future<void> markAllNotesRead() async {
     await _api.markAllNotesRead();
-    _noteList = _noteList.map((n) => Note(
-      id: n.id,
-      username: n.username,
-      title: n.title,
-      message: n.message,
-      category: n.category,
-      isRead: true,
-      createdAt: n.createdAt,
-    )).toList();
+    _noteList = _noteList.map((n) => n.copyWith(isRead: true)).toList();
     _unreadNotes = 0;
     notifyListeners();
   }
@@ -346,5 +267,17 @@ class AppProvider extends ChangeNotifier {
     _noteList.removeWhere((n) => n.id == noteId);
     _unreadNotes = _noteList.where((n) => !n.isRead).length;
     notifyListeners();
+  }
+  
+  Future<void> clearDeletedByAdminFlag() async {
+    await _api.clearDeletedNotification(_currentUser);
+    _hasDeletedByAdmin = false;
+    notifyListeners();
+  }
+  
+  Future<void> clearAdminModifiedFlag(String id) async {
+    await _api.clearAdminModifiedFlag(id);
+    final i = _appointmentList.indexWhere((a) => a.id == id);
+    if (i != -1) { _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false); notifyListeners(); }
   }
 }

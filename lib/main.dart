@@ -149,6 +149,20 @@ class _AppRouterState extends State<_AppRouter> {
   bool? _wasLoggedIn;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      final provider = context.read<AppProvider>();
+      
+      provider.startAutoRefresh(auth);
+      auth.addListener(() {
+        provider.startAutoRefresh(auth);
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth     = context.watch<AuthProvider>();
     final provider = context.read<AppProvider>();

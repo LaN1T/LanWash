@@ -43,10 +43,21 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    if (!mounted) return;
     context.read<AppProvider>().clearData();
+    
     setState(() { _loading = true; _error = null; });
+    
     final err = await context.read<AuthProvider>()
         .login(_loginCtrl.text, _passCtrl.text);
+    
+    if (!mounted) return;
+    
+    if (err == null) {
+      await context.read<AppProvider>().reloadForUser(_loginCtrl.text);
+    }
+    
     if (mounted) setState(() { _loading = false; _error = err; });
   }
 
