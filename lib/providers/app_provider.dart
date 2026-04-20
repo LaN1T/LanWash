@@ -22,8 +22,8 @@ class AppProvider extends ChangeNotifier {
   Set<String>       _serviceFavSet   = {};
   String            _currentUser     = '';
   bool _loading    = true;
-  bool _loadingApi = false;
   bool _hasDeletedByAdmin = false;
+  bool _loadingApi = false;
   int  _unreadNotes = 0;
 
   List<Appointment> get appointments   => _appointmentList;
@@ -66,38 +66,17 @@ class AppProvider extends ChangeNotifier {
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
       final userLogin = auth.userLogin;
-      List<Appointment> newAppointments;
+      if (userLogin.isEmpty) return;
 
-      if (auth.isAdmin) {
-        newAppointments = await _api.getAppointments();
-      } else if (auth.isWasher) {
-        newAppointments = await _api.getAppointmentsByWasher(userLogin);
-        debugPrint('[AppProvider] Мойщик $userLogin. Записей с сервера: ${newAppointments.length}');
-      } else if (userLogin.isNotEmpty) {
-        newAppointments = await _api.getAppointmentsByOwner(userLogin);
-      } else {
-        return;
-      }
+      final List<Appointment> newAppointments = auth.isAdmin 
+          ? await _api.getAppointments() 
+          : await _api.getAppointmentsByWasher(userLogin);
 
-      bool hasChanges = newAppointments.length != _appointmentList.length;
-      if (!hasChanges) {
-        for (int i = 0; i < newAppointments.length; i++) {
-          if (newAppointments[i].id != _appointmentList[i].id || 
-              newAppointments[i].status != _appointmentList[i].status) {
-            hasChanges = true;
-            break;
-          }
-        }
-      }
-
-      if (hasChanges) {
-        _appointmentList = newAppointments;
-        notifyListeners();
-      } else {
-        // Принудительное обновление для проверки
+      if (newAppointments.length != _appointmentList.length || newAppointments.toString() != newAppointments.toString()) {
         _appointmentList = newAppointments;
         notifyListeners();
       }
+      await refreshUnreadCount();
     });
   }
 
@@ -222,17 +201,13 @@ class AppProvider extends ChangeNotifier {
   Future<bool> assignWasher(String appointmentId, String washerUsername) async {
     final ok = await _api.assignWasher(appointmentId, washerUsername);
     if (ok) {
-      final i = _appointmentList.indexWhere((a) => a.id == appointmentId);
-      if (i != -1) {
-        final current = List<String>.from(_appointmentList[i].assignedWashers);
-        if (current.contains(washerUsername)) {
-          current.remove(washerUsername);
-        } else {
-          current.add(washerUsername);
+        final i = _appointmentList.indexWhere((a) => a.id == appointmentId);
+        if (i != -1) {
+            final current = List<String>.from(_appointmentList[i].assignedWashers);
+            if (current.contains(washerUsername)) current.remove(washerUsername); else current.add(washerUsername);
+            _appointmentList[i] = _appointmentList[i].copyWith(assignedWashers: current);
+            notifyListeners();
         }
-        _appointmentList[i] = _appointmentList[i].copyWith(assignedWashers: current);
-        notifyListeners();
-      }
     }
     return ok;
   }
