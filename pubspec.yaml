@@ -11,10 +11,6 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  sqflite: ^2.3.2
-  sqflite_common_ffi: ^2.3.3
-  path: ^1.9.0
-  path_provider: ^2.1.2
   provider: ^6.1.1
   intl: ^0.20.2
   http: ^1.1.0
