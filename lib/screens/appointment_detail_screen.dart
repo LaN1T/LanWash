@@ -34,11 +34,6 @@ class AppointmentDetailScreen extends StatelessWidget {
                 color: a.isFavorite ? AppStyles.favorite : Colors.white70),
             onPressed: () => provider.toggleAppointmentFavorite(a.id),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => AddEditAppointmentScreen(appointment: a))),
-          ),
         ],
       ),
       body: SingleChildScrollView(

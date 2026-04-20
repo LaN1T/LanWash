@@ -47,4 +47,24 @@ class Note {
   };
 
   String get categoryLabel => categories[category] ?? category;
+
+  Note copyWith({
+    int? id,
+    String? username,
+    String? title,
+    String? message,
+    String? category,
+    bool? isRead,
+    DateTime? createdAt,
+  }) {
+    return Note(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      category: category ?? this.category,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
