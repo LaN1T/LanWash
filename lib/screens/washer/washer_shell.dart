@@ -126,47 +126,32 @@ class _WasherShellState extends State<WasherShell> {
   }
 
   Widget _buildAppointmentsTab() {
-    if (_loadingAppts) {
+    final provider = context.watch<AppProvider>();
+    final appts = provider.appointments;
+
+    if (provider.loading) {
       return const Center(child: CircularProgressIndicator(color: AppStyles.primary));
     }
-    if (_assignedAppointments.isEmpty) {
+
+    if (appts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.event_available, size: 64, color: AppStyles.textMuted.withOpacity(0.5)),
           const SizedBox(height: 12),
           const Text('Нет назначенных записей',
               style: TextStyle(color: AppStyles.textSecondary, fontSize: 16)),
-          const SizedBox(height: 8),
-          const Text('Здесь будут записи, назначенные вам',
-              style: TextStyle(color: AppStyles.textMuted, fontSize: 13)),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Обновить'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppStyles.primary,
-              side: const BorderSide(color: AppStyles.primary),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              setState(() => _loadingAppts = true);
-              _loadAssignedAppointments();
-            },
-          ),
         ]),
       );
     }
 
     return RefreshIndicator(
       color: AppStyles.primary,
-      onRefresh: _loadAssignedAppointments,
+      onRefresh: () => provider.reloadAppointments(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _assignedAppointments.length,
+        itemCount: appts.length,
         itemBuilder: (context, index) {
-          final a = _assignedAppointments[index];
-          return _WasherAppointmentCard(appointment: a);
+          return _WasherAppointmentCard(appointment: appts[index]);
         },
       ),
     );

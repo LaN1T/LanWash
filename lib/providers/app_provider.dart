@@ -72,6 +72,7 @@ class AppProvider extends ChangeNotifier {
         newAppointments = await _api.getAppointments();
       } else if (auth.isWasher) {
         newAppointments = await _api.getAppointmentsByWasher(userLogin);
+        debugPrint('[AppProvider] Мойщик $userLogin. Записей с сервера: ${newAppointments.length}');
       } else if (userLogin.isNotEmpty) {
         newAppointments = await _api.getAppointmentsByOwner(userLogin);
       } else {
@@ -90,6 +91,10 @@ class AppProvider extends ChangeNotifier {
       }
 
       if (hasChanges) {
+        _appointmentList = newAppointments;
+        notifyListeners();
+      } else {
+        // Принудительное обновление для проверки
         _appointmentList = newAppointments;
         notifyListeners();
       }
