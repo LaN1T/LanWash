@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 
 @pragma('vm:entry-point')
@@ -14,34 +16,48 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? _fcm;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final ApiService _apiService = ApiService();
 
   bool _isInitialized = false;
 
   Future<void> init() async {
+    debugPrint('[NotificationService] +++ init() method called');
     if (_isInitialized) return;
 
     try {
+      debugPrint('[NotificationService] Firebase.initializeApp() start');
       await Firebase.initializeApp();
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      debugPrint('[NotificationService] Firebase.initializeApp() success');
 
-      const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
-      const InitializationSettings initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+        debugPrint('[NotificationService] Platform is mobile, initializing FCM...');
+        _fcm = FirebaseMessaging.instance;
+        
+        // Регистрируем токен сразу при получении
+        _fcm!.onTokenRefresh.listen((newToken) {
+          debugPrint('[NotificationService] NEW TOKEN: $newToken');
+        });
 
-      await _localNotifications.initialize(
-        settings: initSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {},
-      );
+        debugPrint('[NotificationService] Requesting permission...');
+        NotificationSettings settings = await _fcm!.requestPermission();
+        debugPrint('[NotificationService] Permission status: ${settings.authorizationStatus}');
 
-      await _fcm.requestPermission();
-      FirebaseMessaging.onMessage.listen(_showLocalNotification);
+        debugPrint('[NotificationService] Attempting to get token...');
+        String? token = await _fcm!.getToken();
+        debugPrint('[!!!] СКОПИРУЙ ЭТОТ ТОКЕН: $token');
+        
+        FirebaseMessaging.onMessage.listen(_showLocalNotification);
+      } else {
+        debugPrint('[NotificationService] Skipping FCM (not a mobile platform)');
+      }
 
       _isInitialized = true;
-    } catch (e) {
-      print("NotificationService error: $e");
+      debugPrint('[NotificationService] init() completed successfully');
+    } catch (e, stack) {
+      debugPrint("[NotificationService] CRITICAL ERROR: $e");
+      debugPrint("[NotificationService] STACK TRACE: $stack");
     }
   }
 
@@ -67,10 +83,36 @@ class NotificationService {
     );
   }
 
-  Future<String?> getToken() async => await _fcm.getToken();
+  Future<String?> getToken() async {
+    if (!_isInitialized || _fcm == null) {
+      debugPrint('[NotificationService] Not initialized or FCM null');
+      return null;
+    }
+
+    try {
+      String? token = await _fcm!.getToken();
+      if (token == null) {
+        debugPrint('[NotificationService] Token is null, waiting for APNS...');
+        await Future.delayed(const Duration(seconds: 2));
+        token = await _fcm!.getToken();
+      }
+      
+      debugPrint('[NotificationService] Token retrieved: $token');
+      return token;
+    } catch (e) {
+      debugPrint('[NotificationService] Error getting token: $e');
+      return null;
+    }
+  }
 
   Future<void> updateTokenOnServer(String username) async {
     String? token = await getToken();
-    if (token != null) await _apiService.saveFcmToken(username, token);
+    debugPrint('[NotificationService] Updating token for $username: $token');
+    if (token != null) {
+      await _apiService.saveFcmToken(username, token);
+      debugPrint('[NotificationService] Token save request sent to API');
+    } else {
+      debugPrint('[NotificationService] Token is null, cannot save to server');
+    }
   }
 }

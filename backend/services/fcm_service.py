@@ -40,7 +40,7 @@ class FCMService:
             tokens=tokens,
         )
         try:
-            response = messaging.send_multicast(message)
+            response = messaging.send_each_for_multicast(message)
             print(f"Successfully sent message: {response.success_count} successful, {response.failure_count} failed.")
             if response.failure_count > 0:
                 for resp in response.responses:
