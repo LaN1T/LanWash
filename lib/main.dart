@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app_styles.dart';
 import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
+import 'services/notification_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/client/client_shell.dart';
@@ -14,6 +15,10 @@ import 'screens/washer/washer_shell.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ru', null);
+  
+  // Инициализация уведомлений
+  await NotificationService().init();
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,

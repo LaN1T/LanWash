@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database import get_db
-from models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest
-from db_models import User
+from models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest, FcmTokenRequest
+from db_models import User, FcmToken
 from datetime import datetime
 import hashlib
 
@@ -75,3 +75,24 @@ async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSessi
         await db.refresh(user)
         
     return user
+
+@router.post("/fcm-token")
+async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(FcmToken).where(FcmToken.username == req.username))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        existing.token = req.token
+        existing.platform = req.platform
+        existing.updatedAt = datetime.now().isoformat()
+    else:
+        new_token = FcmToken(
+            username=req.username,
+            token=req.token,
+            platform=req.platform,
+            updatedAt=datetime.now().isoformat()
+        )
+        db.add(new_token)
+    
+    await db.commit()
+    return {"status": "ok"}

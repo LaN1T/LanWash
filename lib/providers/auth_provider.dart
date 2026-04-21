@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final _api = ApiService();
+  final _notifications = NotificationService();
 
   User? _user;
   bool _initialized = false;
@@ -29,6 +31,8 @@ class AuthProvider extends ChangeNotifier {
       final json = prefs.getString(_kUserKey);
       if (json != null) {
         _user = User.fromMap(jsonDecode(json));
+        // Обновляем токен при загрузке из кэша
+        _notifications.updateTokenOnServer(_user!.username);
       }
     } catch (_) {}
     _initialized = true;
@@ -65,6 +69,10 @@ class AuthProvider extends ChangeNotifier {
 
     _user = user;
     await _saveUser(user);
+    
+    // Обновляем токен при входе
+    _notifications.updateTokenOnServer(user.username);
+
     notifyListeners();
     await _api.createLog(username, 'Вход в систему', 'Роль: ${user.role.name}');
     return null;
