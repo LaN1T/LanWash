@@ -179,24 +179,36 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         await db.commit()
 
     # Логика отправки уведомлений
+    print(f"[DEBUG] Processing update for appt.ownerUsername: '{appt.ownerUsername}'")
     if appt.ownerUsername:
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
         client_tokens = tokens_res.scalars().all()
+        
+        print(f"[DEBUG] Found {len(client_tokens)} tokens for user {appt.ownerUsername}")
 
         if client_tokens:
             if old_status != appt.status:
-                await fcm_service.send_notification_to_tokens(
-                    client_tokens,
-                    title="Изменение статуса записи",
-                    body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} теперь имеет статус: {appt.status}."
-                )
+                dt_str = format_date(appt.dateTime)
+                if appt.status == "completed":
+                    title, body = "Запись завершена", "Ваша запись завершена. Спасибо, что выбрали нас!"
+                elif appt.status == "in_progress":
+                    title, body = "Начало обслуживания", "Мы начали работать с вашим автомобилем."
+                elif appt.status == "cancelled":
+                    title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
+                elif appt.status == "scheduled":
+                    title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}."
+                else:
+                    title, body = "Обновление записи", f"Статус вашей записи изменен на: {appt.status}."
+                
+                await fcm_service.send_notification_to_tokens(client_tokens, title=title, body=body)
+
             elif old_datetime != appt.dateTime:
+                dt_str = format_date(appt.dateTime)
                 await fcm_service.send_notification_to_tokens(
                     client_tokens,
-                    title="Время записи изменено",
-                    body=f"Ваша запись на мойку {appt.carModel} перенесена на: {appt.dateTime}."
+                    title="Время мойки изменено",
+                    body=f"Ваша запись перенесена на {dt_str}."
                 )
-            # Можно добавить другие проверки на изменения (цены, услуг и т.д.)
 
     # Уведомление мойщикам при назначении
     new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
@@ -209,19 +221,21 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
         washer_tokens = tokens_res.scalars().all()
         if washer_tokens:
+            dt_str = format_date(appt.dateTime)
             await fcm_service.send_notification_to_tokens(
                 washer_tokens,
-                title="Назначена новая запись",
-                body=f"Вы назначены на мойку {appt.carModel} в {appt.dateTime}."
+                title="Новая запись",
+                body=f"Вы назначены на мойку {appt.carModel} {dt_str}."
             )
     for washer_username in removed_washers:
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
         washer_tokens = tokens_res.scalars().all()
         if washer_tokens:
+            dt_str = format_date(appt.dateTime)
             await fcm_service.send_notification_to_tokens(
                 washer_tokens,
                 title="Назначение отменено",
-                body=f"Вы были удалены из записи на мойку {appt.carModel} в {appt.dateTime}."
+                body=f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}."
             )
 
     await db.refresh(appt)
