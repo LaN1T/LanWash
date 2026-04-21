@@ -64,20 +64,42 @@ class AppProvider extends ChangeNotifier {
 
   void startAutoRefresh(AuthProvider auth) {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (timer) async {
-      final userLogin = auth.userLogin;
-      if (userLogin.isEmpty) return;
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      try {
+        final userLogin = auth.userLogin;
+        if (userLogin.isEmpty) return;
 
-      final List<Appointment> newAppointments = auth.isAdmin 
-          ? await _api.getAppointments() 
-          : await _api.getAppointmentsByWasher(userLogin);
+        final newAppointments = await _fetchAppointments(auth);
 
-      if (newAppointments.length != _appointmentList.length || newAppointments.toString() != newAppointments.toString()) {
-        _appointmentList = newAppointments;
-        notifyListeners();
+        if (_hasSignificantChanges(_appointmentList, newAppointments)) {
+          _appointmentList = newAppointments;
+          notifyListeners();
+          debugPrint('[AppProvider] State updated with ${newAppointments.length} items');
+        }
+        await refreshUnreadCount();
+      } catch (e, stack) {
+        debugPrint('[AppProvider] Auto-refresh error: $e\n$stack');
       }
-      await refreshUnreadCount();
     });
+  }
+
+  Future<List<Appointment>> _fetchAppointments(AuthProvider auth) {
+    if (auth.isAdmin) return _api.getAppointments();
+    if (auth.isWasher) return _api.getAppointmentsByWasher(auth.userLogin);
+    return _api.getAppointmentsByOwner(auth.userLogin);
+  }
+
+  bool _hasSignificantChanges(List<Appointment> oldList, List<Appointment> newList) {
+    if (oldList.length != newList.length) return true;
+
+    // Сравниваем по ключевым полям, которые определяют состояние записи.
+    // Если объект Appointment не реализует Equatable, сравниваем критические поля вручную.
+    for (int i = 0; i < newList.length; i++) {
+      final old = oldList.firstWhere((a) => a.id == newList[i].id, orElse: () => Appointment(id: 'none', clientName: '', carModel: '', carNumber: '', dateTime: DateTime.now(), washTypeId: '', additionalServices: [], status: 'scheduled'));
+      if (old.id == 'none') return true; // Новая запись
+      if (old.status != newList[i].status || old.isFavorite != newList[i].isFavorite) return true;
+    }
+    return false;
   }
 
   Future<void> init() async {
