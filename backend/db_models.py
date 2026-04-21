@@ -122,6 +122,13 @@ class DeletedNotification(Base):
     username = Column(String, nullable=False)
     createdAt = Column(String, nullable=False)
 
+class FcmToken(Base):
+    __tablename__ = 'fcm_tokens'
+    username = Column(String, primary_key=True)
+    token = Column(String, nullable=False)
+    platform = Column(String, nullable=False) # android, ios, web
+    updatedAt = Column(String, nullable=False)
+
 class Consumable(Base):
     __tablename__ = 'consumables'
     id = Column(String, primary_key=True)

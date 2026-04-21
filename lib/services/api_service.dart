@@ -466,6 +466,24 @@ class ApiService {
     }
   }
 
+  // ─── Push Tokens ────────────────────────────────────────────────────────────
+  Future<bool> saveFcmToken(String username, String token) async {
+    try {
+      final resp = await http.post(
+        Uri.parse('$_baseUrl/auth/fcm-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'token': token,
+          'platform': kIsWeb ? 'web' : (Platform.isAndroid ? 'android' : 'ios'),
+        }),
+      ).timeout(const Duration(seconds: 10));
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ─── Notes ────────────────────────────────────────────────────────────────
   Future<List<Note>> getNotes() async {
     try {

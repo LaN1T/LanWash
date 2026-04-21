@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "990535392995",
+    "project_id": "lanwash",
+    "storage_bucket": "lanwash.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:990535392995:android:a5cce74f614cb2a3242fd6",
+        "android_client_info": {
+          "package_name": "com.example.lanwash"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKTIyOoWPzP_1uTHcCTBFN9zsvoa8EBWU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

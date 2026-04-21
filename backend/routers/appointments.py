@@ -5,12 +5,13 @@ from sqlalchemy import select, update, delete, func, or_
 from database import get_db
 from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
 from db_models import (
-    Appointment, DeletedNotification, Service, ServiceConsumable,
+    Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
     WashTypeIncludedExtra,
 )
 from datetime import datetime
 from collections import defaultdict
+from services.fcm_service import fcm_service
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
@@ -65,6 +66,17 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
     if req.status == "completed":
         await _track_consumables_usage(db, req.id, req.washTypeId, req.additionalServices, req.promoId)
         await db.commit()
+
+    # Отправка уведомления клиенту о новой записи
+    if appt.ownerUsername:
+        res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        tokens = res.scalars().all()
+        if tokens:
+            await fcm_service.send_notification_to_tokens(
+                tokens,
+                title="Новая запись создана!",
+                body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана."
+            )
 
     await db.refresh(appt)
     return appt
@@ -136,6 +148,11 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     if not appt:
         raise HTTPException(404, "Запись не найдена")
 
+    # Сохраняем старые значения для сравнения
+    old_status = appt.status
+    old_datetime = appt.dateTime
+    old_assigned_washer = appt.assignedWasher
+
     appt.clientName = req.clientName
     appt.carModel = req.carModel
     appt.carNumber = req.carNumber
@@ -161,16 +178,75 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
         await db.commit()
 
+    # Логика отправки уведомлений
+    if appt.ownerUsername:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        client_tokens = tokens_res.scalars().all()
+
+        if client_tokens:
+            if old_status != appt.status:
+                await fcm_service.send_notification_to_tokens(
+                    client_tokens,
+                    title="Изменение статуса записи",
+                    body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} теперь имеет статус: {appt.status}."
+                )
+            elif old_datetime != appt.dateTime:
+                await fcm_service.send_notification_to_tokens(
+                    client_tokens,
+                    title="Время записи изменено",
+                    body=f"Ваша запись на мойку {appt.carModel} перенесена на: {appt.dateTime}."
+                )
+            # Можно добавить другие проверки на изменения (цены, услуг и т.д.)
+
+    # Уведомление мойщикам при назначении
+    new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    old_assigned_washers = json.loads(old_assigned_washer) if old_assigned_washer else []
+
+    added_washers = [w for w in new_assigned_washers if w not in old_assigned_washers]
+    removed_washers = [w for w in old_assigned_washers if w not in new_assigned_washers]
+
+    for washer_username in added_washers:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
+        washer_tokens = tokens_res.scalars().all()
+        if washer_tokens:
+            await fcm_service.send_notification_to_tokens(
+                washer_tokens,
+                title="Назначена новая запись",
+                body=f"Вы назначены на мойку {appt.carModel} в {appt.dateTime}."
+            )
+    for washer_username in removed_washers:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
+        washer_tokens = tokens_res.scalars().all()
+        if washer_tokens:
+            await fcm_service.send_notification_to_tokens(
+                washer_tokens,
+                title="Назначение отменено",
+                body=f"Вы были удалены из записи на мойку {appt.carModel} в {appt.dateTime}."
+            )
+
     await db.refresh(appt)
     return appt
 
 @router.delete("/{appt_id}")
 async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
-    owner = result.scalar_one_or_none()
+    result = await db.execute(select(Appointment.ownerUsername, Appointment.carModel, Appointment.dateTime).where(Appointment.id == appt_id))
+    appt_info = result.first()
 
-    if owner:
+    if appt_info:
+        owner = appt_info.ownerUsername
+        car_model = appt_info.carModel
+        date_time = appt_info.dateTime
         db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
+
+        # Отправка уведомления клиенту об удалении записи
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == owner))
+        client_tokens = tokens_res.scalars().all()
+        if client_tokens:
+            await fcm_service.send_notification_to_tokens(
+                client_tokens,
+                title="Запись отменена",
+                body=f"Ваша запись на мойку {car_model} в {date_time} была отменена."
+            )
 
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()

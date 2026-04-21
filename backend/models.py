@@ -37,6 +37,12 @@ class UpdateProfileRequest(BaseModel):
     newPassword: Optional[str] = None
 
 
+class FcmTokenRequest(BaseModel):
+    username: str
+    token: str
+    platform: str
+
+
 # ─── Wash Types ──────────────────────────────────────────────────────────────
 class WashTypeRequest(BaseModel):
     id: str
