@@ -3,6 +3,17 @@ from typing import Optional, List
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class LoginResponse(BaseModel):
+    user: "UserResponse"
+    access_token: str
+    token_type: str
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str

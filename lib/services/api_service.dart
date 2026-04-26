@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
 import '../models/log_entry.dart';
@@ -21,6 +22,34 @@ class ApiService {
       return 'http://127.0.0.1:8000/api';
     }
   }
+
+  static const _storage = FlutterSecureStorage();
+  static String? _token;
+
+  static Future<String?> getToken() async {
+    if (_token != null) return _token;
+    _token = await _storage.read(key: 'jwt_token');
+    return _token;
+  }
+
+  static Future<void> setToken(String token) async {
+    _token = token;
+    await _storage.write(key: 'jwt_token', value: token);
+  }
+
+  static Future<void> deleteToken() async {
+    _token = null;
+    await _storage.delete(key: 'jwt_token');
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
   // ─── Auth ───────────────────────────────────────────────────────────────────
   Future<User?> login(String username, String password) async {
     try {
@@ -30,7 +59,9 @@ class ApiService {
         body: jsonEncode({'username': username, 'password': password}),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
-        return User.fromMap(jsonDecode(resp.body));
+        final data = jsonDecode(resp.body);
+        await setToken(data['access_token']);
+        return User.fromMap(data['user']);
       }
     } catch (_) {}
     return null;
@@ -58,7 +89,9 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
-        return {'user': jsonDecode(resp.body)};
+        final data = jsonDecode(resp.body);
+        await setToken(data['access_token']);
+        return {'user': data['user']};
       }
       final err = jsonDecode(resp.body);
       return {'error': err['detail'] ?? 'Ошибка регистрации'};
@@ -84,7 +117,7 @@ class ApiService {
 
       final resp = await http.put(
         Uri.parse('$_baseUrl/auth/profile/$userId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
@@ -97,7 +130,7 @@ class ApiService {
   // ─── Appointments ───────────────────────────────────────────────────────────
   Future<List<Appointment>> getAppointments() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/appointments/'))
+      final resp = await http.get(Uri.parse('$_baseUrl/appointments/'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -111,6 +144,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/by-owner/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -124,7 +158,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(a.toMap()),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -137,7 +171,7 @@ class ApiService {
     try {
       final resp = await http.put(
         Uri.parse('$_baseUrl/appointments/${a.id}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(a.toMap()),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -148,7 +182,7 @@ class ApiService {
 
   Future<bool> deleteAppointment(String id) async {
     try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/appointments/$id'))
+      final resp = await http.delete(Uri.parse('$_baseUrl/appointments/$id'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -160,6 +194,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body)['hasNotification'] == true;
@@ -172,6 +207,7 @@ class ApiService {
     try {
       final resp = await http.delete(
         Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {}
@@ -182,6 +218,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/$id/clear-admin-flag'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -193,6 +230,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/$id/toggle-favorite'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -202,7 +240,7 @@ class ApiService {
 
   Future<Map<String, int>> getAppointmentStats() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/appointments/stats'))
+      final resp = await http.get(Uri.parse('$_baseUrl/appointments/stats'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final m = jsonDecode(resp.body);
@@ -220,6 +258,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/by-washer/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -233,7 +272,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/$appointmentId/assign-washer'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'washerUsername': washerUsername}),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -244,7 +283,7 @@ class ApiService {
 
   Future<List<User>> getWashers() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/auth/washers'))
+      final resp = await http.get(Uri.parse('$_baseUrl/auth/washers'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -257,7 +296,7 @@ class ApiService {
   // ─── Services ───────────────────────────────────────────────────────────────
   Future<List<Service>> getServices() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/services/'))
+      final resp = await http.get(Uri.parse('$_baseUrl/services/'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -269,7 +308,7 @@ class ApiService {
 
   Future<List<String>> getServiceCategories() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/services/categories'))
+      final resp = await http.get(Uri.parse('$_baseUrl/services/categories'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -285,7 +324,7 @@ class ApiService {
       body['updatedAt'] = DateTime.now().toIso8601String();
       final resp = await http.post(
         Uri.parse('$_baseUrl/services/'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -300,7 +339,7 @@ class ApiService {
       body['updatedAt'] = DateTime.now().toIso8601String();
       final resp = await http.put(
         Uri.parse('$_baseUrl/services/${s.id}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -311,7 +350,7 @@ class ApiService {
 
   Future<bool> deleteService(String id) async {
     try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/services/$id'))
+      final resp = await http.delete(Uri.parse('$_baseUrl/services/$id'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -324,6 +363,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/services/favorites/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -337,7 +377,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/services/favorites/toggle'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'username': username, 'serviceId': serviceId}),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -351,6 +391,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/services/extra-favorites/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -364,7 +405,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/services/extra-favorites/toggle'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({'username': username, 'serviceId': serviceId}),
       ).timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
@@ -376,7 +417,7 @@ class ApiService {
   // ─── Promos ────────────────────────────────────────────────────────────────
   Future<List<Promo>> getPromos() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/services/promos'))
+      final resp = await http.get(Uri.parse('$_baseUrl/services/promos'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -389,7 +430,7 @@ class ApiService {
   // ─── Wash Types ────────────────────────────────────────────────────────────
   Future<List<WashType>> getWashTypes() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/wash-types/'))
+      final resp = await http.get(Uri.parse('$_baseUrl/wash-types/'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -403,7 +444,7 @@ class ApiService {
     try {
       final resp = await http.put(
         Uri.parse('$_baseUrl/wash-types/${wt.id}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode(wt.toMap()),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
@@ -416,7 +457,7 @@ class ApiService {
   // ─── Logs ─────────────────────────────────────────────────────────────────
   Future<List<LogEntry>> getLogs({int limit = 200}) async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/logs/?limit=$limit'))
+      final resp = await http.get(Uri.parse('$_baseUrl/logs/?limit=$limit'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -430,6 +471,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/logs/by-user/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -443,7 +485,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/logs/'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({
           'username': username,
           'action': action,
@@ -458,7 +500,7 @@ class ApiService {
 
   Future<bool> clearLogs() async {
     try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/logs/'))
+      final resp = await http.delete(Uri.parse('$_baseUrl/logs/'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -471,7 +513,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/auth/fcm-token'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({
           'username': username,
           'token': token,
@@ -487,7 +529,7 @@ class ApiService {
   // ─── Notes ────────────────────────────────────────────────────────────────
   Future<List<Note>> getNotes() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/notes/'))
+      final resp = await http.get(Uri.parse('$_baseUrl/notes/'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -501,6 +543,7 @@ class ApiService {
     try {
       final resp = await http.get(
         Uri.parse('$_baseUrl/notes/by-user/$username'),
+        headers: await _getHeaders(),
       ).timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
@@ -512,7 +555,7 @@ class ApiService {
 
   Future<int> getUnreadNotesCount() async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/notes/unread-count'))
+      final resp = await http.get(Uri.parse('$_baseUrl/notes/unread-count'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body)['count'] ?? 0;
@@ -525,7 +568,7 @@ class ApiService {
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/notes/?username=$username'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _getHeaders(),
         body: jsonEncode({
           'title': title,
           'message': message,
@@ -541,7 +584,7 @@ class ApiService {
 
   Future<bool> markNoteRead(int noteId) async {
     try {
-      final resp = await http.put(Uri.parse('$_baseUrl/notes/$noteId/read'))
+      final resp = await http.put(Uri.parse('$_baseUrl/notes/$noteId/read'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -551,7 +594,7 @@ class ApiService {
 
   Future<bool> markAllNotesRead() async {
     try {
-      final resp = await http.put(Uri.parse('$_baseUrl/notes/read-all'))
+      final resp = await http.put(Uri.parse('$_baseUrl/notes/read-all'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -561,7 +604,7 @@ class ApiService {
 
   Future<bool> deleteNote(int noteId) async {
     try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/notes/$noteId'))
+      final resp = await http.delete(Uri.parse('$_baseUrl/notes/$noteId'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       return resp.statusCode == 200;
     } catch (_) {
@@ -576,7 +619,7 @@ class ApiService {
       final url = date != null 
           ? '$_baseUrl/reports/monthly-check-vs-price/?date=$date'
           : '$_baseUrl/reports/monthly-check-vs-price/';
-      final resp = await http.get(Uri.parse(url))
+      final resp = await http.get(Uri.parse(url), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         return MonthlyReport.fromJson(jsonDecode(resp.body));
@@ -593,7 +636,7 @@ class ApiService {
       if (category != null && category != 'Все') {
         url += '&category=$category';
       }
-      final resp = await http.get(Uri.parse(url))
+      final resp = await http.get(Uri.parse(url), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         return PopularServicesReport.fromJson(jsonDecode(resp.body));
@@ -613,7 +656,7 @@ class ApiService {
         url += '?${params.join('&')}';
       }
       
-      final resp = await http.get(Uri.parse(url))
+      final resp = await http.get(Uri.parse(url), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         return ConsumablesUsageReport.fromJson(jsonDecode(resp.body));

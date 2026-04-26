@@ -74,5 +74,11 @@ android/.gradle/
 android/local.properties
 android/key.properties
 
+# Firebase configuration files
+google-services.json
+GoogleService-Info.plist
 # Web
 web/flutter_service_worker.js
+serviceAccountKey.json
+**/serviceAccountKey.json
+backend/serviceAccountKey.json
