@@ -185,15 +185,16 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> toggleServiceFavorite(String id) async {
-    if (_currentUser.isEmpty) return;
-    await _api.toggleServiceFavorite(_currentUser, id);
+    // Разрешаем админу менять, даже если _currentUser пуст (или используем 'admin')
+    final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
+    await _api.toggleServiceFavorite(user, id);
     if (_serviceFavSet.contains(id)) _serviceFavSet.remove(id); else _serviceFavSet.add(id);
     notifyListeners();
   }
 
   Future<void> toggleExtraFavorite(String serviceId) async {
-    if (_currentUser.isEmpty) return;
-    await _api.toggleExtraFavorite(_currentUser, serviceId);
+    final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
+    await _api.toggleExtraFavorite(user, serviceId);
     if (_extraFavSet.contains(serviceId)) _extraFavSet.remove(serviceId); else _extraFavSet.add(serviceId);
     notifyListeners();
   }
