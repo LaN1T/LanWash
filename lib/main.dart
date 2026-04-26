@@ -9,6 +9,7 @@ import 'app_styles.dart';
 import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
 import 'services/notification_service.dart';
+import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/client/client_shell.dart';
@@ -196,19 +197,7 @@ class _AppRouterState extends State<_AppRouter> {
     _wasLoggedIn = auth.isLoggedIn;
 
     if (!auth.initialized) {
-      return const Scaffold(
-        backgroundColor: AppStyles.bgPage,
-        body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.local_car_wash, color: AppStyles.primary, size: 64),
-          SizedBox(height: 16),
-          Text('LanWash', style: TextStyle(
-            color: AppStyles.textPrimary, fontSize: 28,
-            fontWeight: FontWeight.bold,
-          )),
-          SizedBox(height: 16),
-          CircularProgressIndicator(color: AppStyles.primary),
-        ])),
-      );
+      return const SplashScreen();
     }
 
     if (!auth.isLoggedIn) return const LoginScreen();

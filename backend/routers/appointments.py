@@ -141,6 +141,10 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
         ))
 
 
+def format_date(dateTime):
+    pass
+
+
 @router.put("/{appt_id}", response_model=AppointmentResponse)
 async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
