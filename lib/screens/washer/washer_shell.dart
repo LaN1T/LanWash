@@ -127,13 +127,12 @@ class _WasherShellState extends State<WasherShell> {
 
   Widget _buildAppointmentsTab() {
     final provider = context.watch<AppProvider>();
-    final appts = provider.appointments;
 
     if (provider.loading) {
       return const Center(child: CircularProgressIndicator(color: AppStyles.primary));
     }
 
-    if (appts.isEmpty) {
+    if (_assignedAppointments.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.event_available, size: 64, color: AppStyles.textMuted.withOpacity(0.5)),
@@ -146,12 +145,12 @@ class _WasherShellState extends State<WasherShell> {
 
     return RefreshIndicator(
       color: AppStyles.primary,
-      onRefresh: () => provider.reloadAppointments(),
+      onRefresh: _loadAssignedAppointments,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: appts.length,
+        itemCount: _assignedAppointments.length,
         itemBuilder: (context, index) {
-          return _WasherAppointmentCard(appointment: appts[index]);
+          return _WasherAppointmentCard(appointment: _assignedAppointments[index]);
         },
       ),
     );
