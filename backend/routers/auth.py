@@ -14,12 +14,19 @@ from services.auth_service import (
 )
 import hashlib
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+
+# Для использования limiter.limit в роутере, нужно получить его из app.state
+from main import limiter # Импортируем limiter из main.py
+
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 def old_hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit("5/minute") # P2: Ограничение 5 запросов в минуту на эндпоинт логина
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
@@ -57,6 +64,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     }
 
 @router.post("/register", response_model=LoginResponse)
+@limiter.limit("2/minute") # P2: Ограничение 2 запроса в минуту на эндпоинт регистрации
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if not req.username.strip():
         raise HTTPException(400, "Введите логин")
