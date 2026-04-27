@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database import get_db
@@ -10,15 +10,15 @@ from services.auth_service import (
     verify_password, 
     create_access_token, 
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    get_current_user
+    get_current_user,
+    validate_password_strength
 )
 import hashlib
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 
-# Для использования limiter.limit в роутере, нужно получить его из app.state
-from main import limiter # Импортируем limiter из main.py
+# Для использования limiter.limit в роутере, нужно получить его из core.limiter
+from core.limiter import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -27,7 +27,7 @@ def old_hash_password(password: str) -> str:
 
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute") # P2: Ограничение 5 запросов в минуту на эндпоинт логина
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
     
@@ -65,11 +65,15 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/register", response_model=LoginResponse)
 @limiter.limit("2/minute") # P2: Ограничение 2 запроса в минуту на эндпоинт регистрации
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     if not req.username.strip():
         raise HTTPException(400, "Введите логин")
-    if len(req.password) < 8: # Увеличили требования (P2)
-        raise HTTPException(400, "Пароль минимум 8 символов")
+    
+    # P2: Валидация сложности пароля
+    password_error = validate_password_strength(req.password)
+    if password_error:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=password_error)
+
     if not req.displayName.strip():
         raise HTTPException(400, "Введите имя")
 
