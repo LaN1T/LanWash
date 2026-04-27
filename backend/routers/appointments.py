@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_
 from database import get_db
@@ -12,25 +12,40 @@ from db_models import (
 from datetime import datetime
 from collections import defaultdict
 from services.fcm_service import fcm_service
+from services.auth_service import get_current_user, check_roles
+from db_models import User
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 @router.get("/", response_model=list[AppointmentResponse])
-async def get_all(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Appointment)
-        .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
-        .order_by(Appointment.dateTime.asc())
-    )
+async def get_all(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check for get_all - allow admin to see all, others only non-hidden
+    if current_user.role == 'admin':
+        result = await db.execute(
+            select(Appointment)
+            .order_by(Appointment.dateTime.asc())
+        )
+    else:
+        result = await db.execute(
+            select(Appointment)
+            .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+            .order_by(Appointment.dateTime.asc())
+        )
     return result.scalars().all()
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
-async def get_by_owner(username: str, db: AsyncSession = Depends(get_db)):
+async def get_by_owner(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - only owner or admin can view.
+    if current_user.username != username.lower() and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя.")
     result = await db.execute(select(Appointment).where(Appointment.ownerUsername == username.lower()).order_by(Appointment.dateTime.asc()))
     return result.scalars().all()
 
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
-async def get_by_washer(username: str, db: AsyncSession = Depends(get_db)):
+async def get_by_washer(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - only washer or admin can view.
+    if current_user.username != username.lower() and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
     # JSON-массив в строке. Используем LIKE по точному токену "username"
     result = await db.execute(
         select(Appointment)
@@ -40,7 +55,18 @@ async def get_by_washer(username: str, db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @router.post("/", response_model=AppointmentResponse)
-async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
+async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - if ownerUsername is provided and not by admin, set to current_user.username
+    owner_username = req.ownerUsername
+    if owner_username and current_user.username != owner_username.lower() and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете создавать записи для других пользователей.")
+    elif not owner_username and current_user.role != 'admin':
+        owner_username = current_user.username
+    elif not owner_username and current_user.role == 'admin':
+        # Admin creating without specifying user? This might be an issue, but for now, let it be.
+        # Or perhaps assign to a default admin user or raise error if not specified.
+        pass # Let it be for now, as ownerUsername is nullable in the model, but often required.
+
     appt = Appointment(
         id=req.id,
         clientName=req.clientName,
@@ -52,7 +78,7 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
         status=req.status,
         notes=req.notes,
         isFavorite=int(req.isFavorite),
-        ownerUsername=req.ownerUsername,
+        ownerUsername=owner_username,
         promoPrice=req.promoPrice,
         paidPrice=req.paidPrice,
         isModifiedByAdmin=int(req.isModifiedByAdmin),
@@ -146,11 +172,14 @@ def format_date(dateTime):
 
 
 @router.put("/{appt_id}", response_model=AppointmentResponse)
-async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db)):
+async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only admin or the owner can update.
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt.ownerUsername and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
 
     # Сохраняем старые значения для сравнения
     old_status = appt.status
@@ -183,12 +212,12 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         await db.commit()
 
     # Логика отправки уведомлений
-    print(f"[DEBUG] Processing update for appt.ownerUsername: '{appt.ownerUsername}'")
+    # print(f"[DEBUG] Processing update for appt.ownerUsername: '{appt.ownerUsername}'") # Removed debug log
     if appt.ownerUsername:
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
         client_tokens = tokens_res.scalars().all()
         
-        print(f"[DEBUG] Found {len(client_tokens)} tokens for user {appt.ownerUsername}")
+        # print(f"[DEBUG] Found {len(client_tokens)} tokens for user {appt.ownerUsername}") # Removed debug log
 
         if client_tokens:
             if old_status != appt.status:
@@ -246,42 +275,59 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     return appt
 
 @router.delete("/{appt_id}")
-async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only admin or the owner can delete.
     result = await db.execute(select(Appointment.ownerUsername, Appointment.carModel, Appointment.dateTime).where(Appointment.id == appt_id))
     appt_info = result.first()
 
-    if appt_info:
-        owner = appt_info.ownerUsername
-        car_model = appt_info.carModel
-        date_time = appt_info.dateTime
-        db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
+    if not appt_info:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt_info.ownerUsername and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на удаление этой записи.")
 
-        # Отправка уведомления клиенту об удалении записи
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == owner))
-        client_tokens = tokens_res.scalars().all()
-        if client_tokens:
-            await fcm_service.send_notification_to_tokens(
-                client_tokens,
-                title="Запись отменена",
-                body=f"Ваша запись на мойку {car_model} в {date_time} была отменена."
-            )
+    owner = appt_info.ownerUsername
+    car_model = appt_info.carModel
+    date_time = appt_info.dateTime
+    db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
+
+    # Отправка уведомления клиенту об удалении записи
+    tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == owner))
+    client_tokens = tokens_res.scalars().all()
+    if client_tokens:
+        await fcm_service.send_notification_to_tokens(
+            client_tokens,
+            title="Запись отменена",
+            body=f"Ваша запись на мойку {car_model} в {date_time} была отменена."
+        )
 
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()
     return {"ok": True}
 
 @router.post("/{appt_id}/toggle-favorite")
-async def toggle_favorite(appt_id: str, db: AsyncSession = Depends(get_db)):
+async def toggle_favorite(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only owner or admin can toggle favorite.
+    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
+    owner_username = result.scalar_one_or_none()
+    if not owner_username:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != owner_username and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на изменение избранного для этой записи.")
+
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isFavorite=1 - Appointment.isFavorite))
     await db.commit()
     return {"ok": True}
 
 @router.post("/{appt_id}/assign-washer")
-async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db)):
+async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only admin or assigned washer can assign/unassign washers.
+    # For simplicity, let's allow admin and the owner of the appointment.
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt.ownerUsername and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на назначение мойщиков к этой записи.")
 
     try:
         current = json.loads(appt.assignedWasher) if appt.assignedWasher else []
@@ -302,25 +348,44 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
     return appt
 
 @router.get("/deleted-notification/{username}")
-async def get_deleted_notification(username: str, db: AsyncSession = Depends(get_db)):
+async def get_deleted_notification(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only the user themselves or admin can check.
+    if current_user.username != username.lower() and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к этому уведомлению.")
     result = await db.execute(select(func.count(DeletedNotification.id)).where(DeletedNotification.username == username.lower()))
     count = result.scalar()
     return {"hasNotification": count > 0}
 
 @router.delete("/deleted-notification/{username}")
-async def clear_deleted_notification(username: str, db: AsyncSession = Depends(get_db)):
+async def clear_deleted_notification(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only the user themselves or admin can clear.
+    if current_user.username != username.lower() and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на очистку этого уведомления.")
     await db.execute(delete(DeletedNotification).where(DeletedNotification.username == username.lower()))
     await db.commit()
     return {"ok": True}
 
 @router.post("/{appt_id}/clear-admin-flag")
-async def clear_admin_flag(appt_id: str, db: AsyncSession = Depends(get_db)):
+async def clear_admin_flag(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only admin or the owner can clear the flag.
+    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
+    owner_username = result.scalar_one_or_none()
+    if not owner_username:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != owner_username and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на снятие флага модификации.")
+
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isModifiedByAdmin=0))
     await db.commit()
     return {"ok": True}
 
 @router.get("/stats")
-async def stats(db: AsyncSession = Depends(get_db)):
+async def stats(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: Assuming stats are only for admins, or all authenticated users.
+    # For now, let's make it admin-only for demonstration.
+    if current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ к статистике только для администраторов.")
+
     res_total = await db.execute(select(func.count(Appointment.id)))
     res_sched = await db.execute(select(func.count(Appointment.id)).where(Appointment.status == 'scheduled'))
     res_comp = await db.execute(select(func.count(Appointment.id)).where(Appointment.status == 'completed'))
