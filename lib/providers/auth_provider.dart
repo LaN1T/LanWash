@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
@@ -23,13 +23,14 @@ class AuthProvider extends ChangeNotifier {
   String  get username    => _user?.displayName ?? '';
   String  get userLogin   => _user?.username ?? '';
 
-  static const _kUserKey = 'saved_user';
+  static const _kUserKey = 'saved_user'; // Still used for User object, but token is separate
+  final _storage = FlutterSecureStorage();
 
   Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final json = prefs.getString(_kUserKey);
-      if (json != null) {
+      final json = await _storage.read(key: _kUserKey);
+      final token = await ApiService.getToken();
+      if (json != null && token != null) {
         _user = User.fromMap(jsonDecode(json));
         // Обновляем токен при загрузке из кэша
         _notifications.updateTokenOnServer(_user!.username);
@@ -41,15 +42,14 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _saveUser(User user) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kUserKey, jsonEncode(user.toMap()));
+      await _storage.write(key: _kUserKey, value: jsonEncode(user.toMap()));
     } catch (_) {}
   }
 
   Future<void> _clearUser() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_kUserKey);
+      await _storage.delete(key: _kUserKey);
+      await ApiService.deleteToken();
     } catch (_) {}
   }
 
