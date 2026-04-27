@@ -5,12 +5,11 @@ from database import init_db
 from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types
 from services.auth_service import check_roles
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from core.limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-# Инициализация Limiter
-limiter = Limiter(key_func=get_remote_address)
+# Инициализация Limiter уже выполнена в core/limiter.py
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,7 +47,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(appointments.router)
 app.include_router(services.router)
-app.include_router(logs.router, dependencies=[Depends(check_roles(['admin']))])
+app.include_router(logs.router)
 app.include_router(notes.router)
 app.include_router(reports.router, dependencies=[Depends(check_roles(['admin']))])
 app.include_router(consumables.router, dependencies=[Depends(check_roles(['admin', 'washer']))])

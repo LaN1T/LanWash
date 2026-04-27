@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/service.dart';
@@ -75,6 +75,7 @@ class ApiService {
     String carModel = '',
     String carNumber = '',
   }) async {
+    debugPrint('DEBUG: Starting register call...');
     try {
       final resp = await http.post(
         Uri.parse('$_baseUrl/auth/register'),
@@ -88,14 +89,21 @@ class ApiService {
           'carNumber': carNumber,
         }),
       ).timeout(const Duration(seconds: 10));
+      debugPrint('DEBUG: Status Code: ${resp.statusCode}');
+      debugPrint('DEBUG: Response Body: ${resp.body}');
+      
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
+        debugPrint('DEBUG: Decoded JSON: $data');
         await setToken(data['access_token']);
         return {'user': data['user']};
       }
       final err = jsonDecode(resp.body);
+      debugPrint('DEBUG: Error Body: $err');
       return {'error': err['detail'] ?? 'Ошибка регистрации'};
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('CRITICAL ERROR: $e');
+      debugPrint('STACKTRACE: $stackTrace');
       return {'error': 'Нет связи с сервером'};
     }
   }
