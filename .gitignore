@@ -82,4 +82,4 @@ web/flutter_service_worker.js
 serviceAccountKey.json
 **/serviceAccountKey.json
 backend/serviceAccountKey.json
-Icon\r
+Icon\rserviceAccountKey.json
