@@ -1,32 +1,67 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database import get_db
-from models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest, FcmTokenRequest
+from models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest, FcmTokenRequest, LoginResponse
 from db_models import User, FcmToken
-from datetime import datetime
+from datetime import datetime, timedelta
+from services.auth_service import (
+    get_password_hash, 
+    verify_password, 
+    create_access_token, 
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    get_current_user
+)
 import hashlib
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-def hash_password(password: str) -> str:
+def old_hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
-@router.post("/login", response_model=UserResponse)
+@router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
     
-    if not user or user.passwordHash != hash_password(req.password):
-        raise HTTPException(400, "Неверный логин или пароль")
-    return user
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
 
-@router.post("/register", response_model=UserResponse)
+    is_valid = False
+    # Пытаемся проверить bcrypt
+    try:
+        if verify_password(req.password, user.passwordHash):
+            is_valid = True
+    except Exception:
+        # Если это не bcrypt (старый формат), проверяем sha256
+        if user.passwordHash == old_hash_password(req.password):
+            is_valid = True
+            # Мигрируем на bcrypt
+            user.passwordHash = get_password_hash(req.password)
+            await db.commit()
+            await db.refresh(user)
+
+    if not is_valid:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role}, 
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "user": user,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+@router.post("/register", response_model=LoginResponse)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if not req.username.strip():
         raise HTTPException(400, "Введите логин")
-    if len(req.password) < 4:
-        raise HTTPException(400, "Пароль минимум 4 символа")
+    if len(req.password) < 8: # Увеличили требования (P2)
+        raise HTTPException(400, "Пароль минимум 8 символов")
     if not req.displayName.strip():
         raise HTTPException(400, "Введите имя")
 
@@ -36,7 +71,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
     new_user = User(
         username=req.username.lower().strip(),
-        passwordHash=hash_password(req.password),
+        passwordHash=get_password_hash(req.password),
         role="client",
         displayName=req.displayName.strip(),
         phone=req.phone.strip(),
@@ -48,15 +83,29 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-    return new_user
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": new_user.username, "role": new_user.role}, 
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "user": new_user,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 @router.get("/washers", response_model=list[UserResponse])
-async def get_washers(db: AsyncSession = Depends(get_db)):
+async def get_washers(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(User).where(User.role == 'washer').order_by(User.displayName.asc()))
     return result.scalars().all()
 
 @router.put("/profile/{user_id}", response_model=UserResponse)
-async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db)):
+async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.id != user_id and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете редактировать чужой профиль")
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -67,7 +116,10 @@ async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSessi
     if req.phone is not None: updates["phone"] = req.phone
     if req.carModel is not None: updates["carModel"] = req.carModel
     if req.carNumber is not None: updates["carNumber"] = req.carNumber
-    if req.newPassword is not None: updates["passwordHash"] = hash_password(req.newPassword)
+    if req.newPassword is not None: 
+        if len(req.newPassword) < 8:
+            raise HTTPException(400, "Новый пароль минимум 8 символов")
+        updates["passwordHash"] = get_password_hash(req.newPassword)
 
     if updates:
         await db.execute(update(User).where(User.id == user_id).values(updates))
@@ -77,7 +129,11 @@ async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSessi
     return user
 
 @router.post("/fcm-token")
-async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db)):
+async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Проверяем, что токен сохраняется для текущего пользователя (или админ сохраняет кому угодно - но обычно клиент сам за себя)
+    if current_user.username != req.username and current_user.role != 'admin':
+         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете менять FCM токен другого пользователя")
+
     result = await db.execute(select(FcmToken).where(FcmToken.username == req.username))
     existing = result.scalar_one_or_none()
     
