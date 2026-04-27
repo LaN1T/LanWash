@@ -7,3 +7,6 @@ SQLAlchemy==2.0.30
 asyncpg
 greenlet
 firebase-admin
+python-jose[cryptography]
+passlib[bcrypt]
+slowapi
