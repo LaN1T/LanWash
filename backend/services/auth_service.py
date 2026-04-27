@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import re
 from typing import Optional, List
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -9,20 +10,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
 from db_models import User
-from pydantic import BaseModel
 
 # В реальном приложении эти значения должны быть в .env
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-change-it-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 дней
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
-def verify_password(plain_password, hashed_password):
+def validate_password_strength(password: str) -> Optional[str]:
+    if len(password) < 8:
+        return "Пароль должен содержать минимум 8 символов."
+    if not re.search(r"[A-Z]", password):
+        return "Пароль должен содержать хотя бы одну заглавную букву."
+    if not re.search(r"[a-z]", password):
+        return "Пароль должен содержать хотя бы одну строчную букву."
+    if not re.search(r"\d", password):
+        return "Пароль должен содержать хотя бы одну цифру."
+    if not re.search(r"[@$!%*?&_]", password):
+        return "Пароль должен содержать хотя бы один специальный символ (@$!%*?&_)."
+    return None
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password):
+def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
