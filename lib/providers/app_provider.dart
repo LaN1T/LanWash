@@ -64,7 +64,7 @@ class AppProvider extends ChangeNotifier {
 
   void startAutoRefresh(AuthProvider auth) {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
       try {
         final userLogin = auth.userLogin;
         if (userLogin.isEmpty) return;
@@ -74,11 +74,10 @@ class AppProvider extends ChangeNotifier {
         if (_hasSignificantChanges(_appointmentList, newAppointments)) {
           _appointmentList = newAppointments;
           notifyListeners();
-          debugPrint('[AppProvider] State updated with ${newAppointments.length} items');
         }
-        await refreshUnreadCount();
-      } catch (e, stack) {
-        debugPrint('[AppProvider] Auto-refresh error: $e\n$stack');
+        await refreshUnreadCount(auth);
+      } catch (e) {
+        debugPrint('[AppProvider] Auto-refresh error');
       }
     });
   }
@@ -241,7 +240,8 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshUnreadCount() async {
+  Future<void> refreshUnreadCount(AuthProvider auth) async {
+    if (!auth.isAdmin) return;
     _unreadNotes = await _api.getUnreadNotesCount();
     notifyListeners();
   }
