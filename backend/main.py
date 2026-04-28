@@ -1,4 +1,10 @@
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+import os
+
+# Загружаем переменные из .env файла
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+
 from fastapi import FastAPI, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
