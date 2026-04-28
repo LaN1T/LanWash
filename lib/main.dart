@@ -36,7 +36,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
-        ChangeNotifierProvider(create: (_) => AppProvider()..init()),
+        ChangeNotifierProvider(create: (_) => AppProvider()),
       ],
       child: const LanWashApp(),
     ),
@@ -188,12 +188,13 @@ class _AppRouterState extends State<_AppRouter> {
       });
     }
     // При входе админа — загружаем все записи и заметки
-    if (_wasLoggedIn == false && auth.isAdmin) {
+    if (_wasLoggedIn != true && auth.isLoggedIn && auth.isAdmin) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         provider.reloadAppointments();
-        provider.refreshUnreadCount();
+        provider.refreshUnreadCount(auth);
       });
     }
+
     _wasLoggedIn = auth.isLoggedIn;
 
     if (!auth.initialized) {

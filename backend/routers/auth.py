@@ -14,6 +14,7 @@ from services.auth_service import (
     validate_password_strength
 )
 import hashlib
+from core.security import encrypt_token
 
 from slowapi import _rate_limit_exceeded_handler
 
@@ -144,19 +145,19 @@ async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSessi
 async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Проверяем, что токен сохраняется для текущего пользователя (или админ сохраняет кому угодно - но обычно клиент сам за себя)
     if current_user.username != req.username and current_user.role != 'admin':
-         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете менять FCM токен другого пользователя")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете менять FCM токен другого пользователя")
 
     result = await db.execute(select(FcmToken).where(FcmToken.username == req.username))
     existing = result.scalar_one_or_none()
     
     if existing:
-        existing.token = req.token
+        existing.token = encrypt_token(req.token)
         existing.platform = req.platform
         existing.updatedAt = datetime.now().isoformat()
     else:
         new_token = FcmToken(
             username=req.username,
-            token=req.token,
+            token=encrypt_token(req.token),
             platform=req.platform,
             updatedAt=datetime.now().isoformat()
         )
