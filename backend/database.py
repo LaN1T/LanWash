@@ -10,12 +10,15 @@ from backend.db_models import (
 from datetime import datetime
 import hashlib
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://lanwash_user:lanwash_password@localhost:5432/lanwash_db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL не задан в переменных окружения. Настройте файл .env!")
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-def hash_password(password: str) -> str:
+def hash_password_legacy(password: str) -> str:
+    """Старый метод хеширования (SHA256). Используется только для совместимости при сидировании."""
     return hashlib.sha256(password.encode()).hexdigest()
 
 async def init_db():
@@ -26,14 +29,22 @@ async def init_db():
 async def seed_data():
     async with AsyncSessionLocal() as session:
         now = datetime.now().isoformat()
+        
+        admin_pass = os.getenv("INITIAL_ADMIN_PASSWORD")
 
-        # Admin User (Upsert)
-        stmt = insert(User).values(
-            username="admin", passwordHash=hash_password("admin"), role="admin",
-            displayName="Администратор", createdAt=now
-        ).on_conflict_do_nothing(index_elements=['username'])
-        await session.execute(stmt)
-        await session.commit()
+        if not admin_pass or admin_pass == "change_me_to_something_secure":
+            print("Внимание: INITIAL_ADMIN_PASSWORD не задан или небезопасен. Админ не создан.")
+        else:
+            # Upsert админа
+            stmt = insert(User).values(
+                username="admin", 
+                passwordHash=hash_password_legacy(admin_pass), 
+                role="admin",
+                displayName="Администратор", 
+                createdAt=now
+            ).on_conflict_do_nothing(index_elements=['username'])
+            await session.execute(stmt)
+            await session.commit()
 
         # Wash Types
         res = await session.execute(select(func.count(WashType.id)))

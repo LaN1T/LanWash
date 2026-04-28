@@ -12,9 +12,14 @@ from database import get_db
 from db_models import User
 
 # В реальном приложении эти значения должны быть в .env
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-change-it-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    # Генерируем случайный ключ, если не задан, чтобы не использовать дефолтный hardcoded
+    import secrets
+    SECRET_KEY = secrets.token_urlsafe(32)
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 дней
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))  # По умолчанию 1 час вместо 7 дней
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
