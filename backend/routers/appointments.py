@@ -7,13 +7,13 @@ from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra,
+    WashTypeIncludedExtra, User,
 )
 from datetime import datetime
 from collections import defaultdict
 from services.fcm_service import fcm_service
 from services.auth_service import get_current_user, check_roles
-from db_models import User
+from core.security import decrypt_token
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
@@ -56,13 +56,11 @@ async def get_by_washer(username: str, db: AsyncSession = Depends(get_db), curre
 
 @router.post("/", response_model=AppointmentResponse)
 async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # IDOR: Если ownerUsername не задан, используем текущего пользователя
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
     
     if current_user.username != owner_username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете создавать записи для других пользователей.")
 
-    # Создаем запись. Чувствительные поля доступны только админу
     appt_data = {
         "id": req.id,
         "clientName": req.clientName,
@@ -87,10 +85,9 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
             "assignedWasher": req.assignedWasher,
         })
     else:
-        # Значения по умолчанию для клиентов
         appt_data.update({
             "isModifiedByAdmin": 0,
-            "originalPrice": req.paidPrice, # Для клиента оригинал = цена
+            "originalPrice": req.paidPrice,
             "assignedWasher": "[]",
         })
 
@@ -102,7 +99,121 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
         await _track_consumables_usage(db, req.id, req.washTypeId, req.additionalServices, req.promoId)
         await db.commit()
 
-    # Отправка уведомления (логика прежняя...)
+    if appt.ownerUsername:
+        res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        encrypted_tokens = res.scalars().all()
+        if encrypted_tokens:
+            tokens = [decrypt_token(t) for t in encrypted_tokens]
+            await fcm_service.send_notification_to_tokens(
+                tokens,
+                title="Новая запись создана!",
+                body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана."
+            )
+
+    await db.refresh(appt)
+    return appt
+
+
+@router.put("/{appt_id}", response_model=AppointmentResponse)
+async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+    
+    if current_user.username != appt.ownerUsername and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
+
+    old_status = appt.status
+    old_datetime = appt.dateTime
+    old_assigned_washer = appt.assignedWasher
+
+    appt.clientName = req.clientName
+    appt.carModel = req.carModel
+    appt.carNumber = req.carNumber
+    appt.dateTime = req.dateTime
+    appt.washTypeId = req.washTypeId
+    appt.additionalServices = req.additionalServices
+    appt.status = req.status
+    appt.notes = req.notes
+    appt.isFavorite = int(req.isFavorite)
+    appt.promoPrice = req.promoPrice
+    appt.paidPrice = req.paidPrice
+    appt.promoId = req.promoId
+    
+    if current_user.role == 'admin':
+        appt.ownerUsername = req.ownerUsername.lower()
+        appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
+        appt.originalPrice = req.originalPrice
+        appt.assignedWasher = req.assignedWasher
+    
+    await db.commit()
+
+    if req.status == "completed":
+        await db.execute(delete(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
+        await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
+        await db.commit()
+
+    if appt.ownerUsername:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        encrypted_tokens = tokens_res.scalars().all()
+        
+        if encrypted_tokens:
+            client_tokens = [decrypt_token(t) for t in encrypted_tokens]
+            if old_status != appt.status:
+                dt_str = format_date(appt.dateTime)
+                if appt.status == "completed":
+                    title, body = "Запись завершена", "Ваша запись завершена. Спасибо, что выбрали нас!"
+                elif appt.status == "in_progress":
+                    title, body = "Начало обслуживания", "Мы начали работать с вашим автомобилем."
+                elif appt.status == "cancelled":
+                    title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
+                elif appt.status == "scheduled":
+                    title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}."
+                else:
+                    title, body = "Обновление записи", f"Статус вашей записи изменен на: {appt.status}."
+                
+                await fcm_service.send_notification_to_tokens(client_tokens, title=title, body=body)
+
+            elif old_datetime != appt.dateTime:
+                dt_str = format_date(appt.dateTime)
+                await fcm_service.send_notification_to_tokens(
+                    client_tokens,
+                    title="Время мойки изменено",
+                    body=f"Ваша запись перенесена на {dt_str}."
+                )
+
+    new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    old_assigned_washers = json.loads(old_assigned_washer) if old_assigned_washer else []
+
+    added_washers = [w for w in new_assigned_washers if w not in old_assigned_washers]
+    removed_washers = [w for w in old_assigned_washers if w not in new_assigned_washers]
+
+    for washer_username in added_washers:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
+        encrypted_tokens = tokens_res.scalars().all()
+        if encrypted_tokens:
+            tokens = [decrypt_token(t) for t in encrypted_tokens]
+            dt_str = format_date(appt.dateTime)
+            await fcm_service.send_notification_to_tokens(
+                tokens,
+                title="Новая запись",
+                body=f"Вы назначены на мойку {appt.carModel} {dt_str}."
+            )
+    for washer_username in removed_washers:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
+        encrypted_tokens = tokens_res.scalars().all()
+        if encrypted_tokens:
+            tokens = [decrypt_token(t) for t in encrypted_tokens]
+            dt_str = format_date(appt.dateTime)
+            await fcm_service.send_notification_to_tokens(
+                tokens,
+                title="Назначение отменено",
+                body=f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}."
+            )
+
+    await db.refresh(appt)
+    return appt
 
 
 async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services, promo_id: str | None):

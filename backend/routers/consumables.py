@@ -4,9 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from database import get_db
 from models import ConsumableRequest, ConsumableResponse, ServiceConsumableRequest, ServiceConsumableResponse
-from db_models import Consumable, ServiceConsumable, Service
+from db_models import Consumable, ServiceConsumable, Service, User
+from services.auth_service import get_current_user, check_roles
 
-router = APIRouter(prefix="/api/consumables", tags=["consumables"])
+router = APIRouter(prefix="/api/consumables", tags=["consumables"], dependencies=[Depends(check_roles(['admin', 'washer']))])
 
 @router.get("/", response_model=list[ConsumableResponse])
 async def get_all_consumables(db: AsyncSession = Depends(get_db)):

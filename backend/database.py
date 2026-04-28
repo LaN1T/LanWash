@@ -9,6 +9,9 @@ from backend.db_models import (
 )
 from datetime import datetime
 import hashlib
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -16,10 +19,6 @@ if not DATABASE_URL:
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-def hash_password_legacy(password: str) -> str:
-    """Старый метод хеширования (SHA256). Используется только для совместимости при сидировании."""
-    return hashlib.sha256(password.encode()).hexdigest()
 
 async def init_db():
     async with engine.begin() as conn:
@@ -35,16 +34,17 @@ async def seed_data():
         if not admin_pass or admin_pass == "change_me_to_something_secure":
             print("Внимание: INITIAL_ADMIN_PASSWORD не задан или небезопасен. Админ не создан.")
         else:
-            # Upsert админа
+            # Upsert админа с использованием Argon2
             stmt = insert(User).values(
                 username="admin", 
-                passwordHash=hash_password_legacy(admin_pass), 
+                passwordHash=pwd_context.hash(admin_pass),
                 role="admin",
                 displayName="Администратор", 
                 createdAt=now
             ).on_conflict_do_nothing(index_elements=['username'])
             await session.execute(stmt)
             await session.commit()
+
 
         # Wash Types
         res = await session.execute(select(func.count(WashType.id)))

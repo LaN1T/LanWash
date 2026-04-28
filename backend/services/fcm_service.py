@@ -3,11 +3,6 @@ from firebase_admin import credentials, messaging
 from typing import List, Dict, Any
 import os
 
-# Путь к файлу ключа сервисного аккаунта Firebase
-# ВАЖНО: Тебе нужно будет скачать этот файл из консоли Firebase и положить его в директорию backend/
-# Project settings -> Service accounts -> Generate new private key
-SERVICE_ACCOUNT_KEY_PATH = os.path.join(os.path.dirname(__file__), "..", "serviceAccountKey.json")
-
 class FCMService:
     _instance = None
 
@@ -19,13 +14,28 @@ class FCMService:
 
     def _initialize_firebase(self):
         if not firebase_admin._apps:
-            if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-                cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-                firebase_admin.initialize_app(cred)
-                print("Firebase Admin SDK initialized successfully.")
+            project_id = os.getenv("FIREBASE_PROJECT_ID")
+            if project_id:
+                cred_dict = {
+                    "type": "service_account",
+                    "project_id": project_id,
+                    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+                    "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace(r'\n', '\n'),
+                    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+                    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+                    "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
+                    "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
+                    "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL"),
+                    "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
+                }
+                try:
+                    cred = credentials.Certificate(cred_dict)
+                    firebase_admin.initialize_app(cred)
+                    print("Firebase Admin SDK initialized successfully via Environment Variables.")
+                except Exception as e:
+                    print(f"Error initializing Firebase via Env Vars: {e}")
             else:
-                print(f"WARNING: Firebase service account key not found at {SERVICE_ACCOUNT_KEY_PATH}")
-                print("Push notifications will not work until you add the serviceAccountKey.json file.")
+                print("WARNING: Firebase env vars not set. Notifications will not work.")
 
     async def send_notification_to_tokens(self, tokens: List[str], title: str, body: str, data: Dict[str, Any] = None):
         if not firebase_admin._apps:

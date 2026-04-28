@@ -44,21 +44,28 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
-    if (!mounted) return;
-    context.read<AppProvider>().clearData();
-    
     setState(() { _loading = true; _error = null; });
     
+    // 1. Логин (токен сохраняется в ApiService и SecureStorage)
     final err = await context.read<AuthProvider>()
         .login(_loginCtrl.text, _passCtrl.text);
     
     if (!mounted) return;
     
     if (err == null) {
+      // 2. Инициализируем AppProvider и грузим данные, когда токен уже сохранен
+      await context.read<AppProvider>().init();
       await context.read<AppProvider>().reloadForUser(_loginCtrl.text);
+      
+      // 3. Принудительно уведомляем слушателей о том, что данные обновились
+      context.read<AppProvider>().notifyListeners();
+      
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } else {
+      setState(() { _loading = false; _error = err; });
     }
-    
-    if (mounted) setState(() { _loading = false; _error = err; });
   }
 
   @override

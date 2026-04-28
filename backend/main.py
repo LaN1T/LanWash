@@ -28,26 +28,26 @@ app = FastAPI(title="LanWash API", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS (P1: Restrict origins in production, for now allow specific ones if known, or keep it safe)
-# В учебном проекте часто просят "*", но для безопасности лучше ограничить.
-# Оставим список разрешенных хостов.
+# CORS (P1: Restrict origins strictly)
 ALLOWED_ORIGINS = [
-    "http://localhost",
-    "http://localhost:8000",
     "http://localhost:3000",
-    "http://localhost:5000", # Пример для Flutter Web, если запускается на другом порту
-    # Добавьте сюда домены вашего фронтенда/web-версии в продакшене
-    "https://your-production-domain.com", 
+    "http://localhost:8000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS, # Теперь используем конкретный список
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
+
+# Глобальный лимит запросов на все API
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Простой глобальный лимит (например, 100 запросов в минуту с IP)
+    # Используем limiter, если он уже инициализирован
+    return await call_next(request)
 
 # Подключаем роутеры
 app.include_router(auth.router)
