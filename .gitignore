@@ -3,6 +3,7 @@
 *.log
 *.pyc
 *.swp
+.env
 .DS_Store
 .atom/
 .build/
@@ -82,4 +83,4 @@ web/flutter_service_worker.js
 serviceAccountKey.json
 **/serviceAccountKey.json
 backend/serviceAccountKey.json
-Icon\rserviceAccountKey.json
+
