@@ -37,6 +37,9 @@ class AppProvider extends ChangeNotifier {
   int               get unreadNotes    => _unreadNotes;
   bool              get hasDeletedByAdmin => _hasDeletedByAdmin;
 
+  Map<String, dynamic> _busySlots = {'num_boxes': 2, 'busy_slots': [[], []]};
+  Map<String, dynamic> get busySlots => _busySlots;
+
   List<Appointment> get favoriteAppointments => _appointmentList.where((a) => a.isFavorite).toList();
   List<Service> get favoriteServices => _serviceList.where((s) => _serviceFavSet.contains(s.id)).toList();
   bool isServiceFavorite(String id) => _serviceFavSet.contains(id);
@@ -101,14 +104,16 @@ class AppProvider extends ChangeNotifier {
     return false;
   }
 
-  Future<void> init() async {
+  Future<void> init(AuthProvider auth) async {
     _loading = true;
     notifyListeners();
     try {
+      debugPrint('[AppProvider] init() fetching data...');
       _serviceList  = await _api.getServices();
       _promoList    = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
-      _appointmentList = await _api.getAppointments();
+      _appointmentList = await _fetchAppointments(auth);
+      debugPrint('[AppProvider] init() finished, fetched ${_appointmentList.length} appointments');
     } catch (e) {
       debugPrint('[AppProvider] init error: $e');
     }
@@ -136,17 +141,22 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addAppointment(Appointment a) async {
-    await _api.createAppointment(a);
-    _appointmentList = await _api.getAppointments();
-    notifyListeners();
+  Future<bool> addAppointment(Appointment a) async {
+    final success = await _api.createAppointment(a);
+    if (success) {
+        _appointmentList = await _api.getAppointments();
+        notifyListeners();
+    }
+    return success;
   }
 
-  Future<void> updateAppointment(Appointment a) async {
-    await _api.updateAppointment(a);
-    final i = _appointmentList.indexWhere((x) => x.id == a.id);
-    if (i != -1) _appointmentList[i] = a;
-    notifyListeners();
+  Future<bool> updateAppointment(Appointment a) async {
+    final success = await _api.updateAppointment(a);
+    if (success) {
+        await reloadAppointments();
+        notifyListeners();
+    }
+    return success;
   }
 
   Future<void> deleteAppointment(String id) async {
@@ -202,6 +212,11 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> reloadWashTypes() async {
     _washTypeList = await _api.getWashTypes();
+    notifyListeners();
+  }
+
+  Future<void> fetchBusySlots(String date) async {
+    _busySlots = await _api.getBusySlots(date);
     notifyListeners();
   }
 

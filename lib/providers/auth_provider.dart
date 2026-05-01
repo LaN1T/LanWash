@@ -138,10 +138,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void logout() {
+    debugPrint('[DEBUG] AuthProvider.logout() called (hash: ${identityHashCode(this)})');
     final who = _user?.username ?? 'unknown';
     _api.createLog(who, 'Выход из системы', '');
     _user = null;
     _clearUser();
+    debugPrint('[DEBUG] AuthProvider: Calling notifyListeners() (hash: ${identityHashCode(this)})');
     notifyListeners();
   }
 }

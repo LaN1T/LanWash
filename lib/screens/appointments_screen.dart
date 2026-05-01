@@ -29,16 +29,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   void dispose() { _search.dispose(); super.dispose(); }
 
   List<Appointment> _filtered(List<Appointment> all) {
-    return all.where((a) {
+    debugPrint('[DEBUG] Filtering ${all.length} appointments. Filter status: $_filterStatus, Search: $_searchText');
+    final filtered = all.where((a) {
       final matchStatus = _filterStatus == 'all' || a.status == _filterStatus;
       final q = _searchText.toLowerCase();
       final matchSearch = q.isEmpty ||
           a.clientName.toLowerCase().contains(q) ||
           a.carModel.toLowerCase().contains(q) ||
           a.carNumber.toLowerCase().contains(q);
+      
+      if (!matchStatus || !matchSearch) {
+        debugPrint('[DEBUG] Excluded appt: ${a.id}, status: ${a.status}, client: ${a.clientName}');
+      }
       return matchStatus && matchSearch;
     }).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    
+    debugPrint('[DEBUG] Filtered result count: ${filtered.length}');
+    return filtered;
   }
 
   @override

@@ -6,7 +6,9 @@ import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final VoidCallback? onSessionResumed;
+  final bool isResume;
+  const LoginScreen({super.key, this.onSessionResumed, this.isResume = false});
   @override State<LoginScreen> createState() => _LoginScreenState();
 }
 
@@ -46,23 +48,15 @@ class _LoginScreenState extends State<LoginScreen>
     
     setState(() { _loading = true; _error = null; });
     
-    // 1. Логин (токен сохраняется в ApiService и SecureStorage)
     final err = await context.read<AuthProvider>()
         .login(_loginCtrl.text, _passCtrl.text);
     
     if (!mounted) return;
     
     if (err == null) {
-      // 2. Инициализируем AppProvider и грузим данные, когда токен уже сохранен
-      await context.read<AppProvider>().init();
-      await context.read<AppProvider>().reloadForUser(_loginCtrl.text);
-      
-      // 3. Принудительно уведомляем слушателей о том, что данные обновились
-      context.read<AppProvider>().notifyListeners();
-      
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      // Инициализацию перекладываем на _AppRouter (через listenable), 
+      // чтобы избежать конфликтов и дублирования.
+      // Navigator.pushReplacementNamed(context, '/home'); // УДАЛЕНО: ломает дерево виджетов _AppRouter
     } else {
       setState(() { _loading = false; _error = err; });
     }
@@ -111,7 +105,59 @@ class _LoginScreenState extends State<LoginScreen>
                       const SizedBox(height: 36),
 
                       // ── Карточка формы ───────────────────────────────────
-                      Container(
+                      widget.isResume
+                        ? Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: AppStyles.cardDecoration,
+                            child: Column(
+                              children: [
+                                Text('С возвращением, ${context.read<AuthProvider>().userLogin}!',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    style: AppStyles.primaryButton,
+                                    onPressed: widget.onSessionResumed,
+                                    child: const Text('Продолжить'),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Сменить аккаунт'),
+                                        content: const Text('Вы уверены, что хотите выйти из текущего аккаунта?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: const Text('Отмена'),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppStyles.danger,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                            onPressed: () {
+                                              Navigator.pop(ctx);
+                                              context.read<AuthProvider>().logout();
+                                            },
+                                            child: const Text('Выйти'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  child: const Text('Войти под другим пользователем', 
+                                      style: TextStyle(color: AppStyles.textSecondary)),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
                         padding: const EdgeInsets.all(24),
                         decoration: AppStyles.cardDecoration,
                         child: Column(
