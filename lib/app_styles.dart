@@ -160,6 +160,13 @@ class AppStyles {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
   );
 
+  static final ButtonStyle flatButton = TextButton.styleFrom(
+    foregroundColor: textSecondary,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+  );
+
   // ─── Статусы ─────────────────────────────────────────────────────────────
   static Color statusColor(String s) => switch (s) {
     'scheduled'   => primary,

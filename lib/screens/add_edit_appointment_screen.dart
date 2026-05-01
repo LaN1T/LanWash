@@ -160,7 +160,7 @@ class _State extends State<AddEditAppointmentScreen> {
     final extraServices = provider.services
         .where((s) => s.category != 'Акции')
         .toList()
-      ..sort((a, b) => a.category.compareTo(b.category));
+      ..sort((a, b) => a.price.compareTo(b.price));
 
     if (_washTypeId.isEmpty && washTypes.isNotEmpty) {
       _washTypeId = provider.washTypeByCode('basic')?.id ?? washTypes.first.id;
@@ -542,6 +542,7 @@ class _DateTimeRow extends StatelessWidget {
           final t = await showTimePicker(
             context: context,
             initialTime: TimeOfDay.fromDateTime(dateTime),
+            initialEntryMode: TimePickerEntryMode.inputOnly,
           );
           if (t != null) onChanged(DateTime(dateTime.year, dateTime.month,
               dateTime.day, t.hour, t.minute));
