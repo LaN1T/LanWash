@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../models/appointment.dart';
+import '../models/service.dart';
 import '../models/user.dart';
 import '../providers/app_provider.dart';
 
@@ -59,10 +60,10 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
         padding: const EdgeInsets.all(16),
         child: GridView.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
+            crossAxisCount: 5,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 1.0,
+            childAspectRatio: 2.5,
           ),
           itemCount: _days.length,
           itemBuilder: (context, index) {
@@ -582,6 +583,27 @@ class _AppointmentCard extends StatelessWidget {
                       color: AppStyles.primary)),
             ]),
             const SizedBox(height: 8),
+
+            if (a.additionalServices.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6, runSpacing: 4,
+                children: a.additionalServices.map((id) {
+                  final service = context.watch<AppProvider>().services.firstWhere(
+                    (s) => s.id == id,
+                    orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppStyles.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(service.name, style: const TextStyle(fontSize: 10, color: AppStyles.primaryDark)),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+            ],
 
             // Назначенные мойщики
             if (hasWashers) ...[

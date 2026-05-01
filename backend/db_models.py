@@ -56,8 +56,9 @@ class Appointment(Base):
     paidPrice = Column(Integer, nullable=False, default=0)
     isModifiedByAdmin = Column(Integer, nullable=False, default=0)
     originalPrice = Column(Integer, nullable=False, default=0)
-    assignedWasher = Column(String, nullable=False, default='')
+    assignedWasher = Column(String, nullable=False, default='[]')
     promoId = Column(String, ForeignKey('promos.id'), nullable=True)
+    box_index = Column(Integer, nullable=False, default=0)
 
 class Service(Base):
     __tablename__ = 'services'

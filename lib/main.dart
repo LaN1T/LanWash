@@ -160,6 +160,7 @@ class _AppRouter extends StatefulWidget {
 
 class _AppRouterState extends State<_AppRouter> {
   bool? _wasLoggedIn;
+  bool _sessionResumed = false;
 
   @override
   void initState() {
@@ -167,43 +168,61 @@ class _AppRouterState extends State<_AppRouter> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       final provider = context.read<AppProvider>();
-      
+      if (auth.isLoggedIn) {
+         provider.init(auth);
+      }
       provider.startAutoRefresh(auth);
-      auth.addListener(() {
-        provider.startAutoRefresh(auth);
-      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth     = context.watch<AuthProvider>();
+    final auth = Provider.of<AuthProvider>(context, listen: true);
     final provider = context.read<AppProvider>();
 
-    // При выходе — сбросить данные провайдера
+    debugPrint('[DEBUG] _AppRouter: Build() Auth: loggedIn=${auth.isLoggedIn}, resumed=$_sessionResumed, init=${auth.initialized}');
+
+    // При выходе — сбросить данные
     if (_wasLoggedIn == true && !auth.isLoggedIn) {
+      debugPrint('[DEBUG] _AppRouter: Logout detected, resetting state.');
+      _sessionResumed = false;
+      provider.clearData();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        provider.clearData();
-        provider.init(); // перезагрузить список услуг (без фильтрации)
+        if (!mounted) return;
+        debugPrint('[DEBUG] _AppRouter: Clearing stack and showing LoginScreen.');
+        // Вместо полной замены роута (который убивал _AppRouter), просто чистим стек до корня.
+        // Корнем является сам _AppRouter, который в build() уже вернул LoginScreen.
+        Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
-    // При входе админа — загружаем все записи и заметки
-    if (_wasLoggedIn != true && auth.isLoggedIn && auth.isAdmin) {
+    
+    // При входе — инициализация
+    if (auth.isLoggedIn && _wasLoggedIn != true) {
+      debugPrint('[DEBUG] _AppRouter: Login detected, initializing provider.');
+      _sessionResumed = false; // Сбрасываем при новом входе
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        provider.reloadAppointments();
-        provider.refreshUnreadCount(auth);
+        if (!mounted) return;
+        provider.init(auth);
+        // Если мы были на экране регистрации или другом временном экране — возвращаемся к корню
+        Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
 
     _wasLoggedIn = auth.isLoggedIn;
+    
+    if (!auth.initialized) return const SplashScreen();
 
-    if (!auth.initialized) {
-      return const SplashScreen();
-    }
-
+    // Экран логина: либо вообще не вошли, либо вошли но сессия не продолжена
     if (!auth.isLoggedIn) return const LoginScreen();
-    if (auth.isClient)   return ClientShell(key: ClientShell.shellKey);
-    if (auth.isWasher)   return const WasherShell();
+    if (auth.isLoggedIn && !_sessionResumed) {
+      return LoginScreen(
+        onSessionResumed: () => setState(() => _sessionResumed = true),
+        isResume: true,
+      );
+    }
+    
+    if (auth.isClient) return ClientShell(key: ClientShell.shellKey);
+    if (auth.isWasher) return const WasherShell();
     return const HomeShell();
   }
 }
