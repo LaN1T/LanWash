@@ -103,11 +103,11 @@ class BookingWizardScreen extends StatefulWidget {
 
 class _BWState extends State<BookingWizardScreen> {
   final _pageCtrl = PageController();
-  final _step2ScrollCtrl = ScrollController();
+  final _serviceScrollCtrl = ScrollController();
   int _step = 0;
 
   late DateTime _selectedDate;
-  int _selectedSlot = 2;
+  int _selectedSlotIndex = -1; // -1 means no selection
 
   String _washTypeId = '';
   late Set<String> _extras;
@@ -115,11 +115,6 @@ class _BWState extends State<BookingWizardScreen> {
   late TextEditingController _carCtrl;
   late TextEditingController _numCtrl;
   final _formKey = GlobalKey<FormState>();
-
-  static const _slots = [
-    '09:00','10:00','11:00','12:00','13:00',
-    '14:00','15:00','16:00','17:00','18:00',
-  ];
 
   Promo? get _promo => widget.initialPromo;
   bool   get _isPromo => _promo != null;
@@ -140,60 +135,65 @@ class _BWState extends State<BookingWizardScreen> {
     return d.weekday == DateTime.saturday || d.weekday == DateTime.sunday;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    final user = context.read<AuthProvider>().user;
-    _nameCtrl = TextEditingController(text: user?.displayName ?? '');
-    _carCtrl  = TextEditingController(text: user?.carModel    ?? '');
-    _numCtrl  = TextEditingController(text: user?.carNumber   ?? '');
-    _extras = {};
-    _selectedDate = _nextValidDate();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initFromProvider());
+  void _updateBusySlots() {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    context.read<AppProvider>().fetchBusySlots(dateStr);
   }
 
-  void _initFromProvider() {
-    final provider = context.read<AppProvider>();
-    if (_isPromo) {
-      _washTypeId = _promo!.washTypeId;
-      _extras = Set.from(_promo!.includedExtraIds);
-    } else {
-      final basic = provider.washTypeByCode('basic')
-          ?? (provider.washTypes.isNotEmpty ? provider.washTypes.first : null);
-      _washTypeId = basic?.id ?? '';
+  bool _isSlotAvailable(DateTime dt, int duration) {
+    // Check if slot is in the past
+    if (dt.isBefore(DateTime.now())) return false;
+
+    // Logic from prompt: startTime + durationMinutes + 5 <= 22:00
+    final totalMinutes = dt.hour * 60 + dt.minute + duration + 5;
+    if (totalMinutes > 22 * 60) return false;
+
+    final busy = context.read<AppProvider>().busySlots['busy_slots'] as List?;
+    if (busy == null) return true;
+
+    final start = dt;
+    final end = dt.add(Duration(minutes: duration));
+    
+    // Check if at least one box is free
+    for (int boxIdx = 0; boxIdx < busy.length; boxIdx++) {
+      bool isBoxFree = true;
+      for (final slot in busy[boxIdx]) {
+        final slotStart = DateTime.parse(slot['start']);
+        final slotEnd = DateTime.parse(slot['end']);
+        
+        if (start.isBefore(slotEnd) && end.isAfter(slotStart)) {
+          isBoxFree = false;
+          break;
+        }
+      }
+      if (isBoxFree) return true;
     }
-    _addIncludedExtras();
-    if (mounted) setState(() {});
+    return false;
   }
 
-  void _addIncludedExtras() {
-    final wt = context.read<AppProvider>().washTypeById(_washTypeId);
-    if (wt != null) _extras.addAll(wt.includedExtraIds);
+  int _getDuration() {
+    final provider = context.read<AppProvider>();
+    final wt = provider.washTypeById(_washTypeId);
+    int duration = wt?.durationMinutes ?? 30;
+    
+    final locked = _lockedExtras();
+    for (final id in _extras) {
+      if (!locked.contains(id)) {
+        final svc = provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+        duration += svc.durationMinutes;
+      }
+    }
+    return duration;
   }
-
-  @override
-  void dispose() {
-    _pageCtrl.dispose();
-    _step2ScrollCtrl.dispose();
-    _nameCtrl.dispose(); _carCtrl.dispose(); _numCtrl.dispose();
-    super.dispose();
-  }
-
-  DateTime get _finalDateTime {
-    final p = _slots[_selectedSlot].split(':');
-    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
-        int.parse(p[0]), int.parse(p[1]));
-  }
-
-  WashType? get _washType =>
-      context.read<AppProvider>().washTypeById(_washTypeId);
 
   Set<String> _lockedExtras() {
     final locked = <String>{...?_washType?.includedExtraIds};
     if (_isPromo) locked.addAll(_promo!.includedExtraIds);
     return locked;
   }
+
+  WashType? get _washType =>
+      context.read<AppProvider>().washTypeById(_washTypeId);
 
   int _extraPrice(String id) {
     final svc = context.read<AppProvider>().services.firstWhere(
@@ -244,6 +244,13 @@ class _BWState extends State<BookingWizardScreen> {
   int get _finalPrice => _isPromo ? _promoBasePrice + _extrasPrice : _regularPrice;
   bool get _hasDiscount => _isPromo && _finalPrice < _regularPrice;
 
+  DateTime get _finalDateTime {
+    if (_selectedSlotIndex == -1) return DateTime.now(); // Should not happen
+    final hour = 8 + (_selectedSlotIndex ~/ 2);
+    final minute = (_selectedSlotIndex % 2) * 30;
+    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, minute);
+  }
+
   String get _totalDurationLabel {
     final wt = _washType;
     int total = wt?.durationMinutes ?? 0;
@@ -265,12 +272,63 @@ class _BWState extends State<BookingWizardScreen> {
     return parts.isEmpty ? '0 мин' : parts.join(' ');
   }
 
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthProvider>().user;
+    _nameCtrl = TextEditingController(text: user?.displayName ?? '');
+    _carCtrl  = TextEditingController(text: user?.carModel    ?? '');
+    _numCtrl  = TextEditingController(text: user?.carNumber   ?? '');
+    _extras = {};
+    _selectedDate = _nextValidDate();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initFromProvider();
+        _updateBusySlots();
+    });
+  }
+
+  void _initFromProvider() {
+    final provider = context.read<AppProvider>();
+    if (_isPromo) {
+      _washTypeId = _promo!.washTypeId;
+      _extras = Set.from(_promo!.includedExtraIds);
+    } else {
+      final basic = provider.washTypeByCode('basic')
+          ?? (provider.washTypes.isNotEmpty ? provider.washTypes.first : null);
+      _washTypeId = basic?.id ?? '';
+    }
+    _addIncludedExtras();
+    if (mounted) setState(() {});
+  }
+
+  void _addIncludedExtras() {
+    final wt = context.read<AppProvider>().washTypeById(_washTypeId);
+    if (wt != null) _extras.addAll(wt.includedExtraIds);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    _serviceScrollCtrl.dispose();
+    _nameCtrl.dispose(); _carCtrl.dispose(); _numCtrl.dispose();
+    super.dispose();
+  }
+
   void _next() {
-    if (_step == 1 && !_formKey.currentState!.validate()) {
-      _step2ScrollCtrl.animateTo(0,
+    if (_step == 0 && !_formKey.currentState!.validate()) {
+      _serviceScrollCtrl.animateTo(0,
           duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
       return;
     }
+    if (_step == 1 && _selectedSlotIndex == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Пожалуйста, выберите время для записи.'),
+        backgroundColor: AppStyles.danger,
+      ));
+      return;
+    }
+
     if (_step < 2) {
       setState(() => _step++);
       _pageCtrl.nextPage(
@@ -370,17 +428,8 @@ class _BWState extends State<BookingWizardScreen> {
             controller: _pageCtrl,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _Step1(
-                selectedDate: _selectedDate,
-                selectedSlot: _selectedSlot,
-                slots: _slots,
-                weekendOnly: _weekendOnly,
-                isDateAllowed: _isDateAllowed,
-                onDateChanged: (d) => setState(() => _selectedDate = d),
-                onSlotChanged: (i) => setState(() => _selectedSlot = i),
-              ),
-              _Step2(
-                scrollCtrl: _step2ScrollCtrl,
+              _ServiceStep(
+                scrollCtrl: _serviceScrollCtrl,
                 formKey: _formKey,
                 washTypes: washTypes,
                 washTypeId: _washTypeId,
@@ -401,7 +450,24 @@ class _BWState extends State<BookingWizardScreen> {
                   v ? _extras.add(id) : _extras.remove(id);
                 }),
               ),
-              _Step3(
+              _DateTimeStep(
+                selectedDate: _selectedDate,
+                selectedSlot: _selectedSlotIndex,
+                weekendOnly: _weekendOnly,
+                isDateAllowed: _isDateAllowed,
+                onDateChanged: (d) {
+                  setState(() {
+                    _selectedDate = d;
+                    _selectedSlotIndex = -1; // Reset selection
+                  });
+                  _updateBusySlots();
+                },
+                onSlotChanged: (i) => setState(() => _selectedSlotIndex = i),
+                isSlotAvailable: _isSlotAvailable,
+                getDuration: _getDuration,
+                getFinalDateTime: () => _finalDateTime,
+              ),
+              _ConfirmationStep(
                 date: DateFormat('d MMMM yyyy, HH:mm', 'ru').format(_finalDateTime),
                 washType: _washType,
                 extras: _extras.toList(),
@@ -418,7 +484,11 @@ class _BWState extends State<BookingWizardScreen> {
             ],
           ),
         ),
-        _BottomBar(step: _step, onAction: _step < 2 ? _next : _confirm),
+        _BottomBar(
+          step: _step,
+          onAction: _step < 2 ? _next : _confirm,
+          selectedTimeLabel: _selectedSlotIndex == -1 ? null : DateFormat("d MMMM, HH:mm", "ru").format(_finalDateTime),
+        ),
       ]),
     );
   }
@@ -428,7 +498,7 @@ class _BWState extends State<BookingWizardScreen> {
 class _StepIndicator extends StatelessWidget {
   final int current;
   const _StepIndicator({required this.current});
-  static const _steps = ['Дата и время', 'Услуги', 'Подтверждение'];
+  static const _steps = ['Услуга', 'Дата и время', 'Подтверждение'];
 
   @override
   Widget build(BuildContext context) {
@@ -479,22 +549,32 @@ class _StepIndicator extends StatelessWidget {
 }
 
 // ─── Шаг 1: Дата и время ─────────────────────────────────────────────────────
-class _Step1 extends StatelessWidget {
+class _DateTimeStep extends StatelessWidget {
   final DateTime selectedDate;
   final int selectedSlot;
-  final List<String> slots;
   final bool weekendOnly;
   final bool Function(DateTime) isDateAllowed;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<int> onSlotChanged;
-  const _Step1({required this.selectedDate, required this.selectedSlot,
-    required this.slots, required this.weekendOnly, required this.isDateAllowed,
-    required this.onDateChanged, required this.onSlotChanged});
+  final bool Function(DateTime, int) isSlotAvailable;
+  final int Function() getDuration;
+  final DateTime Function() getFinalDateTime;
+
+  const _DateTimeStep({
+    required this.selectedDate,
+    required this.selectedSlot,
+    required this.weekendOnly,
+    required this.isDateAllowed,
+    required this.onDateChanged,
+    required this.onSlotChanged,
+    required this.isSlotAvailable,
+    required this.getDuration,
+    required this.getFinalDateTime,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final days = List.generate(14, (i) =>
-        DateTime.now().add(Duration(days: i)));
+    final days = List.generate(14, (i) => DateTime.now().add(Duration(days: i)));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -567,62 +647,50 @@ class _Step1 extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 28),
-        const Text('Выберите время', style: AppStyles.headingMedium),
+        const Text('Выберите время (интервал 30 мин)', style: AppStyles.headingMedium),
         const SizedBox(height: 16),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 10,
-            childAspectRatio: 2.4,
+            crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8,
+            childAspectRatio: 2.5,
           ),
-          itemCount: slots.length,
-          itemBuilder: (_, i) {
-            final sel = i == selectedSlot;
+          itemCount: (22 - 8) * 2 + 1, // 08:00 - 22:00
+          itemBuilder: (_, index) {
+            final hour = 8 + (index ~/ 2);
+            final minute = (index % 2) * 30;
+            final time = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour, minute);
+            
+            final duration = getDuration();
+            final available = isSlotAvailable(time, duration);
+            final sel = index == selectedSlot;
+
             return GestureDetector(
-              onTap: () => onSlotChanged(i),
+              onTap: available ? () => onSlotChanged(index) : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: sel ? AppStyles.primary : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: sel ? AppStyles.primary : AppStyles.border),
+                  color: sel ? AppStyles.primary : (available ? Colors.white : AppStyles.border.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: sel ? AppStyles.primary : AppStyles.border),
                 ),
-                child: Center(child: Text(slots[i], style: TextStyle(
-                  color: sel ? Colors.white : AppStyles.textPrimary,
-                  fontSize: 14, fontWeight: FontWeight.w600,
+                child: Center(child: Text(DateFormat('HH:mm').format(time), style: TextStyle(
+                  color: sel ? Colors.white : (available ? AppStyles.textPrimary : AppStyles.textSecondary),
+                  fontSize: 11, fontWeight: FontWeight.w600,
                 ))),
               ),
             );
           },
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppStyles.primaryBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.event_rounded, color: AppStyles.primary, size: 18),
-            const SizedBox(width: 10),
-            Text('Выбрано: ${DateFormat("d MMMM, HH:mm", "ru").format(
-              DateTime(selectedDate.year, selectedDate.month, selectedDate.day,
-                  int.parse(slots[selectedSlot].split(':')[0]),
-                  int.parse(slots[selectedSlot].split(':')[1])))}',
-              style: const TextStyle(color: AppStyles.primary, fontSize: 13,
-                  fontWeight: FontWeight.w500)),
-          ]),
-        ),
       ]),
     );
   }
 }
 
 // ─── Шаг 2: Услуги ───────────────────────────────────────────────────────────
-class _Step2 extends StatelessWidget {
+class _ServiceStep extends StatelessWidget {
   final ScrollController? scrollCtrl;
   final GlobalKey<FormState> formKey;
   final List<WashType> washTypes;
@@ -634,7 +702,7 @@ class _Step2 extends StatelessWidget {
   final ValueChanged<WashType> onWashTypeChanged;
   final void Function(String id, bool value) onExtrasChanged;
 
-  const _Step2({this.scrollCtrl, required this.formKey, required this.washTypes,
+  const _ServiceStep({this.scrollCtrl, required this.formKey, required this.washTypes,
     required this.washTypeId, required this.extras, required this.lockedExtras,
     required this.nameCtrl, required this.carCtrl, required this.numCtrl,
     required this.isPromo, required this.onWashTypeChanged,
@@ -680,14 +748,14 @@ class _Step2 extends StatelessWidget {
             controller: numCtrl,
             style: const TextStyle(color: AppStyles.textPrimary,
                 letterSpacing: 1.5, fontWeight: FontWeight.w600),
-            decoration: _plateDecoration(),
+            decoration: _ServiceStep._plateDecoration(),
             inputFormatters: [_PlateInputFormatter()],
             validator: _validatePlate,
           ),
           const SizedBox(height: 24),
 
           Row(children: [
-            const Text('Тип мойки', style: AppStyles.headingMedium),
+            const Text('Выберите услугу', style: AppStyles.headingMedium),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
@@ -701,78 +769,81 @@ class _Step2 extends StatelessWidget {
             ],
           ]),
           const SizedBox(height: 12),
-          Container(
-            decoration: AppStyles.cardDecoration,
-            child: Column(children: washTypes.asMap().entries.map((entry) {
-              final wt   = entry.value;
-              final sel  = washTypeId == wt.id;
-              final last = entry.key == washTypes.length - 1;
-              return Column(children: [
-                GestureDetector(
-                  onTap: isPromo ? null : () => onWashTypeChanged(wt),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: sel ? AppStyles.primaryBg : Colors.white,
+          ...washTypes.map((wt) {
+            final sel = washTypeId == wt.id;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: isPromo ? null : () => onWashTypeChanged(wt),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: sel ? AppStyles.primary : AppStyles.border,
+                      width: sel ? 2 : 1,
                     ),
-                    child: Row(children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 20, height: 20,
+                    boxShadow: sel ? [
+                      BoxShadow(color: AppStyles.primary.withOpacity(0.1),
+                          blurRadius: 10, offset: const Offset(0, 4))
+                    ] : [
+                      BoxShadow(color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4, offset: const Offset(0, 2))
+                    ],
+                  ),
+                  child: Row(children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(wt.name, style: TextStyle(
+                          color: AppStyles.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        )),
+                        const SizedBox(height: 4),
+                        Text(wt.description, style: const TextStyle(
+                          color: AppStyles.textSecondary,
+                          fontSize: 12,
+                        )),
+                        const SizedBox(height: 8),
+                        Row(children: [
+                          Icon(Icons.access_time_rounded,
+                              size: 14, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(wt.durationLabel, style: TextStyle(
+                              color: sel ? AppStyles.primary : AppStyles.textSecondary,
+                              fontSize: 12, fontWeight: FontWeight.w500)),
+                          const SizedBox(width: 16),
+                          Icon(Icons.payments_outlined,
+                              size: 14, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+                          const SizedBox(width: 4),
+                          Text('${wt.basePrice} ₽', style: TextStyle(
+                              color: sel ? AppStyles.primary : AppStyles.textSecondary,
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                        ]),
+                      ],
+                    )),
+                    if (sel)
+                      const Icon(Icons.check_circle_rounded, color: AppStyles.primary, size: 24)
+                    else
+                      Container(
+                        width: 24, height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: sel ? AppStyles.primary : AppStyles.border,
-                              width: 2),
+                          border: Border.all(color: AppStyles.border, width: 2),
                         ),
-                        child: sel ? Center(child: Container(
-                          width: 8, height: 8,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppStyles.primary),
-                        )) : null,
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(wt.name, style: TextStyle(
-                            color: sel ? AppStyles.primary : AppStyles.textPrimary,
-                            fontSize: 15,
-                            fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-                          )),
-                          const SizedBox(height: 2),
-                          Text(wt.description, style: const TextStyle(
-                            color: AppStyles.textSecondary,
-                            fontSize: 11,
-                          )),
-                          const SizedBox(height: 2),
-                          Row(children: [
-                            const Icon(Icons.access_time_rounded,
-                                size: 11, color: AppStyles.textSecondary),
-                            const SizedBox(width: 3),
-                            Text(wt.durationLabel, style: const TextStyle(
-                                color: AppStyles.textSecondary, fontSize: 11)),
-                          ]),
-                        ],
-                      )),
-                      Text('${wt.basePrice} ₽', style: TextStyle(
-                        color: sel ? AppStyles.primary : AppStyles.textSecondary,
-                        fontSize: 14, fontWeight: FontWeight.w600,
-                      )),
-                    ]),
-                  ),
+                  ]),
                 ),
-                if (!last) Container(height: 1, color: AppStyles.border),
-              ]);
-            }).toList()),
-          ),
-          const SizedBox(height: 24),
-
+              ),
+            );
+          }),
+          
+          const SizedBox(height: 12),
           Row(children: [
-            const Text('Дополнительные услуги', style: AppStyles.headingMedium),
+            const Text('Дополнительно', style: AppStyles.headingMedium),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
@@ -924,7 +995,7 @@ class _Step2 extends StatelessWidget {
 }
 
 // ─── Шаг 3: Подтверждение ────────────────────────────────────────────────────
-class _Step3 extends StatelessWidget {
+class _ConfirmationStep extends StatelessWidget {
   final String date, name, car, number;
   final WashType? washType;
   final List<String> extras;
@@ -934,7 +1005,7 @@ class _Step3 extends StatelessWidget {
   final String? promoName;
   final String totalDurationLabel;
 
-  const _Step3({required this.date, required this.washType, required this.extras,
+  const _ConfirmationStep({required this.date, required this.washType, required this.extras,
     required this.services,
     required this.name, required this.car, required this.number,
     required this.finalPrice, required this.regularPrice,
@@ -1170,7 +1241,8 @@ class _ConfirmRow extends StatelessWidget {
 class _BottomBar extends StatelessWidget {
   final int step;
   final VoidCallback onAction;
-  const _BottomBar({required this.step, required this.onAction});
+  final String? selectedTimeLabel;
+  const _BottomBar({required this.step, required this.onAction, this.selectedTimeLabel});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1181,21 +1253,41 @@ class _BottomBar extends StatelessWidget {
       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
           blurRadius: 12, offset: const Offset(0, -4))],
     ),
-    child: SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: AppStyles.primaryButton,
-        onPressed: onAction,
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(step == 0 ? 'Далее: выбор услуг' :
-               step == 1 ? 'Далее: подтверждение' : 'Записаться',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          Icon(step == 2
-              ? Icons.check_circle_outline_rounded
-              : Icons.arrow_forward_rounded, size: 18),
-        ]),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      if (selectedTimeLabel != null) ...[
+        Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppStyles.primaryBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppStyles.primary.withOpacity(0.1)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.event_rounded, color: AppStyles.primary, size: 16),
+            const SizedBox(width: 8),
+            Text('Выбранное время: $selectedTimeLabel',
+                style: const TextStyle(color: AppStyles.primary, fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ],
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          style: AppStyles.primaryButton,
+          onPressed: onAction,
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(step == 0 ? 'Далее: выбор времени' :
+                 step == 1 ? 'Далее: подтверждение' : 'Записаться',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            Icon(step == 2
+                ? Icons.check_circle_outline_rounded
+                : Icons.arrow_forward_rounded, size: 18),
+          ]),
+        ),
       ),
-    ),
+    ]),
   );
 }

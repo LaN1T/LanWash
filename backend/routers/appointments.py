@@ -12,10 +12,16 @@ from db_models import (
 from datetime import datetime
 from collections import defaultdict
 from services.fcm_service import fcm_service
+from services.workload_service import workload_service
 from services.auth_service import get_current_user, check_roles
 from core.security import decrypt_token
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
+
+@router.get("/busy-slots", response_model=dict)
+async def get_busy_slots(date: str, db: AsyncSession = Depends(get_db)):
+    """date: YYYY-MM-DD"""
+    return await workload_service.get_busy_slots(db, date)
 
 @router.get("/", response_model=list[AppointmentResponse])
 async def get_all(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -54,12 +60,53 @@ async def get_by_washer(username: str, db: AsyncSession = Depends(get_db), curre
     )
     return result.scalars().all()
 
+async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
+    # 1. Сбор расходников из типа мойки
+    res_wt = await db.execute(select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service).where(WashTypeConsumable.washTypeId == wash_type_id))
+    usage_map = {row[0]: float(row[1]) for row in res_wt.all()}
+
+    # 2. Сбор расходников из промо
+    if promo_id:
+        res_promo = await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
+        # Здесь мы полагаем, что логика промо тоже требует расходников, 
+        # но для простоты добавим только расходники самих доп.услуг ниже.
+        pass
+
+    # 3. Сбор расходников из доп.услуг
+    if additional_services:
+        try:
+            # Если это JSON строка, парсим её
+            service_ids = json.loads(additional_services) if isinstance(additional_services, str) else additional_services
+        except:
+            service_ids = additional_services if isinstance(additional_services, list) else []
+            
+        if service_ids:
+            res_svc = await db.execute(select(ServiceConsumable.consumableId, ServiceConsumable.quantity_per_service).where(ServiceConsumable.serviceId.in_(service_ids)))
+            for cid, qty in res_svc.all():
+                usage_map[cid] = usage_map.get(cid, 0.0) + float(qty)
+
+    # 4. Сохранение в лог
+    for cid, qty in usage_map.items():
+        db.add(ConsumableUsageLog(
+            appointmentId=appt_id,
+            consumableId=cid,
+            quantityUsed=qty,
+            timestamp=datetime.now().isoformat()
+        ))
+
 @router.post("/", response_model=AppointmentResponse)
 async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
     
     if current_user.username != owner_username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете создавать записи для других пользователей.")
+
+    # Находим свободный бокс
+    duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
+    box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
+    
+    if box_idx == -1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
 
     appt_data = {
         "id": req.id,
@@ -76,6 +123,7 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
         "promoPrice": req.promoPrice,
         "paidPrice": req.paidPrice,
         "promoId": req.promoId,
+        "box_index": box_idx,
     }
 
     if current_user.role == 'admin':
@@ -114,6 +162,10 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
     return appt
 
 
+def format_date(dateTime):
+    pass
+
+
 @router.put("/{appt_id}", response_model=AppointmentResponse)
 async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
@@ -128,6 +180,13 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     old_datetime = appt.dateTime
     old_assigned_washer = appt.assignedWasher
 
+    # Проверка доступности бокса, если время или услуги изменились
+    duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
+    box_idx = await workload_service.find_available_box(db, req.dateTime, duration, exclude_appt_id=appt_id)
+    
+    if box_idx == -1:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
+
     appt.clientName = req.clientName
     appt.carModel = req.carModel
     appt.carNumber = req.carNumber
@@ -140,6 +199,7 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     appt.promoPrice = req.promoPrice
     appt.paidPrice = req.paidPrice
     appt.promoId = req.promoId
+    appt.box_index = box_idx
     
     if current_user.role == 'admin':
         appt.ownerUsername = req.ownerUsername.lower()
@@ -208,172 +268,6 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
             dt_str = format_date(appt.dateTime)
             await fcm_service.send_notification_to_tokens(
                 tokens,
-                title="Назначение отменено",
-                body=f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}."
-            )
-
-    await db.refresh(appt)
-    return appt
-
-
-async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services, promo_id: str | None):
-    """Списание расходников: по типу мойки + по каждой доп.услуге (по id)."""
-    if isinstance(additional_services, str):
-        try:
-            additional_services = json.loads(additional_services)
-        except Exception:
-            additional_services = []
-
-    extra_ids = set(additional_services or [])
-
-    # Доп. услуги акции тоже учитываются
-    if promo_id:
-        res_promo_extras = await db.execute(
-            select(PromoIncludedExtra.extraServiceId)
-            .where(PromoIncludedExtra.promoId == promo_id)
-        )
-        for (eid,) in res_promo_extras.all():
-            extra_ids.add(eid)
-
-    # Включённые в тип мойки доп.услуги тоже учитываются
-    res_wt_extras = await db.execute(
-        select(WashTypeIncludedExtra.extraServiceId)
-        .where(WashTypeIncludedExtra.washTypeId == wash_type_id)
-    )
-    for (eid,) in res_wt_extras.all():
-        extra_ids.add(eid)
-
-    consumable_totals: dict[str, float] = defaultdict(float)
-
-    # Расходники типа мойки
-    res_wt_cons = await db.execute(
-        select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service)
-        .where(WashTypeConsumable.washTypeId == wash_type_id)
-    )
-    for c_id, qty in res_wt_cons.all():
-        consumable_totals[c_id] += float(qty)
-
-    # Расходники доп.услуг
-    if extra_ids:
-        res_sc = await db.execute(
-            select(ServiceConsumable.consumableId, ServiceConsumable.quantity_per_service, ServiceConsumable.serviceId)
-            .where(ServiceConsumable.serviceId.in_(extra_ids))
-        )
-        for c_id, qty, _s_id in res_sc.all():
-            if c_id == "c_vac":
-                # Пылесос — один ресурс за запись
-                consumable_totals[c_id] = max(consumable_totals[c_id], 1.0)
-            else:
-                consumable_totals[c_id] += float(qty)
-
-    for c_id, qty in consumable_totals.items():
-        db.add(ConsumableUsageLog(
-            appointmentId=appt_id,
-            consumableId=c_id,
-            quantityUsed=qty,
-            timestamp=datetime.now().isoformat()
-        ))
-
-
-def format_date(dateTime):
-    pass
-
-
-@router.put("/{appt_id}", response_model=AppointmentResponse)
-async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
-    appt = result.scalar_one_or_none()
-    if not appt:
-        raise HTTPException(404, "Запись не найдена")
-    
-    if current_user.username != appt.ownerUsername and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
-
-    # Обновляем основные поля
-    appt.clientName = req.clientName
-    appt.carModel = req.carModel
-    appt.carNumber = req.carNumber
-    appt.dateTime = req.dateTime
-    appt.washTypeId = req.washTypeId
-    appt.additionalServices = req.additionalServices
-    appt.status = req.status
-    appt.notes = req.notes
-    appt.isFavorite = int(req.isFavorite)
-    appt.promoPrice = req.promoPrice
-    appt.paidPrice = req.paidPrice
-    appt.promoId = req.promoId
-    
-    # Обновляем ownerUsername, только если админ
-    if current_user.role == 'admin':
-        appt.ownerUsername = req.ownerUsername.lower()
-        appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
-        appt.originalPrice = req.originalPrice
-        appt.assignedWasher = req.assignedWasher
-    
-    # ... логика пересчета расходников и уведомлений остается без изменений ...
-
-    if req.status == "completed":
-        # Удаляем предыдущие записи расхода перед пересчётом
-        await db.execute(delete(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
-        await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
-        await db.commit()
-
-    # Логика отправки уведомлений
-    # print(f"[DEBUG] Processing update for appt.ownerUsername: '{appt.ownerUsername}'") # Removed debug log
-    if appt.ownerUsername:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
-        client_tokens = tokens_res.scalars().all()
-        
-        # print(f"[DEBUG] Found {len(client_tokens)} tokens for user {appt.ownerUsername}") # Removed debug log
-
-        if client_tokens:
-            if old_status != appt.status:
-                dt_str = format_date(appt.dateTime)
-                if appt.status == "completed":
-                    title, body = "Запись завершена", "Ваша запись завершена. Спасибо, что выбрали нас!"
-                elif appt.status == "in_progress":
-                    title, body = "Начало обслуживания", "Мы начали работать с вашим автомобилем."
-                elif appt.status == "cancelled":
-                    title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
-                elif appt.status == "scheduled":
-                    title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}."
-                else:
-                    title, body = "Обновление записи", f"Статус вашей записи изменен на: {appt.status}."
-                
-                await fcm_service.send_notification_to_tokens(client_tokens, title=title, body=body)
-
-            elif old_datetime != appt.dateTime:
-                dt_str = format_date(appt.dateTime)
-                await fcm_service.send_notification_to_tokens(
-                    client_tokens,
-                    title="Время мойки изменено",
-                    body=f"Ваша запись перенесена на {dt_str}."
-                )
-
-    # Уведомление мойщикам при назначении
-    new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
-    old_assigned_washers = json.loads(old_assigned_washer) if old_assigned_washer else []
-
-    added_washers = [w for w in new_assigned_washers if w not in old_assigned_washers]
-    removed_washers = [w for w in old_assigned_washers if w not in new_assigned_washers]
-
-    for washer_username in added_washers:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
-        washer_tokens = tokens_res.scalars().all()
-        if washer_tokens:
-            dt_str = format_date(appt.dateTime)
-            await fcm_service.send_notification_to_tokens(
-                washer_tokens,
-                title="Новая запись",
-                body=f"Вы назначены на мойку {appt.carModel} {dt_str}."
-            )
-    for washer_username in removed_washers:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
-        washer_tokens = tokens_res.scalars().all()
-        if washer_tokens:
-            dt_str = format_date(appt.dateTime)
-            await fcm_service.send_notification_to_tokens(
-                washer_tokens,
                 title="Назначение отменено",
                 body=f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}."
             )

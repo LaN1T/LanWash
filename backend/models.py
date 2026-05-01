@@ -96,6 +96,7 @@ class AppointmentRequest(BaseModel):
     originalPrice: int = 0
     assignedWasher: str = "[]"
     promoId: Optional[str] = None
+    box_index: int = 0
 
 
 class AppointmentResponse(BaseModel):
@@ -117,6 +118,7 @@ class AppointmentResponse(BaseModel):
     originalPrice: int = 0
     assignedWasher: str = "[]"
     promoId: Optional[str] = None
+    box_index: int = 0
 
 
 class AssignWasherRequest(BaseModel):

@@ -198,6 +198,19 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getBusySlots(String date) async {
+    try {
+      final resp = await http.get(
+        Uri.parse('$_baseUrl/appointments/busy-slots?date=$date'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return jsonDecode(resp.body);
+      }
+    } catch (_) {}
+    return {'num_boxes': 2, 'busy_slots': []};
+  }
+
   Future<bool> hasDeletedNotification(String username) async {
     try {
       final resp = await http.get(
