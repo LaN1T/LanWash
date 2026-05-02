@@ -5,7 +5,9 @@ import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import 'appointment_detail_screen.dart';
 import '../../models/service.dart';
+import '../../models/wash_type.dart';
 
 
 
@@ -125,6 +127,9 @@ class _BookingsList extends StatelessWidget {
             if (a.isModifiedByAdmin) {
               ctx.read<AppProvider>().clearAdminModifiedFlag(a.id);
             }
+            Navigator.push(ctx, MaterialPageRoute(
+              builder: (_) => ClientAppointmentDetailScreen(appointment: a),
+            ));
           },
           child: Container(
           margin: const EdgeInsets.only(bottom: 12),
