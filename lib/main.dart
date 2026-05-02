@@ -63,7 +63,8 @@ class LanWashApp extends StatelessWidget {
           primary: AppStyles.primary,
           secondary: AppStyles.primaryLight,
           surface: AppStyles.bgCard,
-          background: AppStyles.bgPage,
+          surfaceVariant: AppStyles.bgPage, // Changed background to surfaceVariant
+          // Removed background as it's deprecated and surfaceVariant is the modern equivalent for background colors in Material 3
         ),
         useMaterial3: true,
         scaffoldBackgroundColor: AppStyles.bgPage,
@@ -186,12 +187,10 @@ class _AppRouterState extends State<_AppRouter> {
     if (_wasLoggedIn == true && !auth.isLoggedIn) {
       debugPrint('[DEBUG] _AppRouter: Logout detected, resetting state.');
       _sessionResumed = false;
-      provider.clearData();
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        provider.clearData();
         if (!mounted) return;
         debugPrint('[DEBUG] _AppRouter: Clearing stack and showing LoginScreen.');
-        // Вместо полной замены роута (который убивал _AppRouter), просто чистим стек до корня.
-        // Корнем является сам _AppRouter, который в build() уже вернул LoginScreen.
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
@@ -199,7 +198,7 @@ class _AppRouterState extends State<_AppRouter> {
     // При входе — инициализация
     if (auth.isLoggedIn && _wasLoggedIn != true) {
       debugPrint('[DEBUG] _AppRouter: Login detected, initializing provider.');
-      _sessionResumed = false; // Сбрасываем при новом входе
+      _sessionResumed = true; // Устанавливаем в true для нового входа, чтобы не показывать экран возобновления
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         provider.init(auth);

@@ -120,6 +120,8 @@ class _BookingsList extends StatelessWidget {
         final bgColor = AppStyles.statusBgColor(a.status);
         return GestureDetector(
           onTap: () {
+            // При просмотре записи отмечаем её как прочитанную
+            ctx.read<AppProvider>().markAsSeen(a.id);
             if (a.isModifiedByAdmin) {
               ctx.read<AppProvider>().clearAdminModifiedFlag(a.id);
             }
@@ -148,7 +150,7 @@ class _BookingsList extends StatelessWidget {
                   Text('${a.carModel} · ${a.carNumber}',
                       style: AppStyles.bodySmall),
                 ])),
-                if (a.isModifiedByAdmin)
+                if (a.isModifiedByAdmin && !a.isSeenByClient)
                   Container(
                     margin: const EdgeInsets.only(right: 8),
                     width: 24, height: 24,
