@@ -368,7 +368,15 @@ class _WasherAppointmentCard extends StatelessWidget {
                   final duration = (washType?.durationMinutes ?? 30) + 
                                    extras.fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '')).durationMinutes));
                   final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
-                  return Text('${DateFormat('HH:mm', 'ru').format(a.dateTime)} - ${DateFormat('HH:mm', 'ru').format(endTime)}',
+                  final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
+                  String timeStr;
+                  if (endTime.isAfter(cutoff)) {
+                      final overflow = endTime.difference(cutoff).inMinutes;
+                      timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
+                  } else {
+                      timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} - ${DateFormat('HH:mm', 'ru').format(endTime)}';
+                  }
+                  return Text(timeStr,
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
                           color: AppStyles.textPrimary));
                 }),
@@ -475,26 +483,32 @@ class _WasherAppointmentCard extends StatelessWidget {
                     a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
                   : 30;
               final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
-              return _detailRow(Icons.access_time, 'Время',
-                  '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm', 'ru').format(endTime)}');
+              final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
+              String timeStr;
+              if (endTime.isAfter(cutoff)) {
+                  final overflow = endTime.difference(cutoff).inMinutes;
+                  timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
+              } else {
+                  timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
+              }
+              return _detailRow(Icons.access_time, 'Время', timeStr);
             }),
             _detailRow(Icons.person, 'Клиент', a.clientName),
             _detailRow(Icons.directions_car, 'Авто', '${a.carModel} ${a.carNumber}'),
             _detailRow(Icons.local_car_wash, 'Мойка', washName),
-            _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services.cast(), washType)} \u20BD'),
+            _detailRow(Icons.layers, 'Бокс', 'Бокс №${a.box_index + 1}'),
+            _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services.cast(), washType)} ₽'),
             if (a.additionalServices.isNotEmpty)
               _detailRow(Icons.add_circle_outline, 'Доп. услуги',
                   a.additionalServices.map((id) => services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).name).join(', ')),
             if (a.notes.isNotEmpty)
               _detailRow(Icons.note, 'Заметка', a.notes),
             const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(IconData icon, String label, String value) {
+            ],
+            ),
+            ),
+            );
+            }  Widget _detailRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -59,9 +59,16 @@ class AppointmentDetailScreen extends StatelessWidget {
                     a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
                   : 30;
               final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
-              return _Row(Icons.access_time, 'Время',
-                  '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm', 'ru').format(endTime)}');
-            }),
+              final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
+              String timeStr;
+              if (endTime.isAfter(cutoff)) {
+                  final overflow = endTime.difference(cutoff).inMinutes;
+                  timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
+              } else {
+                  timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
+              }
+              return _Row(Icons.access_time, 'Время', timeStr);
+              }),
           ]),
           const SizedBox(height: 12),
 
