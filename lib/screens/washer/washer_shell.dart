@@ -360,9 +360,18 @@ class _WasherAppointmentCard extends StatelessWidget {
                   ]),
                 ),
                 const Spacer(),
-                Text(DateFormat('d MMM, HH:mm', 'ru').format(a.dateTime),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
-                        color: AppStyles.textPrimary)),
+                Builder(builder: (context) {
+                  final provider = context.watch<AppProvider>();
+                  final washType = provider.washTypeById(a.washTypeId);
+                  // Получаем доп. услуги, которые не включены в базовый тип мойки
+                  final extras = a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false));
+                  final duration = (washType?.durationMinutes ?? 30) + 
+                                   extras.fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '')).durationMinutes));
+                  final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
+                  return Text('${DateFormat('HH:mm', 'ru').format(a.dateTime)} - ${DateFormat('HH:mm', 'ru').format(endTime)}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                          color: AppStyles.textPrimary));
+                }),
               ]),
               const SizedBox(height: 10),
               // Клиент
@@ -384,14 +393,14 @@ class _WasherAppointmentCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppStyles.bgMuted,
+                    color: AppStyles.primaryBg,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(a.carNumber,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500,
-                          color: AppStyles.textPrimary)),
+                  child: Text('Бокс №${a.box_index + 1}',
+                      style: const TextStyle(
+                          color: AppStyles.primary, fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
-              ]),
+                ]),
               const SizedBox(height: 6),
               // Тип мойки + цена
               Row(children: [
@@ -459,7 +468,16 @@ class _WasherAppointmentCard extends StatelessWidget {
             const SizedBox(height: 16),
             _detailRow(Icons.schedule, 'Статус', AppStyles.statusLabel(a.status)),
             _detailRow(Icons.calendar_today, 'Дата',
-                DateFormat('d MMMM yyyy, HH:mm', 'ru').format(a.dateTime)),
+                DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
+            Builder(builder: (context) {
+              final duration = a.calculateTotalPrice(services.cast<Service>(), washType) >= 0 
+                  ? (washType?.durationMinutes ?? 30) + 
+                    a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
+                  : 30;
+              final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
+              return _detailRow(Icons.access_time, 'Время',
+                  '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm', 'ru').format(endTime)}');
+            }),
             _detailRow(Icons.person, 'Клиент', a.clientName),
             _detailRow(Icons.directions_car, 'Авто', '${a.carModel} ${a.carNumber}'),
             _detailRow(Icons.local_car_wash, 'Мойка', washName),
