@@ -147,8 +147,21 @@ class _BookingsList extends StatelessWidget {
                       style: const TextStyle(color: AppStyles.textPrimary,
                           fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 3),
-                  Text('${a.carModel} · ${a.carNumber}',
-                      style: AppStyles.bodySmall),
+                  Row(children: [
+                    Text('${a.carModel} · ${a.carNumber}',
+                        style: AppStyles.bodySmall),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primaryBg,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('Бокс №${a.box_index + 1}',
+                          style: AppStyles.bodySmall.copyWith(
+                              color: AppStyles.primary, fontWeight: FontWeight.w600)),
+                    ),
+                  ]),
                 ])),
                 if (a.isModifiedByAdmin && !a.isSeenByClient)
                   Container(

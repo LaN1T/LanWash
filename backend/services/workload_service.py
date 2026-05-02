@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
-from db_models import Appointment, WashType, Service, Promo, WashTypeIncludedExtra
+from db_models import Appointment, WashType, Service, Promo, WashTypeIncludedExtra, PromoIncludedExtra
 
 NUM_BOXES = 2  # Можно вынести в конфиг или БД
 

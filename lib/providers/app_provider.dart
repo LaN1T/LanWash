@@ -113,9 +113,6 @@ class AppProvider extends ChangeNotifier {
       _promoList    = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
       _appointmentList = await _fetchAppointments(auth);
-      for (var appt in _appointmentList) {
-          debugPrint('DEBUG: Appointment ${appt.id} status=${appt.status} isModifiedByAdmin=${appt.isModifiedByAdmin}');
-      }
       debugPrint('[AppProvider] init() finished, fetched ${_appointmentList.length} appointments');
     } catch (e) {
       debugPrint('[AppProvider] init error: $e');
@@ -135,7 +132,6 @@ class AppProvider extends ChangeNotifier {
     _extraFavSet     = await _api.getExtraFavorites(_currentUser);
     _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
     _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
-    debugPrint('DEBUG: hasDeletedByAdmin for $_currentUser is: $_hasDeletedByAdmin');
     notifyListeners();
   }
 
@@ -148,20 +144,7 @@ class AppProvider extends ChangeNotifier {
   Future<bool> addAppointment(Appointment a) async {
     final success = await _api.createAppointment(a);
     if (success) {
-        final newApptId = a.id;
         _appointmentList = await _api.getAppointments();
-        Appointment? newlyAdded;
-        for (var appt in _appointmentList) {
-            if (appt.id == newApptId) {
-                newlyAdded = appt;
-                break;
-            }
-        }
-        if (newlyAdded != null) {
-          debugPrint('DEBUG: Newly added appointment ${newlyAdded.id} has isModifiedByAdmin: ${newlyAdded.isModifiedByAdmin}');
-        } else {
-          debugPrint('DEBUG: Newly added appointment with ID $newApptId not found after reload.');
-        }
         notifyListeners();
     }
     return success;
