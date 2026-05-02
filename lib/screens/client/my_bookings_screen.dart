@@ -5,19 +5,15 @@ import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
-import 'appointment_detail_screen.dart';
 import '../../models/service.dart';
 import '../../models/wash_type.dart';
-
-
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
   @override State<MyBookingsScreen> createState() => _State();
 }
 
-class _State extends State<MyBookingsScreen>
-    with SingleTickerProviderStateMixin {
+class _State extends State<MyBookingsScreen> with SingleTickerProviderStateMixin {
   late TabController _tab;
   @override
   void initState() {
@@ -36,26 +32,14 @@ class _State extends State<MyBookingsScreen>
     final auth     = context.watch<AuthProvider>();
     final username = auth.userLogin.toLowerCase();
 
-    // Клиент видит только свои записи (по ownerUsername), админ — все
     final all = auth.isAdmin
         ? provider.appointments
-        : provider.appointments
-            .where((a) =>
-                a.ownerUsername.toLowerCase() == username ||
-                // fallback для демо-записей у которых нет ownerUsername
-                (a.ownerUsername.isEmpty && a.clientName.toLowerCase() == username))
-            .toList();
+        : provider.appointments.where((a) => a.ownerUsername.toLowerCase() == username || (a.ownerUsername.isEmpty && a.clientName.toLowerCase() == username)).toList();
 
-    final upcoming = all
-        .where((a) => a.status == 'scheduled' || a.status == 'in_progress')
-        .toList()..sort((a, b) => a.dateTime.compareTo(b.dateTime));
-    final history = all
-        .where((a) => a.status == 'completed' || a.status == 'cancelled')
-        .toList()..sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    final upcoming = all.where((a) => a.status == 'scheduled' || a.status == 'in_progress').toList()..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final history = all.where((a) => a.status == 'completed' || a.status == 'cancelled').toList()..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
-    return Container(
-      color: AppStyles.bgPage,
-      child: Column(children: [
+    return Column(children: [
         Container(
           color: Colors.white,
           child: TabBar(
@@ -63,192 +47,147 @@ class _State extends State<MyBookingsScreen>
             labelColor: AppStyles.primary,
             unselectedLabelColor: AppStyles.textSecondary,
             indicatorColor: AppStyles.primary,
-            indicatorWeight: 2.5,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            tabs: [
-              Tab(text: 'Активные (${upcoming.length})'),
-              Tab(text: 'История (${history.length})'),
-            ],
+            tabs: const [Tab(text: 'Активные'), Tab(text: 'История')],
           ),
         ),
         Expanded(child: TabBarView(controller: _tab, children: [
-          _BookingsList(items: upcoming,
-              services: provider.services,
-              emptyText: 'Нет активных записей',
-              emptyIcon: Icons.calendar_today_outlined),
-          _BookingsList(items: history,
-              services: provider.services,
-              emptyText: 'История пуста',
-              emptyIcon: Icons.history_rounded),
+          _BookingsList(items: upcoming, services: provider.services),
+          _BookingsList(items: history, services: provider.services),
         ])),
-      ]),
-    );
+      ]);
   }
 }
 
 class _BookingsList extends StatelessWidget {
   final List<Appointment> items;
   final List<dynamic> services;
-  final String emptyText;
-  final IconData emptyIcon;
-  const _BookingsList({required this.items, required this.services, required this.emptyText,
-    required this.emptyIcon});
+  const _BookingsList({required this.items, required this.services});
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return Center(child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-              color: AppStyles.primaryBg, shape: BoxShape.circle),
-          child: Icon(emptyIcon, size: 40, color: AppStyles.primary),
-        ),
-        const SizedBox(height: 16),
-        Text(emptyText, style: const TextStyle(color: AppStyles.textSecondary,
-            fontSize: 16, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 6),
-        const Text('Здесь появятся ваши записи', style: AppStyles.bodyMedium),
-      ],
-    ));
-
     return ListView.builder(
       padding: AppStyles.pagePadding,
       itemCount: items.length,
       itemBuilder: (ctx, i) {
         final a = items[i];
-        final color   = AppStyles.statusColor(a.status);
+        final color = AppStyles.statusColor(a.status);
         final bgColor = AppStyles.statusBgColor(a.status);
+        final provider = context.watch<AppProvider>();
+        
         return GestureDetector(
           onTap: () {
-            // При просмотре записи отмечаем её как прочитанную
             ctx.read<AppProvider>().markAsSeen(a.id);
-            if (a.isModifiedByAdmin) {
-              ctx.read<AppProvider>().clearAdminModifiedFlag(a.id);
-            }
-            Navigator.push(ctx, MaterialPageRoute(
-              builder: (_) => ClientAppointmentDetailScreen(appointment: a),
-            ));
+            if (a.isModifiedByAdmin) ctx.read<AppProvider>().clearAdminModifiedFlag(a.id);
+            _showDetail(ctx, a, services);
           },
           child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: AppStyles.cardDecoration,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ─ Заголовок карточки ────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: AppStyles.cardDecoration,
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: bgColor, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
                   child: Icon(AppStyles.statusIcon(a.status), color: color, size: 20),
                 ),
                 const SizedBox(width: 14),
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(ctx.watch<AppProvider>().washTypeName(a.washTypeId),
-                      style: const TextStyle(color: AppStyles.textPrimary,
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 3),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(provider.washTypeName(a.washTypeId), style: const TextStyle(fontWeight: FontWeight.w600)),
                   Row(children: [
-                    Text('${a.carModel} · ${a.carNumber}',
-                        style: AppStyles.bodySmall),
+                    Text('${a.carModel} · ${a.carNumber}', style: AppStyles.bodySmall),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppStyles.primaryBg,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text('Бокс №${a.box_index + 1}',
-                          style: AppStyles.bodySmall.copyWith(
-                              color: AppStyles.primary, fontWeight: FontWeight.w600)),
+                      decoration: BoxDecoration(color: AppStyles.primaryBg, borderRadius: BorderRadius.circular(4)),
+                      child: Text('Бокс №${a.box_index + 1}', style: const TextStyle(color: AppStyles.primary, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                   ]),
                 ])),
                 if (a.isModifiedByAdmin && !a.isSeenByClient)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    width: 24, height: 24,
-                    decoration: const BoxDecoration(
-                      color: AppStyles.danger,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text('!', style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      )),
-                    ),
-                  ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: bgColor, borderRadius: BorderRadius.circular(20)),
-                  child: Text(AppStyles.statusLabel(a.status),
-                      style: TextStyle(color: color, fontSize: 11,
-                          fontWeight: FontWeight.w600)),
-                ),
+                  const Icon(Icons.error, color: AppStyles.danger, size: 20),
               ]),
-            ),
-            // ─ Детали ───────────────────────────────────────────────────
-            Container(height: 1, color: AppStyles.border),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(children: [
-                const Icon(Icons.event_rounded,
-                    size: 14, color: AppStyles.textSecondary),
-                const SizedBox(width: 6),
+              const SizedBox(height: 12),
+              Container(height: 1, color: AppStyles.border),
+              const SizedBox(height: 12),
+              Row(children: [
+                const Icon(Icons.access_time_rounded, size: 14, color: AppStyles.textSecondary),
+                const SizedBox(width: 4),
                 Builder(builder: (context) {
-                  final provider = context.watch<AppProvider>();
                   final washType = provider.washTypeById(a.washTypeId);
                   final duration = a.calculateTotalPrice(services.cast<Service>(), washType) >= 0 
                       ? (washType?.durationMinutes ?? 30) + 
-                        a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '')).durationMinutes))
+                        a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
                       : 30;
                   final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
-                  return Text('${DateFormat('d MMM, HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}',
-                      style: const TextStyle(color: AppStyles.primary,
-                          fontSize: 12, fontWeight: FontWeight.w500));
+                  final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
+                  String timeStr;
+                  if (endTime.isAfter(cutoff)) {
+                      final overflow = endTime.difference(cutoff).inMinutes;
+                      timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
+                  } else {
+                      timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
+                  }
+                  return Text(timeStr,
+                      style: const TextStyle(color: AppStyles.textPrimary, fontSize: 13, fontWeight: FontWeight.w500));
                 }),
                 const Spacer(),
-                if (a.priceChanged) ...[
-                  Text('${a.originalPrice} ₽',
-                      style: const TextStyle(
-                          color: AppStyles.textSecondary,
-                          fontSize: 12,
-                          decoration: TextDecoration.lineThrough,
-                          decorationColor: AppStyles.textSecondary)),
-                  const SizedBox(width: 6),
-                ],
-                Text('${a.calculateTotalPrice(services.cast<Service>(), context.watch<AppProvider>().washTypeById(a.washTypeId))} ₽',
-                    style: const TextStyle(color: AppStyles.primary,
-                        fontSize: 14, fontWeight: FontWeight.bold)),
+                Text('${a.calculateTotalPrice(services.cast<Service>(), provider.washTypeById(a.washTypeId))} ₽',
+                    style: const TextStyle(color: AppStyles.primary, fontSize: 15, fontWeight: FontWeight.bold)),
               ]),
-            ),
-            if (a.additionalServices.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Wrap(spacing: 6, runSpacing: 4,
-                  children: a.additionalServices.map((id) {
-                    final service = context.watch<AppProvider>().services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppStyles.primaryBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(service.name, style: const TextStyle(
-                          color: AppStyles.primary, fontSize: 11)),
-                    );
-                  }).toList()),
-              ),
-          ]),
-        ));
+            ]),
+          ),
+        );
       },
     );
   }
+
+  void _showDetail(BuildContext context, Appointment a, List<dynamic> services) {
+    final provider = context.read<AppProvider>();
+    final washType = provider.washTypeById(a.washTypeId);
+    
+    final duration = a.calculateTotalPrice(services.cast<Service>(), washType) >= 0 
+        ? (washType?.durationMinutes ?? 30) + 
+          a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
+        : 30;
+    final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
+    final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
+    String timeStr;
+    if (endTime.isAfter(cutoff)) {
+        final overflow = endTime.difference(cutoff).inMinutes;
+        timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
+    } else {
+        timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: AppStyles.border, borderRadius: BorderRadius.circular(2))),
+          Text('Детали записи', style: AppStyles.headingMedium),
+          _detailRow(Icons.schedule, 'Статус', AppStyles.statusLabel(a.status)),
+          _detailRow(Icons.calendar_today, 'Дата', DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
+          _detailRow(Icons.access_time, 'Время', timeStr),
+          _detailRow(Icons.layers, 'Бокс', 'Бокс №${a.box_index + 1}'),
+          _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services.cast(), washType)} ₽'),
+        ]),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(children: [
+      Icon(icon, size: 18, color: AppStyles.primary),
+      const SizedBox(width: 10),
+      Text(label, style: AppStyles.bodyMedium),
+      const Spacer(),
+      Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+    ]),
+  );
 }

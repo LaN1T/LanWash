@@ -653,10 +653,10 @@ class _DateTimeStep extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10,
-            childAspectRatio: 2.5,
+            crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8,
+            childAspectRatio: 2.0,
           ),
-          itemCount: (22 - 8) * 2, // 08:00 - 21:30 (22:00 не включаем)
+          itemCount: (22 - 8) * 2, // 08:00 - 21:30
           itemBuilder: (_, index) {
             final hour = 8 + (index ~/ 2);
             final minute = (index % 2) * 30;
@@ -665,25 +665,22 @@ class _DateTimeStep extends StatelessWidget {
             final endMinutes = startMinutes + duration + 5;
             
             final overflow = endMinutes > 22 * 60 ? endMinutes - (22 * 60) : 0;
-            final isTooLong = overflow > 480; // Более 8 часов переполнения (8*60 = 480)
-            final isAvailable = !isTooLong; // Занятость от бэка тут тоже надо бы проверять, но в текущей реализации isSlotAvailable смотрит на пересечения
+            final isTooLong = overflow > 480;
             
-            // Проверка занятости (упрощенная, как была)
             final time = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour, minute);
-            final busy = isAvailable && isSlotAvailable(time, duration);
-
+            final busy = isSlotAvailable(time, duration);
             final sel = index == selectedSlot;
 
             return GestureDetector(
-              onTap: (busy && !isTooLong) ? () => onSlotChanged(index) : null,
+              onTap: (!isTooLong && (busy || overflow > 0)) ? () => onSlotChanged(index) : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: sel ? AppStyles.primary : (busy ? Colors.white : Colors.grey.shade100),
-                  borderRadius: BorderRadius.circular(10),
+                  color: sel ? AppStyles.primary : ((busy || overflow > 0) && !isTooLong ? Colors.white : Colors.grey.shade100),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: sel ? AppStyles.primary : (overflow > 0 ? const Color(0xFFE53935).withOpacity(0.6) : AppStyles.border),
+                    color: sel ? AppStyles.primary : (overflow > 0 ? const Color(0xFFE53935) : AppStyles.border),
                     width: (sel || overflow > 0) ? 2 : 1,
                   ),
                 ),
@@ -692,8 +689,8 @@ class _DateTimeStep extends StatelessWidget {
                   children: [
                     Text('${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
                       style: TextStyle(
-                        color: sel ? Colors.white : (busy ? AppStyles.textPrimary : AppStyles.textMuted),
-                        fontWeight: FontWeight.bold,
+                        color: sel ? Colors.white : (busy || overflow > 0 ? AppStyles.textPrimary : AppStyles.textMuted),
+                        fontSize: 11, fontWeight: FontWeight.bold,
                       )),
                     if (overflow > 0 && !isTooLong) ...[
                       const SizedBox(height: 2),
