@@ -654,31 +654,51 @@ class _DateTimeStep extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8,
-            childAspectRatio: 2.5,
+            childAspectRatio: 2.0,
           ),
-          itemCount: (22 - 8) * 2 + 1, // 08:00 - 22:00
+          itemCount: (22 - 8) * 2, // 08:00 - 21:30
           itemBuilder: (_, index) {
             final hour = 8 + (index ~/ 2);
             final minute = (index % 2) * 30;
-            final time = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour, minute);
-            
+            final startMinutes = hour * 60 + minute;
             final duration = getDuration();
-            final available = isSlotAvailable(time, duration);
+            final endMinutes = startMinutes + duration + 5;
+            
+            final overflow = endMinutes > 22 * 60 ? endMinutes - (22 * 60) : 0;
+            final isTooLong = overflow > 480;
+            
+            final time = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour, minute);
+            final busy = isSlotAvailable(time, duration);
             final sel = index == selectedSlot;
 
             return GestureDetector(
-              onTap: available ? () => onSlotChanged(index) : null,
+              onTap: (!isTooLong && (busy || overflow > 0)) ? () => onSlotChanged(index) : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: sel ? AppStyles.primary : (available ? Colors.white : AppStyles.border.withOpacity(0.3)),
+                  color: sel ? AppStyles.primary : ((busy || overflow > 0) && !isTooLong ? Colors.white : Colors.grey.shade100),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: sel ? AppStyles.primary : AppStyles.border),
+                  border: Border.all(
+                    color: sel ? AppStyles.primary : (overflow > 0 ? const Color(0xFFE53935) : AppStyles.border),
+                    width: (sel || overflow > 0) ? 2 : 1,
+                  ),
                 ),
-                child: Center(child: Text(DateFormat('HH:mm').format(time), style: TextStyle(
-                  color: sel ? Colors.white : (available ? AppStyles.textPrimary : AppStyles.textSecondary),
-                  fontSize: 11, fontWeight: FontWeight.w600,
-                ))),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: sel ? Colors.white : (busy || overflow > 0 ? AppStyles.textPrimary : AppStyles.textMuted),
+                        fontSize: 11, fontWeight: FontWeight.bold,
+                      )),
+                    if (overflow > 0 && !isTooLong) ...[
+                      const SizedBox(height: 2),
+                      Text('⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}',
+                        style: const TextStyle(color: Color(0xFFE53935), fontSize: 9, fontWeight: FontWeight.w600)),
+                    ]
+                  ],
+                ),
               ),
             );
           },
