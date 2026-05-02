@@ -23,7 +23,7 @@ class AppProvider extends ChangeNotifier {
   String            _currentUser     = '';
   bool _loading    = true;
   bool _hasDeletedByAdmin = false;
-  bool _loadingApi = false;
+  final bool _loadingApi = false;
   int  _unreadNotes = 0;
 
   List<Appointment> get appointments   => _appointmentList;
@@ -113,6 +113,9 @@ class AppProvider extends ChangeNotifier {
       _promoList    = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
       _appointmentList = await _fetchAppointments(auth);
+      for (var appt in _appointmentList) {
+          debugPrint('DEBUG: Appointment ${appt.id} status=${appt.status} isModifiedByAdmin=${appt.isModifiedByAdmin}');
+      }
       debugPrint('[AppProvider] init() finished, fetched ${_appointmentList.length} appointments');
     } catch (e) {
       debugPrint('[AppProvider] init error: $e');
@@ -132,6 +135,7 @@ class AppProvider extends ChangeNotifier {
     _extraFavSet     = await _api.getExtraFavorites(_currentUser);
     _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
     _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
+    debugPrint('DEBUG: hasDeletedByAdmin for $_currentUser is: $_hasDeletedByAdmin');
     notifyListeners();
   }
 
@@ -144,7 +148,20 @@ class AppProvider extends ChangeNotifier {
   Future<bool> addAppointment(Appointment a) async {
     final success = await _api.createAppointment(a);
     if (success) {
+        final newApptId = a.id;
         _appointmentList = await _api.getAppointments();
+        Appointment? newlyAdded;
+        for (var appt in _appointmentList) {
+            if (appt.id == newApptId) {
+                newlyAdded = appt;
+                break;
+            }
+        }
+        if (newlyAdded != null) {
+          debugPrint('DEBUG: Newly added appointment ${newlyAdded.id} has isModifiedByAdmin: ${newlyAdded.isModifiedByAdmin}');
+        } else {
+          debugPrint('DEBUG: Newly added appointment with ID $newApptId not found after reload.');
+        }
         notifyListeners();
     }
     return success;
@@ -183,7 +200,9 @@ class AppProvider extends ChangeNotifier {
   Future<void> updateService(Service s) async {
     await _api.updateService(s);
     final i = _serviceList.indexWhere((x) => x.id == s.id);
-    if (i != -1) _serviceList[i] = s;
+    if (i != -1) {
+      _serviceList[i] = s;
+    }
     notifyListeners();
   }
 
@@ -197,14 +216,22 @@ class AppProvider extends ChangeNotifier {
     // Разрешаем админу менять, даже если _currentUser пуст (или используем 'admin')
     final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
     await _api.toggleServiceFavorite(user, id);
-    if (_serviceFavSet.contains(id)) _serviceFavSet.remove(id); else _serviceFavSet.add(id);
+    if (_serviceFavSet.contains(id)) {
+      _serviceFavSet.remove(id);
+    } else {
+      _serviceFavSet.add(id);
+    }
     notifyListeners();
   }
 
   Future<void> toggleExtraFavorite(String serviceId) async {
     final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
     await _api.toggleExtraFavorite(user, serviceId);
-    if (_extraFavSet.contains(serviceId)) _extraFavSet.remove(serviceId); else _extraFavSet.add(serviceId);
+    if (_extraFavSet.contains(serviceId)) {
+      _extraFavSet.remove(serviceId);
+    } else {
+      _extraFavSet.add(serviceId);
+    }
     notifyListeners();
   }
 
@@ -224,7 +251,11 @@ class AppProvider extends ChangeNotifier {
     final updated = await _api.updateWashType(wt);
     if (updated != null) {
       final i = _washTypeList.indexWhere((x) => x.id == updated.id);
-      if (i != -1) _washTypeList[i] = updated; else _washTypeList.add(updated);
+      if (i != -1) {
+        _washTypeList[i] = updated;
+      } else {
+        _washTypeList.add(updated);
+      }
       _washTypeList.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       notifyListeners();
       return true;
@@ -256,7 +287,9 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> refreshUnreadCount(AuthProvider auth) async {
-    if (!auth.isAdmin) return;
+    if (!auth.isAdmin) {
+      return;
+    }
     _unreadNotes = await _api.getUnreadNotesCount();
     notifyListeners();
   }
@@ -297,5 +330,15 @@ class AppProvider extends ChangeNotifier {
     await _api.clearAdminModifiedFlag(id);
     final i = _appointmentList.indexWhere((a) => a.id == id);
     if (i != -1) { _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false); notifyListeners(); }
+  }
+
+  Future<void> markAsSeen(String id) async {
+    final i = _appointmentList.indexWhere((a) => a.id == id);
+    if (i != -1 && !_appointmentList[i].isSeenByClient) {
+      _appointmentList[i] = _appointmentList[i].copyWith(isSeenByClient: true);
+      // Если есть эндпоинт на бэкенде для сохранения состояния - вызовите его здесь:
+      // await _api.markAppointmentSeen(id);
+      notifyListeners();
+    }
   }
 }

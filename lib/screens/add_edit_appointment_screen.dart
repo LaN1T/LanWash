@@ -466,12 +466,22 @@ class _State extends State<AddEditAppointmentScreen> {
     }
 
     if (_isEditing) {
-      final origPrice = widget.appointment!.originalPrice > 0
-          ? widget.appointment!.originalPrice
-          : widget.appointment!.paidPrice > 0
-              ? widget.appointment!.paidPrice
-              : newPrice;
-      provider.updateAppointment(widget.appointment!.copyWith(
+      final oldAppt = widget.appointment!;
+      final origPrice = oldAppt.originalPrice > 0 ? oldAppt.originalPrice : (oldAppt.paidPrice > 0 ? oldAppt.paidPrice : newPrice);
+      
+      // Проверка, были ли изменения
+      final wasModified = _nameCtrl.text.trim() != oldAppt.clientName ||
+                          _modelCtrl.text.trim() != oldAppt.carModel ||
+                          _numberCtrl.text.trim().toUpperCase() != oldAppt.carNumber ||
+                          !_dateTime.isAtSameMomentAs(oldAppt.dateTime) ||
+                          _washTypeId != oldAppt.washTypeId ||
+                          finalServices.toString() != oldAppt.additionalServices.toString() ||
+                          _status != oldAppt.status ||
+                          finalNotes != oldAppt.notes ||
+                          newPrice != oldAppt.paidPrice ||
+                          _selectedPromoId != oldAppt.promoId;
+
+      provider.updateAppointment(oldAppt.copyWith(
         clientName: _nameCtrl.text.trim(),
         carModel: _modelCtrl.text.trim(),
         carNumber: _numberCtrl.text.trim().toUpperCase(),
@@ -482,12 +492,12 @@ class _State extends State<AddEditAppointmentScreen> {
         notes: finalNotes,
         paidPrice: newPrice,
         originalPrice: origPrice,
-        isModifiedByAdmin: true,
+        isModifiedByAdmin: wasModified, // Теперь флаг зависит от того, были ли изменения
         promoId: _selectedPromoId,
         promoPrice: promoPrice,
       ));
     } else {
-      provider.addAppointment(Appointment(
+      final newAppt = Appointment(
         id: 'a_${DateTime.now().millisecondsSinceEpoch}',
         clientName: _nameCtrl.text.trim(),
         carModel: _modelCtrl.text.trim(),
@@ -502,7 +512,9 @@ class _State extends State<AddEditAppointmentScreen> {
         paidPrice: newPrice,
         originalPrice: newPrice,
         promoId: _selectedPromoId,
-      ));
+      );
+      debugPrint('DEBUG: Sending to server: ${newAppt.toMap()}');
+      provider.addAppointment(newAppt);
     }
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

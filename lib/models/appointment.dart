@@ -18,6 +18,7 @@ class Appointment {
   int paidPrice;
   int originalPrice;
   bool isModifiedByAdmin;
+  bool isSeenByClient;
   List<String> assignedWashers;
   String? promoId;                    // FK → promos.id
   int box_index;
@@ -38,6 +39,7 @@ class Appointment {
     this.paidPrice = 0,
     this.originalPrice = 0,
     this.isModifiedByAdmin = false,
+    this.isSeenByClient = false,
     List<String>? assignedWashers,
     this.promoId,
     this.box_index = 0,
@@ -59,6 +61,7 @@ class Appointment {
     'paidPrice': paidPrice,
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin,
+    'isSeenByClient': isSeenByClient,
     'assignedWasher': jsonEncode(assignedWashers),
     'promoId': promoId,
     'box_index': box_index,
@@ -80,6 +83,7 @@ class Appointment {
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
+    isSeenByClient: m['isSeenByClient'] == 1 || m['isSeenByClient'] == true,
     assignedWashers: _parseWashers(m['assignedWasher']),
     promoId: m['promoId']?.toString(),
     box_index: (m['box_index'] as num?)?.toInt() ?? 0,
@@ -117,7 +121,7 @@ class Appointment {
     DateTime? dateTime, String? washTypeId, List<String>? additionalServices,
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
-    bool? isModifiedByAdmin, List<String>? assignedWashers,
+    bool? isModifiedByAdmin, bool? isSeenByClient, List<String>? assignedWashers,
     String? promoId, int? box_index,
   }) => Appointment(
     id: id,
@@ -135,6 +139,7 @@ class Appointment {
     paidPrice: paidPrice ?? this.paidPrice,
     originalPrice: originalPrice ?? this.originalPrice,
     isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
+    isSeenByClient: isSeenByClient ?? this.isSeenByClient,
     assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
     promoId: promoId ?? this.promoId,
     box_index: box_index ?? this.box_index,
