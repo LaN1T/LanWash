@@ -52,8 +52,16 @@ class AppointmentDetailScreen extends StatelessWidget {
           _Section(title: 'Дата и время', children: [
             _Row(Icons.calendar_today, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
-            _Row(Icons.access_time, 'Время',
-                DateFormat('HH:mm', 'ru').format(a.dateTime)),
+            Builder(builder: (context) {
+              final washType = provider.washTypeById(a.washTypeId);
+              final duration = a.calculateTotalPrice(provider.services, washType) >= 0 
+                  ? (washType?.durationMinutes ?? 30) + 
+                    a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
+                  : 30;
+              final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
+              return _Row(Icons.access_time, 'Время',
+                  '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm', 'ru').format(endTime)}');
+            }),
           ]),
           const SizedBox(height: 12),
 
