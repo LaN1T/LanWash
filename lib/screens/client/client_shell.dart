@@ -38,7 +38,6 @@ class _ClientShellState extends State<ClientShell> {
     // Считаем только избранные каталожные услуги (не extra), чтобы не путать с admin
     final favCount = provider.favoriteServices.length;
     final hasAdminModified = provider.appointments.any((a) => a.isModifiedByAdmin && !a.isSeenByClient) || provider.hasDeletedByAdmin;
-    debugPrint('DEBUG: hasAdminModified=$hasAdminModified (any=${provider.appointments.any((a) => a.isModifiedByAdmin && !a.isSeenByClient)}, deleted=${provider.hasDeletedByAdmin})');
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,

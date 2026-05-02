@@ -569,6 +569,16 @@ class _AppointmentCard extends StatelessWidget {
               Expanded(child: Text('${a.carModel}  ${a.carNumber}',
                   style: const TextStyle(fontSize: 12, color: AppStyles.textSecondary),
                   overflow: TextOverflow.ellipsis)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppStyles.primaryBg,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('Бокс №${a.box_index + 1}',
+                    style: const TextStyle(
+                        color: AppStyles.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+              ),
             ]),
             const SizedBox(height: 6),
             // Тип мойки + цена
