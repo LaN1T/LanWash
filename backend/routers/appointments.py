@@ -225,11 +225,11 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
                 if appt.status == "completed":
                     title, body = "Запись завершена", "Ваша запись завершена. Спасибо, что выбрали нас!"
                 elif appt.status == "in_progress":
-                    title, body = "Начало обслуживания", "Мы начали работать с вашим автомобилем."
+                    title, body = "Начало обслуживания", f"Ваш авто в боксе {appt.box_index + 1}. Мы начали!"
                 elif appt.status == "cancelled":
                     title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
                 elif appt.status == "scheduled":
-                    title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}."
+                    title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}."
                 else:
                     title, body = "Обновление записи", f"Статус вашей записи изменен на: {appt.status}."
                 
