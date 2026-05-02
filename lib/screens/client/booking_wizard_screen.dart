@@ -103,7 +103,7 @@ class BookingWizardScreen extends StatefulWidget {
 
 class _BWState extends State<BookingWizardScreen> {
   final _pageCtrl = PageController();
-  final _step2ScrollCtrl = ScrollController();
+  final _serviceScrollCtrl = ScrollController();
   int _step = 0;
 
   late DateTime _selectedDate;
@@ -144,7 +144,13 @@ class _BWState extends State<BookingWizardScreen> {
     // Check if slot is in the past
     if (dt.isBefore(DateTime.now())) return false;
 
-    final busy = context.read<AppProvider>().busySlots['busy_slots'] as List;
+    // Logic from prompt: startTime + durationMinutes + 5 <= 22:00
+    final totalMinutes = dt.hour * 60 + dt.minute + duration + 5;
+    if (totalMinutes > 22 * 60) return false;
+
+    final busy = context.read<AppProvider>().busySlots['busy_slots'] as List?;
+    if (busy == null) return true;
+
     final start = dt;
     final end = dt.add(Duration(minutes: duration));
     
@@ -304,13 +310,18 @@ class _BWState extends State<BookingWizardScreen> {
   @override
   void dispose() {
     _pageCtrl.dispose();
-    _step2ScrollCtrl.dispose();
+    _serviceScrollCtrl.dispose();
     _nameCtrl.dispose(); _carCtrl.dispose(); _numCtrl.dispose();
     super.dispose();
   }
 
   void _next() {
-    if (_step == 0 && _selectedSlotIndex == -1) {
+    if (_step == 0 && !_formKey.currentState!.validate()) {
+      _serviceScrollCtrl.animateTo(0,
+          duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+      return;
+    }
+    if (_step == 1 && _selectedSlotIndex == -1) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Пожалуйста, выберите время для записи.'),
         backgroundColor: AppStyles.danger,
@@ -318,11 +329,6 @@ class _BWState extends State<BookingWizardScreen> {
       return;
     }
 
-    if (_step == 1 && !_formKey.currentState!.validate()) {
-      _step2ScrollCtrl.animateTo(0,
-          duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
-      return;
-    }
     if (_step < 2) {
       setState(() => _step++);
       _pageCtrl.nextPage(
@@ -422,25 +428,8 @@ class _BWState extends State<BookingWizardScreen> {
             controller: _pageCtrl,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _Step1(
-                selectedDate: _selectedDate,
-                selectedSlot: _selectedSlotIndex,
-                weekendOnly: _weekendOnly,
-                isDateAllowed: _isDateAllowed,
-                onDateChanged: (d) {
-                  setState(() {
-                    _selectedDate = d;
-                    _selectedSlotIndex = -1; // Reset selection
-                  });
-                  _updateBusySlots();
-                },
-                onSlotChanged: (i) => setState(() => _selectedSlotIndex = i),
-                isSlotAvailable: _isSlotAvailable,
-                getDuration: _getDuration,
-                getFinalDateTime: () => _finalDateTime,
-              ),
-              _Step2(
-                scrollCtrl: _step2ScrollCtrl,
+              _ServiceStep(
+                scrollCtrl: _serviceScrollCtrl,
                 formKey: _formKey,
                 washTypes: washTypes,
                 washTypeId: _washTypeId,
@@ -461,7 +450,24 @@ class _BWState extends State<BookingWizardScreen> {
                   v ? _extras.add(id) : _extras.remove(id);
                 }),
               ),
-              _Step3(
+              _DateTimeStep(
+                selectedDate: _selectedDate,
+                selectedSlot: _selectedSlotIndex,
+                weekendOnly: _weekendOnly,
+                isDateAllowed: _isDateAllowed,
+                onDateChanged: (d) {
+                  setState(() {
+                    _selectedDate = d;
+                    _selectedSlotIndex = -1; // Reset selection
+                  });
+                  _updateBusySlots();
+                },
+                onSlotChanged: (i) => setState(() => _selectedSlotIndex = i),
+                isSlotAvailable: _isSlotAvailable,
+                getDuration: _getDuration,
+                getFinalDateTime: () => _finalDateTime,
+              ),
+              _ConfirmationStep(
                 date: DateFormat('d MMMM yyyy, HH:mm', 'ru').format(_finalDateTime),
                 washType: _washType,
                 extras: _extras.toList(),
@@ -492,7 +498,7 @@ class _BWState extends State<BookingWizardScreen> {
 class _StepIndicator extends StatelessWidget {
   final int current;
   const _StepIndicator({required this.current});
-  static const _steps = ['Дата и время', 'Услуги', 'Подтверждение'];
+  static const _steps = ['Услуга', 'Дата и время', 'Подтверждение'];
 
   @override
   Widget build(BuildContext context) {
@@ -543,7 +549,7 @@ class _StepIndicator extends StatelessWidget {
 }
 
 // ─── Шаг 1: Дата и время ─────────────────────────────────────────────────────
-class _Step1 extends StatelessWidget {
+class _DateTimeStep extends StatelessWidget {
   final DateTime selectedDate;
   final int selectedSlot;
   final bool weekendOnly;
@@ -554,7 +560,7 @@ class _Step1 extends StatelessWidget {
   final int Function() getDuration;
   final DateTime Function() getFinalDateTime;
 
-  const _Step1({
+  const _DateTimeStep({
     required this.selectedDate,
     required this.selectedSlot,
     required this.weekendOnly,
@@ -684,7 +690,7 @@ class _Step1 extends StatelessWidget {
 }
 
 // ─── Шаг 2: Услуги ───────────────────────────────────────────────────────────
-class _Step2 extends StatelessWidget {
+class _ServiceStep extends StatelessWidget {
   final ScrollController? scrollCtrl;
   final GlobalKey<FormState> formKey;
   final List<WashType> washTypes;
@@ -696,7 +702,7 @@ class _Step2 extends StatelessWidget {
   final ValueChanged<WashType> onWashTypeChanged;
   final void Function(String id, bool value) onExtrasChanged;
 
-  const _Step2({this.scrollCtrl, required this.formKey, required this.washTypes,
+  const _ServiceStep({this.scrollCtrl, required this.formKey, required this.washTypes,
     required this.washTypeId, required this.extras, required this.lockedExtras,
     required this.nameCtrl, required this.carCtrl, required this.numCtrl,
     required this.isPromo, required this.onWashTypeChanged,
@@ -742,14 +748,14 @@ class _Step2 extends StatelessWidget {
             controller: numCtrl,
             style: const TextStyle(color: AppStyles.textPrimary,
                 letterSpacing: 1.5, fontWeight: FontWeight.w600),
-            decoration: _plateDecoration(),
+            decoration: _ServiceStep._plateDecoration(),
             inputFormatters: [_PlateInputFormatter()],
             validator: _validatePlate,
           ),
           const SizedBox(height: 24),
 
           Row(children: [
-            const Text('Тип мойки', style: AppStyles.headingMedium),
+            const Text('Выберите услугу', style: AppStyles.headingMedium),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
@@ -763,78 +769,81 @@ class _Step2 extends StatelessWidget {
             ],
           ]),
           const SizedBox(height: 12),
-          Container(
-            decoration: AppStyles.cardDecoration,
-            child: Column(children: washTypes.asMap().entries.map((entry) {
-              final wt   = entry.value;
-              final sel  = washTypeId == wt.id;
-              final last = entry.key == washTypes.length - 1;
-              return Column(children: [
-                GestureDetector(
-                  onTap: isPromo ? null : () => onWashTypeChanged(wt),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: sel ? AppStyles.primaryBg : Colors.white,
+          ...washTypes.map((wt) {
+            final sel = washTypeId == wt.id;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: isPromo ? null : () => onWashTypeChanged(wt),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: sel ? AppStyles.primary : AppStyles.border,
+                      width: sel ? 2 : 1,
                     ),
-                    child: Row(children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 20, height: 20,
+                    boxShadow: sel ? [
+                      BoxShadow(color: AppStyles.primary.withOpacity(0.1),
+                          blurRadius: 10, offset: const Offset(0, 4))
+                    ] : [
+                      BoxShadow(color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4, offset: const Offset(0, 2))
+                    ],
+                  ),
+                  child: Row(children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(wt.name, style: TextStyle(
+                          color: AppStyles.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        )),
+                        const SizedBox(height: 4),
+                        Text(wt.description, style: const TextStyle(
+                          color: AppStyles.textSecondary,
+                          fontSize: 12,
+                        )),
+                        const SizedBox(height: 8),
+                        Row(children: [
+                          Icon(Icons.access_time_rounded,
+                              size: 14, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(wt.durationLabel, style: TextStyle(
+                              color: sel ? AppStyles.primary : AppStyles.textSecondary,
+                              fontSize: 12, fontWeight: FontWeight.w500)),
+                          const SizedBox(width: 16),
+                          Icon(Icons.payments_outlined,
+                              size: 14, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+                          const SizedBox(width: 4),
+                          Text('${wt.basePrice} ₽', style: TextStyle(
+                              color: sel ? AppStyles.primary : AppStyles.textSecondary,
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                        ]),
+                      ],
+                    )),
+                    if (sel)
+                      const Icon(Icons.check_circle_rounded, color: AppStyles.primary, size: 24)
+                    else
+                      Container(
+                        width: 24, height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: sel ? AppStyles.primary : AppStyles.border,
-                              width: 2),
+                          border: Border.all(color: AppStyles.border, width: 2),
                         ),
-                        child: sel ? Center(child: Container(
-                          width: 8, height: 8,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppStyles.primary),
-                        )) : null,
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(wt.name, style: TextStyle(
-                            color: sel ? AppStyles.primary : AppStyles.textPrimary,
-                            fontSize: 15,
-                            fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-                          )),
-                          const SizedBox(height: 2),
-                          Text(wt.description, style: const TextStyle(
-                            color: AppStyles.textSecondary,
-                            fontSize: 11,
-                          )),
-                          const SizedBox(height: 2),
-                          Row(children: [
-                            const Icon(Icons.access_time_rounded,
-                                size: 11, color: AppStyles.textSecondary),
-                            const SizedBox(width: 3),
-                            Text(wt.durationLabel, style: const TextStyle(
-                                color: AppStyles.textSecondary, fontSize: 11)),
-                          ]),
-                        ],
-                      )),
-                      Text('${wt.basePrice} ₽', style: TextStyle(
-                        color: sel ? AppStyles.primary : AppStyles.textSecondary,
-                        fontSize: 14, fontWeight: FontWeight.w600,
-                      )),
-                    ]),
-                  ),
+                  ]),
                 ),
-                if (!last) Container(height: 1, color: AppStyles.border),
-              ]);
-            }).toList()),
-          ),
-          const SizedBox(height: 24),
-
+              ),
+            );
+          }),
+          
+          const SizedBox(height: 12),
           Row(children: [
-            const Text('Дополнительные услуги', style: AppStyles.headingMedium),
+            const Text('Дополнительно', style: AppStyles.headingMedium),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
@@ -986,7 +995,7 @@ class _Step2 extends StatelessWidget {
 }
 
 // ─── Шаг 3: Подтверждение ────────────────────────────────────────────────────
-class _Step3 extends StatelessWidget {
+class _ConfirmationStep extends StatelessWidget {
   final String date, name, car, number;
   final WashType? washType;
   final List<String> extras;
@@ -996,7 +1005,7 @@ class _Step3 extends StatelessWidget {
   final String? promoName;
   final String totalDurationLabel;
 
-  const _Step3({required this.date, required this.washType, required this.extras,
+  const _ConfirmationStep({required this.date, required this.washType, required this.extras,
     required this.services,
     required this.name, required this.car, required this.number,
     required this.finalPrice, required this.regularPrice,
@@ -1269,7 +1278,7 @@ class _BottomBar extends StatelessWidget {
           style: AppStyles.primaryButton,
           onPressed: onAction,
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(step == 0 ? 'Далее: выбор услуг' :
+            Text(step == 0 ? 'Далее: выбор времени' :
                  step == 1 ? 'Далее: подтверждение' : 'Записаться',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
