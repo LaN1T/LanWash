@@ -197,9 +197,18 @@ class _BookingsList extends StatelessWidget {
                 const Icon(Icons.event_rounded,
                     size: 14, color: AppStyles.textSecondary),
                 const SizedBox(width: 6),
-                Text(DateFormat('d MMMM yyyy, HH:mm', 'ru').format(a.dateTime),
-                    style: const TextStyle(color: AppStyles.primary,
-                        fontSize: 12, fontWeight: FontWeight.w500)),
+                Builder(builder: (context) {
+                  final provider = context.watch<AppProvider>();
+                  final washType = provider.washTypeById(a.washTypeId);
+                  final duration = a.calculateTotalPrice(services.cast<Service>(), washType) >= 0 
+                      ? (washType?.durationMinutes ?? 30) + 
+                        a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '')).durationMinutes))
+                      : 30;
+                  final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
+                  return Text('${DateFormat('d MMM, HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}',
+                      style: const TextStyle(color: AppStyles.primary,
+                          fontSize: 12, fontWeight: FontWeight.w500));
+                }),
                 const Spacer(),
                 if (a.priceChanged) ...[
                   Text('${a.originalPrice} ₽',

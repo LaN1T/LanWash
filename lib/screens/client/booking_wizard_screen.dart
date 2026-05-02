@@ -647,7 +647,7 @@ class _DateTimeStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 28),
-        const Text('Выберите время (интервал 30 мин)', style: AppStyles.headingMedium),
+        const Text('Выберите время', style: AppStyles.headingMedium),
         const SizedBox(height: 16),
         GridView.builder(
           shrinkWrap: true,
