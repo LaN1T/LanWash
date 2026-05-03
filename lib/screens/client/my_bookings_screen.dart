@@ -7,6 +7,8 @@ import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 import '../../models/wash_type.dart';
+import '../logic/appointment_detail_widget.dart';
+import 'appointment_detail_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -78,7 +80,7 @@ class _BookingsList extends StatelessWidget {
           onTap: () {
             ctx.read<AppProvider>().markAsSeen(a.id);
             if (a.isModifiedByAdmin) ctx.read<AppProvider>().clearAdminModifiedFlag(a.id);
-            _showDetail(ctx, a, services);
+            _showDetail(ctx, a, provider.services);
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -143,51 +145,22 @@ class _BookingsList extends StatelessWidget {
   }
 
   void _showDetail(BuildContext context, Appointment a, List<dynamic> services) {
-    final provider = context.read<AppProvider>();
-    final washType = provider.washTypeById(a.washTypeId);
-    
-    final duration = a.calculateTotalPrice(services.cast<Service>(), washType) >= 0 
-        ? (washType?.durationMinutes ?? 30) + 
-          a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
-        : 30;
-    final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
-    final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
-    String timeStr;
-    if (endTime.isAfter(cutoff)) {
-        final overflow = endTime.difference(cutoff).inMinutes;
-        timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
-    } else {
-        timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
-    }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: AppStyles.border, borderRadius: BorderRadius.circular(2))),
-          Text('Детали записи', style: AppStyles.headingMedium),
-          _detailRow(Icons.schedule, 'Статус', AppStyles.statusLabel(a.status)),
-          _detailRow(Icons.calendar_today, 'Дата', DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
-          _detailRow(Icons.access_time, 'Время', timeStr),
-          _detailRow(Icons.layers, 'Бокс', 'Бокс №${a.box_index + 1}'),
-          _detailRow(Icons.payments, 'Цена', '${a.calculateTotalPrice(services.cast(), washType)} ₽'),
-        ]),
-      ),
+      builder: (_) => AppointmentDetailWidget(appointment: a),
     );
   }
-
-  Widget _detailRow(IconData icon, String label, String value) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Row(children: [
-      Icon(icon, size: 18, color: AppStyles.primary),
-      const SizedBox(width: 10),
-      Text(label, style: AppStyles.bodyMedium),
-      const Spacer(),
-      Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
-    ]),
-  );
 }
+
+Widget _detailRow(IconData icon, String label, String value) => Padding(
+  padding: const EdgeInsets.only(bottom: 12),
+  child: Row(children: [
+    Icon(icon, size: 18, color: AppStyles.primary),
+    const SizedBox(width: 10),
+    Text(label, style: AppStyles.bodyMedium),
+    const Spacer(),
+    Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+  ]),
+);

@@ -115,19 +115,25 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            DateFormat('EE', 'ru').format(day).toUpperCase(),
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                              color: isToday ? AppStyles.primary : AppStyles.textSecondary),
+                          FittedBox(
+                            child: Text(
+                              DateFormat('EE', 'ru').format(day).toUpperCase(),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                                color: isToday ? AppStyles.primary : AppStyles.textSecondary),
+                            ),
                           ),
                           const SizedBox(height: 2),
-                          Text('${day.day}',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
-                              color: isToday ? AppStyles.primary : AppStyles.textPrimary),
+                          FittedBox(
+                            child: Text('${day.day}',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
+                                color: isToday ? AppStyles.primary : AppStyles.textPrimary),
+                            ),
                           ),
-                          Text(DateFormat('MMM', 'ru').format(day),
-                            style: TextStyle(fontSize: 11,
-                              color: isToday ? AppStyles.primary : AppStyles.textSecondary),
+                          FittedBox(
+                            child: Text(DateFormat('MMM', 'ru').format(day),
+                              style: TextStyle(fontSize: 11,
+                                color: isToday ? AppStyles.primary : AppStyles.textSecondary),
+                            ),
                           ),
                         ],
                       ),

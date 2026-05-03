@@ -16,8 +16,6 @@ class WasherShell extends StatefulWidget {
 
 class _WasherShellState extends State<WasherShell> {
   int _tabIndex = 0;
-  List<Appointment> _assignedAppointments = [];
-  bool _loadingAppts = true;
 
   @override
   void initState() {
@@ -25,25 +23,15 @@ class _WasherShellState extends State<WasherShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       context.read<AppProvider>().loadNotes(username: auth.userLogin);
-      _loadAssignedAppointments();
+      context.read<AppProvider>().reloadAppointments(auth);
     });
-  }
-
-  Future<void> _loadAssignedAppointments() async {
-    final auth = context.read<AuthProvider>();
-    final provider = context.read<AppProvider>();
-    final appts = await provider.getAppointmentsByWasher(auth.userLogin);
-    if (mounted) {
-      setState(() {
-        _assignedAppointments = appts;
-        _loadingAppts = false;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final provider = context.watch<AppProvider>();
+    final appts = provider.appointments;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -105,8 +93,8 @@ class _WasherShellState extends State<WasherShell> {
           destinations: [
             NavigationDestination(
               icon: Badge(
-                isLabelVisible: _assignedAppointments.isNotEmpty,
-                label: Text('${_assignedAppointments.length}'),
+                isLabelVisible: appts.isNotEmpty,
+                label: Text('${appts.length}'),
                 backgroundColor: AppStyles.primary,
                 child: const Icon(Icons.calendar_today_outlined,
                     color: AppStyles.textSecondary),
@@ -127,30 +115,41 @@ class _WasherShellState extends State<WasherShell> {
 
   Widget _buildAppointmentsTab() {
     final provider = context.watch<AppProvider>();
+    final auth = context.read<AuthProvider>();
+    final appts = provider.appointments;
 
     if (provider.loading) {
       return const Center(child: CircularProgressIndicator(color: AppStyles.primary));
     }
 
-    if (_assignedAppointments.isEmpty) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.event_available, size: 64, color: AppStyles.textMuted.withOpacity(0.5)),
-          const SizedBox(height: 12),
-          const Text('Нет назначенных записей',
-              style: TextStyle(color: AppStyles.textSecondary, fontSize: 16)),
-        ]),
+    if (appts.isEmpty) {
+      return RefreshIndicator(
+        color: AppStyles.primary,
+        onRefresh: () => provider.reloadAppointments(auth),
+        child: ListView(
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+            Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.event_available, size: 64, color: AppStyles.textMuted.withOpacity(0.5)),
+                const SizedBox(height: 12),
+                const Text('Нет назначенных записей',
+                    style: TextStyle(color: AppStyles.textSecondary, fontSize: 16)),
+              ]),
+            ),
+          ],
+        ),
       );
     }
 
     return RefreshIndicator(
       color: AppStyles.primary,
-      onRefresh: _loadAssignedAppointments,
+      onRefresh: () => provider.reloadAppointments(auth),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _assignedAppointments.length,
+        itemCount: appts.length,
         itemBuilder: (context, index) {
-          return _WasherAppointmentCard(appointment: _assignedAppointments[index]);
+          return _WasherAppointmentCard(appointment: appts[index]);
         },
       ),
     );
@@ -474,7 +473,31 @@ class _WasherAppointmentCard extends StatelessWidget {
             )),
             Text('Детали записи', style: AppStyles.headingMedium),
             const SizedBox(height: 16),
-            _detailRow(Icons.schedule, 'Статус', AppStyles.statusLabel(a.status)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(children: [
+                const Icon(Icons.schedule, size: 18, color: AppStyles.primary),
+                const SizedBox(width: 10),
+                const SizedBox(width: 90, child: Text('Статус', style: AppStyles.bodyMedium)),
+                Expanded(child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: ['scheduled', 'in_progress', 'completed'].contains(a.status) ? a.status : 'scheduled',
+                    isExpanded: true,
+                    items: ['scheduled', 'in_progress', 'completed'].map((s) => DropdownMenuItem(
+                      value: s,
+                      child: Text(AppStyles.statusLabel(s), style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                    )).toList(),
+                    onChanged: (newStatus) {
+                      if (newStatus != null) {
+                        final auth = context.read<AuthProvider>();
+                        provider.updateAppointment(a.copyWith(status: newStatus), auth);
+                        Navigator.pop(context);
+                      }
+                    },
+                  ),
+                )),
+              ]),
+            ),
             _detailRow(Icons.calendar_today, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
             Builder(builder: (context) {

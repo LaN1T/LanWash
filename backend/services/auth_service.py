@@ -69,6 +69,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
+    print(f"DEBUG: User found: {user.username if user else 'None'}, Role: {user.role if user else 'None'}")
     if user is None:
         raise credentials_exception
     return user
