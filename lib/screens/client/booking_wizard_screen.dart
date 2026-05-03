@@ -347,7 +347,8 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   void _confirm() {
-    final login = context.read<AuthProvider>().userLogin.toLowerCase();
+    final auth = context.read<AuthProvider>();
+    final login = auth.userLogin.toLowerCase();
     context.read<AppProvider>().addAppointment(Appointment(
       id: 'a_${DateTime.now().millisecondsSinceEpoch}',
       clientName: _nameCtrl.text.trim(),
@@ -362,7 +363,7 @@ class _BWState extends State<BookingWizardScreen> {
       promoPrice: _isPromo ? (_promo!.price > 0 ? _promo!.price : _promoBasePrice) : 0,
       paidPrice: _finalPrice,
       promoId: _promo?.id,
-    ));
+    ), auth);
     Navigator.of(context).popUntil((route) => route.isFirst);
     ClientShell.shellKey.currentState?.switchToBookings();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -653,8 +654,8 @@ class _DateTimeStep extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8,
-            childAspectRatio: 2.0,
+            crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8,
+            childAspectRatio: 2.5,
           ),
           itemCount: (22 - 8) * 2, // 08:00 - 21:30
           itemBuilder: (_, index) {
@@ -687,15 +688,19 @@ class _DateTimeStep extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(
-                        color: sel ? Colors.white : (busy || overflow > 0 ? AppStyles.textPrimary : AppStyles.textMuted),
-                        fontSize: 11, fontWeight: FontWeight.bold,
-                      )),
+                    FittedBox(
+                      child: Text('${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          color: sel ? Colors.white : (busy || overflow > 0 ? AppStyles.textPrimary : AppStyles.textMuted),
+                          fontSize: 11, fontWeight: FontWeight.bold,
+                        )),
+                    ),
                     if (overflow > 0 && !isTooLong) ...[
                       const SizedBox(height: 2),
-                      Text('⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Color(0xFFE53935), fontSize: 9, fontWeight: FontWeight.w600)),
+                      FittedBox(
+                        child: Text('⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}',
+                          style: const TextStyle(color: Color(0xFFE53935), fontSize: 9, fontWeight: FontWeight.w600)),
+                      ),
                     ]
                   ],
                 ),

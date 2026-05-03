@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../providers/auth_provider.dart';
 import '../app_styles.dart';
 import '../models/appointment.dart';
 import '../models/service.dart';
@@ -481,6 +482,7 @@ class _State extends State<AddEditAppointmentScreen> {
                           newPrice != oldAppt.paidPrice ||
                           _selectedPromoId != oldAppt.promoId;
 
+      final auth = context.read<AuthProvider>();
       provider.updateAppointment(oldAppt.copyWith(
         clientName: _nameCtrl.text.trim(),
         carModel: _modelCtrl.text.trim(),
@@ -495,8 +497,9 @@ class _State extends State<AddEditAppointmentScreen> {
         isModifiedByAdmin: wasModified, // Теперь флаг зависит от того, были ли изменения
         promoId: _selectedPromoId,
         promoPrice: promoPrice,
-      ));
+      ), auth);
     } else {
+      final auth = context.read<AuthProvider>();
       final newAppt = Appointment(
         id: 'a_${DateTime.now().millisecondsSinceEpoch}',
         clientName: _nameCtrl.text.trim(),
@@ -513,8 +516,7 @@ class _State extends State<AddEditAppointmentScreen> {
         originalPrice: newPrice,
         promoId: _selectedPromoId,
       );
-      debugPrint('DEBUG: Sending to server: ${newAppt.toMap()}');
-      provider.addAppointment(newAppt);
+      provider.addAppointment(newAppt, auth);
     }
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

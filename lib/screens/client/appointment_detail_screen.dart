@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 
 class ClientAppointmentDetailScreen extends StatelessWidget {
@@ -13,6 +14,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final auth = context.read<AuthProvider>();
     final services = provider.services;
     final a = provider.appointments.firstWhere(
       (x) => x.id == appointment.id, orElse: () => appointment,
@@ -93,7 +95,53 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
           ],
+
+          if (a.status == 'scheduled')
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmCancel(context, provider, auth, a.id),
+                  icon: const Icon(Icons.cancel_outlined, size: 18),
+                  label: const Text('Отменить запись', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppStyles.danger,
+                    side: const BorderSide(color: AppStyles.danger),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 20),
         ]),
+      ),
+    );
+  }
+
+  void _confirmCancel(BuildContext context, AppProvider provider, AuthProvider auth, String id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Отменить запись?'),
+        content: const Text('Это действие нельзя будет отменить.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Назад')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final ok = await provider.cancelAppointment(id, auth);
+              if (ok && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Запись отменена'), backgroundColor: AppStyles.success),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppStyles.danger, foregroundColor: Colors.white),
+            child: const Text('Отменить'),
+          ),
+        ],
       ),
     );
   }
