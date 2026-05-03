@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../app_styles.dart';
-import '../models/appointment.dart';
-import '../providers/app_provider.dart';
-import '../models/service.dart';
+import '../../app_styles.dart';
+import '../../models/appointment.dart';
+import '../../providers/app_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../models/service.dart';
 import 'add_edit_appointment_screen.dart';
 
 class AppointmentDetailScreen extends StatelessWidget {
@@ -164,7 +165,8 @@ class AppointmentDetailScreen extends StatelessWidget {
             ),
             onPressed: () {
               Navigator.pop(context); // закрыть диалог
-              provider.deleteAppointment(id);
+              final auth = context.read<AuthProvider>();
+              provider.deleteAppointment(id, auth);
               Navigator.pop(context); // вернуться в список
             },
             child: const Text('Удалить'),

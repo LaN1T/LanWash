@@ -25,7 +25,7 @@ class _ClientShellState extends State<ClientShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
-      context.read<AppProvider>().reloadForUser(auth.userLogin);
+      context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
     });
   }
 

@@ -173,7 +173,18 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     if not appt:
         raise HTTPException(404, "Запись не найдена")
     
-    if current_user.username != appt.ownerUsername and current_user.role != 'admin':
+    # Логирование для отладки прав доступа
+    print(f"DEBUG: Updating appointment {appt_id} by {current_user.username} (role: {current_user.role})")
+    print(f"DEBUG: Appointment owner: {appt.ownerUsername}")
+
+    # Разрешаем владельцу, админу или мойщику редактировать запись
+    # Проверяем, является ли текущий пользователь владельцем, админом или мойщиком
+    is_owner = current_user.username == appt.ownerUsername
+    is_admin = current_user.role == 'admin'
+    is_washer = current_user.role == 'washer'
+    
+    if not (is_owner or is_admin or is_washer):
+        print(f"DEBUG: Access denied. (is_owner={is_owner}, is_admin={is_admin}, is_washer={is_washer})")
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
 
     old_status = appt.status

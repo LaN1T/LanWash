@@ -80,7 +80,6 @@ class AppProvider extends ChangeNotifier {
         }
         await refreshUnreadCount(auth);
       } catch (e) {
-        debugPrint('[AppProvider] Auto-refresh error');
       }
     });
   }
@@ -108,27 +107,24 @@ class AppProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      debugPrint('[AppProvider] init() fetching data...');
       _serviceList  = await _api.getServices();
       _promoList    = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
       _appointmentList = await _fetchAppointments(auth);
-      debugPrint('[AppProvider] init() finished, fetched ${_appointmentList.length} appointments');
     } catch (e) {
-      debugPrint('[AppProvider] init error: $e');
     }
     _loading = false;
     notifyListeners();
   }
 
-  Future<void> reloadAppointments() async {
-    _appointmentList = await _api.getAppointments();
+  Future<void> reloadAppointments(AuthProvider auth) async {
+    _appointmentList = await _fetchAppointments(auth);
     notifyListeners();
   }
 
-  Future<void> reloadForUser(String username) async {
+  Future<void> reloadForUser(String username, AuthProvider auth) async {
     _currentUser = username.toLowerCase();
-    _appointmentList = await _api.getAppointmentsByOwner(_currentUser);
+    _appointmentList = await _fetchAppointments(auth);
     _extraFavSet     = await _api.getExtraFavorites(_currentUser);
     _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
     _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
@@ -141,28 +137,40 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> addAppointment(Appointment a) async {
+  Future<bool> addAppointment(Appointment a, AuthProvider auth) async {
     final success = await _api.createAppointment(a);
     if (success) {
-        _appointmentList = await _api.getAppointments();
-        notifyListeners();
+        await reloadAppointments(auth);
     }
     return success;
   }
 
-  Future<bool> updateAppointment(Appointment a) async {
+  Future<bool> updateAppointment(Appointment a, AuthProvider auth) async {
     final success = await _api.updateAppointment(a);
     if (success) {
-        await reloadAppointments();
-        notifyListeners();
+        final i = _appointmentList.indexWhere((x) => x.id == a.id);
+        if (i != -1) {
+            _appointmentList[i] = a;
+            notifyListeners();
+        }
+        await reloadAppointments(auth);
     }
     return success;
   }
 
-  Future<void> deleteAppointment(String id) async {
+  Future<bool> cancelAppointment(String id, AuthProvider auth) async {
+    final i = _appointmentList.indexWhere((a) => a.id == id);
+    if (i == -1) return false;
+    final a = _appointmentList[i];
+    final success = await updateAppointment(a.copyWith(status: 'cancelled'), auth);
+    return success;
+  }
+
+  Future<void> deleteAppointment(String id, AuthProvider auth) async {
     await _api.deleteAppointment(id);
     _appointmentList.removeWhere((a) => a.id == id);
     notifyListeners();
+    await reloadAppointments(auth);
   }
 
   Future<void> toggleAppointmentFavorite(String id) async {
