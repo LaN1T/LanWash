@@ -77,7 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Успешная регистрация — загружаем данные и уходим на корень (_AppRouter покажет ClientShell)
-    await context.read<AppProvider>().reloadForUser(auth.userLogin);
+    await context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
