@@ -56,6 +56,7 @@ class Appointment(Base):
     paidPrice = Column(Integer, nullable=False, default=0)
     isModifiedByAdmin = Column(Integer, nullable=False, default=0)
     isModifiedByWasher = Column(Integer, nullable=False, default=0)
+    isSeenByClient = Column(Integer, nullable=False, default=1)
     originalPrice = Column(Integer, nullable=False, default=0)
     assignedWasher = Column(String, nullable=False, default='[]')
     promoId = Column(String, ForeignKey('promos.id'), nullable=True)
