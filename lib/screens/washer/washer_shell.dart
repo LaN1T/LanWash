@@ -8,7 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 import '../profile_screen.dart';
 import '../notes_screen.dart';
-import 'washer_appointment_detail_screen.dart';
+import '../logic/appointment_detail_widget.dart';
 
 class WasherShell extends StatefulWidget {
   const WasherShell({super.key});
@@ -332,7 +332,11 @@ class _WasherAppointmentCard extends StatelessWidget {
       elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WasherAppointmentDetailScreen(appointment: a))),
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => AppointmentDetailWidget(appointment: a, isClient: false),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
