@@ -52,7 +52,7 @@ class _WasherShellState extends State<WasherShell> {
         index: _tabIndex,
         children: [
           _buildAppointmentsTab(),
-          const NotesScreen(),
+          const NotesScreen(isEmbedded: true),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -86,9 +86,21 @@ class _WasherShellState extends State<WasherShell> {
             height: 80,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: PageView.builder(
-              itemCount: 4,
+              controller: PageController(initialPage: 500000),
+              itemCount: 1000000, // Very large number for infinite scroll
+              onPageChanged: (pageIndex) {
+                // Calculate the start of the week for the current page
+                final today = DateTime.now();
+                final currentWeekStart = today.subtract(Duration(days: today.weekday - 1));
+                final newWeekStart = currentWeekStart.add(Duration(days: (pageIndex - 500000) * 7));
+                setState(() {
+                  _selectedDay = newWeekStart.add(Duration(days: _selectedDay.weekday - 1));
+                });
+              },
               itemBuilder: (ctx, pageIndex) {
-                final startOfWeek = DateTime.now().subtract(Duration(days: DateTime.now().weekday - 1)).add(Duration(days: pageIndex * 7));
+                final today = DateTime.now();
+                final currentWeekStart = today.subtract(Duration(days: today.weekday - 1));
+                final startOfWeek = currentWeekStart.add(Duration(days: (pageIndex - 500000) * 7));
                 return Row(
                   children: List.generate(7, (i) {
                     final d = startOfWeek.add(Duration(days: i));
