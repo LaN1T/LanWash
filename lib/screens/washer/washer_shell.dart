@@ -129,13 +129,26 @@ class _WasherShellState extends State<WasherShell> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredAppts.length,
-              itemBuilder: (context, index) {
-                return _WasherAppointmentCard(appointment: filteredAppts[index]);
-              },
-            ),
+            child: filteredAppts.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.event_note_outlined, size: 64, color: AppStyles.textSecondary.withOpacity(0.4)),
+                        const SizedBox(height: 12),
+                        Text('На выбранный день записей нет', style: AppStyles.headingMedium.copyWith(color: AppStyles.textSecondary)),
+                        const SizedBox(height: 6),
+                        Text('Выберите другой день или проверьте фильтры', style: AppStyles.bodyMedium),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredAppts.length,
+                    itemBuilder: (context, index) {
+                      return _WasherAppointmentCard(appointment: filteredAppts[index]);
+                    },
+                  ),
           ),
         ],
       ),

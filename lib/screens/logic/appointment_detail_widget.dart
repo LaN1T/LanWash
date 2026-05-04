@@ -108,6 +108,28 @@ class AppointmentDetailWidget extends StatelessWidget {
           _Row(Icons.layers_rounded, 'Бокс', 'Бокс №${a.box_index + 1}'),
           _Row(Icons.payments, 'Итого', '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
           
+          if (a.additionalServices.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Дополнительные услуги', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
+            const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: a.additionalServices.map((id) {
+                final service = provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, size: 18, color: AppStyles.primary.withOpacity(0.7)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(service.name, style: AppStyles.bodyMedium)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+
           if (a.notes.isNotEmpty) ...[
             const SizedBox(height: 12),
             const Text('Заметки', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
