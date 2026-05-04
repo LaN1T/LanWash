@@ -8,7 +8,8 @@ import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
 
 class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key});
+  final bool isEmbedded;
+  const NotesScreen({super.key, this.isEmbedded = false});
   @override
   State<NotesScreen> createState() => _NotesScreenState();
 }
@@ -150,7 +151,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
-      appBar: AppBar(
+      appBar: widget.isEmbedded ? null : AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppStyles.textPrimary,
         elevation: 0,
