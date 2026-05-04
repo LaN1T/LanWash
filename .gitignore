@@ -84,6 +84,5 @@ serviceAccountKey.json
 **/serviceAccountKey.json
 backend/serviceAccountKey.json
 
-.omc/
 firebase.json
 .omc/
