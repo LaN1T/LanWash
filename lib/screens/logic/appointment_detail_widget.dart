@@ -21,6 +21,8 @@ class AppointmentDetailWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final auth = context.watch<AuthProvider>();
+    final isWasher = auth.isWasher;
     final a = provider.appointments.firstWhere(
       (x) => x.id == appointment.id, orElse: () => appointment,
     );
@@ -46,11 +48,43 @@ class AppointmentDetailWidget extends StatelessWidget {
               ),
             ),
           ),
-          Text('Детали записи', style: AppStyles.headingMedium),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Детали записи', style: AppStyles.headingMedium),
+              if (isWasher)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppStyles.warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('Мойщик', style: TextStyle(color: AppStyles.warning, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
           const SizedBox(height: 16),
           
           _StatusBanner(status: a.status),
           const SizedBox(height: 16),
+
+          if (isWasher && a.status != 'cancelled' && a.status != 'completed') ...[
+            const Text('Изменить статус', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
+            const SizedBox(height: 8),
+            _StatusSelector(
+              currentStatus: a.status,
+              onChanged: (newStatus) async {
+                // Устанавливаем isModifiedByWasher: true, чтобы у клиента появилась "!"
+                final success = await provider.updateAppointment(a.copyWith(status: newStatus, isModifiedByWasher: true), auth);
+                if (success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Статус обновлен: ${AppStyles.statusLabel(newStatus)}'), backgroundColor: AppStyles.success),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
           
           _Row(Icons.calendar_today, 'Дата', DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
           
@@ -68,14 +102,53 @@ class AppointmentDetailWidget extends StatelessWidget {
             return _Row(Icons.access_time, 'Время', timeStr);
           }),
 
+          _Row(Icons.person, 'Клиент', a.clientName),
           _Row(Icons.directions_car, 'Автомобиль', a.carModel),
           _Row(Icons.pin, 'Номер', a.carNumber),
           _Row(Icons.local_car_wash, 'Услуга', provider.washTypeName(a.washTypeId)),
+          _Row(Icons.layers_rounded, 'Бокс', 'Бокс №${a.box_index + 1}'),
           _Row(Icons.payments, 'Итого', '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
           
+          if (a.additionalServices.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Дополнительные услуги', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
+            const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: a.additionalServices.map((id) {
+                final service = provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, size: 18, color: AppStyles.primary.withOpacity(0.7)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(service.name, style: AppStyles.bodyMedium)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+
+          if (a.notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Заметки', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppStyles.bgMuted,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(a.notes, style: AppStyles.bodyMedium),
+            ),
+          ],
+
           const SizedBox(height: 24),
           
-          if (isClient)
+          if (auth.isClient)
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -160,4 +233,75 @@ class _Row extends StatelessWidget {
       Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
     ]),
   );
+}
+
+class _StatusSelector extends StatelessWidget {
+  final String currentStatus;
+  final ValueChanged<String> onChanged;
+
+  const _StatusSelector({required this.currentStatus, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> availableOptions;
+    if (currentStatus == 'scheduled') {
+      availableOptions = ['scheduled', 'in_progress', 'completed'];
+    } else if (currentStatus == 'in_progress') {
+      availableOptions = ['in_progress', 'completed'];
+    } else {
+      availableOptions = [currentStatus];
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppStyles.border),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentStatus,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(12),
+          icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: AppStyles.primary),
+          items: availableOptions.map((s) => DropdownMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                Icon(AppStyles.statusIcon(s), color: AppStyles.statusColor(s), size: 20),
+                const SizedBox(width: 12),
+                Text(AppStyles.statusLabel(s), style: TextStyle(
+                  color: AppStyles.statusColor(s),
+                  fontWeight: FontWeight.w600,
+                )),
+              ],
+            ),
+          )).toList(),
+          onChanged: (v) {
+            if (v != null && v != currentStatus) {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Смена статуса'),
+                  content: Text('Вы действительно хотите изменить статус на "${AppStyles.statusLabel(v)}"?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppStyles.primary, foregroundColor: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        onChanged(v);
+                      },
+                      child: const Text('Да'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
 }

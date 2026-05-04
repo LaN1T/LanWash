@@ -16,6 +16,9 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
+  final _updateController = StreamController<String>.broadcast();
+  Stream<String> get onAppointmentUpdated => _updateController.stream;
+
   FirebaseMessaging? _fcm;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final ApiService _apiService = ApiService();
@@ -39,12 +42,23 @@ class NotificationService {
 
         String? token = await _fcm!.getToken();
         
-        FirebaseMessaging.onMessage.listen(_showLocalNotification);
+        FirebaseMessaging.onMessage.listen((message) {
+          _handleMessage(message);
+          _showLocalNotification(message);
+        });
+
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
       } else {
       }
 
       _isInitialized = true;
     } catch (e, stack) {
+    }
+  }
+
+  void _handleMessage(RemoteMessage message) {
+    if (message.data['type'] == 'appointment_updated') {
+      _updateController.add(message.data['id']);
     }
   }
 

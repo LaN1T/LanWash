@@ -141,6 +141,17 @@ class ApiService {
     return [];
   }
 
+  Future<Map<String, dynamic>> getLastUpdated() async {
+    try {
+      final resp = await http.get(Uri.parse('$_baseUrl/appointments/last-updated'), headers: await _getHeaders())
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        return jsonDecode(resp.body);
+      }
+    } catch (_) {}
+    return {'count': 0, 'max_id': 0};
+  }
+
   Future<List<Appointment>> getAppointmentsByOwner(String username) async {
     try {
       final resp = await http.get(

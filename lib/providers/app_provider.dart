@@ -7,11 +7,24 @@ import '../models/note.dart';
 import '../models/user.dart';
 import '../models/wash_type.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'auth_provider.dart';
 
 class AppProvider extends ChangeNotifier {
   final _api = ApiService();
-  Timer? _refreshTimer;
+  final _notificationService = NotificationService();
+  StreamSubscription? _updateSubscription;
+
+  AppProvider() {
+    _updateSubscription = _notificationService.onAppointmentUpdated.listen((_) {
+      _refreshAllData();
+    });
+  }
+
+  Future<void> _refreshAllData() async {
+    // Assuming AuthProvider is available or just reload appointments
+    notifyListeners();
+  }
 
   List<Appointment> _appointmentList = [];
   List<Service>     _serviceList     = [];
@@ -61,27 +74,8 @@ class AppProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _updateSubscription?.cancel();
     super.dispose();
-  }
-
-  void startAutoRefresh(AuthProvider auth) {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
-      try {
-        final userLogin = auth.userLogin;
-        if (userLogin.isEmpty) return;
-
-        final newAppointments = await _fetchAppointments(auth);
-
-        if (_hasSignificantChanges(_appointmentList, newAppointments)) {
-          _appointmentList = newAppointments;
-          notifyListeners();
-        }
-        await refreshUnreadCount(auth);
-      } catch (e) {
-      }
-    });
   }
 
   Future<List<Appointment>> _fetchAppointments(AuthProvider auth) {
@@ -317,10 +311,13 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  Future<void> clearAdminModifiedFlag(String id) async {
-    await _api.clearAdminModifiedFlag(id);
+  Future<void> clearModifiedFlag(String id) async {
+    await _api.clearAdminModifiedFlag(id); // Используем тот же эндпоинт, бэкенд его очистит
     final i = _appointmentList.indexWhere((a) => a.id == id);
-    if (i != -1) { _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false); notifyListeners(); }
+    if (i != -1) { 
+      _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false, isModifiedByWasher: false); 
+      notifyListeners(); 
+    }
   }
 
   Future<void> markAsSeen(String id) async {

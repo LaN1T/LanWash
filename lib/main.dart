@@ -172,7 +172,7 @@ class _AppRouterState extends State<_AppRouter> {
       if (auth.isLoggedIn) {
          provider.init(auth);
       }
-      provider.startAutoRefresh(auth);
+
     });
   }
 
