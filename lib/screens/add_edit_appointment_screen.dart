@@ -470,7 +470,7 @@ class _State extends State<AddEditAppointmentScreen> {
       final oldAppt = widget.appointment!;
       final origPrice = oldAppt.originalPrice > 0 ? oldAppt.originalPrice : (oldAppt.paidPrice > 0 ? oldAppt.paidPrice : newPrice);
       
-      // Проверка, были ли изменения
+      // Проверка, были ли изменения (игнорируем изменения в notes, если они не существенны)
       final wasModified = _nameCtrl.text.trim() != oldAppt.clientName ||
                           _modelCtrl.text.trim() != oldAppt.carModel ||
                           _numberCtrl.text.trim().toUpperCase() != oldAppt.carNumber ||
@@ -478,7 +478,6 @@ class _State extends State<AddEditAppointmentScreen> {
                           _washTypeId != oldAppt.washTypeId ||
                           finalServices.toString() != oldAppt.additionalServices.toString() ||
                           _status != oldAppt.status ||
-                          finalNotes != oldAppt.notes ||
                           newPrice != oldAppt.paidPrice ||
                           _selectedPromoId != oldAppt.promoId;
 
@@ -494,7 +493,7 @@ class _State extends State<AddEditAppointmentScreen> {
         notes: finalNotes,
         paidPrice: newPrice,
         originalPrice: origPrice,
-        isModifiedByAdmin: wasModified, // Теперь флаг зависит от того, были ли изменения
+        isModifiedByAdmin: wasModified, // Теперь флаг становится true только если были реальные изменения
         promoId: _selectedPromoId,
         promoPrice: promoPrice,
       ), auth);

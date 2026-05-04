@@ -18,6 +18,7 @@ class Appointment {
   int paidPrice;
   int originalPrice;
   bool isModifiedByAdmin;
+  bool isModifiedByWasher;
   bool isSeenByClient;
   List<String> assignedWashers;
   String? promoId;                    // FK → promos.id
@@ -39,6 +40,7 @@ class Appointment {
     this.paidPrice = 0,
     this.originalPrice = 0,
     this.isModifiedByAdmin = false,
+    this.isModifiedByWasher = false,
     this.isSeenByClient = false,
     List<String>? assignedWashers,
     this.promoId,
@@ -61,6 +63,7 @@ class Appointment {
     'paidPrice': paidPrice,
     'originalPrice': originalPrice,
     'isModifiedByAdmin': isModifiedByAdmin,
+    'isModifiedByWasher': isModifiedByWasher,
     'isSeenByClient': isSeenByClient,
     'assignedWasher': jsonEncode(assignedWashers),
     'promoId': promoId,
@@ -83,6 +86,7 @@ class Appointment {
     paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
     originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
     isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
+    isModifiedByWasher: m['isModifiedByWasher'] == 1 || m['isModifiedByWasher'] == true,
     isSeenByClient: m['isSeenByClient'] == 1 || m['isSeenByClient'] == true,
     assignedWashers: _parseWashers(m['assignedWasher']),
     promoId: m['promoId']?.toString(),
@@ -121,7 +125,7 @@ class Appointment {
     DateTime? dateTime, String? washTypeId, List<String>? additionalServices,
     String? status, String? notes, bool? isFavorite,
     String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
-    bool? isModifiedByAdmin, bool? isSeenByClient, List<String>? assignedWashers,
+    bool? isModifiedByAdmin, bool? isModifiedByWasher, bool? isSeenByClient, List<String>? assignedWashers,
     String? promoId, int? box_index,
   }) => Appointment(
     id: id,
@@ -139,6 +143,7 @@ class Appointment {
     paidPrice: paidPrice ?? this.paidPrice,
     originalPrice: originalPrice ?? this.originalPrice,
     isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
+    isModifiedByWasher: isModifiedByWasher ?? this.isModifiedByWasher,
     isSeenByClient: isSeenByClient ?? this.isSeenByClient,
     assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
     promoId: promoId ?? this.promoId,

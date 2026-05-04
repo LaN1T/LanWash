@@ -136,12 +136,14 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
     if current_user.role == 'admin':
         appt_data.update({
             "isModifiedByAdmin": int(req.isModifiedByAdmin),
+            "isModifiedByWasher": int(req.isModifiedByWasher),
             "originalPrice": req.originalPrice,
             "assignedWasher": req.assignedWasher,
         })
     else:
         appt_data.update({
             "isModifiedByAdmin": 0,
+            "isModifiedByWasher": 0,
             "originalPrice": req.paidPrice,
             "assignedWasher": "[]",
         })
@@ -222,8 +224,13 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     if current_user.role == 'admin':
         appt.ownerUsername = req.ownerUsername.lower()
         appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
+        appt.isModifiedByWasher = int(req.isModifiedByWasher)
         appt.originalPrice = req.originalPrice
         appt.assignedWasher = req.assignedWasher
+    elif current_user.role == 'washer':
+        # Если статус изменился, помечаем, что это изменение от мойщика
+        if old_status != req.status:
+            appt.isModifiedByWasher = 1
     
     await db.commit()
 
