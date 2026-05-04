@@ -15,9 +15,12 @@ class AppointmentDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final auth = context.watch<AuthProvider>();
     final a = provider.appointments.firstWhere(
       (x) => x.id == appointment.id, orElse: () => appointment,
     );
+
+    final bool canEdit = !auth.isWasher;
 
     return Scaffold(
       backgroundColor: AppStyles.background,
@@ -42,6 +45,22 @@ class AppointmentDetailScreen extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _StatusBanner(status: a.status),
           const SizedBox(height: 16),
+
+          if (auth.isWasher && (a.status == 'scheduled' || a.status == 'in_progress')) ...[
+            _SectionTitle('Управление статусом'),
+            _StatusSelector(
+              currentStatus: a.status,
+              onChanged: (newStatus) async {
+                final success = await provider.updateAppointment(a.copyWith(status: newStatus), auth);
+                if (success && context.mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text('Статус обновлен на: ${AppStyles.statusLabel(newStatus)}'))
+                   );
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
 
           _Section(title: 'Клиент и автомобиль', children: [
             _Row(Icons.person,         'Клиент',      a.clientName),
@@ -112,37 +131,40 @@ class AppointmentDetailScreen extends StatelessWidget {
             const SizedBox(height: 12),
           ],
 
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.edit),
-              label: const Text('Редактировать запись'),
-              style: AppStyles.primaryButton,
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => AddEditAppointmentScreen(appointment: a))),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.delete_outline, color: AppStyles.danger),
-              label: const Text('Удалить запись',
-                  style: TextStyle(color: AppStyles.danger)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppStyles.danger),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+          if (canEdit) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.edit),
+                label: const Text('Редактировать запись'),
+                style: AppStyles.primaryButton,
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => AddEditAppointmentScreen(appointment: a))),
               ),
-              onPressed: () => _confirmDelete(context, provider, a.id),
             ),
-          ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.delete_outline, color: AppStyles.danger),
+                label: const Text('Удалить запись',
+                    style: TextStyle(color: AppStyles.danger)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppStyles.danger),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () => _confirmDelete(context, provider, a.id),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
         ]),
       ),
     );
   }
+
   void _confirmDelete(BuildContext context, AppProvider provider, String id) {
     showDialog(
       context: context,
@@ -286,4 +308,56 @@ class _Row extends StatelessWidget {
           textAlign: TextAlign.right)),
     ]),
   );
+}
+
+class _StatusSelector extends StatelessWidget {
+  final String currentStatus;
+  final ValueChanged<String> onChanged;
+
+  const _StatusSelector({required this.currentStatus, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> options = ['scheduled', 'in_progress', 'completed'];
+    // Filter options based on business logic
+    final List<String> availableOptions;
+    if (currentStatus == 'scheduled') {
+      availableOptions = ['scheduled', 'in_progress', 'completed'];
+    } else if (currentStatus == 'in_progress') {
+      availableOptions = ['in_progress', 'completed'];
+    } else {
+      availableOptions = [currentStatus];
+    }
+
+    return Container(
+      decoration: AppStyles.cardDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentStatus,
+          isExpanded: true,
+          icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: AppStyles.primary),
+          borderRadius: BorderRadius.circular(16),
+          items: availableOptions.map((s) => DropdownMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                Icon(AppStyles.statusIcon(s), color: AppStyles.statusColor(s), size: 20),
+                const SizedBox(width: 12),
+                Text(AppStyles.statusLabel(s), style: AppStyles.bodyLarge.copyWith(
+                  color: AppStyles.statusColor(s),
+                  fontWeight: FontWeight.w600,
+                )),
+              ],
+            ),
+          )).toList(),
+          onChanged: (v) {
+            if (v != null && v != currentStatus) {
+              onChanged(v);
+            }
+          },
+        ),
+      ),
+    );
+  }
 }

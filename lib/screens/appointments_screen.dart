@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../app_styles.dart';
 import '../models/appointment.dart';
 import '../providers/app_provider.dart';
+import '../providers/auth_provider.dart';
 import 'appointment_detail_screen.dart';
 import 'add_edit_appointment_screen.dart';
 import '../models/service.dart';
@@ -60,19 +61,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       _buildSearchBar(),
       _buildFilters(),
       Expanded(
-        child: list.isEmpty
-            ? _emptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                itemCount: list.length,
-                itemBuilder: (ctx, i) => _AppointmentCard(
-                  appointment: list[i],
-                  services: provider.services,
-                  onFavorite: () => provider.toggleAppointmentFavorite(list[i].id),
-                  onTap: () => Navigator.push(ctx,
-                    MaterialPageRoute(builder: (_) => AppointmentDetailScreen(appointment: list[i]))),
+        child: RefreshIndicator(
+          color: AppStyles.primary,
+          onRefresh: () => provider.reloadAppointments(context.read<AuthProvider>()),
+          child: list.isEmpty
+              ? _emptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                  itemCount: list.length,
+                  itemBuilder: (ctx, i) => _AppointmentCard(
+                    appointment: list[i],
+                    services: provider.services,
+                    onFavorite: () => provider.toggleAppointmentFavorite(list[i].id),
+                    onTap: () => Navigator.push(ctx,
+                      MaterialPageRoute(builder: (_) => AppointmentDetailScreen(appointment: list[i]))),
+                  ),
                 ),
-              ),
+        ),
       ),
     ]);
   }
