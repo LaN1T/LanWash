@@ -74,7 +74,8 @@ class AppointmentDetailWidget extends StatelessWidget {
             _StatusSelector(
               currentStatus: a.status,
               onChanged: (newStatus) async {
-                final success = await provider.updateAppointment(a.copyWith(status: newStatus), auth);
+                // Устанавливаем isModifiedByWasher: true, чтобы у клиента появилась "!"
+                final success = await provider.updateAppointment(a.copyWith(status: newStatus, isModifiedByWasher: true), auth);
                 if (success && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Статус обновлен: ${AppStyles.statusLabel(newStatus)}'), backgroundColor: AppStyles.success),
@@ -279,7 +280,24 @@ class _StatusSelector extends StatelessWidget {
           )).toList(),
           onChanged: (v) {
             if (v != null && v != currentStatus) {
-              onChanged(v);
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Смена статуса'),
+                  content: Text('Вы действительно хотите изменить статус на "${AppStyles.statusLabel(v)}"?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppStyles.primary, foregroundColor: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        onChanged(v);
+                      },
+                      child: const Text('Да'),
+                    ),
+                  ],
+                ),
+              );
             }
           },
         ),

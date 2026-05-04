@@ -311,10 +311,13 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  Future<void> clearAdminModifiedFlag(String id) async {
-    await _api.clearAdminModifiedFlag(id);
+  Future<void> clearModifiedFlag(String id) async {
+    await _api.clearAdminModifiedFlag(id); // Используем тот же эндпоинт, бэкенд его очистит
     final i = _appointmentList.indexWhere((a) => a.id == id);
-    if (i != -1) { _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false); notifyListeners(); }
+    if (i != -1) { 
+      _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false, isModifiedByWasher: false); 
+      notifyListeners(); 
+    }
   }
 
   Future<void> markAsSeen(String id) async {
