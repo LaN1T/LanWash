@@ -6,6 +6,7 @@ import '../models/appointment.dart';
 import '../models/service.dart';
 import '../models/user.dart';
 import '../providers/app_provider.dart';
+import '../providers/auth_provider.dart';
 
 class AdminScheduleScreen extends StatefulWidget {
   const AdminScheduleScreen({super.key});
@@ -28,6 +29,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final appointments = provider.appointments;
+    DateTime? selectedDay;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -56,93 +58,69 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
               color: AppStyles.textPrimary)),
         ]),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 5,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 2.5,
-          ),
-          itemCount: _days.length,
-          itemBuilder: (context, index) {
-            final day = _days[index];
-            final count = _countForDay(appointments, day);
-            final isToday = _isToday(day);
+      body: RefreshIndicator(
+        color: AppStyles.primary,
+        onRefresh: () => provider.reloadAppointments(context.read<AuthProvider>()),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.8,
+            ),
+            itemCount: _days.length,
+            itemBuilder: (context, index) {
+              final day = _days[index];
+              final count = _countForDay(appointments, day);
+              final isToday = _isToday(day);
 
-            return GestureDetector(
-              onTap: () => _openDay(context, day),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isToday ? AppStyles.primary.withOpacity(0.1) : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isToday ? AppStyles.primary : AppStyles.border,
-                    width: isToday ? 2 : 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+              return GestureDetector(
+                onTap: () => _openDay(context, day),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isToday ? AppStyles.primary.withOpacity(0.1) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isToday ? AppStyles.primary : AppStyles.border,
+                      width: isToday ? 2 : 1,
                     ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    if (count > 0)
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: Container(
-                          width: 22, height: 22,
-                          decoration: BoxDecoration(
-                            color: AppStyles.primary,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Center(
-                            child: Text('$count',
-                              style: const TextStyle(
-                                color: Colors.white, fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      if (count > 0)
+                        Positioned(
+                          top: 4, right: 4,
+                          child: Container(
+                            width: 20, height: 20,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(color: AppStyles.primary, shape: BoxShape.circle),
+                            child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           ),
                         ),
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(DateFormat('EE', 'ru').format(day).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isToday ? AppStyles.primary : AppStyles.textSecondary)),
+                            Text('${day.day}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isToday ? AppStyles.primary : AppStyles.textPrimary)),
+                          ],
+                        ),
                       ),
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FittedBox(
-                            child: Text(
-                              DateFormat('EE', 'ru').format(day).toUpperCase(),
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                                color: isToday ? AppStyles.primary : AppStyles.textSecondary),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          FittedBox(
-                            child: Text('${day.day}',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
-                                color: isToday ? AppStyles.primary : AppStyles.textPrimary),
-                            ),
-                          ),
-                          FittedBox(
-                            child: Text(DateFormat('MMM', 'ru').format(day),
-                              style: TextStyle(fontSize: 11,
-                                color: isToday ? AppStyles.primary : AppStyles.textSecondary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
