@@ -23,6 +23,13 @@ async def get_busy_slots(date: str, db: AsyncSession = Depends(get_db)):
     """date: YYYY-MM-DD"""
     return await workload_service.get_busy_slots(db, date)
 
+@router.get("/last-updated", response_model=dict)
+async def get_last_updated(db: AsyncSession = Depends(get_db)):
+    # Lightweight check: count of appointments and max ID as a proxy for 'has changed'
+    res = await db.execute(select(func.count(Appointment.id), func.max(Appointment.id)))
+    count, max_id = res.one()
+    return {"count": count, "max_id": max_id}
+
 @router.get("/", response_model=list[AppointmentResponse])
 async def get_all(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check for get_all - allow admin to see all, others only non-hidden
@@ -231,6 +238,9 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         
         if encrypted_tokens:
             client_tokens = [decrypt_token(t) for t in encrypted_tokens]
+            
+            # Всегда уведомляем, если что-то изменилось, чтобы клиент обновил данные
+            title, body = "Обновление записи", "Ваша запись была обновлена."
             if old_status != appt.status:
                 dt_str = format_date(appt.dateTime)
                 if appt.status == "completed":
@@ -241,17 +251,16 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
                     title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
                 elif appt.status == "scheduled":
                     title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}."
-                else:
-                    title, body = "Обновление записи", f"Статус вашей записи изменен на: {appt.status}."
-                
-                await fcm_service.send_notification_to_tokens(client_tokens, title=title, body=body)
+            
+            await fcm_service.send_notification_to_tokens(client_tokens, title=title, body=body, data={"type": "appointment_updated", "id": appt.id})
 
-            elif old_datetime != appt.dateTime:
+            if old_datetime != appt.dateTime:
                 dt_str = format_date(appt.dateTime)
                 await fcm_service.send_notification_to_tokens(
                     client_tokens,
                     title="Время мойки изменено",
-                    body=f"Ваша запись перенесена на {dt_str}."
+                    body=f"Ваша запись перенесена на {dt_str}.",
+                    data={"type": "appointment_updated", "id": appt.id}
                 )
 
     new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
