@@ -324,8 +324,7 @@ class AppProvider extends ChangeNotifier {
     final i = _appointmentList.indexWhere((a) => a.id == id);
     if (i != -1 && !_appointmentList[i].isSeenByClient) {
       _appointmentList[i] = _appointmentList[i].copyWith(isSeenByClient: true);
-      // Если есть эндпоинт на бэкенде для сохранения состояния - вызовите его здесь:
-      // await _api.markAppointmentSeen(id);
+      await _api.markAppointmentSeen(id);
       notifyListeners();
     }
   }

@@ -37,7 +37,7 @@ class _ClientShellState extends State<ClientShell> {
     final auth     = context.watch<AuthProvider>();
     // Считаем только избранные каталожные услуги (не extra), чтобы не путать с admin
     final favCount = provider.favoriteServices.length;
-    final hasAdminModified = provider.appointments.any((a) => a.isModifiedByAdmin && !a.isSeenByClient) || provider.hasDeletedByAdmin;
+    final hasUnseenChanges = provider.appointments.any((a) => (a.isModifiedByAdmin || a.isModifiedByWasher) && !a.isSeenByClient) || provider.hasDeletedByAdmin;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -102,13 +102,13 @@ class _ClientShellState extends State<ClientShell> {
             ),
             NavigationDestination(
               icon: Badge(
-                isLabelVisible: hasAdminModified,
+                isLabelVisible: hasUnseenChanges,
                 label: const Text('!'),
                 backgroundColor: AppStyles.danger,
                 child: const Icon(Icons.calendar_today_outlined),
               ),
               selectedIcon: Badge(
-                isLabelVisible: hasAdminModified,
+                isLabelVisible: hasUnseenChanges,
                 label: const Text('!'),
                 backgroundColor: AppStyles.danger,
                 child: const Icon(Icons.calendar_today_rounded,
