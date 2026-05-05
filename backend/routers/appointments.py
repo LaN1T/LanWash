@@ -137,6 +137,7 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
         appt_data.update({
             "isModifiedByAdmin": int(req.isModifiedByAdmin),
             "isModifiedByWasher": int(req.isModifiedByWasher),
+            "isSeenByClient": 1 if not (req.isModifiedByAdmin or req.isModifiedByWasher) else 0,
             "originalPrice": req.originalPrice,
             "assignedWasher": req.assignedWasher,
         })
@@ -144,6 +145,7 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
         appt_data.update({
             "isModifiedByAdmin": 0,
             "isModifiedByWasher": 0,
+            "isSeenByClient": 1,
             "originalPrice": req.paidPrice,
             "assignedWasher": "[]",
         })
@@ -181,6 +183,24 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
+
+    # Store original values for comparison to detect actual admin changes
+    original_clientName = appt.clientName
+    original_carModel = appt.carModel
+    original_carNumber = appt.carNumber
+    original_dateTime = appt.dateTime
+    original_washTypeId = appt.washTypeId
+    original_additionalServices = appt.additionalServices
+    original_status = appt.status
+    original_notes = appt.notes
+    original_isFavorite = appt.isFavorite
+    original_ownerUsername = appt.ownerUsername
+    original_promoPrice = appt.promoPrice
+    original_paidPrice = appt.paidPrice
+    original_originalPrice = appt.originalPrice
+    original_assignedWasher = appt.assignedWasher
+    original_promoId = appt.promoId
+    original_box_index = appt.box_index
     
     # Логирование для отладки прав доступа
     print(f"DEBUG: Updating appointment {appt_id} by {current_user.username} (role: {current_user.role})")
@@ -223,14 +243,38 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     
     if current_user.role == 'admin':
         appt.ownerUsername = req.ownerUsername.lower()
-        appt.isModifiedByAdmin = int(req.isModifiedByAdmin)
-        appt.isModifiedByWasher = int(req.isModifiedByWasher)
         appt.originalPrice = req.originalPrice
         appt.assignedWasher = req.assignedWasher
+
+        # Detect if admin made any changes that should trigger a client notification
+        admin_made_changes = False
+        if appt.clientName != original_clientName: admin_made_changes = True
+        if appt.carModel != original_carModel: admin_made_changes = True
+        if appt.carNumber != original_carNumber: admin_made_changes = True
+        if appt.dateTime != original_dateTime: admin_made_changes = True
+        if appt.washTypeId != original_washTypeId: admin_made_changes = True
+        if json.loads(appt.additionalServices) != json.loads(original_additionalServices): admin_made_changes = True
+        if appt.status != original_status: admin_made_changes = True
+        if appt.notes != original_notes: admin_made_changes = True
+        if appt.isFavorite != original_isFavorite: admin_made_changes = True
+        if appt.ownerUsername != original_ownerUsername: admin_made_changes = True
+        if appt.promoPrice != original_promoPrice: admin_made_changes = True
+        if appt.paidPrice != original_paidPrice: admin_made_changes = True
+        if appt.originalPrice != original_originalPrice: admin_made_changes = True
+        if json.loads(appt.assignedWasher) != json.loads(original_assignedWasher): admin_made_changes = True
+        if appt.promoId != original_promoId: admin_made_changes = True
+        if appt.box_index != original_box_index: admin_made_changes = True
+
+        if admin_made_changes:
+            appt.isModifiedByAdmin = 1
+            appt.isSeenByClient = 0
+        # If no changes, the flags (isModifiedByAdmin, isSeenByClient) remain as they were
+
     elif current_user.role == 'washer':
         # Если статус изменился, помечаем, что это изменение от мойщика
         if old_status != req.status:
             appt.isModifiedByWasher = 1
+            appt.isSeenByClient = 0
     
     await db.commit()
 
@@ -406,7 +450,25 @@ async def clear_admin_flag(appt_id: str, db: AsyncSession = Depends(get_db), cur
     if current_user.username != owner_username and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на снятие флага модификации.")
 
-    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isModifiedByAdmin=0))
+    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(
+        isModifiedByAdmin=0,
+        isModifiedByWasher=0,
+        isSeenByClient=1
+    ))
+    await db.commit()
+    return {"ok": True}
+
+@router.post("/{appt_id}/mark-seen")
+async def mark_appointment_seen(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # P0: IDOR check - Only the owner or admin can mark as seen.
+    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
+    owner_username = result.scalar_one_or_none()
+    if not owner_username:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != owner_username and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на отметку этой записи как просмотренной.")
+
+    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isSeenByClient=1))
     await db.commit()
     return {"ok": True}
 
