@@ -52,15 +52,6 @@ class AppointmentDetailWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Детали записи', style: AppStyles.headingMedium),
-              if (isWasher)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppStyles.warning.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('Мойщик', style: TextStyle(color: AppStyles.warning, fontSize: 10, fontWeight: FontWeight.bold)),
-                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -131,7 +122,7 @@ class AppointmentDetailWidget extends StatelessWidget {
             ),
           ],
 
-          if (a.notes.isNotEmpty) ...[
+          if (a.notes.isNotEmpty && isWasher) ...[
             const SizedBox(height: 12),
             const Text('Заметки', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
             const SizedBox(height: 4),
@@ -148,7 +139,7 @@ class AppointmentDetailWidget extends StatelessWidget {
 
           const SizedBox(height: 24),
           
-          if (auth.isClient)
+          if (auth.isClient && a.status == 'scheduled')
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
