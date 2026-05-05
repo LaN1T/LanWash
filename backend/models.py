@@ -94,6 +94,7 @@ class AppointmentRequest(BaseModel):
     paidPrice: int = 0
     isModifiedByAdmin: bool = False
     isModifiedByWasher: bool = False
+    isSeenByClient: bool = True
     originalPrice: int = 0
     assignedWasher: str = "[]"
     promoId: Optional[str] = None
@@ -117,6 +118,7 @@ class AppointmentResponse(BaseModel):
     paidPrice: int
     isModifiedByAdmin: bool = False
     isModifiedByWasher: bool = False
+    isSeenByClient: bool = True
     originalPrice: int = 0
     assignedWasher: str = "[]"
     promoId: Optional[str] = None
