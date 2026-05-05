@@ -74,7 +74,6 @@ class AppointmentDetailWidget extends StatelessWidget {
             _StatusSelector(
               currentStatus: a.status,
               onChanged: (newStatus) async {
-                // Устанавливаем isModifiedByWasher: true, чтобы у клиента появилась "!"
                 final success = await provider.updateAppointment(a.copyWith(status: newStatus, isModifiedByWasher: true), auth);
                 if (success && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -111,23 +110,24 @@ class AppointmentDetailWidget extends StatelessWidget {
           
           if (a.additionalServices.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Дополнительные услуги', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppStyles.textSecondary)),
-            const SizedBox(height: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: a.additionalServices.map((id) {
-                final service = provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle_outline, size: 18, color: AppStyles.primary.withOpacity(0.7)),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(service.name, style: AppStyles.bodyMedium)),
-                    ],
-                  ),
-                );
-              }).toList(),
+            InkWell(
+              onTap: () => _showAdditionalServices(context, provider, a.additionalServices),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppStyles.primary.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.list_alt, size: 20, color: AppStyles.primary),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Доп. услуги (${a.additionalServices.length})', style: const TextStyle(fontWeight: FontWeight.bold, color: AppStyles.primary))),
+                    const Icon(Icons.chevron_right, color: AppStyles.primary),
+                  ],
+                ),
+              ),
             ),
           ],
 
@@ -166,6 +166,56 @@ class AppointmentDetailWidget extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  void _showAdditionalServices(BuildContext context, AppProvider provider, List<String> additionalServiceIds) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Дополнительные услуги', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: additionalServiceIds.length,
+                itemBuilder: (context, index) {
+                  final id = additionalServiceIds[index];
+                  final service = provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: AppStyles.primary, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(service.name, style: const TextStyle(fontSize: 16))),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppStyles.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Закрыть'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
