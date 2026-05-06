@@ -247,13 +247,19 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         appt.assignedWasher = req.assignedWasher
 
         # Detect if admin made any changes that should trigger a client notification
+        def normalize_json(s):
+            try:
+                return sorted(json.loads(s)) if isinstance(json.loads(s), list) else json.loads(s)
+            except:
+                return s
+
         admin_made_changes = False
         if appt.clientName != original_clientName: admin_made_changes = True
         if appt.carModel != original_carModel: admin_made_changes = True
         if appt.carNumber != original_carNumber: admin_made_changes = True
         if appt.dateTime != original_dateTime: admin_made_changes = True
         if appt.washTypeId != original_washTypeId: admin_made_changes = True
-        if json.loads(appt.additionalServices) != json.loads(original_additionalServices): admin_made_changes = True
+        if normalize_json(appt.additionalServices) != normalize_json(original_additionalServices): admin_made_changes = True
         if appt.status != original_status: admin_made_changes = True
         if appt.notes != original_notes: admin_made_changes = True
         if appt.isFavorite != original_isFavorite: admin_made_changes = True
@@ -261,11 +267,12 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
         if appt.promoPrice != original_promoPrice: admin_made_changes = True
         if appt.paidPrice != original_paidPrice: admin_made_changes = True
         if appt.originalPrice != original_originalPrice: admin_made_changes = True
-        if json.loads(appt.assignedWasher) != json.loads(original_assignedWasher): admin_made_changes = True
+        if normalize_json(appt.assignedWasher) != normalize_json(original_assignedWasher): admin_made_changes = True
         if appt.promoId != original_promoId: admin_made_changes = True
         if appt.box_index != original_box_index: admin_made_changes = True
 
         if admin_made_changes:
+            print(f"Admin made real changes to appointment {appt.id}, triggering notification.")
             appt.isModifiedByAdmin = 1
             appt.isSeenByClient = 0
         # If no changes, the flags (isModifiedByAdmin, isSeenByClient) remain as they were
@@ -420,6 +427,38 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
     appt.assignedWasher = json.dumps(current)
     await db.commit()
     await db.refresh(appt)
+
+    # Уведомление мойщику при назначении или снятии
+    tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == username))
+    encrypted_tokens = tokens_res.scalars().all()
+    if encrypted_tokens:
+        tokens = []
+        for t in encrypted_tokens:
+            try:
+                decrypted = decrypt_token(t)
+                tokens.append(decrypted)
+            except Exception as e:
+                print(f"DEBUG: Failed to decrypt token for {username}: {e}")
+        
+        if tokens:
+            dt_str = format_date(appt.dateTime)
+            if username in current:
+                # Назначен
+                await fcm_service.send_notification_to_tokens(
+                    tokens,
+                    title="Новая запись",
+                    body=f"Вы назначены на мойку {appt.carModel} {dt_str}."
+                )
+                print(f"Assignment notification sent to washer {username}")
+            else:
+                # Снят
+                await fcm_service.send_notification_to_tokens(
+                    tokens,
+                    title="Запись снята",
+                    body=f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}."
+                )
+                print(f"Removal notification sent to washer {username}")
+
     return appt
 
 @router.get("/deleted-notification/{username}")
