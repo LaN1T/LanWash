@@ -460,7 +460,8 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
                 await fcm_service.send_notification_to_tokens(
                     tokens,
                     title="Новая запись",
-                    body=f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}"
+                    body=f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
+                    data={"type": "appointment_updated", "id": appt.id}
                 )
                 print(f"Assignment notification sent to washer {username}")
             else:
@@ -468,7 +469,8 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
                 await fcm_service.send_notification_to_tokens(
                     tokens,
                     title="Запись снята",
-                    body=f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}."
+                    body=f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
+                    data={"type": "appointment_updated", "id": appt.id}
                 )
                 print(f"Removal notification sent to washer {username}")
 
