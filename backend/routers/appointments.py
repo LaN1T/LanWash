@@ -173,8 +173,20 @@ async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), cu
     return appt
 
 
-def format_date(dateTime):
-    pass
+from datetime import datetime
+
+def format_date(dt_str):
+    if not dt_str:
+        return "неизвестное время"
+    try:
+        # Пытаемся распарсить, если это строка ISO
+        if isinstance(dt_str, str):
+            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        else:
+            dt = dt_str
+        return dt.strftime("%d.%m %H:%M")
+    except:
+        return str(dt_str)
 
 
 @router.put("/{appt_id}", response_model=AppointmentResponse)
@@ -444,10 +456,11 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
             dt_str = format_date(appt.dateTime)
             if username in current:
                 # Назначен
+                box_str = f" Бокс №{appt.box_index + 1}" if appt.box_index is not None else ""
                 await fcm_service.send_notification_to_tokens(
                     tokens,
                     title="Новая запись",
-                    body=f"Вы назначены на мойку {appt.carModel} {dt_str}."
+                    body=f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}"
                 )
                 print(f"Assignment notification sent to washer {username}")
             else:
