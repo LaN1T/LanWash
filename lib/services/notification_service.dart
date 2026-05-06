@@ -31,6 +31,17 @@ class NotificationService {
     try {
       await Firebase.initializeApp();
 
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const InitializationSettings initializationSettings =
+          InitializationSettings(android: initializationSettingsAndroid);
+      await _localNotifications.initialize(
+        settings: initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          // Handle notification tap
+        },
+      );
+
       if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         _fcm = FirebaseMessaging.instance;
         
@@ -86,27 +97,35 @@ class NotificationService {
 
   Future<String?> getToken() async {
     if (!_isInitialized || _fcm == null) {
+      debugPrint('[DEBUG] NotificationService: Not initialized or _fcm is null.');
       return null;
     }
 
     try {
       String? token = await _fcm!.getToken();
+      debugPrint('[DEBUG] NotificationService: Got token from FCM: $token');
       if (token == null) {
         await Future.delayed(const Duration(seconds: 2));
         token = await _fcm!.getToken();
+        debugPrint('[DEBUG] NotificationService: Got token after delay: $token');
       }
       
       return token;
     } catch (e) {
+      debugPrint('[DEBUG] NotificationService: Error getting token: $e');
       return null;
     }
   }
 
   Future<void> updateTokenOnServer(String username) async {
+    debugPrint('[DEBUG] NotificationService: Updating token on server for $username');
     String? token = await getToken();
     if (token != null) {
-      await _apiService.saveFcmToken(username, token);
+      debugPrint('[DEBUG] NotificationService: Calling apiService.saveFcmToken with token: $token');
+      final result = await _apiService.saveFcmToken(username, token);
+      debugPrint('[DEBUG] NotificationService: SaveFcmToken result: $result');
     } else {
+      debugPrint('[DEBUG] NotificationService: Failed to get token, not updating server.');
     }
   }
 }

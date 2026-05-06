@@ -548,8 +548,10 @@ class ApiService {
   // ─── Push Tokens ────────────────────────────────────────────────────────────
   Future<bool> saveFcmToken(String username, String token) async {
     try {
+      final url = '$_baseUrl/auth/fcm-token';
+      debugPrint('[DEBUG] ApiService: saveFcmToken: calling $url');
       final resp = await http.post(
-        Uri.parse('$_baseUrl/auth/fcm-token'),
+        Uri.parse(url),
         headers: await _getHeaders(),
         body: jsonEncode({
           'username': username,
@@ -557,8 +559,10 @@ class ApiService {
           'platform': kIsWeb ? 'web' : (Platform.isAndroid ? 'android' : 'ios'),
         }),
       ).timeout(const Duration(seconds: 10));
+      debugPrint('[DEBUG] ApiService: saveFcmToken: status code ${resp.statusCode}, body: ${resp.body}');
       return resp.statusCode == 200;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[DEBUG] ApiService: saveFcmToken: error: $e');
       return false;
     }
   }
