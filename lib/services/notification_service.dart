@@ -97,7 +97,11 @@ class NotificationService {
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
-    if (notification == null) return;
+    debugPrint('[DEBUG] NotificationService: _showLocalNotification called. Notification: ${notification?.title}');
+    if (notification == null) {
+      debugPrint('[DEBUG] NotificationService: No notification payload.');
+      return;
+    }
 
     const NotificationDetails details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -110,12 +114,17 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    await _localNotifications.show(
-      id: notification.hashCode,
-      title: notification.title,
-      body: notification.body,
-      notificationDetails: details,
-    );
+    try {
+      await _localNotifications.show(
+        id: notification.hashCode,
+        title: notification.title,
+        body: notification.body,
+        notificationDetails: details,
+      );
+      debugPrint('[DEBUG] NotificationService: Local notification displayed.');
+    } catch (e) {
+      debugPrint('[DEBUG] NotificationService: Error showing local notification: $e');
+    }
   }
 
   Future<String?> getToken() async {

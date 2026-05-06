@@ -1,3 +1,4 @@
+import 'dart:async'; // Add this
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,7 @@ import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
+import '../../services/notification_service.dart'; // Add this
 import '../profile_screen.dart';
 import '../notes_screen.dart';
 import '../logic/appointment_detail_widget.dart';
@@ -18,6 +20,7 @@ class WasherShell extends StatefulWidget {
 class _WasherShellState extends State<WasherShell> {
   int _tabIndex = 0;
   DateTime _selectedDay = DateTime.now();
+  StreamSubscription? _appointmentSub; // Add this
 
   @override
   void initState() {
@@ -26,7 +29,20 @@ class _WasherShellState extends State<WasherShell> {
       final auth = context.read<AuthProvider>();
       context.read<AppProvider>().loadNotes(username: auth.userLogin);
       context.read<AppProvider>().reloadAppointments(auth);
+      
+      // Listen for updates
+      _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
+        if (mounted) {
+          context.read<AppProvider>().reloadAppointments(auth);
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _appointmentSub?.cancel(); // Cancel subscription
+    super.dispose();
   }
 
   @override
@@ -80,16 +96,16 @@ class _WasherShellState extends State<WasherShell> {
     return RefreshIndicator(
       color: AppStyles.primary,
       onRefresh: () => provider.reloadAppointments(auth),
-      child: Column(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Container(
             height: 80,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: PageView.builder(
               controller: PageController(initialPage: 500000),
-              itemCount: 1000000, // Very large number for infinite scroll
+              itemCount: 1000000,
               onPageChanged: (pageIndex) {
-                // Calculate the start of the week for the current page
                 final today = DateTime.now();
                 final currentWeekStart = today.subtract(Duration(days: today.weekday - 1));
                 final newWeekStart = currentWeekStart.add(Duration(days: (pageIndex - 500000) * 7));
@@ -106,7 +122,7 @@ class _WasherShellState extends State<WasherShell> {
                     final d = startOfWeek.add(Duration(days: i));
                     final count = appts.where((a) => a.dateTime.year == d.year && a.dateTime.month == d.month && a.dateTime.day == d.day).length;
                     final isSelected = d.day == _selectedDay.day && d.month == _selectedDay.month && d.year == _selectedDay.year;
-                    final isToday = d.day == DateTime.now().day && d.month == DateTime.now().month && d.year == DateTime.now().year;
+                    final isToday = d.day == DateTime.now().day && d.month == DateTime.now().month && d.year == _selectedDay.year;
                     return Expanded(
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedDay = d),
@@ -140,7 +156,8 @@ class _WasherShellState extends State<WasherShell> {
               },
             ),
           ),
-          Expanded(
+          SizedBox(
+            height: MediaQuery.of(context).size.height - 250,
             child: filteredAppts.isEmpty
                 ? Center(
                     child: Column(
@@ -155,6 +172,8 @@ class _WasherShellState extends State<WasherShell> {
                     ),
                   )
                 : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredAppts.length,
                     itemBuilder: (context, index) {
