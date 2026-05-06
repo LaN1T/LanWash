@@ -1,8 +1,10 @@
+import 'dart:async'; // Add this
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/notification_service.dart'; // Add this
 import '../profile_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
@@ -17,6 +19,7 @@ class ClientShell extends StatefulWidget {
 
 class _ClientShellState extends State<ClientShell> {
   int _index = 0;
+  StreamSubscription? _appointmentSub; // Add this
 
   void switchToBookings() => setState(() => _index = 1);
 
@@ -26,7 +29,20 @@ class _ClientShellState extends State<ClientShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
+
+      // Listen for updates
+      _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
+        if (mounted) {
+          context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _appointmentSub?.cancel(); // Cancel subscription
+    super.dispose();
   }
 
   static const _titles = ['Главная', 'Мои записи', 'Избранное'];
