@@ -143,6 +143,7 @@ async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSessi
 
 @router.post("/fcm-token")
 async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    print(f"DEBUG: save_fcm_token: user={current_user.username}, req_user={req.username}")
     # Проверяем, что токен сохраняется для текущего пользователя (или админ сохраняет кому угодно - но обычно клиент сам за себя)
     if current_user.username != req.username and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете менять FCM токен другого пользователя")
@@ -151,10 +152,12 @@ async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db
     existing = result.scalar_one_or_none()
     
     if existing:
+        print(f"DEBUG: Updating existing token for {req.username}")
         existing.token = encrypt_token(req.token)
         existing.platform = req.platform
         existing.updatedAt = datetime.now().isoformat()
     else:
+        print(f"DEBUG: Creating new token record for {req.username}")
         new_token = FcmToken(
             username=req.username,
             token=encrypt_token(req.token),
@@ -164,4 +167,5 @@ async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db
         db.add(new_token)
     
     await db.commit()
+    print("DEBUG: FCM token saved successfully.")
     return {"status": "ok"}
