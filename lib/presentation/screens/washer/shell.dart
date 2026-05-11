@@ -8,9 +8,9 @@ import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 import '../../services/notification_service.dart'; // Add this
-import '../shared/profile_screen.dart';
-import '../admin/notes_screen.dart';
-import '../../presentation/components/appointment_detail_widget.dart';
+import '../profile_screen.dart';
+import '../notes_screen.dart';
+import '../../components/appointment_detail_widget.dart';
 
 class WasherShell extends StatefulWidget {
   const WasherShell({super.key});
