@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app_styles.dart';
+import '../../app_styles.dart';
 import 'average_check_report_screen.dart';
 import 'popular_services_report_screen.dart';
 import 'consumables_report_screen.dart';

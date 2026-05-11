@@ -9,9 +9,9 @@ import 'app_styles.dart';
 import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
 import 'services/notification_service.dart';
-import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_shell.dart';
+import 'screens/shared/splash_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/admin/home_shell.dart';
 import 'screens/client/client_shell.dart';
 import 'screens/washer/washer_shell.dart';
 

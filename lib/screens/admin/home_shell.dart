@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_styles.dart';
-import '../providers/app_provider.dart';
-import '../providers/auth_provider.dart';
-import '../screens/profile_screen.dart';
+import '../../app_styles.dart';
+import '../../providers/app_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../shared/profile_screen.dart';
 import 'appointments_screen.dart';
 import 'services_screen.dart';
 import 'favorites_screen.dart';

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
@@ -9,90 +8,9 @@ import '../../models/service.dart';
 import '../../models/wash_type.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/plate_formatter.dart';
+import '../../utils/translit.dart';
 import 'client_shell.dart';
-
-// ─── Транслитерация ───────────────────────────────────────────────────────────
-const _enToRu = {
-  'q':'й','w':'ц','e':'у','r':'к','t':'е','y':'н','u':'г','i':'ш','o':'щ','p':'з',
-  '[':'х',']':'ъ','a':'ф','s':'ы','d':'в','f':'а','g':'п','h':'р','j':'о','k':'л',
-  'l':'д',';':'ж',"'":'э','z':'я','x':'ч','c':'с','v':'м','b':'и','n':'т','m':'ь',
-  ',':'б','.':'ю',
-  'Q':'Й','W':'Ц','E':'У','R':'К','T':'Е','Y':'Н','U':'Г','I':'Ш','O':'Щ','P':'З',
-  'A':'Ф','S':'Ы','D':'В','F':'А','G':'П','H':'Р','J':'О','K':'Л','L':'Д',
-  'Z':'Я','X':'Ч','C':'С','V':'М','B':'И','N':'Т','M':'Ь',
-};
-const _ruToEn = {
-  'й':'q','ц':'w','у':'e','к':'r','е':'t','н':'y','г':'u','ш':'i','щ':'o','з':'p',
-  'ф':'a','ы':'s','в':'d','а':'f','п':'g','р':'h','о':'j','л':'k',
-  'д':'l','я':'z','ч':'x','с':'c','м':'v','и':'b','т':'n','ь':'m',
-  'Й':'Q','Ц':'W','У':'E','К':'R','Е':'T','Н':'Y','Г':'U','Ш':'I','Щ':'O','З':'P',
-  'Ф':'A','Ы':'S','В':'D','А':'F','П':'G','Р':'H','О':'J','Л':'K','Д':'L',
-  'Я':'Z','Ч':'X','С':'C','М':'V','И':'B','Т':'N','Ь':'M',
-};
-
-String _translitToRu(String input) =>
-    input.split('').map((c) => _enToRu[c] ?? c).join();
-
-String _translitToEn(String input) =>
-    input.split('').map((c) => _ruToEn[c] ?? c).join();
-
-void _applyTranslitRu(TextEditingController ctrl, String v) {
-  final converted = _translitToRu(v);
-  if (converted != v) {
-    ctrl.value = TextEditingValue(
-      text: converted,
-      selection: TextSelection.collapsed(offset: converted.length),
-    );
-  }
-}
-
-void _applyTranslitEn(TextEditingController ctrl, String v) {
-  final converted = _translitToEn(v);
-  if (converted != v) {
-    ctrl.value = TextEditingValue(
-      text: converted,
-      selection: TextSelection.collapsed(offset: converted.length),
-    );
-  }
-}
-
-const _ruPlateLetters = 'АВЕКМНОРСТУХ';
-
-String? _validatePlate(String? v) {
-  if (v == null || !RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$').hasMatch(v.toUpperCase())) {
-    return 'Неверный формат (напр. А000АА77)';
-  }
-  return null;
-}
-
-class _PlateInputFormatter extends TextInputFormatter {
-  static const _map = {
-    'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 'M': 'М', 'H': 'Н',
-    'O': 'О', 'P': 'Р', 'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х',
-  };
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final raw = newValue.text.toUpperCase();
-    final buf = StringBuffer();
-    int pos = 0;
-    for (int i = 0; i < raw.length && pos < 9; i++) {
-      String c = raw[i];
-      if (_map.containsKey(c)) c = _map[c]!;
-      
-      if (pos == 0 || pos == 4 || pos == 5) {
-        if (RegExp(r'[АВЕКМНОРСТУХ]').hasMatch(c)) { buf.write(c); pos++; }
-      } else if ((pos >= 1 && pos <= 3) || (pos >= 6 && pos <= 8)) {
-        if (RegExp(r'[0-9]').hasMatch(c)) { buf.write(c); pos++; }
-      }
-    }
-    final result = buf.toString();
-    return TextEditingValue(
-      text: result,
-      selection: TextSelection.collapsed(offset: result.length),
-    );
-  }
-}
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
@@ -755,7 +673,7 @@ class _ServiceStep extends StatelessWidget {
             decoration: AppStyles.inputDecoration('Ваше имя',
                 icon: Icons.person_outline_rounded),
             textCapitalization: TextCapitalization.words,
-            onChanged: (v) => _applyTranslitRu(nameCtrl, v),
+            onChanged: (v) => applyTranslitRu(nameCtrl, v),
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
           ),
           const SizedBox(height: 12),
@@ -765,7 +683,7 @@ class _ServiceStep extends StatelessWidget {
             decoration: AppStyles.inputDecoration('Марка и модель авто',
                 icon: Icons.directions_car_outlined),
             textCapitalization: TextCapitalization.words,
-            onChanged: (v) => _applyTranslitEn(carCtrl, v),
+            onChanged: (v) => applyTranslitEn(carCtrl, v),
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
           ),
           const SizedBox(height: 12),
@@ -774,8 +692,8 @@ class _ServiceStep extends StatelessWidget {
             style: const TextStyle(color: AppStyles.textPrimary,
                 letterSpacing: 1.5, fontWeight: FontWeight.w600),
             decoration: _ServiceStep._plateDecoration(),
-            inputFormatters: [_PlateInputFormatter()],
-            validator: _validatePlate,
+            inputFormatters: [PlateInputFormatter()],
+            validator: validatePlate,
           ),
           const SizedBox(height: 24),
 

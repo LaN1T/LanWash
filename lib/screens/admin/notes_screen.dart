@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../app_styles.dart';
-import '../models/note.dart';
-import '../models/user.dart';
-import '../providers/app_provider.dart';
-import '../providers/auth_provider.dart';
+import '../../app_styles.dart';
+import '../../models/note.dart';
+import '../../models/user.dart';
+import '../../providers/app_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class NotesScreen extends StatefulWidget {
   final bool isEmbedded;

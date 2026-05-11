@@ -7,7 +7,7 @@ import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 import '../../models/wash_type.dart';
-import '../logic/appointment_detail_widget.dart';
+import '../../widgets/appointment_detail_widget.dart';
 import 'appointment_detail_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
