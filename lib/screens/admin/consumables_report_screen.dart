@@ -4,11 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 
-import '../app_styles.dart';
-import '../services/api_service.dart';
-import '../models/report_entry.dart';
-import '../providers/app_provider.dart';
-import '../services/pdf_export_service.dart';
+import '../../app_styles.dart';
+import '../../services/api_service.dart';
+import '../../models/report_entry.dart';
+import '../../providers/app_provider.dart';
+import '../../services/pdf_export_service.dart';
 
 class ConsumablesReportScreen extends StatefulWidget {
   const ConsumablesReportScreen({super.key});

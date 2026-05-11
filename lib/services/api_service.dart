@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../core/constants.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
 import '../models/log_entry.dart';
@@ -13,15 +13,7 @@ import '../models/promo.dart';
 import '../models/wash_type.dart';
 
 class ApiService {
-  static String get _baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000/api';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api';
-    } else {
-      return 'http://127.0.0.1:8000/api';
-    }
-  }
+  static String get _baseUrl => ApiConstants.baseUrl;
 
   static const _storage = FlutterSecureStorage();
   static String? _token;
@@ -57,7 +49,7 @@ class ApiService {
         Uri.parse('$_baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'username': username, 'password': password}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         await setToken(data['access_token']);
@@ -87,7 +79,7 @@ class ApiService {
           'carModel': carModel,
           'carNumber': carNumber,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -96,7 +88,7 @@ class ApiService {
       }
       final err = jsonDecode(resp.body);
       return {'error': err['detail'] ?? 'Ошибка регистрации'};
-    } catch (e, stackTrace) {
+    } catch (e) {
       return {'error': 'Нет связи с сервером'};
     }
   }
@@ -120,7 +112,7 @@ class ApiService {
         Uri.parse('$_baseUrl/auth/profile/$userId'),
         headers: await _getHeaders(),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         return User.fromMap(jsonDecode(resp.body));
       }
@@ -157,7 +149,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/by-owner/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
         return list.map((m) => Appointment.fromMap(m)).toList();
@@ -172,7 +164,7 @@ class ApiService {
         Uri.parse('$_baseUrl/appointments/'),
         headers: await _getHeaders(),
         body: jsonEncode(a.toMap()),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -185,7 +177,7 @@ class ApiService {
         Uri.parse('$_baseUrl/appointments/${a.id}'),
         headers: await _getHeaders(),
         body: jsonEncode(a.toMap()),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -207,7 +199,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/busy-slots?date=$date'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body);
       }
@@ -220,7 +212,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         return jsonDecode(resp.body)['hasNotification'] == true;
       }
@@ -233,7 +225,7 @@ class ApiService {
       final resp = await http.delete(
         Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {}
     return false;
@@ -244,7 +236,7 @@ class ApiService {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/$id/clear-admin-flag'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -256,7 +248,7 @@ class ApiService {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/$id/mark-seen'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -268,7 +260,7 @@ class ApiService {
       final resp = await http.post(
         Uri.parse('$_baseUrl/appointments/$id/toggle-favorite'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -296,7 +288,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/appointments/by-washer/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
         return list.map((m) => Appointment.fromMap(m)).toList();
@@ -311,7 +303,7 @@ class ApiService {
         Uri.parse('$_baseUrl/appointments/$appointmentId/assign-washer'),
         headers: await _getHeaders(),
         body: jsonEncode({'washerUsername': washerUsername}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -363,7 +355,7 @@ class ApiService {
         Uri.parse('$_baseUrl/services/'),
         headers: await _getHeaders(),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -378,7 +370,7 @@ class ApiService {
         Uri.parse('$_baseUrl/services/${s.id}'),
         headers: await _getHeaders(),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -401,7 +393,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/services/favorites/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
         return list.cast<String>().toSet();
@@ -416,7 +408,7 @@ class ApiService {
         Uri.parse('$_baseUrl/services/favorites/toggle'),
         headers: await _getHeaders(),
         body: jsonEncode({'username': username, 'serviceId': serviceId}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -429,7 +421,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/services/extra-favorites/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
         return list.cast<String>().toSet();
@@ -444,7 +436,7 @@ class ApiService {
         Uri.parse('$_baseUrl/services/extra-favorites/toggle'),
         headers: await _getHeaders(),
         body: jsonEncode({'username': username, 'serviceId': serviceId}),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -483,7 +475,7 @@ class ApiService {
         Uri.parse('$_baseUrl/wash-types/${wt.id}'),
         headers: await _getHeaders(),
         body: jsonEncode(wt.toMap()),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         return WashType.fromMap(jsonDecode(resp.body));
       }
@@ -509,7 +501,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/logs/by-user/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
         return list.map((m) => LogEntry.fromMap(m)).toList();
@@ -528,7 +520,7 @@ class ApiService {
           'action': action,
           'details': details,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       return resp.statusCode == 200;
     } catch (_) {
       return false;
@@ -556,9 +548,9 @@ class ApiService {
         body: jsonEncode({
           'username': username,
           'token': token,
-          'platform': kIsWeb ? 'web' : (Platform.isAndroid ? 'android' : 'ios'),
+          'platform': kIsWeb ? 'web' : (defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios'),
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       debugPrint('[DEBUG] ApiService: saveFcmToken: status code ${resp.statusCode}, body: ${resp.body}');
       return resp.statusCode == 200;
     } catch (e) {
@@ -585,7 +577,7 @@ class ApiService {
       final resp = await http.get(
         Uri.parse('$_baseUrl/notes/by-user/$username'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
         return list.map((m) => Note.fromMap(m)).toList();
@@ -615,7 +607,7 @@ class ApiService {
           'message': message,
           'category': category,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiConstants.requestTimeout);
       if (resp.statusCode == 200) {
         return Note.fromMap(jsonDecode(resp.body));
       }

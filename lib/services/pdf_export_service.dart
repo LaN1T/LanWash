@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -7,8 +6,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:share_plus/share_plus.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class PdfExportService {
   static Future<Uint8List> createPdfBytes(String title, List<String> headers, List<List<String>> data) async {
@@ -77,7 +75,7 @@ class PdfExportService {
     required String fileName,
     required Uint8List pdfBytes,
   }) async {
-    final isMobile = Platform.isIOS || Platform.isAndroid;
+    final isMobile = defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -90,7 +88,7 @@ class PdfExportService {
               try {
                 if (isMobile) {
                   await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
-                } else {
+                } else if (!kIsWeb) {
                   String? outputFile = await FilePicker.platform.saveFile(
                     dialogTitle: 'Сохранить отчёт как...',
                     fileName: '$fileName.pdf',
@@ -98,8 +96,14 @@ class PdfExportService {
                     allowedExtensions: ['pdf'],
                   );
                   if (outputFile != null) {
-                    await File(outputFile).writeAsBytes(pdfBytes);
+                    await FileSaver.instance.saveFile(
+                      name: fileName,
+                      bytes: pdfBytes,
+                      mimeType: MimeType.pdf,
+                    );
                   }
+                } else {
+                  await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
                 }
               } catch (e) {
                 print("Ошибка сохранения: $e");
