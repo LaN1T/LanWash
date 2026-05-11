@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../app_styles.dart';
-import '../models/appointment.dart';
-import '../providers/app_provider.dart';
-import '../providers/auth_provider.dart';
+import '../../app_styles.dart';
+import '../../models/appointment.dart';
+import '../../providers/app_provider.dart';
+import '../../providers/auth_provider.dart';
 import 'appointment_detail_screen.dart';
 import 'add_edit_appointment_screen.dart';
-import '../models/service.dart';
+import '../../models/service.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});

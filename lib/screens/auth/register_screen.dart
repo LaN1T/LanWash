@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../app_styles.dart';
-import '../providers/auth_provider.dart';
-import '../providers/app_provider.dart';
+import '../../app_styles.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/app_provider.dart';
 
 // ─── Маска телефона: +7 (999) 000-00-00 ──────────────────────────────────────
 class _PhoneInputFormatter extends TextInputFormatter {
