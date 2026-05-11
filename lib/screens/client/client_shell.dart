@@ -5,11 +5,11 @@ import '../../app_styles.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/notification_service.dart'; // Add this
-import '../profile_screen.dart';
+import '../shared/profile_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
-import '../services_screen.dart';
+import '../admin/services_screen.dart';
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});

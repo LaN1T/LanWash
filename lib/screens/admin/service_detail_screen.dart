@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../app_styles.dart';
-import '../models/service.dart';
-import '../providers/app_provider.dart';
+import '../../app_styles.dart';
+import '../../models/service.dart';
+import '../../providers/app_provider.dart';
 import 'add_edit_service_screen.dart';
 
 class ServiceDetailScreen extends StatelessWidget {

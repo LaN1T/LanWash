@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../app_styles.dart';
-import '../models/log_entry.dart';
-import '../services/log_service.dart';
+import '../../app_styles.dart';
+import '../../models/log_entry.dart';
+import '../../services/log_service.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});

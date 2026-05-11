@@ -1,54 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../providers/auth_provider.dart';
-import '../app_styles.dart';
-import '../models/appointment.dart';
-import '../models/service.dart';
-import '../providers/app_provider.dart';
-import '../data/initial_data.dart';
-
-const _ruPlateLetters = 'АВЕКМНОРСТУХ';
-
-String? _validatePlate(String? v) {
-  if (v == null || v.length < 8) {
-    return 'Слишком короткий номер';
-  }
-  if (!RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$').hasMatch(v.toUpperCase())) {
-    return 'Неверный формат (напр. А000АА77)';
-  }
-  return null;
-}
-
-class _PlateInputFormatter extends TextInputFormatter {
-  static const _map = {
-    'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 'M': 'М', 'H': 'Н',
-    'O': 'О', 'P': 'Р', 'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х',
-  };
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final raw = newValue.text.toUpperCase();
-    final buf = StringBuffer();
-    int pos = 0;
-    for (int i = 0; i < raw.length && pos < 9; i++) {
-      String c = raw[i];
-      if (_map.containsKey(c)) c = _map[c]!;
-      
-      if (pos == 0 || pos == 4 || pos == 5) {
-        if (RegExp(r'[АВЕКМНОРСТУХ]').hasMatch(c)) { buf.write(c); pos++; }
-      } else if ((pos >= 1 && pos <= 3) || (pos >= 6 && pos <= 8)) {
-        if (RegExp(r'[0-9]').hasMatch(c)) { buf.write(c); pos++; }
-      }
-    }
-    final result = buf.toString();
-    return TextEditingValue(
-      text: result,
-      selection: TextSelection.collapsed(offset: result.length),
-    );
-  }
-}
+import '../../providers/auth_provider.dart';
+import '../../app_styles.dart';
+import '../../models/appointment.dart';
+import '../../models/service.dart';
+import '../../providers/app_provider.dart';
+import '../../data/initial_data.dart';
+import '../../utils/plate_formatter.dart';
 
 // ─── Транслитерация ───────────────────────────────────────────────────────────
 const _enToRu = {
@@ -224,8 +183,8 @@ class _State extends State<AddEditAppointmentScreen> {
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600),
               decoration: _plateDecoration().copyWith(errorText: _plateError),
-              inputFormatters: [_PlateInputFormatter()],
-              validator: _validatePlate,
+              inputFormatters: [PlateInputFormatter()],
+              validator: validatePlate,
               onChanged: (v) {
                 if (_plateError != null) setState(() => _plateError = null);
               },

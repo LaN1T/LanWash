@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
-from backend.db_models import (
+from db_models import (
     Base, User, Service, Consumable, ServiceConsumable, Promo,
     WashType, WashTypeIncludedExtra, WashTypeConsumable, PromoIncludedExtra,
 )

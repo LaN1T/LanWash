@@ -1,57 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../app_styles.dart';
-import '../providers/auth_provider.dart';
-
-// ─── Форматтер гос. номера (такой же как у клиента) ──────────────────────────
-const _ruPlateLetters = 'АВЕКМНОРСТУХ';
-
-class _PlateInputFormatter extends TextInputFormatter {
-  static const _enToRuPlate = {
-    'A':'А','B':'В','E':'Е','K':'К','M':'М','H':'Н',
-    'O':'О','P':'Р','C':'С','T':'Т','Y':'У','X':'Х',
-  };
-  static const _ruLayoutToPlate = {
-    'ф':'А','и':'В','у':'Е','р':'К','ь':'М','т':'Н',
-    'щ':'О','з':'Р','с':'С','е':'Т','г':'У','ч':'Х',
-    'Ф':'А','И':'В','У':'Е','Р':'К','Ь':'М','Т':'Н',
-    'Щ':'О','З':'Р','С':'С','Е':'Т','Г':'У','Ч':'Х',
-  };
-
-  String _toPlateChar(String c) {
-    final upperC = c.toUpperCase();
-    if (_ruPlateLetters.contains(upperC)) return upperC;
-    
-    // Если ввели английский аналог или кириллицу через другую раскладку
-    final ruC = _enToRuPlate[upperC] ?? _ruLayoutToPlate[upperC];
-    if (ruC != null && _ruPlateLetters.contains(ruC)) return ruC;
-    
-    return ''; // Игнорируем недопустимые символы
-  }
-
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final raw = newValue.text.toUpperCase();
-    final buf = StringBuffer();
-    int pos = 0;
-    for (int i = 0; i < raw.length && pos < 9; i++) {
-      final c = raw[i];
-      if (pos == 0 || pos == 4 || pos == 5) {
-        final ruC = _toPlateChar(c);
-        if (ruC.isNotEmpty) { buf.write(ruC); pos++; }
-      } else if ((pos >= 1 && pos <= 3) || (pos >= 6 && pos <= 8)) {
-        if (RegExp(r'[0-9]').hasMatch(c)) { buf.write(c); pos++; }
-      }
-    }
-    final result = buf.toString();
-    return newValue.copyWith(
-      text: result,
-      selection: TextSelection.collapsed(offset: result.length),
-    );
-  }
-}
+import '../../app_styles.dart';
+import '../../providers/auth_provider.dart';
+import '../../utils/plate_formatter.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -240,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600),
                 decoration: _plateDecoration(),
-                inputFormatters: [_PlateInputFormatter()],
+                inputFormatters: [PlateInputFormatter()],
               ),
               const SizedBox(height: 24),
             ],

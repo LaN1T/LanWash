@@ -14,9 +14,7 @@ from db_models import User
 # В реальном приложении эти значения должны быть в .env
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
-    # Генерируем случайный ключ, если не задан, чтобы не использовать дефолтный hardcoded
-    import secrets
-    SECRET_KEY = secrets.token_urlsafe(32)
+    raise RuntimeError("JWT_SECRET_KEY не задан в переменных окружения. Настройте файл .env!")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))  # По умолчанию 1 час вместо 7 дней
