@@ -31,18 +31,28 @@ async def get_last_updated(db: AsyncSession = Depends(get_db)):
     return {"count": count, "max_id": max_id}
 
 @router.get("/", response_model=list[AppointmentResponse])
-async def get_all(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_all(
+    page: int = 1,
+    limit: int = 6,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     # P0: IDOR check for get_all - allow admin to see all, others only non-hidden
+    offset = (page - 1) * limit
     if current_user.role == 'admin':
         result = await db.execute(
             select(Appointment)
             .order_by(Appointment.dateTime.asc())
+            .offset(offset)
+            .limit(limit)
         )
     else:
         result = await db.execute(
             select(Appointment)
             .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
             .order_by(Appointment.dateTime.asc())
+            .offset(offset)
+            .limit(limit)
         )
     return result.scalars().all()
 

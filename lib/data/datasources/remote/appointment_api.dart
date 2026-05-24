@@ -16,9 +16,14 @@ class AppointmentApi {
     };
   }
 
-  Future<List<Appointment>> getAppointments() async {
+  Future<List<Appointment>> getAppointments({int? page, int? limit}) async {
     try {
-      final resp = await http.get(Uri.parse('$_baseUrl/appointments/'), headers: await _getHeaders())
+      final queryParams = <String>[];
+      if (page != null) queryParams.add('page=$page');
+      if (limit != null) queryParams.add('limit=$limit');
+      final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+      
+      final resp = await http.get(Uri.parse('$_baseUrl/appointments/$queryString'), headers: await _getHeaders())
           .timeout(AppConstants.timeout);
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;

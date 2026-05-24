@@ -8,6 +8,11 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   AppointmentRepositoryImpl({required this.remoteDataSource});
 
   @override
+  Future<List<Appointment>> getAppointments({int? page, int? limit}) async {
+    return await remoteDataSource.getAppointments(page: page, limit: limit);
+  }
+
+  @override
   Future<Appointment?> getAppointmentById(String id) async {
     // Assuming we fetch all and find, or we add getAppointmentById to AppointmentApi
     final all = await remoteDataSource.getAppointments();
