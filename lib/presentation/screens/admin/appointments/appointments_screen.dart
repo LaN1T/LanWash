@@ -79,7 +79,47 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 ),
         ),
       ),
+      _buildPagination(provider),
     ]);
+  }
+
+  Widget _buildPagination(AppProvider provider) {
+    final auth = context.read<AuthProvider>();
+    final currentPage = provider.currentPage;
+    final hasNext = provider.appointments.length == 6;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: AppStyles.bgCard,
+        border: const Border(top: BorderSide(color: AppStyles.border)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            onPressed: currentPage > 1 
+                ? () => provider.setPage(currentPage - 1, auth)
+                : null,
+            icon: const Icon(Icons.chevron_left, size: 28),
+            color: AppStyles.primary,
+          ),
+          const SizedBox(width: 16),
+          Text(
+            'Страница $currentPage',
+            style: AppStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 16),
+          IconButton(
+            onPressed: hasNext 
+                ? () => provider.setPage(currentPage + 1, auth)
+                : null,
+            icon: const Icon(Icons.chevron_right, size: 28),
+            color: AppStyles.primary,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSearchBar() => Padding(

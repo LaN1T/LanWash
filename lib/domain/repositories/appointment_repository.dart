@@ -1,7 +1,7 @@
 import '../entities/appointment.dart';
 
 abstract class AppointmentRepository {
-  Future<List<Appointment>> getAppointments();
+  Future<List<Appointment>> getAppointments({int? page, int? limit});
   Future<Appointment?> getAppointmentById(String id);
   Future<List<Appointment>> getAppointmentsByOwner(String username);
   Future<List<Appointment>> getAppointmentsByWasher(String username);
