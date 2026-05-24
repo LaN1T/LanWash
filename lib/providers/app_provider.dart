@@ -38,7 +38,9 @@ class AppProvider extends ChangeNotifier {
   bool _hasDeletedByAdmin = false;
   final bool _loadingApi = false;
   int  _unreadNotes = 0;
+  int  _currentPage = 1;
 
+  int               get currentPage    => _currentPage;
   List<Appointment> get appointments   => _appointmentList;
   List<Service>     get services       => _serviceList;
   List<Promo>       get promos         => _promoList;
@@ -79,9 +81,14 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<List<Appointment>> _fetchAppointments(AuthProvider auth) {
-    if (auth.isAdmin) return _api.getAppointments();
+    if (auth.isAdmin) return _api.getAppointments(page: _currentPage, limit: 6);
     if (auth.isWasher) return _api.getAppointmentsByWasher(auth.userLogin);
     return _api.getAppointmentsByOwner(auth.userLogin);
+  }
+
+  Future<void> setPage(int page, AuthProvider auth) async {
+    _currentPage = page;
+    await reloadAppointments(auth);
   }
 
   bool _hasSignificantChanges(List<Appointment> oldList, List<Appointment> newList) {
