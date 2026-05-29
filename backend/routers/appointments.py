@@ -16,6 +16,9 @@ from services.fcm_service import fcm_service
 from services.workload_service import workload_service
 from services.auth_service import get_current_user, check_roles
 from core.security import decrypt_token
+import structlog
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
@@ -43,65 +46,99 @@ async def get_all(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 1. Получаем список всех уникальных дат (дней), отсортированных по убыванию
+    # Build date extraction query — dateTime is stored as ISO string YYYY-MM-DDTHH:mm:ss
+    date_extract = func.substr(Appointment.dateTime, 1, 10)
+
+    # 1. Get unique dates (days) in descending order
     if current_user.role == 'admin':
         dates_query = (
-            select(func.substr(Appointment.dateTime, 1, 10))
+            select(date_extract)
+            .where(Appointment.dateTime != None, Appointment.dateTime != '')
             .distinct()
-            .order_by(func.substr(Appointment.dateTime, 1, 10).desc())
+            .order_by(date_extract.desc())
         )
     else:
         dates_query = (
-            select(func.substr(Appointment.dateTime, 1, 10))
-            .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+            select(date_extract)
+            .where(
+                Appointment.dateTime != None,
+                Appointment.dateTime != '',
+                or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
+            )
             .distinct()
-            .order_by(func.substr(Appointment.dateTime, 1, 10).desc())
+            .order_by(date_extract.desc())
         )
+
     dates_res = await db.execute(dates_query)
     unique_dates = [row[0] for row in dates_res.all() if row[0]]
-
     total_pages = len(unique_dates)
 
+    logger.debug(
+        "appointments_pagination",
+        role=current_user.role,
+        total_dates=total_pages,
+        unique_dates=unique_dates[:5],
+        requested_page=page,
+        requested_date=date,
+    )
+
+    # 2. Determine target date
+    target_date: str | None = None
     if date:
-        # Если передана конкретная дата, пытаемся найти её в списке уникальных дат
         clean_date = date[:10]
         if clean_date in unique_dates:
             page = unique_dates.index(clean_date) + 1
             target_date = clean_date
         else:
+            # Date not found — return empty but preserve headers
             page = 1
             target_date = clean_date
     else:
-        if total_pages == 0 or page > total_pages or page < 1:
-            target_date = None
-        else:
+        if total_pages > 0 and 1 <= page <= total_pages:
             target_date = unique_dates[page - 1]
 
     response.headers["X-Total-Pages"] = str(total_pages)
     response.headers["X-Current-Page"] = str(page)
-    response.headers["X-Current-Date"] = target_date if target_date else ""
+    response.headers["X-Current-Date"] = target_date or ""
     response.headers["X-Unique-Dates"] = json.dumps(unique_dates)
+    logger.info(
+        "appointments_pagination_headers",
+        x_total_pages=total_pages,
+        x_current_page=page,
+        x_current_date=target_date,
+        x_unique_dates_count=len(unique_dates),
+        unique_dates=unique_dates[:5],
+    )
 
-    if not target_date or total_pages == 0 or page > total_pages:
+    if not target_date:
+        logger.debug("appointments_empty", reason="no_target_date", total_pages=total_pages, page=page)
         return []
 
-    # 2. Выбираем все записи на этот конкретный день
+    # 3. Fetch appointments for the target date
     if current_user.role == 'admin':
         result = await db.execute(
             select(Appointment)
-            .where(func.substr(Appointment.dateTime, 1, 10) == target_date)
+            .where(date_extract == target_date)
             .order_by(Appointment.dateTime.asc())
         )
     else:
         result = await db.execute(
             select(Appointment)
             .where(
-                func.substr(Appointment.dateTime, 1, 10) == target_date,
+                date_extract == target_date,
                 or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
             )
             .order_by(Appointment.dateTime.asc())
         )
-    return result.scalars().all()
+
+    appointments = result.scalars().all()
+    logger.debug(
+        "appointments_fetched",
+        role=current_user.role,
+        target_date=target_date,
+        count=len(appointments),
+    )
+    return appointments
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
@@ -276,8 +313,8 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     original_box_index = appt.box_index
     
     # Логирование для отладки прав доступа
-    print(f"DEBUG: Updating appointment {appt_id} by {current_user.username} (role: {current_user.role})")
-    print(f"DEBUG: Appointment owner: {appt.ownerUsername}")
+    logger.debug("updating_appointment", appt_id=appt_id, username=current_user.username, role=current_user.role)
+    logger.debug("appointment_owner", owner=appt.ownerUsername)
 
     # Разрешаем владельцу, админу или мойщику редактировать запись
     # Проверяем, является ли текущий пользователь владельцем, админом или мойщиком
@@ -286,7 +323,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     is_washer = current_user.role == 'washer'
     
     if not (is_owner or is_admin or is_washer):
-        print(f"DEBUG: Access denied. (is_owner={is_owner}, is_admin={is_admin}, is_washer={is_washer})")
+        logger.debug("access_denied", is_owner=is_owner, is_admin=is_admin, is_washer=is_washer)
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
 
     old_status = appt.status
@@ -345,7 +382,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         if appt.box_index != original_box_index: admin_made_changes = True
 
         if admin_made_changes:
-            print(f"Admin made real changes to appointment {appt.id}, triggering notification.")
+            logger.info("admin_changes_triggered", appt_id=appt.id)
             appt.isModifiedByAdmin = 1
             appt.isSeenByClient = 0
         # If no changes, the flags (isModifiedByAdmin, isSeenByClient) remain as they were
@@ -514,7 +551,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                 decrypted = decrypt_token(t)
                 tokens.append(decrypted)
             except Exception as e:
-                print(f"DEBUG: Failed to decrypt token for {username}: {e}")
+                logger.warning("token_decrypt_failed", username=username, error=str(e))
         
         if tokens:
             dt_str = format_date(appt.dateTime)
@@ -527,7 +564,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                     body=f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
                     data={"type": "appointment_updated", "id": appt.id}
                 )
-                print(f"Assignment notification sent to washer {username}")
+                logger.info("notification_sent", event="assignment", username=username)
             else:
                 # Снят
                 await fcm_service.send_notification_to_tokens(
@@ -536,7 +573,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                     body=f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
                     data={"type": "appointment_updated", "id": appt.id}
                 )
-                print(f"Removal notification sent to washer {username}")
+                logger.info("notification_sent", event="removal", username=username)
 
     return appt
 

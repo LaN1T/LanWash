@@ -13,8 +13,10 @@ from services.auth_service import (
     get_current_user,
     validate_password_strength
 )
-import hashlib
 from core.security import encrypt_token
+
+import structlog
+logger = structlog.get_logger()
 
 from slowapi import _rate_limit_exceeded_handler
 
@@ -22,9 +24,6 @@ from slowapi import _rate_limit_exceeded_handler
 from core.limiter import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-def old_hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
 
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute") # P2: Ограничение 5 запросов в минуту на эндпоинт логина
@@ -35,19 +34,7 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
 
-    is_valid = False
-    # Пытаемся проверить bcrypt
-    try:
-        if verify_password(req.password, user.passwordHash):
-            is_valid = True
-    except Exception:
-        # Если это не bcrypt (старый формат), проверяем sha256
-        if user.passwordHash == old_hash_password(req.password):
-            is_valid = True
-            # Мигрируем на bcrypt
-            user.passwordHash = get_password_hash(req.password)
-            await db.commit()
-            await db.refresh(user)
+    is_valid = verify_password(req.password, user.passwordHash)
 
     if not is_valid:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
@@ -146,7 +133,7 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
 @router.post("/fcm-token")
 @limiter.limit("10/minute")
 async def save_fcm_token(request: Request, req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    print(f"DEBUG: save_fcm_token: user={current_user.username}, req_user={req.username}")
+    logger.debug("save_fcm_token", user=current_user.username, req_user=req.username)
     # Проверяем, что токен сохраняется для текущего пользователя (или админ сохраняет кому угодно - но обычно клиент сам за себя)
     if current_user.username != req.username and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете менять FCM токен другого пользователя")
@@ -155,12 +142,12 @@ async def save_fcm_token(request: Request, req: FcmTokenRequest, db: AsyncSessio
     existing = result.scalar_one_or_none()
     
     if existing:
-        print(f"DEBUG: Updating existing token for {req.username}")
+        logger.debug("updating_fcm_token", username=req.username)
         existing.token = encrypt_token(req.token)
         existing.platform = req.platform
         existing.updatedAt = datetime.now().isoformat()
     else:
-        print(f"DEBUG: Creating new token record for {req.username}")
+        logger.debug("creating_fcm_token", username=req.username)
         new_token = FcmToken(
             username=req.username,
             token=encrypt_token(req.token),
@@ -170,5 +157,5 @@ async def save_fcm_token(request: Request, req: FcmTokenRequest, db: AsyncSessio
         db.add(new_token)
     
     await db.commit()
-    print("DEBUG: FCM token saved successfully.")
+    logger.debug("fcm_token_saved")
     return {"status": "ok"}

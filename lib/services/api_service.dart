@@ -120,8 +120,33 @@ class ApiService {
     final result = await ApiClient.rawGet('/appointments/$queryString');
     return result.when(
       success: (resp) {
-        final list = jsonDecode(resp.body) as List;
-        final appointments = list.map((m) => Appointment.fromMap(m)).toList();
+        debugPrint(
+            '[ApiService.getAppointments] status=${resp.statusCode}, bodyLength=${resp.body.length}');
+        debugPrint('[ApiService.getAppointments] headers=${resp.headers}');
+
+        List<dynamic> list;
+        try {
+          list = jsonDecode(resp.body) as List;
+        } catch (e, st) {
+          debugPrint('[ApiService.getAppointments] jsonDecode ERROR: $e\n$st');
+          return PaginatedAppointments(
+            appointments: [],
+            totalPages: 1,
+            currentPage: 1,
+            currentDate: '',
+            uniqueDates: [],
+          );
+        }
+
+        final appointments = <Appointment>[];
+        for (final item in list) {
+          try {
+            appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
+          } catch (e, st) {
+            debugPrint(
+                '[ApiService.getAppointments] fromMap ERROR for item: $item\nError: $e\n$st');
+          }
+        }
 
         final totalPagesHeader =
             resp.headers['x-total-pages'] ?? resp.headers['X-Total-Pages'];
@@ -138,14 +163,20 @@ class ApiService {
             resp.headers['X-Current-Date'] ??
             '';
 
+        List<String> uniqueDates = [];
         final uniqueDatesHeader =
             resp.headers['x-unique-dates'] ?? resp.headers['X-Unique-Dates'];
-        List<String> uniqueDates = [];
-        if (uniqueDatesHeader != null) {
+        if (uniqueDatesHeader != null && uniqueDatesHeader.isNotEmpty) {
           try {
             uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
-          } catch (_) {}
+          } catch (e, st) {
+            debugPrint(
+                '[ApiService.getAppointments] uniqueDates decode ERROR: "$uniqueDatesHeader"\nError: $e\n$st');
+          }
         }
+
+        debugPrint(
+            '[ApiService.getAppointments] parsed: totalPages=$totalPages, currentPage=$currentPage, currentDate=$currentDate, appointments=${appointments.length}');
 
         return PaginatedAppointments(
           appointments: appointments,
@@ -156,7 +187,8 @@ class ApiService {
         );
       },
       failure: (err) {
-        debugPrint('[ApiService.getAppointments] error: ${err.message}');
+        debugPrint(
+            '[ApiService.getAppointments] error: ${err.message} (status=${err.statusCode})');
         return PaginatedAppointments(
             appointments: [],
             totalPages: 1,

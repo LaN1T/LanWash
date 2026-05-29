@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'service.dart';
 import 'wash_type.dart';
 
@@ -70,12 +71,14 @@ class Appointment {
         'box_index': box_index,
       };
 
-  factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
-        id: m['id'],
+  factory Appointment.fromMap(Map<String, dynamic> m) {
+    try {
+      return Appointment(
+        id: m['id'] ?? '',
         clientName: m['clientName'] ?? '',
         carModel: m['carModel'] ?? '',
         carNumber: m['carNumber'] ?? '',
-        dateTime: DateTime.parse(m['dateTime']),
+        dateTime: _parseDateTime(m['dateTime']),
         washTypeId: m['washTypeId']?.toString() ?? '',
         additionalServices: _parseExtras(m['additionalServices']),
         status: m['status'] ?? 'scheduled',
@@ -94,6 +97,25 @@ class Appointment {
         promoId: m['promoId']?.toString(),
         box_index: (m['box_index'] as num?)?.toInt() ?? 0,
       );
+    } catch (e, st) {
+      debugPrint('[Appointment.fromMap] ERROR parsing: $m\nError: $e\n$st');
+      rethrow;
+    }
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null || value == '') {
+      debugPrint(
+          '[Appointment._parseDateTime] WARNING: null/empty dateTime, using now()');
+      return DateTime.now();
+    }
+    try {
+      return DateTime.parse(value.toString());
+    } catch (e) {
+      debugPrint('[Appointment._parseDateTime] ERROR parsing "$value": $e');
+      return DateTime.now();
+    }
+  }
 
   static List<String> _parseExtras(dynamic v) {
     if (v == null) return [];
