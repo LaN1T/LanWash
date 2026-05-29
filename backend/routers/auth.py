@@ -110,12 +110,14 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     }
 
 @router.get("/washers", response_model=list[UserResponse])
-async def get_washers(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_washers(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(User).where(User.role == 'washer').order_by(User.displayName.asc()))
     return result.scalars().all()
 
 @router.put("/profile/{user_id}", response_model=UserResponse)
-async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def update_profile(request: Request, user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.id != user_id and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете редактировать чужой профиль")
 
@@ -142,7 +144,8 @@ async def update_profile(user_id: int, req: UpdateProfileRequest, db: AsyncSessi
     return user
 
 @router.post("/fcm-token")
-async def save_fcm_token(req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def save_fcm_token(request: Request, req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     print(f"DEBUG: save_fcm_token: user={current_user.username}, req_user={req.username}")
     # Проверяем, что токен сохраняется для текущего пользователя (или админ сохраняет кому угодно - но обычно клиент сам за себя)
     if current_user.username != req.username and current_user.role != 'admin':

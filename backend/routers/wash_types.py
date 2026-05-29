@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from core.limiter import limiter
 from sqlalchemy import select, delete
 from database import get_db
 from db_models import WashType, WashTypeIncludedExtra, User
@@ -27,14 +28,16 @@ async def _to_response(db: AsyncSession, wt: WashType) -> dict:
 
 
 @router.get("/", response_model=list[WashTypeResponse])
-async def get_all(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_all(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(WashType).order_by(WashType.sortOrder.asc()))
     wash_types = result.scalars().all()
     return [await _to_response(db, wt) for wt in wash_types]
 
 
 @router.get("/{wash_type_id}", response_model=WashTypeResponse)
-async def get_one(wash_type_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_one(request: Request, wash_type_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(WashType).where(WashType.id == wash_type_id))
     wt = result.scalar_one_or_none()
     if not wt:
@@ -43,7 +46,8 @@ async def get_one(wash_type_id: str, db: AsyncSession = Depends(get_db), current
 
 
 @router.put("/{wash_type_id}", response_model=WashTypeResponse)
-async def update(wash_type_id: str, req: WashTypeRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
+@limiter.limit("10/minute")
+async def update(request: Request, wash_type_id: str, req: WashTypeRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
     result = await db.execute(select(WashType).where(WashType.id == wash_type_id))
     wt = result.scalar_one_or_none()
     if not wt:
