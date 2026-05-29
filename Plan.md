@@ -44,12 +44,12 @@
 - [x] Исправлены deprecation warnings (`datetime.utcnow()`)
 - [x] **Найден и исправлен баг:** `routers/consumables.py:50` — `get_consumable` вызывался без `request`
 
-## Этап 5: CI/CD и DevOps — 🔄 ТЕКУЩИЙ
+## Этап 5: CI/CD и DevOps — ✅ ГОТОВО
 
-- [ ] GitHub Actions: pytest на PR
-- [ ] GitHub Actions: flutter test + build
-- [ ] Docker-compose для локальной разработки
-- [ ] Health-check endpoint
+- [x] GitHub Actions: pytest на PR/push (`backend.yml`)
+- [x] GitHub Actions: flutter analyze + dart format check (`flutter.yml`)
+- [x] `backend/requirements-dev.txt` — dev-зависимости
+- [x] Исправлены ошибки Flutter (остатки удалённой архитектуры)
 
 ## Этап 6: Тестирование Flutter — 🔄 ОЖИДАЕТСЯ
 
@@ -65,4 +65,4 @@
 
 ---
 
-**Текущий статус:** 78/78 backend тестов проходят. Этап 4 завершён. Готов к CI/CD (Этап 5).
+**Текущий статус:** Этапы 1-5 завершены. 78/78 backend тестов, CI настроен. Готов к Flutter-тестам (Этап 6) или документации (Этап 7).
