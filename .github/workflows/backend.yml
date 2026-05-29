@@ -39,6 +39,7 @@ jobs:
 
       - name: Run tests with pytest
         env:
+          ENVIRONMENT: testing
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           JWT_SECRET_KEY: test_secret_key_minimum_32_chars_long
           INITIAL_ADMIN_PASSWORD: TestPass123!
