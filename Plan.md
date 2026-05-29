@@ -1,0 +1,60 @@
+# План разработки LanWash
+
+## Этап 1: Критическая безопасность (P0) — ✅ ГОТОВО
+
+- [x] Удаление `serviceAccountKey.json` из git-истории (git-filter-repo)
+- [x] Ревокнут ключ в Firebase Console
+- [x] Добавлен `.env` + `.env.example`
+- [x] Git-ignore для `.env`, `*.key`, `serviceAccountKey.json`
+- [x] Pre-commit hook для проверки секретов (опционально)
+
+## Этап 2: Backend Security (P1) — ✅ ГОТОВО
+
+- [x] CORS из `ALLOWED_ORIGINS` (не `*`)
+- [x] JWT min 32 chars валидация при старте
+- [x] Rate limiting (slowapi) на все endpoints
+- [x] Security headers middleware
+- [x] Pydantic валидация (`max_length`, `ge=0`, `Literal`)
+- [x] Debug route за `DEBUG=true`
+
+## Этап 3: Flutter рефакторинг (P2-P3) — ✅ ГОТОВО
+
+- [x] `AppConfig` через dart-define
+- [x] `ApiResult<T>` + sealed классы
+- [x] `ApiClient` (централизованный HTTP, retry, JWT auto, таймаут)
+- [x] `ApiService` переписан на `ApiClient`
+- [x] `AuthProvider` / `AppProvider` с `errorMessage` и обработкой ошибок
+- [x] DI через `get_it` (`lib/core/service_locator.dart`)
+- [x] Удалена мёртвая архитектура (71 файл, 11422 строки)
+
+## Этап 4: Тестирование бэкенда (pytest) — ✅ ГОТОВО
+
+- [x] `pytest.ini` + `pytest-asyncio` strict mode
+- [x] `tests/conftest.py` — SQLite in-memory, async client, отключение rate limiting
+- [x] `tests/test_auth.py` — регистрация, логин, профиль, защищённые endpoint
+- [x] `tests/test_security.py` — валидация пароля, JWT encode/decode, expiration
+- [x] Все **18/18 тестов проходят**
+- [x] Исправлены deprecation warnings (`datetime.utcnow()`)
+
+## Этап 5: Тестирование Flutter — 🔄 ОЖИДАЕТСЯ
+
+- [ ] Unit-тесты для `ApiResult`, `ApiClient`
+- [ ] Моки для `ApiService`
+- [ ] Widget-тесты для критических экранов
+
+## Этап 6: CI/CD и DevOps — 🔄 ОЖИДАЕТСЯ
+
+- [ ] GitHub Actions: pytest на PR
+- [ ] GitHub Actions: flutter test + build
+- [ ] Docker-compose для локальной разработки
+- [ ] Health-check endpoint
+
+## Этап 7: Документация — 🔄 ОЖИДАЕТСЯ
+
+- [ ] API документация (FastAPI auto-docs улучшить)
+- [ ] README.md обновить
+- [ ] Архитектурная документация (ADR)
+
+---
+
+**Текущий статус:** 18/18 backend тестов проходят. Готов к следующему этапу.
