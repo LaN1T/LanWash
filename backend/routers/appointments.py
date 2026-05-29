@@ -46,65 +46,91 @@ async def get_all(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 1. Получаем список всех уникальных дат (дней), отсортированных по убыванию
+    # Build date extraction query — dateTime is stored as ISO string YYYY-MM-DDTHH:mm:ss
+    date_extract = func.substr(Appointment.dateTime, 1, 10)
+
+    # 1. Get unique dates (days) in descending order
     if current_user.role == 'admin':
         dates_query = (
-            select(func.substr(Appointment.dateTime, 1, 10))
+            select(date_extract)
+            .where(Appointment.dateTime != None, Appointment.dateTime != '')
             .distinct()
-            .order_by(func.substr(Appointment.dateTime, 1, 10).desc())
+            .order_by(date_extract.desc())
         )
     else:
         dates_query = (
-            select(func.substr(Appointment.dateTime, 1, 10))
-            .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+            select(date_extract)
+            .where(
+                Appointment.dateTime != None,
+                Appointment.dateTime != '',
+                or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
+            )
             .distinct()
-            .order_by(func.substr(Appointment.dateTime, 1, 10).desc())
+            .order_by(date_extract.desc())
         )
+
     dates_res = await db.execute(dates_query)
     unique_dates = [row[0] for row in dates_res.all() if row[0]]
-
     total_pages = len(unique_dates)
 
+    logger.debug(
+        "appointments_pagination",
+        role=current_user.role,
+        total_dates=total_pages,
+        unique_dates=unique_dates[:5],
+        requested_page=page,
+        requested_date=date,
+    )
+
+    # 2. Determine target date
+    target_date: str | None = None
     if date:
-        # Если передана конкретная дата, пытаемся найти её в списке уникальных дат
         clean_date = date[:10]
         if clean_date in unique_dates:
             page = unique_dates.index(clean_date) + 1
             target_date = clean_date
         else:
+            # Date not found — return empty but preserve headers
             page = 1
             target_date = clean_date
     else:
-        if total_pages == 0 or page > total_pages or page < 1:
-            target_date = None
-        else:
+        if total_pages > 0 and 1 <= page <= total_pages:
             target_date = unique_dates[page - 1]
 
     response.headers["X-Total-Pages"] = str(total_pages)
     response.headers["X-Current-Page"] = str(page)
-    response.headers["X-Current-Date"] = target_date if target_date else ""
+    response.headers["X-Current-Date"] = target_date or ""
     response.headers["X-Unique-Dates"] = json.dumps(unique_dates)
 
-    if not target_date or total_pages == 0 or page > total_pages:
+    if not target_date:
+        logger.debug("appointments_empty", reason="no_target_date", total_pages=total_pages, page=page)
         return []
 
-    # 2. Выбираем все записи на этот конкретный день
+    # 3. Fetch appointments for the target date
     if current_user.role == 'admin':
         result = await db.execute(
             select(Appointment)
-            .where(func.substr(Appointment.dateTime, 1, 10) == target_date)
+            .where(date_extract == target_date)
             .order_by(Appointment.dateTime.asc())
         )
     else:
         result = await db.execute(
             select(Appointment)
             .where(
-                func.substr(Appointment.dateTime, 1, 10) == target_date,
+                date_extract == target_date,
                 or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
             )
             .order_by(Appointment.dateTime.asc())
         )
-    return result.scalars().all()
+
+    appointments = result.scalars().all()
+    logger.debug(
+        "appointments_fetched",
+        role=current_user.role,
+        target_date=target_date,
+        count=len(appointments),
+    )
+    return appointments
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
