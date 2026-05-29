@@ -172,6 +172,10 @@ class LogRequest(BaseModel):
     details: str = Field(default="", max_length=1000)
 
 
+class LogQueryParams(BaseModel):
+    limit: int = Field(default=200, ge=1, le=1000)
+
+
 class LogResponse(BaseModel):
     id: int
     username: str

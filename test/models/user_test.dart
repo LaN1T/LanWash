@@ -38,7 +38,7 @@ void main() {
       expect(user.isFavoriteAdmin, isFalse);
     });
 
-    test('toMap serializes correctly', () {
+    test('toMap serializes correctly without passwordHash', () {
       final user = User(
         id: 2,
         username: 'u',
@@ -53,19 +53,8 @@ void main() {
       expect(map['id'], equals(2));
       expect(map['role'], equals('washer'));
       expect(map['isFavoriteAdmin'], equals(1));
-    });
-
-    test('hashPassword produces consistent SHA256', () {
-      final h1 = User.hashPassword('secret');
-      final h2 = User.hashPassword('secret');
-      expect(h1, equals(h2));
-      expect(h1, isNot(equals(User.hashPassword('other'))));
-    });
-
-    test('checkPassword validates correctly', () {
-      final hash = User.hashPassword('pass');
-      expect(User.checkPassword('pass', hash), isTrue);
-      expect(User.checkPassword('wrong', hash), isFalse);
+      // Security: passwordHash must never be serialized to client storage
+      expect(map.containsKey('passwordHash'), isFalse);
     });
 
     test('copyWith updates selected fields', () {

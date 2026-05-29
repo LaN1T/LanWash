@@ -125,7 +125,7 @@ class PdfExportService {
                       bytes: pdfBytes, filename: '$fileName.pdf');
                 }
               } catch (e) {
-                print("Ошибка сохранения: $e");
+                debugPrint("PDF save error: $e");
               }
             },
             child: const Text('Скачать'),

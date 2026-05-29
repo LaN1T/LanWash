@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from db_models import Appointment, WashType, Service, Promo, WashTypeIncludedExtra, PromoIncludedExtra
+import structlog
+
+logger = structlog.get_logger()
 
 NUM_BOXES = 2  # Можно вынести в конфиг или БД
 
@@ -93,15 +96,15 @@ class WorkloadService:
                 
                 # Overlap check
                 if start_dt < appt_end and end_dt > appt_start:
-                    print(f"[DEBUG] Box {box_idx + 1} conflict with appt {appt.id}: {appt_start} to {appt_end}")
+                    logger.debug("box_conflict", box=box_idx + 1, appt_id=appt.id, appt_start=appt_start.isoformat(), appt_end=appt_end.isoformat())
                     is_free = False
                     break
             
             if is_free:
-                print(f"[DEBUG] Found free box {box_idx + 1} for {dt_str} ({duration_minutes} min)")
+                logger.debug("box_found", box=box_idx + 1, dt_str=dt_str, duration=duration_minutes)
                 return box_idx
         
-        print(f"[DEBUG] No free box found for {dt_str} ({duration_minutes} min)")
+        logger.debug("no_free_box", dt_str=dt_str, duration=duration_minutes)
         return -1
 
     @staticmethod

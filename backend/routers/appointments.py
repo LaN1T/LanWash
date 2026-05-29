@@ -16,6 +16,9 @@ from services.fcm_service import fcm_service
 from services.workload_service import workload_service
 from services.auth_service import get_current_user, check_roles
 from core.security import decrypt_token
+import structlog
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
@@ -276,8 +279,8 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     original_box_index = appt.box_index
     
     # Логирование для отладки прав доступа
-    print(f"DEBUG: Updating appointment {appt_id} by {current_user.username} (role: {current_user.role})")
-    print(f"DEBUG: Appointment owner: {appt.ownerUsername}")
+    logger.debug("updating_appointment", appt_id=appt_id, username=current_user.username, role=current_user.role)
+    logger.debug("appointment_owner", owner=appt.ownerUsername)
 
     # Разрешаем владельцу, админу или мойщику редактировать запись
     # Проверяем, является ли текущий пользователь владельцем, админом или мойщиком
@@ -286,7 +289,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     is_washer = current_user.role == 'washer'
     
     if not (is_owner or is_admin or is_washer):
-        print(f"DEBUG: Access denied. (is_owner={is_owner}, is_admin={is_admin}, is_washer={is_washer})")
+        logger.debug("access_denied", is_owner=is_owner, is_admin=is_admin, is_washer=is_washer)
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
 
     old_status = appt.status
@@ -345,7 +348,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         if appt.box_index != original_box_index: admin_made_changes = True
 
         if admin_made_changes:
-            print(f"Admin made real changes to appointment {appt.id}, triggering notification.")
+            logger.info("admin_changes_triggered", appt_id=appt.id)
             appt.isModifiedByAdmin = 1
             appt.isSeenByClient = 0
         # If no changes, the flags (isModifiedByAdmin, isSeenByClient) remain as they were
@@ -514,7 +517,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                 decrypted = decrypt_token(t)
                 tokens.append(decrypted)
             except Exception as e:
-                print(f"DEBUG: Failed to decrypt token for {username}: {e}")
+                logger.warning("token_decrypt_failed", username=username, error=str(e))
         
         if tokens:
             dt_str = format_date(appt.dateTime)
@@ -527,7 +530,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                     body=f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
                     data={"type": "appointment_updated", "id": appt.id}
                 )
-                print(f"Assignment notification sent to washer {username}")
+                logger.info("notification_sent", event="assignment", username=username)
             else:
                 # Снят
                 await fcm_service.send_notification_to_tokens(
@@ -536,7 +539,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                     body=f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
                     data={"type": "appointment_updated", "id": appt.id}
                 )
-                print(f"Removal notification sent to washer {username}")
+                logger.info("notification_sent", event="removal", username=username)
 
     return appt
 
