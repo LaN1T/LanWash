@@ -28,9 +28,13 @@ app = FastAPI(title="LanWash API", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — разрешаем все origins для разработки
-# NOTE: для продакшена ограничить список origins!
-ALLOWED_ORIGINS = ["*"]
+# CORS — читаем разрешённые origins из .env
+# ВАЖНО: никогда не используйте ["*"] с allow_credentials=True в production!
+_cors_raw = os.getenv("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
+if not ALLOWED_ORIGINS:
+    # Fallback для локальной разработки
+    ALLOWED_ORIGINS = ["http://localhost:8080", "http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +43,18 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # response.headers["Content-Security-Policy"] = "default-src 'self'"  # Раскомментируй при необходимости
+    return response
 
 
 # Подключаем роутеры
