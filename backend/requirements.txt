@@ -1,12 +1,15 @@
 fastapi==0.111.0
 uvicorn==0.30.1
 pydantic
+pydantic-settings>=2.0
 python-dotenv==1.0.0
 aiosqlite==0.20.0
 SQLAlchemy>=2.0.36
 asyncpg
 greenlet
+alembic>=1.13
 firebase-admin
 python-jose[cryptography]
 passlib[bcrypt]
 slowapi
+structlog>=24.0

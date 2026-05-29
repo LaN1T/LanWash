@@ -189,12 +189,14 @@ Push-уведомления  <--------  Push-токены
 | Бэкенд | Python 3.11+, FastAPI |
 | ORM | SQLAlchemy 2.0 (async) |
 | База данных | PostgreSQL 15+ |
-| Миграции | Встроенная инициализация через SQLAlchemy |
+| Миграции | Alembic |
 | Аутентификация | JWT + Argon2 |
 | Push-уведомления | Firebase Cloud Messaging |
 | HTTP-клиент | http (Dart) |
 | Локализация | intl (ru) |
 | Контейнеризация | Docker, Docker Compose |
+| Логирование | structlog (JSON в production) |
+| Конфигурация | pydantic-settings |
 
 ---
 
@@ -208,9 +210,15 @@ Push-уведомления  <--------  Push-токены
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 # Создай .env по образцу .env.example
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Development — автоматическое создание таблиц
+ENVIRONMENT=development uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Production — сначала миграции, потом запуск
+ENVIRONMENT=production alembic upgrade head
+ENVIRONMENT=production uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 **Через Docker:**
@@ -235,13 +243,21 @@ flutter run
 Создай файл `backend/.env` по образцу `backend/.env.example`:
 
 ```
+ENVIRONMENT=development
 DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/lanwash
 JWT_SECRET_KEY=your-secret-key-min-32-characters-long
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 INITIAL_ADMIN_PASSWORD=your-secure-admin-password
-FCM_PROJECT_ID=your-firebase-project-id
-FCM_CLIENT_EMAIL=your-service-account-email
-FCM_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
+DEBUG=false
+
+# Firebase (опционально)
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account-email
+FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+
+# FCM шифрование (опционально, если не задано — derived from JWT_SECRET_KEY)
+# FCM_ENCRYPTION_KEY=your-32-byte-base64-key
 ```
 
 **Важно:** никогда не коммить `.env` и `firebase.json` в репозиторий.
@@ -276,6 +292,7 @@ FCM_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 | `/api/notes` | Заметки мойщикам | admin/washer |
 | `/api/logs` | Журнал действий | admin (чтение/очистка), публичное создание |
 | `/api/reports` | Аналитические отчёты | admin |
+| `/health` | Health check (uptime, версия, статус) | Публично |
 
 ### Пагинация записей
 
@@ -324,6 +341,8 @@ GitHub Actions автоматически запускаются при push/PR:
 ```
 LanWash/
 ├── backend/                 # FastAPI + SQLAlchemy
+│   ├── alembic/             # Миграции БД
+│   ├── core/                # Config, logging, limiter, security
 │   ├── routers/             # API endpoint'ы
 │   ├── services/            # Бизнес-логика (auth, FCM, workload)
 │   ├── models.py            # Pydantic схемы
@@ -354,9 +373,29 @@ LanWash/
 - Security headers middleware
 - Pydantic валидация входных данных
 - Debug endpoint'ы скрыты за флагом `DEBUG=true`
+- Конфигурация валидируется pydantic-settings при старте
+- Структурированное логирование (structlog)
 
 ---
 
-## Лицензия
+## Миграции базы данных
 
-Проект создан в учебных целях.
+Проект использует Alembic для управления схемой БД.
+
+```bash
+cd backend
+
+# Создать новую миграцию (после изменения db_models.py)
+alembic revision --autogenerate -m "описание изменений"
+
+# Применить все миграции
+alembic upgrade head
+
+# Откатить последнюю миграцию
+alembic downgrade -1
+
+# Текущая версия
+alembic current
+```
+
+В production миграции применяются отдельно перед запуском приложения. В development и testing таблицы создаются автоматически через `Base.metadata.create_all`.
