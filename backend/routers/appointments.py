@@ -1,5 +1,5 @@
 import json
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_
 from database import get_db
@@ -32,27 +32,69 @@ async def get_last_updated(db: AsyncSession = Depends(get_db)):
 
 @router.get("/", response_model=list[AppointmentResponse])
 async def get_all(
+    response: Response,
     page: int = 1,
-    limit: int = 6,
+    date: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # P0: IDOR check for get_all - allow admin to see all, others only non-hidden
-    offset = (page - 1) * limit
+    # 1. Получаем список всех уникальных дат (дней), отсортированных по убыванию
+    if current_user.role == 'admin':
+        dates_query = (
+            select(func.substr(Appointment.dateTime, 1, 10))
+            .distinct()
+            .order_by(func.substr(Appointment.dateTime, 1, 10).desc())
+        )
+    else:
+        dates_query = (
+            select(func.substr(Appointment.dateTime, 1, 10))
+            .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+            .distinct()
+            .order_by(func.substr(Appointment.dateTime, 1, 10).desc())
+        )
+    dates_res = await db.execute(dates_query)
+    unique_dates = [row[0] for row in dates_res.all() if row[0]]
+
+    total_pages = len(unique_dates)
+
+    if date:
+        # Если передана конкретная дата, пытаемся найти её в списке уникальных дат
+        clean_date = date[:10]
+        if clean_date in unique_dates:
+            page = unique_dates.index(clean_date) + 1
+            target_date = clean_date
+        else:
+            page = 1
+            target_date = clean_date
+    else:
+        if total_pages == 0 or page > total_pages or page < 1:
+            target_date = None
+        else:
+            target_date = unique_dates[page - 1]
+
+    response.headers["X-Total-Pages"] = str(total_pages)
+    response.headers["X-Current-Page"] = str(page)
+    response.headers["X-Current-Date"] = target_date if target_date else ""
+    response.headers["X-Unique-Dates"] = json.dumps(unique_dates)
+
+    if not target_date or total_pages == 0 or page > total_pages:
+        return []
+
+    # 2. Выбираем все записи на этот конкретный день
     if current_user.role == 'admin':
         result = await db.execute(
             select(Appointment)
+            .where(func.substr(Appointment.dateTime, 1, 10) == target_date)
             .order_by(Appointment.dateTime.asc())
-            .offset(offset)
-            .limit(limit)
         )
     else:
         result = await db.execute(
             select(Appointment)
-            .where(or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None))
+            .where(
+                func.substr(Appointment.dateTime, 1, 10) == target_date,
+                or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
+            )
             .order_by(Appointment.dateTime.asc())
-            .offset(offset)
-            .limit(limit)
         )
     return result.scalars().all()
 

@@ -12,6 +12,22 @@ import '../models/report_entry.dart';
 import '../models/promo.dart';
 import '../models/wash_type.dart';
 
+class PaginatedAppointments {
+  final List<Appointment> appointments;
+  final int totalPages;
+  final int currentPage;
+  final String currentDate;
+  final List<String> uniqueDates;
+
+  PaginatedAppointments({
+    required this.appointments,
+    required this.totalPages,
+    required this.currentPage,
+    required this.currentDate,
+    required this.uniqueDates,
+  });
+}
+
 class ApiService {
   static String get _baseUrl => ApiConstants.baseUrl;
 
@@ -121,21 +137,45 @@ class ApiService {
   }
 
   // ─── Appointments ───────────────────────────────────────────────────────────
-  Future<List<Appointment>> getAppointments({int? page, int? limit}) async {
+  Future<PaginatedAppointments> getAppointments({int? page, String? date}) async {
     try {
       final queryParams = <String>[];
       if (page != null) queryParams.add('page=$page');
-      if (limit != null) queryParams.add('limit=$limit');
+      if (date != null) queryParams.add('date=$date');
       final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
       
       final resp = await http.get(Uri.parse('$_baseUrl/appointments/$queryString'), headers: await _getHeaders())
           .timeout(const Duration(seconds: 10));
       if (resp.statusCode == 200) {
         final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Appointment.fromMap(m)).toList();
+        final appointments = list.map((m) => Appointment.fromMap(m)).toList();
+        
+        final totalPagesHeader = resp.headers['x-total-pages'] ?? resp.headers['X-Total-Pages'];
+        final totalPages = totalPagesHeader != null ? int.tryParse(totalPagesHeader) ?? 1 : 1;
+        
+        final currentPageHeader = resp.headers['x-current-page'] ?? resp.headers['X-Current-Page'];
+        final currentPage = currentPageHeader != null ? int.tryParse(currentPageHeader) ?? 1 : 1;
+        
+        final currentDate = resp.headers['x-current-date'] ?? resp.headers['X-Current-Date'] ?? '';
+        
+        final uniqueDatesHeader = resp.headers['x-unique-dates'] ?? resp.headers['X-Unique-Dates'];
+        List<String> uniqueDates = [];
+        if (uniqueDatesHeader != null) {
+          try {
+            uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
+          } catch (_) {}
+        }
+        
+        return PaginatedAppointments(
+          appointments: appointments,
+          totalPages: totalPages,
+          currentPage: currentPage,
+          currentDate: currentDate,
+          uniqueDates: uniqueDates,
+        );
       }
     } catch (_) {}
-    return [];
+    return PaginatedAppointments(appointments: [], totalPages: 1, currentPage: 1, currentDate: '', uniqueDates: []);
   }
 
   Future<Map<String, dynamic>> getLastUpdated() async {

@@ -39,8 +39,18 @@ class AppProvider extends ChangeNotifier {
   final bool _loadingApi = false;
   int  _unreadNotes = 0;
   int  _currentPage = 1;
+  int  _totalPages = 1;
+  String _currentDate = '';
+  List<String> _uniqueDates = [];
+  
+  final Map<int, List<Appointment>> _cacheAppointments = {};
+  final Map<int, String> _cacheDates = {};
+  final Map<int, int> _cacheTotalPages = {};
 
   int               get currentPage    => _currentPage;
+  int               get totalPages     => _totalPages;
+  String            get currentDate    => _currentDate;
+  List<String>      get uniqueDates    => _uniqueDates;
   List<Appointment> get appointments   => _appointmentList;
   List<Service>     get services       => _serviceList;
   List<Promo>       get promos         => _promoList;
@@ -80,15 +90,86 @@ class AppProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<List<Appointment>> _fetchAppointments(AuthProvider auth) {
-    if (auth.isAdmin) return _api.getAppointments(page: _currentPage, limit: 6);
+  void clearCache() {
+    _cacheAppointments.clear();
+    _cacheDates.clear();
+    _cacheTotalPages.clear();
+  }
+
+  Future<List<Appointment>> _fetchAppointments(AuthProvider auth, {String? targetDate}) async {
+    if (auth.isAdmin) {
+      final res = await _api.getAppointments(page: _currentPage, date: targetDate);
+      _totalPages = res.totalPages;
+      _currentPage = res.currentPage;
+      _currentDate = res.currentDate;
+      _uniqueDates = res.uniqueDates;
+      
+      // Update cache
+      _cacheAppointments[_currentPage] = res.appointments;
+      _cacheDates[_currentPage] = res.currentDate;
+      _cacheTotalPages[_currentPage] = res.totalPages;
+      
+      return res.appointments;
+    }
     if (auth.isWasher) return _api.getAppointmentsByWasher(auth.userLogin);
     return _api.getAppointmentsByOwner(auth.userLogin);
   }
 
+  Future<void> _prefetchAdjacent(AuthProvider auth) async {
+    if (!auth.isAdmin) return;
+    
+    final current = _currentPage;
+    final next = current + 1;
+    final prev = current - 1;
+    
+    if (next <= _totalPages && !_cacheAppointments.containsKey(next)) {
+      _api.getAppointments(page: next).then((res) {
+        _cacheAppointments[next] = res.appointments;
+        _cacheDates[next] = res.currentDate;
+        _cacheTotalPages[next] = res.totalPages;
+      }).catchError((_) {});
+    }
+    
+    if (prev >= 1 && !_cacheAppointments.containsKey(prev)) {
+      _api.getAppointments(page: prev).then((res) {
+        _cacheAppointments[prev] = res.appointments;
+        _cacheDates[prev] = res.currentDate;
+        _cacheTotalPages[prev] = res.totalPages;
+      }).catchError((_) {});
+    }
+  }
+
   Future<void> setPage(int page, AuthProvider auth) async {
+    if (!auth.isAdmin) return;
+    if (page < 1 || page > _totalPages) return;
+    
     _currentPage = page;
-    await reloadAppointments(auth);
+    
+    if (_cacheAppointments.containsKey(page)) {
+      _appointmentList = _cacheAppointments[page]!;
+      _currentDate = _cacheDates[page]!;
+      _totalPages = _cacheTotalPages[page]!;
+      notifyListeners();
+      
+      _prefetchAdjacent(auth);
+      
+      _fetchAppointments(auth).then((freshList) {
+        _appointmentList = freshList;
+        notifyListeners();
+      }).catchError((_) {});
+    } else {
+      _appointmentList = await _fetchAppointments(auth);
+      notifyListeners();
+      _prefetchAdjacent(auth);
+    }
+  }
+
+  Future<void> setDate(String date, AuthProvider auth) async {
+    if (!auth.isAdmin) return;
+    clearCache();
+    _appointmentList = await _fetchAppointments(auth, targetDate: date);
+    notifyListeners();
+    _prefetchAdjacent(auth);
   }
 
   bool _hasSignificantChanges(List<Appointment> oldList, List<Appointment> newList) {
@@ -107,6 +188,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> init(AuthProvider auth) async {
     _loading = true;
     notifyListeners();
+    clearCache();
     try {
       _serviceList  = await _api.getServices();
       _promoList    = await _api.getPromos();
@@ -119,12 +201,14 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> reloadAppointments(AuthProvider auth) async {
+    clearCache();
     _appointmentList = await _fetchAppointments(auth);
     notifyListeners();
   }
 
   Future<void> reloadForUser(String username, AuthProvider auth) async {
     _currentUser = username.toLowerCase();
+    clearCache();
     _appointmentList = await _fetchAppointments(auth);
     _extraFavSet     = await _api.getExtraFavorites(_currentUser);
     _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
