@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Literal
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -15,17 +15,17 @@ class LoginResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    displayName: str
-    phone: str = ""
-    carModel: str = ""
-    carNumber: str = ""
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=128)
+    displayName: str = Field(..., min_length=1, max_length=100)
+    phone: str = Field(default="", max_length=20)
+    carModel: str = Field(default="", max_length=50)
+    carNumber: str = Field(default="", max_length=20)
 
 
 class UserResponse(BaseModel):
@@ -41,28 +41,28 @@ class UserResponse(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
-    displayName: Optional[str] = None
-    phone: Optional[str] = None
-    carModel: Optional[str] = None
-    carNumber: Optional[str] = None
-    newPassword: Optional[str] = None
+    displayName: Optional[str] = Field(default=None, max_length=100)
+    phone: Optional[str] = Field(default=None, max_length=20)
+    carModel: Optional[str] = Field(default=None, max_length=50)
+    carNumber: Optional[str] = Field(default=None, max_length=20)
+    newPassword: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 
 class FcmTokenRequest(BaseModel):
-    username: str
-    token: str
-    platform: str
+    username: str = Field(..., min_length=3, max_length=50)
+    token: str = Field(..., min_length=1, max_length=1000)
+    platform: str = Field(..., max_length=20)
 
 
 # ─── Wash Types ──────────────────────────────────────────────────────────────
 class WashTypeRequest(BaseModel):
-    id: str
-    code: str
-    name: str
-    description: str = ""
-    basePrice: int = 0
-    durationMinutes: int = 30
-    sortOrder: int = 0
+    id: str = Field(..., max_length=36)
+    code: str = Field(..., max_length=20)
+    name: str = Field(..., max_length=100)
+    description: str = Field(default="", max_length=500)
+    basePrice: int = Field(default=0, ge=0)
+    durationMinutes: int = Field(default=30, ge=0)
+    sortOrder: int = Field(default=0, ge=0)
     includedExtraIds: List[str] = []
 
 
@@ -79,26 +79,26 @@ class WashTypeResponse(BaseModel):
 
 # ─── Appointments ────────────────────────────────────────────────────────────
 class AppointmentRequest(BaseModel):
-    id: str
-    clientName: str
-    carModel: str
-    carNumber: str
-    dateTime: str
-    washTypeId: str
-    additionalServices: str = "[]"
-    status: str = "scheduled"
-    notes: str = ""
+    id: str = Field(..., max_length=36)
+    clientName: str = Field(..., max_length=100)
+    carModel: str = Field(..., max_length=50)
+    carNumber: str = Field(..., max_length=20)
+    dateTime: str = Field(..., max_length=25)
+    washTypeId: str = Field(..., max_length=36)
+    additionalServices: str = Field(default="[]", max_length=1000)
+    status: Literal["scheduled", "in_progress", "completed", "cancelled"] = "scheduled"
+    notes: str = Field(default="", max_length=1000)
     isFavorite: bool = False
-    ownerUsername: str = ""
-    promoPrice: int = 0
-    paidPrice: int = 0
+    ownerUsername: str = Field(default="", max_length=50)
+    promoPrice: int = Field(default=0, ge=0)
+    paidPrice: int = Field(default=0, ge=0)
     isModifiedByAdmin: bool = False
     isModifiedByWasher: bool = False
     isSeenByClient: bool = True
-    originalPrice: int = 0
-    assignedWasher: str = "[]"
-    promoId: Optional[str] = None
-    box_index: int = 0
+    originalPrice: int = Field(default=0, ge=0)
+    assignedWasher: str = Field(default="[]", max_length=500)
+    promoId: Optional[str] = Field(default=None, max_length=36)
+    box_index: int = Field(default=0, ge=0)
 
 
 class AppointmentResponse(BaseModel):
@@ -126,17 +126,17 @@ class AppointmentResponse(BaseModel):
 
 
 class AssignWasherRequest(BaseModel):
-    washerUsername: str
+    washerUsername: str = Field(..., min_length=3, max_length=50)
 
 
 # ─── Services ────────────────────────────────────────────────────────────────
 class ServiceRequest(BaseModel):
-    id: str
-    name: str
-    description: str = ""
-    price: int = 0
-    durationMinutes: int = 30
-    category: str = ""
+    id: str = Field(..., max_length=36)
+    name: str = Field(..., max_length=100)
+    description: str = Field(default="", max_length=500)
+    price: int = Field(default=0, ge=0)
+    durationMinutes: int = Field(default=30, ge=0)
+    category: str = Field(default="", max_length=50)
     isFavorite: bool = False
     isFromApi: bool = False
 
@@ -167,9 +167,9 @@ class PromoResponse(BaseModel):
 
 # ─── Logs ────────────────────────────────────────────────────────────────────
 class LogRequest(BaseModel):
-    username: str
-    action: str
-    details: str = ""
+    username: str = Field(..., min_length=3, max_length=50)
+    action: str = Field(..., max_length=100)
+    details: str = Field(default="", max_length=1000)
 
 
 class LogResponse(BaseModel):
@@ -182,9 +182,9 @@ class LogResponse(BaseModel):
 
 # ─── Washer Notes ────────────────────────────────────────────────────────────
 class NoteRequest(BaseModel):
-    title: str
-    message: str = ""
-    category: str = "general"
+    title: str = Field(..., max_length=200)
+    message: str = Field(default="", max_length=2000)
+    category: str = Field(default="general", max_length=50)
 
 
 class NoteResponse(BaseModel):
@@ -199,8 +199,8 @@ class NoteResponse(BaseModel):
 
 # ─── Consumables ─────────────────────────────────────────────────────────────
 class ConsumableRequest(BaseModel):
-    name: str
-    unit: str = ""
+    name: str = Field(..., max_length=100)
+    unit: str = Field(default="", max_length=20)
 
 class ConsumableResponse(BaseModel):
     id: str
@@ -208,9 +208,9 @@ class ConsumableResponse(BaseModel):
     unit: str
 
 class ServiceConsumableRequest(BaseModel):
-    serviceId: str
-    consumableId: str
-    quantity_per_service: float
+    serviceId: str = Field(..., max_length=36)
+    consumableId: str = Field(..., max_length=36)
+    quantity_per_service: float = Field(..., ge=0)
 
 class ServiceConsumableResponse(BaseModel):
     serviceId: str
@@ -220,10 +220,10 @@ class ServiceConsumableResponse(BaseModel):
 
 # ─── Favorites ───────────────────────────────────────────────────────────────
 class ToggleFavoriteRequest(BaseModel):
-    username: str
-    serviceId: str
+    username: str = Field(..., min_length=3, max_length=50)
+    serviceId: str = Field(..., max_length=36)
 
 
 class ToggleExtraFavoriteRequest(BaseModel):
-    username: str
-    serviceId: str
+    username: str = Field(..., min_length=3, max_length=50)
+    serviceId: str = Field(..., max_length=36)
