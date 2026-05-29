@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from core.limiter import limiter
 from sqlalchemy import select, func, and_, cast, String
 from database import get_db
 from db_models import (
@@ -37,7 +38,8 @@ class CarPriceService:
 
 
 @router.get("/monthly-check-vs-price/")
-async def monthly_report(date: str = None, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def monthly_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db)):
     if not date:
         date = datetime.now().strftime("%Y-%m")
     result = await db.execute(
@@ -65,7 +67,8 @@ async def monthly_report(date: str = None, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/popular-additional-services/")
-async def get_popular_additional_services(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def get_popular_additional_services(request: Request, date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
     if not date:
         date = datetime.now().strftime("%Y-%m")
 
@@ -138,7 +141,8 @@ async def get_popular_additional_services(date: str = None, category: str = None
 
 
 @router.get("/consumables-usage/")
-async def get_consumables_usage(date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def get_consumables_usage(request: Request, date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
     if not date:
         date = datetime.now().strftime("%Y-%m")
 

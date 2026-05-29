@@ -1,5 +1,6 @@
 import json
-from fastapi import APIRouter, HTTPException, Depends, status, Response
+from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
+from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_
 from database import get_db
@@ -19,19 +20,23 @@ from core.security import decrypt_token
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 @router.get("/busy-slots", response_model=dict)
-async def get_busy_slots(date: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def get_busy_slots(request: Request, date: str, db: AsyncSession = Depends(get_db)):
     """date: YYYY-MM-DD"""
     return await workload_service.get_busy_slots(db, date)
 
 @router.get("/last-updated", response_model=dict)
-async def get_last_updated(db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def get_last_updated(request: Request, db: AsyncSession = Depends(get_db)):
     # Lightweight check: count of appointments and max ID as a proxy for 'has changed'
     res = await db.execute(select(func.count(Appointment.id), func.max(Appointment.id)))
     count, max_id = res.one()
     return {"count": count, "max_id": max_id}
 
 @router.get("/", response_model=list[AppointmentResponse])
+@limiter.limit("60/minute")
 async def get_all(
+    request: Request,
     response: Response,
     page: int = 1,
     date: str | None = None,
@@ -99,7 +104,8 @@ async def get_all(
     return result.scalars().all()
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
-async def get_by_owner(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_by_owner(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only owner or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя.")
@@ -107,7 +113,8 @@ async def get_by_owner(username: str, db: AsyncSession = Depends(get_db), curren
     return result.scalars().all()
 
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
-async def get_by_washer(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_by_washer(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only washer or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
@@ -154,7 +161,8 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
         ))
 
 @router.post("/", response_model=AppointmentResponse)
-async def create(req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def create(request: Request, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
     
     if current_user.username != owner_username.lower() and current_user.role != 'admin':
@@ -242,7 +250,8 @@ def format_date(dt_str):
 
 
 @router.put("/{appt_id}", response_model=AppointmentResponse)
-async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
     if not appt:
@@ -418,7 +427,8 @@ async def update_appt(appt_id: str, req: AppointmentRequest, db: AsyncSession = 
     return appt
 
 @router.delete("/{appt_id}")
-async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only admin or the owner can delete.
     result = await db.execute(select(Appointment.ownerUsername, Appointment.carModel, Appointment.dateTime).where(Appointment.id == appt_id))
     appt_info = result.first()
@@ -448,7 +458,8 @@ async def delete_appt(appt_id: str, db: AsyncSession = Depends(get_db), current_
     return {"ok": True}
 
 @router.post("/{appt_id}/toggle-favorite")
-async def toggle_favorite(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def toggle_favorite(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only owner or admin can toggle favorite.
     result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
     owner_username = result.scalar_one_or_none()
@@ -462,7 +473,8 @@ async def toggle_favorite(appt_id: str, db: AsyncSession = Depends(get_db), curr
     return {"ok": True}
 
 @router.post("/{appt_id}/assign-washer")
-async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
+@limiter.limit("10/minute")
+async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
     # Only admin can assign/unassign washers.
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
@@ -529,7 +541,8 @@ async def assign_washer(appt_id: str, req: AssignWasherRequest, db: AsyncSession
     return appt
 
 @router.get("/deleted-notification/{username}")
-async def get_deleted_notification(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_deleted_notification(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only the user themselves or admin can check.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к этому уведомлению.")
@@ -538,7 +551,8 @@ async def get_deleted_notification(username: str, db: AsyncSession = Depends(get
     return {"hasNotification": count > 0}
 
 @router.delete("/deleted-notification/{username}")
-async def clear_deleted_notification(username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def clear_deleted_notification(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only the user themselves or admin can clear.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на очистку этого уведомления.")
@@ -547,7 +561,8 @@ async def clear_deleted_notification(username: str, db: AsyncSession = Depends(g
     return {"ok": True}
 
 @router.post("/{appt_id}/clear-admin-flag")
-async def clear_admin_flag(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def clear_admin_flag(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only admin or the owner can clear the flag.
     result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
     owner_username = result.scalar_one_or_none()
@@ -565,7 +580,8 @@ async def clear_admin_flag(appt_id: str, db: AsyncSession = Depends(get_db), cur
     return {"ok": True}
 
 @router.post("/{appt_id}/mark-seen")
-async def mark_appointment_seen(appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def mark_appointment_seen(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only the owner or admin can mark as seen.
     result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
     owner_username = result.scalar_one_or_none()
@@ -579,7 +595,8 @@ async def mark_appointment_seen(appt_id: str, db: AsyncSession = Depends(get_db)
     return {"ok": True}
 
 @router.get("/stats")
-async def stats(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def stats(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: Assuming stats are only for admins, or all authenticated users.
     # For now, let's make it admin-only for demonstration.
     if current_user.role != 'admin':

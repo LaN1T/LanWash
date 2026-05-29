@@ -1,6 +1,7 @@
 import uuid
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from core.limiter import limiter
 from sqlalchemy import select, update, delete
 from database import get_db
 from models import ConsumableRequest, ConsumableResponse, ServiceConsumableRequest, ServiceConsumableResponse
@@ -10,17 +11,20 @@ from services.auth_service import get_current_user, check_roles
 router = APIRouter(prefix="/api/consumables", tags=["consumables"], dependencies=[Depends(check_roles(['admin', 'washer']))])
 
 @router.get("/", response_model=list[ConsumableResponse])
-async def get_all_consumables(db: AsyncSession = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_all_consumables(request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Consumable).order_by(Consumable.name.asc()))
     return result.scalars().all()
 
 @router.get("/by-service/{service_id}", response_model=list[ServiceConsumableResponse])
-async def get_consumables_by_service(service_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_consumables_by_service(request: Request, service_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ServiceConsumable).where(ServiceConsumable.serviceId == service_id).order_by(ServiceConsumable.consumableId.asc()))
     return result.scalars().all()
 
 @router.get("/{consumable_id}", response_model=ConsumableResponse)
-async def get_consumable(consumable_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("60/minute")
+async def get_consumable(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
     consumable = result.scalar_one_or_none()
     if not consumable:
@@ -28,7 +32,8 @@ async def get_consumable(consumable_id: str, db: AsyncSession = Depends(get_db))
     return consumable
 
 @router.post("/", response_model=ConsumableResponse)
-async def create_consumable(req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def create_consumable(request: Request, req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
     new_consumable = Consumable(id=str(uuid.uuid4()), name=req.name, unit=req.unit)
     db.add(new_consumable)
     await db.commit()
@@ -36,7 +41,8 @@ async def create_consumable(req: ConsumableRequest, db: AsyncSession = Depends(g
     return new_consumable
 
 @router.put("/{consumable_id}", response_model=ConsumableResponse)
-async def update_consumable(consumable_id: str, req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def update_consumable(request: Request, consumable_id: str, req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(update(Consumable).where(Consumable.id == consumable_id).values(name=req.name, unit=req.unit))
     await db.commit()
     if result.rowcount == 0:
@@ -44,7 +50,8 @@ async def update_consumable(consumable_id: str, req: ConsumableRequest, db: Asyn
     return await get_consumable(consumable_id, db)
 
 @router.delete("/{consumable_id}")
-async def delete_consumable(consumable_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def delete_consumable(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
     await db.execute(delete(ServiceConsumable).where(ServiceConsumable.consumableId == consumable_id))
     result = await db.execute(delete(Consumable).where(Consumable.id == consumable_id))
     await db.commit()
@@ -53,7 +60,8 @@ async def delete_consumable(consumable_id: str, db: AsyncSession = Depends(get_d
     return {"ok": True}
 
 @router.post("/service-link", response_model=ServiceConsumableResponse)
-async def link_consumable_to_service(req: ServiceConsumableRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def link_consumable_to_service(request: Request, req: ServiceConsumableRequest, db: AsyncSession = Depends(get_db)):
     # Проверка существования service и consumable
     res_s = await db.execute(select(Service).where(Service.id == req.serviceId))
     if not res_s.scalar_one_or_none():
@@ -75,7 +83,8 @@ async def link_consumable_to_service(req: ServiceConsumableRequest, db: AsyncSes
     return {"serviceId": req.serviceId, "consumableId": req.consumableId, "quantity_per_service": req.quantity_per_service}
 
 @router.delete("/service-link/{service_id}/{consumable_id}")
-async def unlink_consumable_from_service(service_id: str, consumable_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def unlink_consumable_from_service(request: Request, service_id: str, consumable_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(delete(ServiceConsumable).where(ServiceConsumable.serviceId == service_id, ServiceConsumable.consumableId == consumable_id))
     await db.commit()
     if result.rowcount == 0:
