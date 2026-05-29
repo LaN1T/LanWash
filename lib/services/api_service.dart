@@ -176,17 +176,14 @@ class ApiService {
   }
 
   Future<List<Appointment>> getAppointmentsByOwner(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/appointments/by-owner/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Appointment.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/appointments/by-owner/$username');
+    return result.when(
+      success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getAppointmentsByOwner] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<bool> createAppointment(Appointment a) async {
@@ -226,106 +223,95 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getBusySlots(String date) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/appointments/busy-slots?date=$date'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        return jsonDecode(resp.body);
-      }
-    } catch (_) {}
-    return {'num_boxes': 2, 'busy_slots': []};
+    final result = await ApiClient.get('/appointments/busy-slots?date=$date');
+    return result.when(
+      success: (data) => data,
+      failure: (err) {
+        debugPrint('[ApiService.getBusySlots] error: ${err.message}');
+        return {'num_boxes': 2, 'busy_slots': []};
+      },
+    );
   }
 
   Future<bool> hasDeletedNotification(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        return jsonDecode(resp.body)['hasNotification'] == true;
-      }
-    } catch (_) {}
-    return false;
+    final result = await ApiClient.get('/appointments/deleted-notification/$username');
+    return result.when(
+      success: (data) => data['hasNotification'] == true,
+      failure: (err) {
+        debugPrint('[ApiService.hasDeletedNotification] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> clearDeletedNotification(String username) async {
-    try {
-      final resp = await http.delete(
-        Uri.parse('$_baseUrl/appointments/deleted-notification/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {}
-    return false;
+    final result = await ApiClient.delete('/appointments/deleted-notification/$username');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.clearDeletedNotification] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> clearAdminModifiedFlag(String id) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/appointments/$id/clear-admin-flag'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/appointments/$id/clear-admin-flag');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.clearAdminModifiedFlag] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> markAppointmentSeen(String id) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/appointments/$id/mark-seen'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/appointments/$id/mark-seen');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.markAppointmentSeen] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> toggleAppointmentFavorite(String id) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/appointments/$id/toggle-favorite'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/appointments/$id/toggle-favorite');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.toggleAppointmentFavorite] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<Map<String, int>> getAppointmentStats() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/appointments/stats'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final m = jsonDecode(resp.body);
-        return {
-          'total': m['total'] ?? 0,
-          'scheduled': m['scheduled'] ?? 0,
-          'completed': m['completed'] ?? 0,
-        };
-      }
-    } catch (_) {}
-    return {'total': 0, 'scheduled': 0, 'completed': 0};
+    final result = await ApiClient.get('/appointments/stats');
+    return result.when(
+      success: (m) => {
+        'total': (m['total'] ?? 0) as int,
+        'scheduled': (m['scheduled'] ?? 0) as int,
+        'completed': (m['completed'] ?? 0) as int,
+      },
+      failure: (err) {
+        debugPrint('[ApiService.getAppointmentStats] error: ${err.message}');
+        return {'total': 0, 'scheduled': 0, 'completed': 0};
+      },
+    );
   }
 
   Future<List<Appointment>> getAppointmentsByWasher(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/appointments/by-washer/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Appointment.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/appointments/by-washer/$username');
+    return result.when(
+      success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getAppointmentsByWasher] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<bool> assignWasher(String appointmentId, String washerUsername) async {
@@ -342,40 +328,37 @@ class ApiService {
   }
 
   Future<List<User>> getWashers() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/auth/washers'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => User.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/auth/washers');
+    return result.when(
+      success: (list) => list.map((m) => User.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getWashers] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   // ─── Services ───────────────────────────────────────────────────────────────
   Future<List<Service>> getServices() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/services/'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Service.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/services/');
+    return result.when(
+      success: (list) => list.map((m) => Service.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getServices] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<List<String>> getServiceCategories() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/services/categories'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.cast<String>();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/services/categories');
+    return result.when(
+      success: (list) => list.cast<String>(),
+      failure: (err) {
+        debugPrint('[ApiService.getServiceCategories] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<bool> createService(Service s) async {
@@ -476,28 +459,26 @@ class ApiService {
 
   // ─── Promos ────────────────────────────────────────────────────────────────
   Future<List<Promo>> getPromos() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/services/promos'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Promo.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/services/promos');
+    return result.when(
+      success: (list) => list.map((m) => Promo.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getPromos] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   // ─── Wash Types ────────────────────────────────────────────────────────────
   Future<List<WashType>> getWashTypes() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/wash-types/'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => WashType.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/wash-types/');
+    return result.when(
+      success: (list) => list.map((m) => WashType.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getWashTypes] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<WashType?> updateWashType(WashType wt) async {
@@ -516,29 +497,25 @@ class ApiService {
 
   // ─── Logs ─────────────────────────────────────────────────────────────────
   Future<List<LogEntry>> getLogs({int limit = 200}) async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/logs/?limit=$limit'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => LogEntry.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/logs/?limit=$limit');
+    return result.when(
+      success: (list) => list.map((m) => LogEntry.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getLogs] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<List<LogEntry>> getLogsByUser(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/logs/by-user/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => LogEntry.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/logs/by-user/$username');
+    return result.when(
+      success: (list) => list.map((m) => LogEntry.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getLogsByUser] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<bool> createLog(String username, String action, String details) async {
@@ -592,40 +569,36 @@ class ApiService {
 
   // ─── Notes ────────────────────────────────────────────────────────────────
   Future<List<Note>> getNotes() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/notes/'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Note.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/notes/');
+    return result.when(
+      success: (list) => list.map((m) => Note.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getNotes] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<List<Note>> getNotesByUser(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/notes/by-user/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.map((m) => Note.fromMap(m)).toList();
-      }
-    } catch (_) {}
-    return [];
+    final result = await ApiClient.getList('/notes/by-user/$username');
+    return result.when(
+      success: (list) => list.map((m) => Note.fromMap(m)).toList(),
+      failure: (err) {
+        debugPrint('[ApiService.getNotesByUser] error: ${err.message}');
+        return [];
+      },
+    );
   }
 
   Future<int> getUnreadNotesCount() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/notes/unread-count'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        return jsonDecode(resp.body)['count'] ?? 0;
-      }
-    } catch (_) {}
-    return 0;
+    final result = await ApiClient.get('/notes/unread-count');
+    return result.when(
+      success: (data) => data['count'] ?? 0,
+      failure: (err) {
+        debugPrint('[ApiService.getUnreadNotesCount] error: ${err.message}');
+        return 0;
+      },
+    );
   }
 
   Future<Note?> createNote(String username, String title, String message, String category) async {
