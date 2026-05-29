@@ -22,7 +22,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> _refreshAllData() async {
-    // Assuming AuthProvider is available or just reload appointments
     notifyListeners();
   }
 
@@ -42,6 +41,7 @@ class AppProvider extends ChangeNotifier {
   int  _totalPages = 1;
   String _currentDate = '';
   List<String> _uniqueDates = [];
+  String? _errorMessage;
   
   final Map<int, List<Appointment>> _cacheAppointments = {};
   final Map<int, String> _cacheDates = {};
@@ -61,6 +61,11 @@ class AppProvider extends ChangeNotifier {
   bool              get loadingApi     => _loadingApi;
   int               get unreadNotes    => _unreadNotes;
   bool              get hasDeletedByAdmin => _hasDeletedByAdmin;
+  String?           get errorMessage   => _errorMessage;
+
+  void clearError() {
+    _errorMessage = null;
+  }
 
   Map<String, dynamic> _busySlots = {'num_boxes': 2, 'busy_slots': [[], []]};
   Map<String, dynamic> get busySlots => _busySlots;
@@ -123,19 +128,25 @@ class AppProvider extends ChangeNotifier {
     final prev = current - 1;
     
     if (next <= _totalPages && !_cacheAppointments.containsKey(next)) {
-      _api.getAppointments(page: next).then((res) {
+      try {
+        final res = await _api.getAppointments(page: next);
         _cacheAppointments[next] = res.appointments;
         _cacheDates[next] = res.currentDate;
         _cacheTotalPages[next] = res.totalPages;
-      }).catchError((_) {});
+      } catch (e, st) {
+        debugPrint('[AppProvider._prefetchAdjacent next] error: $e\n$st');
+      }
     }
     
     if (prev >= 1 && !_cacheAppointments.containsKey(prev)) {
-      _api.getAppointments(page: prev).then((res) {
+      try {
+        final res = await _api.getAppointments(page: prev);
         _cacheAppointments[prev] = res.appointments;
         _cacheDates[prev] = res.currentDate;
         _cacheTotalPages[prev] = res.totalPages;
-      }).catchError((_) {});
+      } catch (e, st) {
+        debugPrint('[AppProvider._prefetchAdjacent prev] error: $e\n$st');
+      }
     }
   }
 
@@ -144,6 +155,7 @@ class AppProvider extends ChangeNotifier {
     if (page < 1 || page > _totalPages) return;
     
     _currentPage = page;
+    clearError();
     
     if (_cacheAppointments.containsKey(page)) {
       _appointmentList = _cacheAppointments[page]!;
@@ -153,14 +165,25 @@ class AppProvider extends ChangeNotifier {
       
       _prefetchAdjacent(auth);
       
-      _fetchAppointments(auth).then((freshList) {
+      try {
+        final freshList = await _fetchAppointments(auth);
         _appointmentList = freshList;
         notifyListeners();
-      }).catchError((_) {});
+      } catch (e, st) {
+        debugPrint('[AppProvider.setPage] error: $e\n$st');
+        _errorMessage = 'Ошибка загрузки записей';
+        notifyListeners();
+      }
     } else {
-      _appointmentList = await _fetchAppointments(auth);
-      notifyListeners();
-      _prefetchAdjacent(auth);
+      try {
+        _appointmentList = await _fetchAppointments(auth);
+        notifyListeners();
+        _prefetchAdjacent(auth);
+      } catch (e, st) {
+        debugPrint('[AppProvider.setPage] error: $e\n$st');
+        _errorMessage = 'Ошибка загрузки записей';
+        notifyListeners();
+      }
     }
   }
 
@@ -172,21 +195,9 @@ class AppProvider extends ChangeNotifier {
     _prefetchAdjacent(auth);
   }
 
-  bool _hasSignificantChanges(List<Appointment> oldList, List<Appointment> newList) {
-    if (oldList.length != newList.length) return true;
-
-    // Сравниваем по ключевым полям, которые определяют состояние записи.
-    // Если объект Appointment не реализует Equatable, сравниваем критические поля вручную.
-    for (int i = 0; i < newList.length; i++) {
-      final old = oldList.firstWhere((a) => a.id == newList[i].id, orElse: () => Appointment(id: 'none', clientName: '', carModel: '', carNumber: '', dateTime: DateTime.now(), washTypeId: '', additionalServices: [], status: 'scheduled'));
-      if (old.id == 'none') return true; // Новая запись
-      if (old.status != newList[i].status || old.isFavorite != newList[i].isFavorite) return true;
-    }
-    return false;
-  }
-
   Future<void> init(AuthProvider auth) async {
     _loading = true;
+    clearError();
     notifyListeners();
     clearCache();
     try {
@@ -194,26 +205,42 @@ class AppProvider extends ChangeNotifier {
       _promoList    = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
       _appointmentList = await _fetchAppointments(auth);
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AppProvider.init] error: $e\n$st');
+      _errorMessage = 'Ошибка загрузки данных. Проверьте подключение.';
     }
     _loading = false;
     notifyListeners();
   }
 
   Future<void> reloadAppointments(AuthProvider auth) async {
-    clearCache();
-    _appointmentList = await _fetchAppointments(auth);
-    notifyListeners();
+    clearError();
+    try {
+      clearCache();
+      _appointmentList = await _fetchAppointments(auth);
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.reloadAppointments] error: $e\n$st');
+      _errorMessage = 'Ошибка обновления записей';
+      notifyListeners();
+    }
   }
 
   Future<void> reloadForUser(String username, AuthProvider auth) async {
+    clearError();
     _currentUser = username.toLowerCase();
     clearCache();
-    _appointmentList = await _fetchAppointments(auth);
-    _extraFavSet     = await _api.getExtraFavorites(_currentUser);
-    _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
-    _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
-    notifyListeners();
+    try {
+      _appointmentList = await _fetchAppointments(auth);
+      _extraFavSet     = await _api.getExtraFavorites(_currentUser);
+      _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
+      _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.reloadForUser] error: $e\n$st');
+      _errorMessage = 'Ошибка загрузки данных пользователя';
+      notifyListeners();
+    }
   }
 
   Future<void> clearData() async {
@@ -223,92 +250,155 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<bool> addAppointment(Appointment a, AuthProvider auth) async {
-    final success = await _api.createAppointment(a);
-    if (success) {
-        await reloadAppointments(auth);
+    clearError();
+    try {
+      final success = await _api.createAppointment(a);
+      if (success) await reloadAppointments(auth);
+      return success;
+    } catch (e, st) {
+      debugPrint('[AppProvider.addAppointment] error: $e\n$st');
+      _errorMessage = 'Ошибка создания записи';
+      notifyListeners();
+      return false;
     }
-    return success;
   }
 
   Future<bool> updateAppointment(Appointment a, AuthProvider auth) async {
-    final success = await _api.updateAppointment(a);
-    if (success) {
+    clearError();
+    try {
+      final success = await _api.updateAppointment(a);
+      if (success) {
         final i = _appointmentList.indexWhere((x) => x.id == a.id);
         if (i != -1) {
-            _appointmentList[i] = a;
-            notifyListeners();
+          _appointmentList[i] = a;
+          notifyListeners();
         }
         await reloadAppointments(auth);
+      }
+      return success;
+    } catch (e, st) {
+      debugPrint('[AppProvider.updateAppointment] error: $e\n$st');
+      _errorMessage = 'Ошибка обновления записи';
+      notifyListeners();
+      return false;
     }
-    return success;
   }
 
   Future<bool> cancelAppointment(String id, AuthProvider auth) async {
     final i = _appointmentList.indexWhere((a) => a.id == id);
     if (i == -1) return false;
     final a = _appointmentList[i];
-    final success = await updateAppointment(a.copyWith(status: 'cancelled'), auth);
-    return success;
+    return updateAppointment(a.copyWith(status: 'cancelled'), auth);
   }
 
-  Future<void> deleteAppointment(String id, AuthProvider auth) async {
-    await _api.deleteAppointment(id);
-    _appointmentList.removeWhere((a) => a.id == id);
-    notifyListeners();
-    await reloadAppointments(auth);
+  Future<bool> deleteAppointment(String id, AuthProvider auth) async {
+    clearError();
+    try {
+      final ok = await _api.deleteAppointment(id);
+      if (ok) {
+        _appointmentList.removeWhere((a) => a.id == id);
+        notifyListeners();
+        await reloadAppointments(auth);
+      }
+      return ok;
+    } catch (e, st) {
+      debugPrint('[AppProvider.deleteAppointment] error: $e\n$st');
+      _errorMessage = 'Ошибка удаления записи';
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> toggleAppointmentFavorite(String id) async {
-    await _api.toggleAppointmentFavorite(id);
-    final i = _appointmentList.indexWhere((a) => a.id == id);
-    if (i != -1) {
-      _appointmentList[i] = _appointmentList[i].copyWith(isFavorite: !_appointmentList[i].isFavorite);
-      notifyListeners();
+    clearError();
+    try {
+      final ok = await _api.toggleAppointmentFavorite(id);
+      if (ok) {
+        final i = _appointmentList.indexWhere((a) => a.id == id);
+        if (i != -1) {
+          _appointmentList[i] = _appointmentList[i].copyWith(isFavorite: !_appointmentList[i].isFavorite);
+          notifyListeners();
+        }
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.toggleAppointmentFavorite] error: $e\n$st');
     }
   }
 
   Future<void> addService(Service s) async {
-    await _api.createService(s);
-    _serviceList = await _api.getServices();
-    notifyListeners();
+    clearError();
+    try {
+      await _api.createService(s);
+      _serviceList = await _api.getServices();
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.addService] error: $e\n$st');
+      _errorMessage = 'Ошибка добавления услуги';
+      notifyListeners();
+    }
   }
 
   Future<void> updateService(Service s) async {
-    await _api.updateService(s);
-    final i = _serviceList.indexWhere((x) => x.id == s.id);
-    if (i != -1) {
-      _serviceList[i] = s;
+    clearError();
+    try {
+      await _api.updateService(s);
+      final i = _serviceList.indexWhere((x) => x.id == s.id);
+      if (i != -1) _serviceList[i] = s;
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.updateService] error: $e\n$st');
+      _errorMessage = 'Ошибка обновления услуги';
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> deleteService(String id) async {
-    await _api.deleteService(id);
-    _serviceList.removeWhere((s) => s.id == id);
-    notifyListeners();
+    clearError();
+    try {
+      await _api.deleteService(id);
+      _serviceList.removeWhere((s) => s.id == id);
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.deleteService] error: $e\n$st');
+      _errorMessage = 'Ошибка удаления услуги';
+      notifyListeners();
+    }
   }
 
   Future<void> toggleServiceFavorite(String id) async {
-    // Разрешаем админу менять, даже если _currentUser пуст (или используем 'admin')
+    clearError();
     final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
-    await _api.toggleServiceFavorite(user, id);
-    if (_serviceFavSet.contains(id)) {
-      _serviceFavSet.remove(id);
-    } else {
-      _serviceFavSet.add(id);
+    try {
+      final ok = await _api.toggleServiceFavorite(user, id);
+      if (ok) {
+        if (_serviceFavSet.contains(id)) {
+          _serviceFavSet.remove(id);
+        } else {
+          _serviceFavSet.add(id);
+        }
+        notifyListeners();
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.toggleServiceFavorite] error: $e\n$st');
     }
-    notifyListeners();
   }
 
   Future<void> toggleExtraFavorite(String serviceId) async {
+    clearError();
     final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
-    await _api.toggleExtraFavorite(user, serviceId);
-    if (_extraFavSet.contains(serviceId)) {
-      _extraFavSet.remove(serviceId);
-    } else {
-      _extraFavSet.add(serviceId);
+    try {
+      final ok = await _api.toggleExtraFavorite(user, serviceId);
+      if (ok) {
+        if (_extraFavSet.contains(serviceId)) {
+          _extraFavSet.remove(serviceId);
+        } else {
+          _extraFavSet.add(serviceId);
+        }
+        notifyListeners();
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.toggleExtraFavorite] error: $e\n$st');
     }
-    notifyListeners();
   }
 
   Future<List<String>> getServiceCategories() => _api.getServiceCategories();
@@ -348,7 +438,11 @@ class AppProvider extends ChangeNotifier {
         final i = _appointmentList.indexWhere((a) => a.id == appointmentId);
         if (i != -1) {
             final current = List<String>.from(_appointmentList[i].assignedWashers);
-            if (current.contains(washerUsername)) current.remove(washerUsername); else current.add(washerUsername);
+            if (current.contains(washerUsername)) {
+              current.remove(washerUsername);
+            } else {
+              current.add(washerUsername);
+            }
             _appointmentList[i] = _appointmentList[i].copyWith(assignedWashers: current);
             notifyListeners();
         }
@@ -357,66 +451,125 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> loadNotes({String? username}) async {
-    _noteList = username != null ? await _api.getNotesByUser(username) : await _api.getNotes();
-    _unreadNotes = _noteList.where((n) => !n.isRead).length;
-    notifyListeners();
+    clearError();
+    try {
+      _noteList = username != null ? await _api.getNotesByUser(username) : await _api.getNotes();
+      _unreadNotes = _noteList.where((n) => !n.isRead).length;
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.loadNotes] error: $e\n$st');
+      _errorMessage = 'Ошибка загрузки заметок';
+      notifyListeners();
+    }
   }
 
   Future<void> refreshUnreadCount(AuthProvider auth) async {
-    if (!auth.isAdmin) {
-      return;
+    if (!auth.isAdmin) return;
+    try {
+      _unreadNotes = await _api.getUnreadNotesCount();
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.refreshUnreadCount] error: $e\n$st');
     }
-    _unreadNotes = await _api.getUnreadNotesCount();
-    notifyListeners();
   }
 
   Future<Note?> addNote(String username, String title, String message, String category) async {
-    final note = await _api.createNote(username, title, message, category);
-    if (note != null) { _noteList.insert(0, note); notifyListeners(); }
-    return note;
+    clearError();
+    try {
+      final note = await _api.createNote(username, title, message, category);
+      if (note != null) {
+        _noteList.insert(0, note);
+        _unreadNotes = _noteList.where((n) => !n.isRead).length;
+        notifyListeners();
+      }
+      return note;
+    } catch (e, st) {
+      debugPrint('[AppProvider.addNote] error: $e\n$st');
+      _errorMessage = 'Ошибка создания заметки';
+      notifyListeners();
+      return null;
+    }
   }
 
   Future<void> markNoteRead(int noteId) async {
-    await _api.markNoteRead(noteId);
-    final i = _noteList.indexWhere((n) => n.id == noteId);
-    if (i != -1) { _noteList[i] = _noteList[i].copyWith(isRead: true); _unreadNotes = _noteList.where((n) => !n.isRead).length; notifyListeners(); }
+    try {
+      final ok = await _api.markNoteRead(noteId);
+      if (ok) {
+        final i = _noteList.indexWhere((n) => n.id == noteId);
+        if (i != -1) {
+          _noteList[i] = _noteList[i].copyWith(isRead: true);
+          _unreadNotes = _noteList.where((n) => !n.isRead).length;
+          notifyListeners();
+        }
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.markNoteRead] error: $e\n$st');
+    }
   }
 
   Future<void> markAllNotesRead() async {
-    await _api.markAllNotesRead();
-    _noteList = _noteList.map((n) => n.copyWith(isRead: true)).toList();
-    _unreadNotes = 0;
-    notifyListeners();
+    try {
+      final ok = await _api.markAllNotesRead();
+      if (ok) {
+        _noteList = _noteList.map((n) => n.copyWith(isRead: true)).toList();
+        _unreadNotes = 0;
+        notifyListeners();
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.markAllNotesRead] error: $e\n$st');
+    }
   }
 
   Future<void> deleteNote(int noteId) async {
-    await _api.deleteNote(noteId);
-    _noteList.removeWhere((n) => n.id == noteId);
-    _unreadNotes = _noteList.where((n) => !n.isRead).length;
-    notifyListeners();
+    try {
+      final ok = await _api.deleteNote(noteId);
+      if (ok) {
+        _noteList.removeWhere((n) => n.id == noteId);
+        _unreadNotes = _noteList.where((n) => !n.isRead).length;
+        notifyListeners();
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.deleteNote] error: $e\n$st');
+    }
   }
   
   Future<void> clearDeletedByAdminFlag() async {
-    await _api.clearDeletedNotification(_currentUser);
-    _hasDeletedByAdmin = false;
-    notifyListeners();
+    try {
+      await _api.clearDeletedNotification(_currentUser);
+      _hasDeletedByAdmin = false;
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('[AppProvider.clearDeletedByAdminFlag] error: $e\n$st');
+    }
   }
   
   Future<void> clearModifiedFlag(String id) async {
-    await _api.clearAdminModifiedFlag(id); // Используем тот же эндпоинт, бэкенд его очистит
-    final i = _appointmentList.indexWhere((a) => a.id == id);
-    if (i != -1) { 
-      _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false, isModifiedByWasher: false); 
-      notifyListeners(); 
+    try {
+      final ok = await _api.clearAdminModifiedFlag(id);
+      if (ok) {
+        final i = _appointmentList.indexWhere((a) => a.id == id);
+        if (i != -1) { 
+          _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false, isModifiedByWasher: false); 
+          notifyListeners(); 
+        }
+      }
+    } catch (e, st) {
+      debugPrint('[AppProvider.clearModifiedFlag] error: $e\n$st');
     }
   }
 
   Future<void> markAsSeen(String id) async {
     final i = _appointmentList.indexWhere((a) => a.id == id);
     if (i != -1 && !_appointmentList[i].isSeenByClient) {
-      _appointmentList[i] = _appointmentList[i].copyWith(isSeenByClient: true);
-      await _api.markAppointmentSeen(id);
-      notifyListeners();
+      try {
+        final ok = await _api.markAppointmentSeen(id);
+        if (ok) {
+          _appointmentList[i] = _appointmentList[i].copyWith(isSeenByClient: true);
+          notifyListeners();
+        }
+      } catch (e, st) {
+        debugPrint('[AppProvider.markAsSeen] error: $e\n$st');
+      }
     }
   }
 }
