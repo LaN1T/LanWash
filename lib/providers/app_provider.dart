@@ -11,11 +11,13 @@ import '../services/notification_service.dart';
 import 'auth_provider.dart';
 
 class AppProvider extends ChangeNotifier {
-  final _api = ApiService();
-  final _notificationService = NotificationService();
+  final ApiService _api;
+  final NotificationService _notificationService;
   StreamSubscription? _updateSubscription;
 
-  AppProvider() {
+  AppProvider({required ApiService api, required NotificationService notificationService})
+      : _api = api,
+        _notificationService = notificationService {
     _updateSubscription = _notificationService.onAppointmentUpdated.listen((_) {
       _refreshAllData();
     });
