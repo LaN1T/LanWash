@@ -138,6 +138,20 @@ class ApiClient {
     }
   }
 
+  // ─── Helpers for common response types ─────────────────────────────────────
+
+  static Future<ApiResult<List<dynamic>>> getList(String path) async {
+    final result = await rawGet(path);
+    return result.when(
+      success: (resp) {
+        final data = jsonDecode(resp.body);
+        if (data is List) return Success(data);
+        return Failure(AppError.validation('Expected list, got ${data.runtimeType}'));
+      },
+      failure: (err) => Failure(err),
+    );
+  }
+
   // ─── Raw request (for non-JSON or custom parsing) ──────────────────────────
 
   static Future<ApiResult<http.Response>> rawGet(String path) async {

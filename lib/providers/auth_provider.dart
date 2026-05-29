@@ -12,19 +12,25 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   bool _initialized = false;
   bool _loading = false;
+  String? _errorMessage;
 
-  User?   get user        => _user;
-  bool    get initialized => _initialized;
-  bool    get loading     => _loading;
-  bool    get isLoggedIn  => _user != null;
-  bool    get isClient    => _user?.role == UserRole.client;
-  bool    get isAdmin     => _user?.role == UserRole.admin;
-  bool    get isWasher    => _user?.role == UserRole.washer;
-  String  get username    => _user?.displayName ?? '';
-  String  get userLogin   => _user?.username ?? '';
+  User?   get user         => _user;
+  bool    get initialized  => _initialized;
+  bool    get loading      => _loading;
+  String? get errorMessage => _errorMessage;
+  bool    get isLoggedIn   => _user != null;
+  bool    get isClient     => _user?.role == UserRole.client;
+  bool    get isAdmin      => _user?.role == UserRole.admin;
+  bool    get isWasher     => _user?.role == UserRole.washer;
+  String  get username     => _user?.displayName ?? '';
+  String  get userLogin    => _user?.username ?? '';
 
-  static const _kUserKey = 'saved_user'; // Still used for User object, but token is separate
-  final _storage = FlutterSecureStorage();
+  static const _kUserKey = 'saved_user';
+  final _storage = const FlutterSecureStorage();
+
+  void clearError() {
+    _errorMessage = null;
+  }
 
   Future<void> init() async {
     try {
@@ -32,10 +38,12 @@ class AuthProvider extends ChangeNotifier {
       final token = await ApiService.getToken();
       if (json != null && token != null) {
         _user = User.fromMap(jsonDecode(json));
-        // Обновляем токен при загрузке из кэша
         _notifications.updateTokenOnServer(_user!.username);
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[AuthProvider.init] error: $e\n$st');
+      _errorMessage = 'Ошибка загрузки сессии';
+    }
     _initialized = true;
     notifyListeners();
   }
@@ -43,39 +51,50 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _saveUser(User user) async {
     try {
       await _storage.write(key: _kUserKey, value: jsonEncode(user.toMap()));
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[AuthProvider._saveUser] error: $e\n$st');
+    }
   }
 
   Future<void> _clearUser() async {
     try {
       await _storage.delete(key: _kUserKey);
       await ApiService.deleteToken();
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[AuthProvider._clearUser] error: $e\n$st');
+    }
   }
 
   /// Возвращает null при успехе, иначе текст ошибки
   Future<String?> login(String username, String password) async {
+    clearError();
     _loading = true;
     notifyListeners();
 
-    final user = await _api.login(username, password);
+    try {
+      final user = await _api.login(username, password);
 
-    _loading = false;
-    if (user == null) {
+      _loading = false;
+      if (user == null) {
+        notifyListeners();
+        await _api.createLog(username, 'Неудачная попытка входа', 'Логин: $username');
+        return 'Неверный логин или пароль';
+      }
+
+      _user = user;
+      await _saveUser(user);
+      _notifications.updateTokenOnServer(user.username);
+
       notifyListeners();
-      await _api.createLog(username, 'Неудачная попытка входа', 'Логин: $username');
-      return 'Неверный логин или пароль';
+      await _api.createLog(username, 'Вход в систему', 'Роль: ${user.role.name}');
+      return null;
+    } catch (e, st) {
+      _loading = false;
+      debugPrint('[AuthProvider.login] error: $e\n$st');
+      _errorMessage = 'Ошибка сети. Проверьте подключение.';
+      notifyListeners();
+      return _errorMessage;
     }
-
-    _user = user;
-    await _saveUser(user);
-    
-    // Обновляем токен при входе
-    _notifications.updateTokenOnServer(user.username);
-
-    notifyListeners();
-    await _api.createLog(username, 'Вход в систему', 'Роль: ${user.role.name}');
-    return null;
   }
 
   /// Регистрация нового клиента
@@ -87,63 +106,86 @@ class AuthProvider extends ChangeNotifier {
     String carModel = '',
     String carNumber = '',
   }) async {
+    clearError();
     _loading = true;
     notifyListeners();
 
-    final result = await _api.register(
-      username: username,
-      password: password,
-      displayName: displayName,
-      phone: phone,
-      carModel: carModel,
-      carNumber: carNumber,
-    );
+    try {
+      final result = await _api.register(
+        username: username,
+        password: password,
+        displayName: displayName,
+        phone: phone,
+        carModel: carModel,
+        carNumber: carNumber,
+      );
 
-    _loading = false;
-    if (result == null || result.containsKey('error')) {
+      _loading = false;
+      if (result == null || result.containsKey('error')) {
+        notifyListeners();
+        return result?['error'] ?? 'Ошибка регистрации';
+      }
+
+      // Автологин после регистрации
+      _user = User.fromMap(result['user']);
+      await _saveUser(_user!);
       notifyListeners();
-      return result?['error'] ?? 'Ошибка регистрации';
+      await _api.createLog(username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
+      return null;
+    } catch (e, st) {
+      _loading = false;
+      debugPrint('[AuthProvider.register] error: $e\n$st');
+      _errorMessage = 'Ошибка сети. Проверьте подключение.';
+      notifyListeners();
+      return _errorMessage;
     }
-
-    // Автологин после регистрации
-    _user = User.fromMap(result['user']);
-    await _saveUser(_user!);
-    notifyListeners();
-    await _api.createLog(username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
-    return null;
   }
 
-  Future<void> updateProfile({
+  Future<String?> updateProfile({
     String? displayName,
     String? phone,
     String? carModel,
     String? carNumber,
     String? newPassword,
   }) async {
-    if (_user == null) return;
-    final updated = await _api.updateProfile(
-      _user!.id!,
-      displayName: displayName,
-      phone: phone,
-      carModel: carModel,
-      carNumber: carNumber,
-      newPassword: newPassword,
-    );
-    if (updated != null) {
-      _user = updated;
-      await _saveUser(updated);
+    if (_user == null) return null;
+    clearError();
+
+    try {
+      final updated = await _api.updateProfile(
+        _user!.id!,
+        displayName: displayName,
+        phone: phone,
+        carModel: carModel,
+        carNumber: carNumber,
+        newPassword: newPassword,
+      );
+      if (updated != null) {
+        _user = updated;
+        await _saveUser(updated);
+        notifyListeners();
+        await _api.createLog(updated.username, 'Обновление профиля', 'Имя: ${updated.displayName}');
+        return null;
+      }
+      return 'Ошибка обновления профиля';
+    } catch (e, st) {
+      debugPrint('[AuthProvider.updateProfile] error: $e\n$st');
+      _errorMessage = 'Ошибка сети. Проверьте подключение.';
       notifyListeners();
-      await _api.createLog(updated.username, 'Обновление профиля', 'Имя: ${updated.displayName}');
+      return _errorMessage;
     }
   }
 
-  void logout() {
-    debugPrint('[DEBUG] AuthProvider.logout() called (hash: ${identityHashCode(this)})');
+  Future<void> logout() async {
+    debugPrint('[AuthProvider.logout] called');
     final who = _user?.username ?? 'unknown';
-    _api.createLog(who, 'Выход из системы', '');
+    try {
+      await _api.createLog(who, 'Выход из системы', '');
+    } catch (e) {
+      debugPrint('[AuthProvider.logout] createLog error: $e');
+    }
     _user = null;
-    _clearUser();
-    debugPrint('[DEBUG] AuthProvider: Calling notifyListeners() (hash: ${identityHashCode(this)})');
+    await _clearUser();
     notifyListeners();
   }
 }
