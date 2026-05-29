@@ -7,9 +7,11 @@ from db_models import (
     WashType, WashTypeIncludedExtra, WashTypeConsumable, PromoIncludedExtra,
 )
 from datetime import datetime
-import hashlib
 from passlib.context import CryptContext
 from core.config import get_settings
+import structlog
+
+logger = structlog.get_logger()
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 settings = get_settings()
@@ -41,7 +43,7 @@ async def seed_data():
         admin_pass = settings.initial_admin_password
 
         if not admin_pass or admin_pass == "change_me_to_something_secure":
-            print("Внимание: INITIAL_ADMIN_PASSWORD не задан или небезопасен. Админ не создан.")
+            logger.warning("admin_password_not_set")
         else:
             # Upsert админа с использованием Argon2
             stmt = insert(User).values(

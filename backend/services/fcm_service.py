@@ -2,6 +2,9 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 from typing import List, Dict, Any
 import os
+import structlog
+
+logger = structlog.get_logger()
 
 class FCMService:
     _instance = None
@@ -31,15 +34,15 @@ class FCMService:
                 try:
                     cred = credentials.Certificate(cred_dict)
                     firebase_admin.initialize_app(cred)
-                    print("Firebase Admin SDK initialized successfully via Environment Variables.")
+                    logger.info("firebase_initialized")
                 except Exception as e:
-                    print(f"Error initializing Firebase via Env Vars: {e}")
+                    logger.error("firebase_init_failed", error=str(e))
             else:
-                print("WARNING: Firebase env vars not set. Notifications will not work.")
+                logger.warning("firebase_env_not_set")
 
     async def send_notification_to_tokens(self, tokens: List[str], title: str, body: str, data: Dict[str, Any] = None):
         if not firebase_admin._apps:
-            print("FCMService not initialized. Cannot send notifications.")
+            logger.warning("fcm_not_initialized")
             return
         if not tokens:
             return
@@ -51,18 +54,18 @@ class FCMService:
         )
         try:
             response = messaging.send_each_for_multicast(message)
-            print(f"Successfully sent message: {response.success_count} successful, {response.failure_count} failed.")
+            logger.info("fcm_message_sent", success=response.success_count, failure=response.failure_count)
             if response.failure_count > 0:
                 for resp in response.responses:
                     if not resp.success:
-                        print(f"Failed to send to token: {resp.exception}")
+                        logger.warning("fcm_token_failed", error=str(resp.exception))
             return response
         except Exception as e:
-            print(f"Error sending FCM message: {e}")
+            logger.error("fcm_send_error", error=str(e))
 
     async def send_notification_to_topic(self, topic: str, title: str, body: str, data: Dict[str, Any] = None):
         if not firebase_admin._apps:
-            print("FCMService not initialized. Cannot send notifications.")
+            logger.warning("fcm_not_initialized")
             return
         
         message = messaging.Message(
@@ -72,9 +75,9 @@ class FCMService:
         )
         try:
             response = messaging.send(message)
-            print(f"Successfully sent message to topic {topic}: {response}")
+            logger.info("fcm_topic_sent", topic=topic, response=str(response))
             return response
         except Exception as e:
-            print(f"Error sending FCM message to topic {topic}: {e}")
+            logger.error("fcm_topic_error", topic=topic, error=str(e))
 
 fcm_service = FCMService()

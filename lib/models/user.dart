@@ -1,6 +1,3 @@
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
-
 enum UserRole { client, admin, washer }
 
 class User {
@@ -28,19 +25,10 @@ class User {
     this.isFavoriteAdmin = false,
   });
 
-  static String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    return sha256.convert(bytes).toString();
-  }
-
-  static bool checkPassword(String password, String hash) {
-    return hashPassword(password) == hash;
-  }
-
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'username': username,
-        'passwordHash': passwordHash,
+        // Security: never store passwordHash on client
         'role': role.name,
         'displayName': displayName,
         'phone': phone,

@@ -534,7 +534,7 @@ class _State extends State<AddEditAppointmentScreen> {
     setState(() => _plateError = null);
 
     if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
-      print("Валидация не пройдена");
+      debugPrint("Form validation failed");
       return;
     }
     final provider = context.read<AppProvider>();

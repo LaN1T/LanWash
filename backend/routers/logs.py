@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from sqlalchemy import select, update, delete, func
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 @router.get("/", response_model=list[LogResponse])
 @limiter.limit("60/minute")
-async def get_all(request: Request, limit: int = 200, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_all(request: Request, limit: int = Query(default=200, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ к логам только для администраторов.")
     result = await db.execute(select(LogEntry).order_by(LogEntry.timestamp.desc()).limit(limit))
