@@ -13,6 +13,32 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lanwash_user -d lanwash_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lanwash_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://lanwash_user:lanwash_password@db:5432/lanwash_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+      DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
 
 volumes:
   postgres_data:

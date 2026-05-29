@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Firebase (optional for tests)
     firebase_credentials_path: str = ""
 
+    # Error tracking (optional)
+    sentry_dsn: str = ""
+
     @property
     def cors_origins(self) -> List[str]:
         raw = self.allowed_origins

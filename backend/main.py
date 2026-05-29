@@ -15,13 +15,30 @@ from core.config import get_settings
 from core.logging import configure_logging
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from prometheus_fastapi_instrumentator import Instrumentator
 
 import structlog
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 
 # Configure structured logging
 configure_logging()
 logger = structlog.get_logger()
 settings = get_settings()
+
+# Initialize Sentry if DSN is configured
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        integrations=[
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
+        ],
+        traces_sample_rate=1.0 if settings.is_production else 0.0,
+    )
+    logger.info("sentry_initialized", environment=settings.environment)
 
 _start_time = datetime.now(timezone.utc)
 
@@ -46,6 +63,9 @@ app = FastAPI(
 # Apply rate limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Prometheus metrics (exposed at /metrics)
+Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 # CORS
 app.add_middleware(
