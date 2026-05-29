@@ -1,4 +1,3 @@
-import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, func
@@ -10,26 +9,36 @@ from db_models import (
 from datetime import datetime
 import hashlib
 from passlib.context import CryptContext
+from core.config import get_settings
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+settings = get_settings()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL не задан в переменных окружения. Настройте файл .env!")
-
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(settings.database_url, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await seed_data()
+    """Initialize database.
+    
+    In production, migrations are run separately via Alembic.
+    In development/testing, creates tables automatically.
+    """
+    if settings.is_production:
+        # In production we assume alembic upgrade head was run separately.
+        # We still seed data if tables are empty.
+        await seed_data()
+    else:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        await seed_data()
+
 
 async def seed_data():
     async with AsyncSessionLocal() as session:
         now = datetime.now().isoformat()
         
-        admin_pass = os.getenv("INITIAL_ADMIN_PASSWORD")
+        admin_pass = settings.initial_admin_password
 
         if not admin_pass or admin_pass == "change_me_to_something_secure":
             print("Внимание: INITIAL_ADMIN_PASSWORD не задан или небезопасен. Админ не создан.")

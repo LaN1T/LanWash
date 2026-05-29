@@ -1,49 +1,60 @@
+import time
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
-import os
+from datetime import datetime, timezone
 
-# Загружаем переменные из .env файла
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
-
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from database import init_db
 from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types
 from services.auth_service import check_roles
 
 from core.limiter import limiter
+from core.config import get_settings
+from core.logging import configure_logging
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-# Инициализация Limiter уже выполнена в core/limiter.py
+import structlog
+
+# Configure structured logging
+configure_logging()
+logger = structlog.get_logger()
+settings = get_settings()
+
+_start_time = datetime.now(timezone.utc)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("app_starting", environment=settings.environment)
     await init_db()
+    logger.info("app_ready", environment=settings.environment)
     yield
+    logger.info("app_shutting_down")
 
-app = FastAPI(title="LanWash API", version="1.0.0", lifespan=lifespan)
 
-# Применяем Limiter к приложению
+app = FastAPI(
+    title="LanWash API",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if not settings.is_production else None,
+    redoc_url="/redoc" if not settings.is_production else None,
+)
+
+# Apply rate limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — читаем разрешённые origins из .env
-# ВАЖНО: никогда не используйте ["*"] с allow_credentials=True в production!
-_cors_raw = os.getenv("ALLOWED_ORIGINS", "")
-ALLOWED_ORIGINS = [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
-if not ALLOWED_ORIGINS:
-    # Fallback для локальной разработки
-    ALLOWED_ORIGINS = ["http://localhost:8080", "http://localhost:3000"]
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-
 
 # Security headers middleware
 @app.middleware("http")
@@ -53,31 +64,61 @@ async def add_security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # response.headers["Content-Security-Policy"] = "default-src 'self'"  # Раскомментируй при необходимости
+    return response
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration_ms = (time.time() - start) * 1000
+    logger.info(
+        "request",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=round(duration_ms, 2),
+    )
     return response
 
 
-# Подключаем роутеры
+# Health check endpoint
+@app.get("/health", tags=["health"])
+async def health_check():
+    uptime = (datetime.now(timezone.utc) - _start_time).total_seconds()
+    return {
+        "status": "healthy",
+        "service": "LanWash API",
+        "version": "1.0.0",
+        "environment": settings.environment,
+        "uptime_seconds": int(uptime),
+    }
+
+
+# Debug routes only in development
+if settings.debug:
+    @app.get("/debug/routes", dependencies=[Depends(check_roles(["admin"]))])
+    async def get_routes():
+        return [{"path": route.path} for route in app.routes]
+
+
+# Root endpoint
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "LanWash API"}
+
+
+# Routers
 app.include_router(auth.router)
 app.include_router(appointments.router)
 app.include_router(services.router)
 app.include_router(logs.router)
 app.include_router(notes.router)
-app.include_router(reports.router, dependencies=[Depends(check_roles(['admin']))])
-app.include_router(consumables.router, dependencies=[Depends(check_roles(['admin', 'washer']))])
+app.include_router(reports.router, dependencies=[Depends(check_roles(["admin"]))])
+app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(wash_types.router)
 
-# Debug route только в режиме разработки
-if os.getenv("DEBUG", "false").lower() == "true":
-    @app.get("/debug/routes", dependencies=[Depends(check_roles(['admin']))])
-    async def get_routes():
-        return [{"path": route.path} for route in app.routes]
-
-@app.get("/")
-async def root():
-    return {"status": "ok", "service": "LanWash API"}
 
 if __name__ == "__main__":
     import uvicorn
-    # P3: Remove reload=True and use safer settings for production
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, proxy_headers=True)

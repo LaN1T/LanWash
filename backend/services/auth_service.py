@@ -10,16 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
 from db_models import User
+from core.config import get_settings
 
-# В реальном приложении эти значения должны быть в .env
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET_KEY не задан в переменных окружения. Настройте файл .env!")
+settings = get_settings()
+
+SECRET_KEY = settings.jwt_secret_key
 if len(SECRET_KEY) < 32:
     raise RuntimeError("JWT_SECRET_KEY слишком короткий. Минимум 32 символа для безопасности.")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))  # По умолчанию 1 час вместо 7 дней
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -69,7 +69,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
-    print(f"DEBUG: User found: {user.username if user else 'None'}, Role: {user.role if user else 'None'}")
     if user is None:
         raise credentials_exception
     return user
