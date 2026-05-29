@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import '../core/constants.dart';
 import '../core/api_client.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
@@ -29,36 +27,27 @@ class PaginatedAppointments {
 }
 
 class ApiService {
-  static String get _baseUrl => ApiConstants.baseUrl;
-
   // Token management делегируется ApiClient (единая точка правды)
   static Future<String?> getToken() => ApiClient.getToken();
   static Future<void> setToken(String token) => ApiClient.setToken(token);
   static Future<void> deleteToken() => ApiClient.deleteToken();
 
-  Future<Map<String, String>> _getHeaders() async {
-    final token = await getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
   // ─── Auth ───────────────────────────────────────────────────────────────────
   Future<User?> login(String username, String password) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
+    final result = await ApiClient.post('/auth/login', body: {
+      'username': username,
+      'password': password,
+    });
+    return result.when(
+      success: (data) async {
         await setToken(data['access_token']);
         return User.fromMap(data['user']);
-      }
-    } catch (_) {}
-    return null;
+      },
+      failure: (err) {
+        debugPrint('[ApiService.login] error: ${err.message}');
+        return null;
+      },
+    );
   }
 
   Future<Map<String, dynamic>?> register({
@@ -69,30 +58,27 @@ class ApiService {
     String carModel = '',
     String carNumber = '',
   }) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-          'displayName': displayName,
-          'phone': phone,
-          'carModel': carModel,
-          'carNumber': carNumber,
-        }),
-      ).timeout(ApiConstants.requestTimeout);
-      
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
+    final result = await ApiClient.post('/auth/register', body: {
+      'username': username,
+      'password': password,
+      'displayName': displayName,
+      'phone': phone,
+      'carModel': carModel,
+      'carNumber': carNumber,
+    });
+    return result.when(
+      success: (data) async {
         await setToken(data['access_token']);
         return {'user': data['user']};
-      }
-      final err = jsonDecode(resp.body);
-      return {'error': err['detail'] ?? 'Ошибка регистрации'};
-    } catch (e) {
-      return {'error': 'Нет связи с сервером'};
-    }
+      },
+      failure: (err) {
+        debugPrint('[ApiService.register] error: ${err.message}');
+        if (err.statusCode != null && err.statusCode! >= 400 && err.statusCode! < 500) {
+          return {'error': err.message};
+        }
+        return {'error': 'Нет связи с сервером'};
+      },
+    );
   }
 
   Future<User?> updateProfile(int userId, {
@@ -102,48 +88,44 @@ class ApiService {
     String? carNumber,
     String? newPassword,
   }) async {
-    try {
-      final body = <String, dynamic>{};
-      if (displayName != null) body['displayName'] = displayName;
-      if (phone != null) body['phone'] = phone;
-      if (carModel != null) body['carModel'] = carModel;
-      if (carNumber != null) body['carNumber'] = carNumber;
-      if (newPassword != null) body['newPassword'] = newPassword;
+    final body = <String, dynamic>{};
+    if (displayName != null) body['displayName'] = displayName;
+    if (phone != null) body['phone'] = phone;
+    if (carModel != null) body['carModel'] = carModel;
+    if (carNumber != null) body['carNumber'] = carNumber;
+    if (newPassword != null) body['newPassword'] = newPassword;
 
-      final resp = await http.put(
-        Uri.parse('$_baseUrl/auth/profile/$userId'),
-        headers: await _getHeaders(),
-        body: jsonEncode(body),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        return User.fromMap(jsonDecode(resp.body));
-      }
-    } catch (_) {}
-    return null;
+    final result = await ApiClient.put('/auth/profile/$userId', body: body);
+    return result.when(
+      success: (data) => User.fromMap(data),
+      failure: (err) {
+        debugPrint('[ApiService.updateProfile] error: ${err.message}');
+        return null;
+      },
+    );
   }
 
   // ─── Appointments ───────────────────────────────────────────────────────────
   Future<PaginatedAppointments> getAppointments({int? page, String? date}) async {
-    try {
-      final queryParams = <String>[];
-      if (page != null) queryParams.add('page=$page');
-      if (date != null) queryParams.add('date=$date');
-      final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
-      
-      final resp = await http.get(Uri.parse('$_baseUrl/appointments/$queryString'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
+    final queryParams = <String>[];
+    if (page != null) queryParams.add('page=$page');
+    if (date != null) queryParams.add('date=$date');
+    final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+
+    final result = await ApiClient.rawGet('/appointments/$queryString');
+    return result.when(
+      success: (resp) {
         final list = jsonDecode(resp.body) as List;
         final appointments = list.map((m) => Appointment.fromMap(m)).toList();
-        
+
         final totalPagesHeader = resp.headers['x-total-pages'] ?? resp.headers['X-Total-Pages'];
         final totalPages = totalPagesHeader != null ? int.tryParse(totalPagesHeader) ?? 1 : 1;
-        
+
         final currentPageHeader = resp.headers['x-current-page'] ?? resp.headers['X-Current-Page'];
         final currentPage = currentPageHeader != null ? int.tryParse(currentPageHeader) ?? 1 : 1;
-        
+
         final currentDate = resp.headers['x-current-date'] ?? resp.headers['X-Current-Date'] ?? '';
-        
+
         final uniqueDatesHeader = resp.headers['x-unique-dates'] ?? resp.headers['X-Unique-Dates'];
         List<String> uniqueDates = [];
         if (uniqueDatesHeader != null) {
@@ -151,7 +133,7 @@ class ApiService {
             uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
           } catch (_) {}
         }
-        
+
         return PaginatedAppointments(
           appointments: appointments,
           totalPages: totalPages,
@@ -159,20 +141,23 @@ class ApiService {
           currentDate: currentDate,
           uniqueDates: uniqueDates,
         );
-      }
-    } catch (_) {}
-    return PaginatedAppointments(appointments: [], totalPages: 1, currentPage: 1, currentDate: '', uniqueDates: []);
+      },
+      failure: (err) {
+        debugPrint('[ApiService.getAppointments] error: ${err.message}');
+        return PaginatedAppointments(appointments: [], totalPages: 1, currentPage: 1, currentDate: '', uniqueDates: []);
+      },
+    );
   }
 
   Future<Map<String, dynamic>> getLastUpdated() async {
-    try {
-      final resp = await http.get(Uri.parse('$_baseUrl/appointments/last-updated'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        return jsonDecode(resp.body);
-      }
-    } catch (_) {}
-    return {'count': 0, 'max_id': 0};
+    final result = await ApiClient.get('/appointments/last-updated');
+    return result.when(
+      success: (data) => data,
+      failure: (err) {
+        debugPrint('[ApiService.getLastUpdated] error: ${err.message}');
+        return {'count': 0, 'max_id': 0};
+      },
+    );
   }
 
   Future<List<Appointment>> getAppointmentsByOwner(String username) async {
@@ -187,39 +172,36 @@ class ApiService {
   }
 
   Future<bool> createAppointment(Appointment a) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/appointments/'),
-        headers: await _getHeaders(),
-        body: jsonEncode(a.toMap()),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/appointments/', body: a.toMap());
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.createAppointment] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> updateAppointment(Appointment a) async {
-    try {
-      final resp = await http.put(
-        Uri.parse('$_baseUrl/appointments/${a.id}'),
-        headers: await _getHeaders(),
-        body: jsonEncode(a.toMap()),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.put('/appointments/${a.id}', body: a.toMap());
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.updateAppointment] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> deleteAppointment(String id) async {
-    try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/appointments/$id'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.delete('/appointments/$id');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.deleteAppointment] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<Map<String, dynamic>> getBusySlots(String date) async {
@@ -315,16 +297,14 @@ class ApiService {
   }
 
   Future<bool> assignWasher(String appointmentId, String washerUsername) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/appointments/$appointmentId/assign-washer'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'washerUsername': washerUsername}),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/appointments/$appointmentId/assign-washer', body: {'washerUsername': washerUsername});
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.assignWasher] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<List<User>> getWashers() async {
@@ -362,99 +342,86 @@ class ApiService {
   }
 
   Future<bool> createService(Service s) async {
-    try {
-      final body = s.toMap();
-      body['updatedAt'] = DateTime.now().toIso8601String();
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/services/'),
-        headers: await _getHeaders(),
-        body: jsonEncode(body),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final body = s.toMap();
+    body['updatedAt'] = DateTime.now().toIso8601String();
+    final result = await ApiClient.post('/services/', body: body);
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.createService] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> updateService(Service s) async {
-    try {
-      final body = s.toMap();
-      body['updatedAt'] = DateTime.now().toIso8601String();
-      final resp = await http.put(
-        Uri.parse('$_baseUrl/services/${s.id}'),
-        headers: await _getHeaders(),
-        body: jsonEncode(body),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final body = s.toMap();
+    body['updatedAt'] = DateTime.now().toIso8601String();
+    final result = await ApiClient.put('/services/${s.id}', body: body);
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.updateService] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> deleteService(String id) async {
-    try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/services/$id'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.delete('/services/$id');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.deleteService] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   // ─── Service Favorites ────────────────────────────────────────────────────
   Future<Set<String>> getServiceFavorites(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/services/favorites/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.cast<String>().toSet();
-      }
-    } catch (_) {}
-    return {};
+    final result = await ApiClient.getList('/services/favorites/$username');
+    return result.when(
+      success: (list) => list.cast<String>().toSet(),
+      failure: (err) {
+        debugPrint('[ApiService.getServiceFavorites] error: ${err.message}');
+        return {};
+      },
+    );
   }
 
   Future<bool> toggleServiceFavorite(String username, String serviceId) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/services/favorites/toggle'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'username': username, 'serviceId': serviceId}),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/services/favorites/toggle', body: {'username': username, 'serviceId': serviceId});
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.toggleServiceFavorite] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   // ─── Extra Favorites ──────────────────────────────────────────────────────
   Future<Set<String>> getExtraFavorites(String username) async {
-    try {
-      final resp = await http.get(
-        Uri.parse('$_baseUrl/services/extra-favorites/$username'),
-        headers: await _getHeaders(),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        final list = jsonDecode(resp.body) as List;
-        return list.cast<String>().toSet();
-      }
-    } catch (_) {}
-    return {};
+    final result = await ApiClient.getList('/services/extra-favorites/$username');
+    return result.when(
+      success: (list) => list.cast<String>().toSet(),
+      failure: (err) {
+        debugPrint('[ApiService.getExtraFavorites] error: ${err.message}');
+        return {};
+      },
+    );
   }
 
   Future<bool> toggleExtraFavorite(String username, String serviceId) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/services/extra-favorites/toggle'),
-        headers: await _getHeaders(),
-        body: jsonEncode({'username': username, 'serviceId': serviceId}),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/services/extra-favorites/toggle', body: {'username': username, 'serviceId': serviceId});
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.toggleExtraFavorite] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   // ─── Promos ────────────────────────────────────────────────────────────────
@@ -482,17 +449,14 @@ class ApiService {
   }
 
   Future<WashType?> updateWashType(WashType wt) async {
-    try {
-      final resp = await http.put(
-        Uri.parse('$_baseUrl/wash-types/${wt.id}'),
-        headers: await _getHeaders(),
-        body: jsonEncode(wt.toMap()),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        return WashType.fromMap(jsonDecode(resp.body));
-      }
-    } catch (_) {}
-    return null;
+    final result = await ApiClient.put('/wash-types/${wt.id}', body: wt.toMap());
+    return result.when(
+      success: (data) => WashType.fromMap(data),
+      failure: (err) {
+        debugPrint('[ApiService.updateWashType] error: ${err.message}');
+        return null;
+      },
+    );
   }
 
   // ─── Logs ─────────────────────────────────────────────────────────────────
@@ -519,52 +483,45 @@ class ApiService {
   }
 
   Future<bool> createLog(String username, String action, String details) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/logs/'),
-        headers: await _getHeaders(),
-        body: jsonEncode({
-          'username': username,
-          'action': action,
-          'details': details,
-        }),
-      ).timeout(ApiConstants.requestTimeout);
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.post('/logs/', body: {
+      'username': username,
+      'action': action,
+      'details': details,
+    });
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.createLog] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> clearLogs() async {
-    try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/logs/'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.delete('/logs/');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.clearLogs] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   // ─── Push Tokens ────────────────────────────────────────────────────────────
   Future<bool> saveFcmToken(String username, String token) async {
-    try {
-      final url = '$_baseUrl/auth/fcm-token';
-      debugPrint('[DEBUG] ApiService: saveFcmToken: calling $url');
-      final resp = await http.post(
-        Uri.parse(url),
-        headers: await _getHeaders(),
-        body: jsonEncode({
-          'username': username,
-          'token': token,
-          'platform': kIsWeb ? 'web' : (defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios'),
-        }),
-      ).timeout(ApiConstants.requestTimeout);
-      debugPrint('[DEBUG] ApiService: saveFcmToken: status code ${resp.statusCode}, body: ${resp.body}');
-      return resp.statusCode == 200;
-    } catch (e) {
-      debugPrint('[DEBUG] ApiService: saveFcmToken: error: $e');
-      return false;
-    }
+    final result = await ApiClient.post('/auth/fcm-token', body: {
+      'username': username,
+      'token': token,
+      'platform': kIsWeb ? 'web' : (defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios'),
+    });
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.saveFcmToken] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   // ─── Notes ────────────────────────────────────────────────────────────────
@@ -602,103 +559,101 @@ class ApiService {
   }
 
   Future<Note?> createNote(String username, String title, String message, String category) async {
-    try {
-      final resp = await http.post(
-        Uri.parse('$_baseUrl/notes/?username=$username'),
-        headers: await _getHeaders(),
-        body: jsonEncode({
-          'title': title,
-          'message': message,
-          'category': category,
-        }),
-      ).timeout(ApiConstants.requestTimeout);
-      if (resp.statusCode == 200) {
-        return Note.fromMap(jsonDecode(resp.body));
-      }
-    } catch (_) {}
-    return null;
+    final result = await ApiClient.post('/notes/?username=$username', body: {
+      'title': title,
+      'message': message,
+      'category': category,
+    });
+    return result.when(
+      success: (data) => Note.fromMap(data),
+      failure: (err) {
+        debugPrint('[ApiService.createNote] error: ${err.message}');
+        return null;
+      },
+    );
   }
 
   Future<bool> markNoteRead(int noteId) async {
-    try {
-      final resp = await http.put(Uri.parse('$_baseUrl/notes/$noteId/read'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.put('/notes/$noteId/read');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.markNoteRead] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> markAllNotesRead() async {
-    try {
-      final resp = await http.put(Uri.parse('$_baseUrl/notes/read-all'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.put('/notes/read-all');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.markAllNotesRead] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
   Future<bool> deleteNote(int noteId) async {
-    try {
-      final resp = await http.delete(Uri.parse('$_baseUrl/notes/$noteId'), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      return resp.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final result = await ApiClient.delete('/notes/$noteId');
+    return result.when(
+      success: (_) => true,
+      failure: (err) {
+        debugPrint('[ApiService.deleteNote] error: ${err.message}');
+        return false;
+      },
+    );
   }
 
 
   // ─── Reports ───────────────────────────────────────────────────────────────
   Future<MonthlyReport?> getAverageCheckReport(String? date) async {
-    try {
-      final url = date != null 
-          ? '$_baseUrl/reports/monthly-check-vs-price/?date=$date'
-          : '$_baseUrl/reports/monthly-check-vs-price/';
-      final resp = await http.get(Uri.parse(url), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        return MonthlyReport.fromJson(jsonDecode(resp.body));
-      }
-    } catch (_) {}
-    return null;
+    final path = date != null
+        ? '/reports/monthly-check-vs-price/?date=$date'
+        : '/reports/monthly-check-vs-price/';
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => MonthlyReport.fromJson(data),
+      failure: (err) {
+        debugPrint('[ApiService.getAverageCheckReport] error: ${err.message}');
+        return null;
+      },
+    );
   }
 
   Future<PopularServicesReport?> getPopularAdditionalServices(String? date, {String? category}) async {
-    try {
-      String url = date != null 
-          ? '$_baseUrl/reports/popular-additional-services/?date=$date'
-          : '$_baseUrl/reports/popular-additional-services/';
-      if (category != null && category != 'Все') {
-        url += '&category=$category';
-      }
-      final resp = await http.get(Uri.parse(url), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        return PopularServicesReport.fromJson(jsonDecode(resp.body));
-      }
-    } catch (_) {}
-    return null;
+    var path = date != null
+        ? '/reports/popular-additional-services/?date=$date'
+        : '/reports/popular-additional-services/';
+    if (category != null && category != 'Все') {
+      path += '&category=$category';
+    }
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => PopularServicesReport.fromJson(data),
+      failure: (err) {
+        debugPrint('[ApiService.getPopularAdditionalServices] error: ${err.message}');
+        return null;
+      },
+    );
   }
 
   Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date, {String? category}) async {
-    try {
-      var url = '$_baseUrl/reports/consumables-usage/';
-      final params = <String>[];
-      if (date != null) params.add('date=$date');
-      if (category != null && category != 'Все') params.add('category=$category');
-      
-      if (params.isNotEmpty) {
-        url += '?${params.join('&')}';
-      }
-      
-      final resp = await http.get(Uri.parse(url), headers: await _getHeaders())
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        return ConsumablesUsageReport.fromJson(jsonDecode(resp.body));
-      }
-    } catch (_) {}
-    return null;
+    var path = '/reports/consumables-usage/';
+    final params = <String>[];
+    if (date != null) params.add('date=$date');
+    if (category != null && category != 'Все') params.add('category=$category');
+    if (params.isNotEmpty) {
+      path += '?${params.join('&')}';
+    }
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => ConsumablesUsageReport.fromJson(data),
+      failure: (err) {
+        debugPrint('[ApiService.getConsumablesUsageReport] error: ${err.message}');
+        return null;
+      },
+    );
   }
 }
