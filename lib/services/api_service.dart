@@ -73,7 +73,9 @@ class ApiService {
       },
       failure: (err) {
         debugPrint('[ApiService.register] error: ${err.message}');
-        if (err.statusCode != null && err.statusCode! >= 400 && err.statusCode! < 500) {
+        if (err.statusCode != null &&
+            err.statusCode! >= 400 &&
+            err.statusCode! < 500) {
           return {'error': err.message};
         }
         return {'error': 'Нет связи с сервером'};
@@ -81,7 +83,8 @@ class ApiService {
     );
   }
 
-  Future<User?> updateProfile(int userId, {
+  Future<User?> updateProfile(
+    int userId, {
     String? displayName,
     String? phone,
     String? carModel,
@@ -106,11 +109,13 @@ class ApiService {
   }
 
   // ─── Appointments ───────────────────────────────────────────────────────────
-  Future<PaginatedAppointments> getAppointments({int? page, String? date}) async {
+  Future<PaginatedAppointments> getAppointments(
+      {int? page, String? date}) async {
     final queryParams = <String>[];
     if (page != null) queryParams.add('page=$page');
     if (date != null) queryParams.add('date=$date');
-    final queryString = queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
+    final queryString =
+        queryParams.isNotEmpty ? '?${queryParams.join('&')}' : '';
 
     final result = await ApiClient.rawGet('/appointments/$queryString');
     return result.when(
@@ -118,15 +123,23 @@ class ApiService {
         final list = jsonDecode(resp.body) as List;
         final appointments = list.map((m) => Appointment.fromMap(m)).toList();
 
-        final totalPagesHeader = resp.headers['x-total-pages'] ?? resp.headers['X-Total-Pages'];
-        final totalPages = totalPagesHeader != null ? int.tryParse(totalPagesHeader) ?? 1 : 1;
+        final totalPagesHeader =
+            resp.headers['x-total-pages'] ?? resp.headers['X-Total-Pages'];
+        final totalPages =
+            totalPagesHeader != null ? int.tryParse(totalPagesHeader) ?? 1 : 1;
 
-        final currentPageHeader = resp.headers['x-current-page'] ?? resp.headers['X-Current-Page'];
-        final currentPage = currentPageHeader != null ? int.tryParse(currentPageHeader) ?? 1 : 1;
+        final currentPageHeader =
+            resp.headers['x-current-page'] ?? resp.headers['X-Current-Page'];
+        final currentPage = currentPageHeader != null
+            ? int.tryParse(currentPageHeader) ?? 1
+            : 1;
 
-        final currentDate = resp.headers['x-current-date'] ?? resp.headers['X-Current-Date'] ?? '';
+        final currentDate = resp.headers['x-current-date'] ??
+            resp.headers['X-Current-Date'] ??
+            '';
 
-        final uniqueDatesHeader = resp.headers['x-unique-dates'] ?? resp.headers['X-Unique-Dates'];
+        final uniqueDatesHeader =
+            resp.headers['x-unique-dates'] ?? resp.headers['X-Unique-Dates'];
         List<String> uniqueDates = [];
         if (uniqueDatesHeader != null) {
           try {
@@ -144,7 +157,12 @@ class ApiService {
       },
       failure: (err) {
         debugPrint('[ApiService.getAppointments] error: ${err.message}');
-        return PaginatedAppointments(appointments: [], totalPages: 1, currentPage: 1, currentDate: '', uniqueDates: []);
+        return PaginatedAppointments(
+            appointments: [],
+            totalPages: 1,
+            currentPage: 1,
+            currentDate: '',
+            uniqueDates: []);
       },
     );
   }
@@ -183,7 +201,8 @@ class ApiService {
   }
 
   Future<bool> updateAppointment(Appointment a) async {
-    final result = await ApiClient.put('/appointments/${a.id}', body: a.toMap());
+    final result =
+        await ApiClient.put('/appointments/${a.id}', body: a.toMap());
     return result.when(
       success: (_) => true,
       failure: (err) {
@@ -216,7 +235,8 @@ class ApiService {
   }
 
   Future<bool> hasDeletedNotification(String username) async {
-    final result = await ApiClient.get('/appointments/deleted-notification/$username');
+    final result =
+        await ApiClient.get('/appointments/deleted-notification/$username');
     return result.when(
       success: (data) => data['hasNotification'] == true,
       failure: (err) {
@@ -227,11 +247,13 @@ class ApiService {
   }
 
   Future<bool> clearDeletedNotification(String username) async {
-    final result = await ApiClient.delete('/appointments/deleted-notification/$username');
+    final result =
+        await ApiClient.delete('/appointments/deleted-notification/$username');
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.clearDeletedNotification] error: ${err.message}');
+        debugPrint(
+            '[ApiService.clearDeletedNotification] error: ${err.message}');
         return false;
       },
     );
@@ -264,7 +286,8 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.toggleAppointmentFavorite] error: ${err.message}');
+        debugPrint(
+            '[ApiService.toggleAppointmentFavorite] error: ${err.message}');
         return false;
       },
     );
@@ -290,14 +313,17 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getAppointmentsByWasher] error: ${err.message}');
+        debugPrint(
+            '[ApiService.getAppointmentsByWasher] error: ${err.message}');
         return [];
       },
     );
   }
 
   Future<bool> assignWasher(String appointmentId, String washerUsername) async {
-    final result = await ApiClient.post('/appointments/$appointmentId/assign-washer', body: {'washerUsername': washerUsername});
+    final result = await ApiClient.post(
+        '/appointments/$appointmentId/assign-washer',
+        body: {'washerUsername': washerUsername});
     return result.when(
       success: (_) => true,
       failure: (err) {
@@ -391,7 +417,8 @@ class ApiService {
   }
 
   Future<bool> toggleServiceFavorite(String username, String serviceId) async {
-    final result = await ApiClient.post('/services/favorites/toggle', body: {'username': username, 'serviceId': serviceId});
+    final result = await ApiClient.post('/services/favorites/toggle',
+        body: {'username': username, 'serviceId': serviceId});
     return result.when(
       success: (_) => true,
       failure: (err) {
@@ -403,7 +430,8 @@ class ApiService {
 
   // ─── Extra Favorites ──────────────────────────────────────────────────────
   Future<Set<String>> getExtraFavorites(String username) async {
-    final result = await ApiClient.getList('/services/extra-favorites/$username');
+    final result =
+        await ApiClient.getList('/services/extra-favorites/$username');
     return result.when(
       success: (list) => list.cast<String>().toSet(),
       failure: (err) {
@@ -414,7 +442,8 @@ class ApiService {
   }
 
   Future<bool> toggleExtraFavorite(String username, String serviceId) async {
-    final result = await ApiClient.post('/services/extra-favorites/toggle', body: {'username': username, 'serviceId': serviceId});
+    final result = await ApiClient.post('/services/extra-favorites/toggle',
+        body: {'username': username, 'serviceId': serviceId});
     return result.when(
       success: (_) => true,
       failure: (err) {
@@ -449,7 +478,8 @@ class ApiService {
   }
 
   Future<WashType?> updateWashType(WashType wt) async {
-    final result = await ApiClient.put('/wash-types/${wt.id}', body: wt.toMap());
+    final result =
+        await ApiClient.put('/wash-types/${wt.id}', body: wt.toMap());
     return result.when(
       success: (data) => WashType.fromMap(data),
       failure: (err) {
@@ -513,7 +543,11 @@ class ApiService {
     final result = await ApiClient.post('/auth/fcm-token', body: {
       'username': username,
       'token': token,
-      'platform': kIsWeb ? 'web' : (defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios'),
+      'platform': kIsWeb
+          ? 'web'
+          : (defaultTargetPlatform == TargetPlatform.android
+              ? 'android'
+              : 'ios'),
     });
     return result.when(
       success: (_) => true,
@@ -558,7 +592,8 @@ class ApiService {
     );
   }
 
-  Future<Note?> createNote(String username, String title, String message, String category) async {
+  Future<Note?> createNote(
+      String username, String title, String message, String category) async {
     final result = await ApiClient.post('/notes/?username=$username', body: {
       'title': title,
       'message': message,
@@ -606,7 +641,6 @@ class ApiService {
     );
   }
 
-
   // ─── Reports ───────────────────────────────────────────────────────────────
   Future<MonthlyReport?> getAverageCheckReport(String? date) async {
     final path = date != null
@@ -622,7 +656,8 @@ class ApiService {
     );
   }
 
-  Future<PopularServicesReport?> getPopularAdditionalServices(String? date, {String? category}) async {
+  Future<PopularServicesReport?> getPopularAdditionalServices(String? date,
+      {String? category}) async {
     var path = date != null
         ? '/reports/popular-additional-services/?date=$date'
         : '/reports/popular-additional-services/';
@@ -633,13 +668,15 @@ class ApiService {
     return result.when(
       success: (data) => PopularServicesReport.fromJson(data),
       failure: (err) {
-        debugPrint('[ApiService.getPopularAdditionalServices] error: ${err.message}');
+        debugPrint(
+            '[ApiService.getPopularAdditionalServices] error: ${err.message}');
         return null;
       },
     );
   }
 
-  Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date, {String? category}) async {
+  Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date,
+      {String? category}) async {
     var path = '/reports/consumables-usage/';
     final params = <String>[];
     if (date != null) params.add('date=$date');
@@ -651,7 +688,8 @@ class ApiService {
     return result.when(
       success: (data) => ConsumablesUsageReport.fromJson(data),
       failure: (err) {
-        debugPrint('[ApiService.getConsumablesUsageReport] error: ${err.message}');
+        debugPrint(
+            '[ApiService.getConsumablesUsageReport] error: ${err.message}');
         return null;
       },
     );

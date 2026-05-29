@@ -35,23 +35,28 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
         indicatorColor: AppStyles.primaryBg,
-        labelTextStyle: WidgetStateProperty.resolveWith((s) =>
-          s.contains(WidgetState.selected)
-            ? const TextStyle(color: AppStyles.primary, fontSize: 12,
+        labelTextStyle: WidgetStateProperty.resolveWith((s) => s
+                .contains(WidgetState.selected)
+            ? const TextStyle(
+                color: AppStyles.primary,
+                fontSize: 12,
                 fontWeight: FontWeight.w600)
             : const TextStyle(color: AppStyles.textSecondary, fontSize: 12)),
-        iconTheme: WidgetStateProperty.resolveWith((s) =>
-          IconThemeData(color: s.contains(WidgetState.selected)
-            ? AppStyles.primary : AppStyles.textSecondary)),
+        iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
+            color: s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : AppStyles.textSecondary)),
       ),
       dividerColor: AppStyles.border,
       dialogTheme: const DialogThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: TextStyle(color: AppStyles.textPrimary,
-            fontSize: 18, fontWeight: FontWeight.bold),
-        contentTextStyle: TextStyle(color: AppStyles.textSecondary,
-            fontSize: 14),
+        titleTextStyle: TextStyle(
+            color: AppStyles.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold),
+        contentTextStyle:
+            TextStyle(color: AppStyles.textSecondary, fontSize: 14),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppStyles.textPrimary,
@@ -61,14 +66,18 @@ class AppTheme {
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((s) =>
-          s.contains(WidgetState.selected) ? AppStyles.primary : Colors.transparent),
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : Colors.transparent),
         checkColor: WidgetStateProperty.all(Colors.white),
         side: const BorderSide(color: AppStyles.border, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((s) =>
-          s.contains(WidgetState.selected) ? AppStyles.primary : AppStyles.border),
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : AppStyles.border),
       ),
       tabBarTheme: const TabBarThemeData(
         labelColor: AppStyles.primary,
@@ -85,11 +94,13 @@ class AppTheme {
         headerBackgroundColor: AppStyles.primary,
         headerForegroundColor: Colors.white,
         dayForegroundColor: WidgetStateProperty.resolveWith((s) =>
-          s.contains(WidgetState.selected)
-              ? Colors.white : AppStyles.textPrimary),
+            s.contains(WidgetState.selected)
+                ? Colors.white
+                : AppStyles.textPrimary),
         dayBackgroundColor: WidgetStateProperty.resolveWith((s) =>
-          s.contains(WidgetState.selected)
-              ? AppStyles.primary : Colors.transparent),
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : Colors.transparent),
         todayForegroundColor: WidgetStateProperty.all(AppStyles.primary),
         todayBackgroundColor: WidgetStateProperty.all(AppStyles.primaryBg),
       ),

@@ -26,7 +26,8 @@ class WashTypeSettingsScreen extends StatelessWidget {
         ),
         title: Row(children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
@@ -39,7 +40,8 @@ class WashTypeSettingsScreen extends StatelessWidget {
         ]),
       ),
       body: washTypes.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: washTypes.length,
@@ -58,8 +60,7 @@ class _WashTypeCard extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final includedNames = washType.includedExtraIds
         .map((id) => provider.services
-            .firstWhere((s) => s.id == id,
-                orElse: () => _stubService(id))
+            .firstWhere((s) => s.id == id, orElse: () => _stubService(id))
             .name)
         .toList();
 
@@ -79,12 +80,15 @@ class _WashTypeCard extends StatelessWidget {
                 color: AppStyles.primary, size: 20),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Column(
+          Expanded(
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(washType.name, style: const TextStyle(
-                  color: AppStyles.textPrimary,
-                  fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(washType.name,
+                  style: const TextStyle(
+                      color: AppStyles.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
               Text('ID: ${washType.id} · ${washType.code}',
                   style: AppStyles.bodySmall),
@@ -114,25 +118,35 @@ class _WashTypeCard extends StatelessWidget {
             color: AppStyles.bgMuted,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Включённые доп. услуги',
-                style: TextStyle(color: AppStyles.textSecondary,
-                    fontSize: 11, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    color: AppStyles.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             if (includedNames.isEmpty)
               const Text('—', style: AppStyles.bodyMedium)
             else
-              Wrap(spacing: 6, runSpacing: 4, children: includedNames.map((n) =>
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppStyles.primaryBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(n, style: const TextStyle(
-                      color: AppStyles.primary, fontSize: 11,
-                      fontWeight: FontWeight.w500)),
-                )).toList()),
+              Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: includedNames
+                      .map((n) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppStyles.primaryBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(n,
+                                style: const TextStyle(
+                                    color: AppStyles.primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500)),
+                          ))
+                      .toList()),
           ]),
         ),
       ]),
@@ -165,21 +179,25 @@ class _Stat extends StatelessWidget {
   const _Stat(this.icon, this.label, this.value);
   @override
   Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: const TextStyle(
-          color: AppStyles.textSecondary,
-          fontSize: 11, fontWeight: FontWeight.w600)),
-      const SizedBox(height: 2),
-      Row(children: [
-        Icon(icon, size: 14, color: AppStyles.primary),
-        const SizedBox(width: 4),
-        Text(value, style: const TextStyle(
-            color: AppStyles.primary,
-            fontSize: 15, fontWeight: FontWeight.bold)),
-      ]),
-    ],
-  );
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  color: AppStyles.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Row(children: [
+            Icon(icon, size: 14, color: AppStyles.primary),
+            const SizedBox(width: 4),
+            Text(value,
+                style: const TextStyle(
+                    color: AppStyles.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold)),
+          ]),
+        ],
+      );
 }
 
 class _WashTypeEditor extends StatefulWidget {
@@ -201,11 +219,13 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl     = TextEditingController(text: widget.washType.name);
-    _descCtrl     = TextEditingController(text: widget.washType.description);
-    _priceCtrl    = TextEditingController(text: widget.washType.basePrice.toString());
-    _durationCtrl = TextEditingController(text: widget.washType.durationMinutes.toString());
-    _includedIds  = Set.from(widget.washType.includedExtraIds);
+    _nameCtrl = TextEditingController(text: widget.washType.name);
+    _descCtrl = TextEditingController(text: widget.washType.description);
+    _priceCtrl =
+        TextEditingController(text: widget.washType.basePrice.toString());
+    _durationCtrl =
+        TextEditingController(text: widget.washType.durationMinutes.toString());
+    _includedIds = Set.from(widget.washType.includedExtraIds);
   }
 
   @override
@@ -238,7 +258,8 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
         child: Column(children: [
           const SizedBox(height: 8),
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: AppStyles.border,
               borderRadius: BorderRadius.circular(2),
@@ -248,8 +269,10 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(children: [
-              Expanded(child: Text('Изменить: ${widget.washType.name}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+              Expanded(
+                  child: Text('Изменить: ${widget.washType.name}',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600))),
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: _saving ? null : () => Navigator.pop(context),
@@ -271,19 +294,21 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                 TextField(
                   controller: _descCtrl,
                   maxLines: 3,
-                  decoration: AppStyles.inputDecoration('Описание',
-                      icon: Icons.notes),
+                  decoration:
+                      AppStyles.inputDecoration('Описание', icon: Icons.notes),
                 ),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: TextField(
+                  Expanded(
+                      child: TextField(
                     controller: _priceCtrl,
                     keyboardType: TextInputType.number,
                     decoration: AppStyles.inputDecoration('Цена (₽)',
                         icon: Icons.payments_outlined),
                   )),
                   const SizedBox(width: 12),
-                  Expanded(child: TextField(
+                  Expanded(
+                      child: TextField(
                     controller: _durationCtrl,
                     keyboardType: TextInputType.number,
                     decoration: AppStyles.inputDecoration('Время (мин)',
@@ -292,26 +317,33 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                 ]),
                 const SizedBox(height: 20),
                 const Text('Включённые доп. услуги',
-                    style: TextStyle(fontSize: 14,
+                    style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppStyles.textPrimary)),
                 const SizedBox(height: 8),
                 Container(
                   decoration: AppStyles.cardDecoration,
                   child: Column(
-                    children: extras.map((s) => CheckboxListTile(
-                      value: _includedIds.contains(s.id),
-                      onChanged: (v) => setState(() {
-                        v! ? _includedIds.add(s.id) : _includedIds.remove(s.id);
-                      }),
-                      title: Text(s.name, style: AppStyles.bodyLarge),
-                      subtitle: Text('+${s.price} ₽ · ${s.durationLabel}',
-                          style: AppStyles.bodySmall),
-                      activeColor: AppStyles.primary,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      dense: true,
-                    )).toList(),
+                    children: extras
+                        .map((s) => CheckboxListTile(
+                              value: _includedIds.contains(s.id),
+                              onChanged: (v) => setState(() {
+                                v!
+                                    ? _includedIds.add(s.id)
+                                    : _includedIds.remove(s.id);
+                              }),
+                              title: Text(s.name, style: AppStyles.bodyLarge),
+                              subtitle: Text(
+                                  '+${s.price} ₽ · ${s.durationLabel}',
+                                  style: AppStyles.bodySmall),
+                              activeColor: AppStyles.primary,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              dense: true,
+                            ))
+                        .toList(),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -320,7 +352,8 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                   child: ElevatedButton.icon(
                     icon: _saving
                         ? const SizedBox(
-                            width: 16, height: 16,
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.save),

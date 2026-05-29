@@ -17,7 +17,8 @@ class AppointmentDetailScreen extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final auth = context.watch<AuthProvider>();
     final a = provider.appointments.firstWhere(
-      (x) => x.id == appointment.id, orElse: () => appointment,
+      (x) => x.id == appointment.id,
+      orElse: () => appointment,
     );
 
     final bool canEdit = !auth.isWasher;
@@ -29,8 +30,10 @@ class AppointmentDetailScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text('Детали записи',
-            style: TextStyle(color: Colors.white,
-                fontSize: 17, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600)),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -45,72 +48,108 @@ class AppointmentDetailScreen extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _StatusBanner(status: a.status),
           const SizedBox(height: 16),
-
-          if (auth.isWasher && (a.status == 'scheduled' || a.status == 'in_progress')) ...[
+          if (auth.isWasher &&
+              (a.status == 'scheduled' || a.status == 'in_progress')) ...[
             _SectionTitle('Управление статусом'),
             _StatusSelector(
               currentStatus: a.status,
               onChanged: (newStatus) async {
-                final success = await provider.updateAppointment(a.copyWith(status: newStatus), auth);
+                final success = await provider.updateAppointment(
+                    a.copyWith(status: newStatus), auth);
                 if (success && context.mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     SnackBar(content: Text('Статус обновлен на: ${AppStyles.statusLabel(newStatus)}'))
-                   );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(
+                          'Статус обновлен на: ${AppStyles.statusLabel(newStatus)}')));
                 }
               },
             ),
             const SizedBox(height: 16),
           ],
-
           _Section(title: 'Клиент и автомобиль', children: [
-            _Row(Icons.person,         'Клиент',      a.clientName),
-            _Row(Icons.directions_car, 'Автомобиль',  a.carModel),
-            _Row(Icons.pin,            'Номер',       a.carNumber),
+            _Row(Icons.person, 'Клиент', a.clientName),
+            _Row(Icons.directions_car, 'Автомобиль', a.carModel),
+            _Row(Icons.pin, 'Номер', a.carNumber),
           ]),
           const SizedBox(height: 12),
-
           _Section(title: 'Дата и время', children: [
             _Row(Icons.calendar_today, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
             Builder(builder: (context) {
               final washType = provider.washTypeById(a.washTypeId);
-              final duration = a.calculateTotalPrice(provider.services, washType) >= 0 
-                  ? (washType?.durationMinutes ?? 30) + 
-                    a.additionalServices.where((id) => !(washType?.includedExtraIds.contains(id) ?? false)).fold(0, (sum, id) => sum + (provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: '', isFavorite: false, isFromApi: false)).durationMinutes))
-                  : 30;
-              final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
-              final cutoff = DateTime(a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
+              final duration =
+                  a.calculateTotalPrice(provider.services, washType) >= 0
+                      ? (washType?.durationMinutes ?? 30) +
+                          a.additionalServices
+                              .where((id) =>
+                                  !(washType?.includedExtraIds.contains(id) ??
+                                      false))
+                              .fold(
+                                  0,
+                                  (sum, id) =>
+                                      sum +
+                                      (provider.services
+                                          .firstWhere((s) => s.id == id,
+                                              orElse: () => Service(
+                                                  id: id,
+                                                  name: id,
+                                                  description: '',
+                                                  price: 0,
+                                                  durationMinutes: 0,
+                                                  category: '',
+                                                  isFavorite: false,
+                                                  isFromApi: false))
+                                          .durationMinutes))
+                      : 30;
+              final endTime =
+                  a.dateTime.add(Duration(minutes: duration.toInt()));
+              final cutoff = DateTime(
+                  a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
               String timeStr;
               if (endTime.isAfter(cutoff)) {
-                  final overflow = endTime.difference(cutoff).inMinutes;
-                  timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
+                final overflow = endTime.difference(cutoff).inMinutes;
+                timeStr =
+                    '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
               } else {
-                  timeStr = '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
+                timeStr =
+                    '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
               }
               return _Row(Icons.access_time, 'Время', timeStr);
-              }),
+            }),
           ]),
           const SizedBox(height: 12),
-
           _Section(title: 'Тип мойки', children: [
-            _Row(Icons.local_car_wash, 'Пакет', provider.washTypeName(a.washTypeId)),
-            _Row(Icons.payments, 'Итого', '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
-            if (a.priceChanged) _PriceChangedRow(
-              newPrice: a.paidPrice, oldPrice: a.originalPrice),
+            _Row(Icons.local_car_wash, 'Пакет',
+                provider.washTypeName(a.washTypeId)),
+            _Row(Icons.payments, 'Итого',
+                '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
+            if (a.priceChanged)
+              _PriceChangedRow(
+                  newPrice: a.paidPrice, oldPrice: a.originalPrice),
           ]),
           const SizedBox(height: 12),
-
           if (a.additionalServices.isNotEmpty) ...[
             _SectionTitle('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
               padding: AppStyles.cardPadding,
               child: Wrap(
-                spacing: 8, runSpacing: 8,
+                spacing: 8,
+                runSpacing: 8,
                 children: a.additionalServices.map((id) {
-                  final service = context.watch<AppProvider>().services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+                  final service = context
+                      .watch<AppProvider>()
+                      .services
+                      .firstWhere((s) => s.id == id,
+                          orElse: () => Service(
+                              id: id,
+                              name: id,
+                              description: '',
+                              price: 0,
+                              durationMinutes: 0,
+                              category: ''));
                   return Chip(
-                    label: Text(service.name, style: const TextStyle(fontSize: 13)),
+                    label: Text(service.name,
+                        style: const TextStyle(fontSize: 13)),
                     backgroundColor: AppStyles.primary.withOpacity(0.1),
                     side: BorderSide(color: AppStyles.primary.withOpacity(0.3)),
                   );
@@ -119,7 +158,6 @@ class AppointmentDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-
           if (a.notes.isNotEmpty) ...[
             _SectionTitle('Заметки'),
             Container(
@@ -130,7 +168,6 @@ class AppointmentDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-
           if (canEdit) ...[
             SizedBox(
               width: double.infinity,
@@ -138,8 +175,11 @@ class AppointmentDetailScreen extends StatelessWidget {
                 icon: const Icon(Icons.edit),
                 label: const Text('Редактировать запись'),
                 style: AppStyles.primaryButton,
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => AddEditAppointmentScreen(appointment: a))),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            AddEditAppointmentScreen(appointment: a))),
               ),
             ),
             const SizedBox(height: 8),
@@ -220,7 +260,8 @@ class _StatusBanner extends StatelessWidget {
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Статус записи', style: AppStyles.label),
           Text(AppStyles.statusLabel(status),
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold, color: color)),
         ]),
       ]),
     );
@@ -235,20 +276,24 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    _SectionTitle(title),
-    Container(
-      decoration: AppStyles.cardDecoration,
-      child: Column(children: children.map((c) {
-        final i = children.indexOf(c);
-        return Column(children: [
-          c,
-          if (i < children.length - 1)
-            const Divider(height: 1, indent: 16, endIndent: 16,
-                color: AppStyles.divider),
-        ]);
-      }).toList()),
-    ),
-  ]);
+        _SectionTitle(title),
+        Container(
+          decoration: AppStyles.cardDecoration,
+          child: Column(
+              children: children.map((c) {
+            final i = children.indexOf(c);
+            return Column(children: [
+              c,
+              if (i < children.length - 1)
+                const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AppStyles.divider),
+            ]);
+          }).toList()),
+        ),
+      ]);
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -256,9 +301,9 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, left: 4),
-    child: Text(text, style: AppStyles.label.copyWith(fontSize: 13)),
-  );
+        padding: const EdgeInsets.only(bottom: 8, left: 4),
+        child: Text(text, style: AppStyles.label.copyWith(fontSize: 13)),
+      );
 }
 
 class _PriceChangedRow extends StatelessWidget {
@@ -268,22 +313,29 @@ class _PriceChangedRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-    child: Row(children: [
-      const Icon(Icons.edit_note_rounded, size: 18, color: AppStyles.primary),
-      const SizedBox(width: 12),
-      SizedBox(width: 100, child: Text('Изменено', style: AppStyles.bodyMedium)),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text('$newPrice ₽', style: AppStyles.bodyLarge.copyWith(
-          fontWeight: FontWeight.w600, color: AppStyles.primary)),
-        Text('$oldPrice ₽', style: const TextStyle(
-          fontSize: 13, color: AppStyles.textSecondary,
-          decoration: TextDecoration.lineThrough,
-          decorationColor: AppStyles.textSecondary,
-        )),
-      ])),
-    ]),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(children: [
+          const Icon(Icons.edit_note_rounded,
+              size: 18, color: AppStyles.primary),
+          const SizedBox(width: 12),
+          SizedBox(
+              width: 100, child: Text('Изменено', style: AppStyles.bodyMedium)),
+          Expanded(
+              child:
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('$newPrice ₽',
+                style: AppStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600, color: AppStyles.primary)),
+            Text('$oldPrice ₽',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppStyles.textSecondary,
+                  decoration: TextDecoration.lineThrough,
+                  decorationColor: AppStyles.textSecondary,
+                )),
+          ])),
+        ]),
+      );
 }
 
 class _Row extends StatelessWidget {
@@ -294,20 +346,22 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    child: Row(children: [
-      Icon(icon, size: 18, color: AppStyles.primary),
-      const SizedBox(width: 12),
-      // Фиксированная ширина лейбла — выровниваем все значения
-      SizedBox(
-        width: 100,
-        child: Text(label, style: AppStyles.bodyMedium),
-      ),
-      Expanded(child: Text(value,
-          style: AppStyles.bodyLarge.copyWith(fontWeight: FontWeight.w500),
-          textAlign: TextAlign.right)),
-    ]),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(children: [
+          Icon(icon, size: 18, color: AppStyles.primary),
+          const SizedBox(width: 12),
+          // Фиксированная ширина лейбла — выровниваем все значения
+          SizedBox(
+            width: 100,
+            child: Text(label, style: AppStyles.bodyMedium),
+          ),
+          Expanded(
+              child: Text(value,
+                  style:
+                      AppStyles.bodyLarge.copyWith(fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.right)),
+        ]),
+      );
 }
 
 class _StatusSelector extends StatelessWidget {
@@ -336,21 +390,26 @@ class _StatusSelector extends StatelessWidget {
         child: DropdownButton<String>(
           value: currentStatus,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: AppStyles.primary),
+          icon: const Icon(Icons.arrow_drop_down_circle_outlined,
+              color: AppStyles.primary),
           borderRadius: BorderRadius.circular(16),
-          items: availableOptions.map((s) => DropdownMenuItem(
-            value: s,
-            child: Row(
-              children: [
-                Icon(AppStyles.statusIcon(s), color: AppStyles.statusColor(s), size: 20),
-                const SizedBox(width: 12),
-                Text(AppStyles.statusLabel(s), style: AppStyles.bodyLarge.copyWith(
-                  color: AppStyles.statusColor(s),
-                  fontWeight: FontWeight.w600,
-                )),
-              ],
-            ),
-          )).toList(),
+          items: availableOptions
+              .map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Row(
+                      children: [
+                        Icon(AppStyles.statusIcon(s),
+                            color: AppStyles.statusColor(s), size: 20),
+                        const SizedBox(width: 12),
+                        Text(AppStyles.statusLabel(s),
+                            style: AppStyles.bodyLarge.copyWith(
+                              color: AppStyles.statusColor(s),
+                              fontWeight: FontWeight.w600,
+                            )),
+                      ],
+                    ),
+                  ))
+              .toList(),
           onChanged: (v) {
             if (v != null && v != currentStatus) {
               onChanged(v);

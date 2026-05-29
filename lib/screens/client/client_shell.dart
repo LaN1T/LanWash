@@ -14,7 +14,8 @@ import '../admin/services_screen.dart';
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
   static final shellKey = GlobalKey<_ClientShellState>();
-  @override State<ClientShell> createState() => _ClientShellState();
+  @override
+  State<ClientShell> createState() => _ClientShellState();
 }
 
 class _ClientShellState extends State<ClientShell> {
@@ -50,10 +51,13 @@ class _ClientShellState extends State<ClientShell> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final auth     = context.watch<AuthProvider>();
+    final auth = context.watch<AuthProvider>();
     // Считаем только избранные каталожные услуги (не extra), чтобы не путать с admin
     final favCount = provider.favoriteServices.length;
-    final hasUnseenChanges = provider.appointments.any((a) => (a.isModifiedByAdmin || a.isModifiedByWasher) && !a.isSeenByClient) || provider.hasDeletedByAdmin;
+    final hasUnseenChanges = provider.appointments.any((a) =>
+            (a.isModifiedByAdmin || a.isModifiedByWasher) &&
+            !a.isSeenByClient) ||
+        provider.hasDeletedByAdmin;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -68,18 +72,21 @@ class _ClientShellState extends State<ClientShell> {
         ),
         title: Row(children: [
           Container(
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
             ),
-            child: const Icon(Icons.local_car_wash,
-                color: Colors.white, size: 18),
+            child:
+                const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 10),
-          Text(_titles[_index], style: const TextStyle(
-              fontSize: 17, fontWeight: FontWeight.w700,
-              color: AppStyles.textPrimary)),
+          Text(_titles[_index],
+              style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppStyles.textPrimary)),
         ]),
       ),
       drawer: _buildDrawer(context, favCount, auth),
@@ -92,8 +99,12 @@ class _ClientShellState extends State<ClientShell> {
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: AppStyles.border)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05),
-              blurRadius: 12, offset: const Offset(0, -4))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, -4))
+          ],
         ),
         child: NavigationBar(
           selectedIndex: _index,
@@ -154,88 +165,95 @@ class _ClientShellState extends State<ClientShell> {
       child: SafeArea(
         bottom: false,
         child: Column(children: [
-        // Шапка
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          color: Colors.white,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppStyles.primaryGradient,
-                boxShadow: [BoxShadow(
-                  color: AppStyles.primary.withOpacity(0.3),
-                  blurRadius: 20,
-                )],
+          // Шапка
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            color: Colors.white,
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppStyles.primaryGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppStyles.primary.withOpacity(0.3),
+                      blurRadius: 20,
+                    )
+                  ],
+                ),
+                child: const Icon(Icons.local_car_wash,
+                    color: Colors.white, size: 32),
               ),
-              child: const Icon(Icons.local_car_wash,
-                  color: Colors.white, size: 32),
-            ),
-            const SizedBox(height: 14),
-            const Text('LanWash',
-                style: TextStyle(color: AppStyles.textPrimary,
-                    fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppStyles.primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 14),
+              const Text('LanWash',
+                  style: TextStyle(
+                      color: AppStyles.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppStyles.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(auth.username,
+                    style: const TextStyle(
+                        color: AppStyles.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
               ),
-              child: Text(auth.username,
-                  style: const TextStyle(color: AppStyles.primary, fontSize: 11,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ]),
-        ),
-        const Divider(color: AppStyles.border, height: 1),
-        const SizedBox(height: 8),
-        _drawerItem(ctx, 0, Icons.home_outlined,
-            Icons.home_rounded, 'Главная', null),
-        _drawerItem(ctx, 1, Icons.calendar_today_outlined,
-            Icons.calendar_today_rounded, 'Мои записи', null),
-        _drawerItem(ctx, 2, Icons.star_outline,
-            Icons.star_rounded, 'Избранное',
-            favCount > 0 ? '$favCount' : null),
+            ]),
+          ),
+          const Divider(color: AppStyles.border, height: 1),
+          const SizedBox(height: 8),
+          _drawerItem(
+              ctx, 0, Icons.home_outlined, Icons.home_rounded, 'Главная', null),
+          _drawerItem(ctx, 1, Icons.calendar_today_outlined,
+              Icons.calendar_today_rounded, 'Мои записи', null),
+          _drawerItem(ctx, 2, Icons.star_outline, Icons.star_rounded,
+              'Избранное', favCount > 0 ? '$favCount' : null),
 
-        const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
-        // Профиль
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.person_outline_rounded,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Профиль',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const ProfileScreen()));
-            },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+          const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+          // Профиль
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.person_outline_rounded,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Профиль',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.logout_outlined,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Выйти',
-                style: TextStyle(color: AppStyles.textSecondary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              _confirmLogout(ctx);
-            },
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.logout_outlined,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Выйти',
+                  style: TextStyle(color: AppStyles.textSecondary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmLogout(ctx);
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
           ),
-        ),
-      ]),
+        ]),
       ),
     );
   }
@@ -247,22 +265,27 @@ class _ClientShellState extends State<ClientShell> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ListTile(
         minLeadingWidth: 24,
-        leading: Icon(sel ? selIcon : icon, size: 22,
-            color: sel ? AppStyles.primary : AppStyles.textSecondary),
-        title: Text(label, style: TextStyle(
-          color: sel ? AppStyles.primary : AppStyles.textPrimary,
-          fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-        )),
-        trailing: badge != null ? Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppStyles.primary,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(badge, style: const TextStyle(
-              color: Colors.white, fontSize: 12,
-              fontWeight: FontWeight.bold)),
-        ) : null,
+        leading: Icon(sel ? selIcon : icon,
+            size: 22, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+        title: Text(label,
+            style: TextStyle(
+              color: sel ? AppStyles.primary : AppStyles.textPrimary,
+              fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+            )),
+        trailing: badge != null
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppStyles.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(badge,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+              )
+            : null,
         selected: sel,
         selectedTileColor: AppStyles.primary.withOpacity(0.08),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -284,8 +307,7 @@ class _ClientShellState extends State<ClientShell> {
         content: const Text('Вы вернётесь на экран входа.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Отмена')),
+              onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppStyles.primary,

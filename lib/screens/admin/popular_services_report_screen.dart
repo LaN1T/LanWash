@@ -14,10 +14,12 @@ class PopularServicesReportScreen extends StatefulWidget {
   const PopularServicesReportScreen({super.key});
 
   @override
-  State<PopularServicesReportScreen> createState() => _PopularServicesReportScreenState();
+  State<PopularServicesReportScreen> createState() =>
+      _PopularServicesReportScreenState();
 }
 
-class _PopularServicesReportScreenState extends State<PopularServicesReportScreen> {
+class _PopularServicesReportScreenState
+    extends State<PopularServicesReportScreen> {
   PopularServicesReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
   String _selectedCategory = 'Все';
@@ -54,7 +56,9 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
     });
     try {
       final apiService = ApiService();
-      final report = await apiService.getPopularAdditionalServices(_selectedDate, category: _selectedCategory);
+      final report = await apiService.getPopularAdditionalServices(
+          _selectedDate,
+          category: _selectedCategory);
       setState(() {
         _report = report;
       });
@@ -72,16 +76,16 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
   Future<void> downloadPdf() async {
     if (_report == null) return;
     final headers = ['Услуга', 'Количество'];
-    final data = _report!.data.map((e) => [
-      e.serviceName ?? 'Услуга',
-      (e.count ?? 0).toString()
-    ]).toList();
-    
+    final data = _report!.data
+        .map((e) => [e.serviceName ?? 'Услуга', (e.count ?? 0).toString()])
+        .toList();
+
     final fileName = 'Популярные услуги_${_selectedDate}_$_selectedCategory';
 
     final pdfBytes = await PdfExportService.createPdfBytes(
-      'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)', headers, data
-    );
+        'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)',
+        headers,
+        data);
 
     if (kIsWeb) {
       await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
@@ -89,7 +93,8 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
       if (!mounted) return;
       await PdfExportService.showExportDialog(
         context,
-        title: 'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)',
+        title:
+            'Отчет: Популярные услуги за $_selectedDate ($_selectedCategory)',
         fileName: fileName,
         pdfBytes: pdfBytes,
       );
@@ -107,7 +112,10 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.tryParse(_selectedDate.length == 7 ? '$_selectedDate-01' : _selectedDate) ?? DateTime.now(),
+      initialDate: DateTime.tryParse(_selectedDate.length == 7
+              ? '$_selectedDate-01'
+              : _selectedDate) ??
+          DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       initialDatePickerMode: DatePickerMode.day,
@@ -129,35 +137,70 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppStyles.danger, fontSize: 16)))
+              ? Center(
+                  child: Text(_error!,
+                      style: const TextStyle(
+                          color: AppStyles.danger, fontSize: 16)))
               : Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       color: Colors.white,
                       child: Row(
                         children: [
                           Expanded(
                             child: Text(
                               _selectedDate.length == 7
-                                  ? 'Отчет: ${['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'][DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
-                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  ? 'Отчет: ${[
+                                      'Январь',
+                                      'Февраль',
+                                      'Март',
+                                      'Апрель',
+                                      'Май',
+                                      'Июнь',
+                                      'Июль',
+                                      'Август',
+                                      'Сентябрь',
+                                      'Октябрь',
+                                      'Ноябрь',
+                                      'Декабрь'
+                                    ][DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
+                                  : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${[
+                                      'Январь',
+                                      'Февраль',
+                                      'Март',
+                                      'Апрель',
+                                      'Май',
+                                      'Июнь',
+                                      'Июль',
+                                      'Август',
+                                      'Сентябрь',
+                                      'Октябрь',
+                                      'Ноябрь',
+                                      'Декабрь'
+                                    ][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
+                            icon: const Icon(Icons.picture_as_pdf,
+                                color: Colors.black),
                             tooltip: 'Скачать отчет',
                             onPressed: downloadPdf,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
+                            icon: const Icon(Icons.calendar_month,
+                                color: AppStyles.primary),
                             onPressed: _setMonthMode,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.date_range, color: AppStyles.primary),
+                            icon: const Icon(Icons.date_range,
+                                color: AppStyles.primary),
                             onPressed: () => _selectDate(context),
                           ),
                         ],
@@ -166,7 +209,8 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                     SizedBox(
                       height: 48,
                       child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         scrollDirection: Axis.horizontal,
                         children: _categories.map((cat) {
                           final selected = _selectedCategory == cat;
@@ -181,7 +225,9 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                               },
                               selectedColor: AppStyles.primary,
                               labelStyle: TextStyle(
-                                color: selected ? Colors.white : AppStyles.textSecondary,
+                                color: selected
+                                    ? Colors.white
+                                    : AppStyles.textSecondary,
                                 fontSize: 13,
                               ),
                             ),
@@ -198,27 +244,36 @@ class _PopularServicesReportScreenState extends State<PopularServicesReportScree
                               itemBuilder: (context, index) {
                                 final entry = _report!.data[index];
                                 final name = entry.serviceName?.trim() ?? '';
-                                final isPromo = Provider.of<AppProvider>(context, listen: false).promos.any((p) {
-                                  return name.toLowerCase() == p.name.trim().toLowerCase();
+                                final isPromo = Provider.of<AppProvider>(
+                                        context,
+                                        listen: false)
+                                    .promos
+                                    .any((p) {
+                                  return name.toLowerCase() ==
+                                      p.name.trim().toLowerCase();
                                 });
-                                
+
                                 int count = entry.count ?? 0;
                                 String countLabel;
                                 if (count % 10 == 1 && count % 100 != 11) {
                                   countLabel = '$count раз';
-                                } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
+                                } else if ([2, 3, 4].contains(count % 10) &&
+                                    ![12, 13, 14].contains(count % 100)) {
                                   countLabel = '$count раза';
                                 } else {
                                   countLabel = '$count раз';
                                 }
 
                                 return Card(
-                                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
                                   child: ListTile(
                                     title: Text(
                                       entry.serviceName ?? 'Услуга',
                                       style: TextStyle(
-                                        fontWeight: isPromo ? FontWeight.bold : FontWeight.normal,
+                                        fontWeight: isPromo
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                     trailing: Text(countLabel),

@@ -30,7 +30,9 @@ void main() async {
   await initializeDateFormatting('ru', null);
 
   // Инициализация уведомлений
-  sl<NotificationService>().init().catchError((e) => debugPrint("Firebase error: $e"));
+  sl<NotificationService>()
+      .init()
+      .catchError((e) => debugPrint("Firebase error: $e"));
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -78,7 +80,8 @@ class LanWashApp extends StatelessWidget {
           primary: AppStyles.primary,
           secondary: AppStyles.primaryLight,
           surface: AppStyles.bgCard,
-          surfaceVariant: AppStyles.bgPage, // Changed background to surfaceVariant
+          surfaceVariant:
+              AppStyles.bgPage, // Changed background to surfaceVariant
           // Removed background as it's deprecated and surfaceVariant is the modern equivalent for background colors in Material 3
         ),
         useMaterial3: true,
@@ -91,7 +94,8 @@ class LanWashApp extends StatelessWidget {
           centerTitle: false,
           titleTextStyle: TextStyle(
             color: AppStyles.textPrimary,
-            fontSize: 17, fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
           ),
         ),
         cardTheme: CardThemeData(
@@ -105,40 +109,50 @@ class LanWashApp extends StatelessWidget {
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: Colors.white,
           indicatorColor: AppStyles.primaryBg,
-          labelTextStyle: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected)
-              ? const TextStyle(color: AppStyles.primary, fontSize: 12,
+          labelTextStyle: WidgetStateProperty.resolveWith((s) => s
+                  .contains(WidgetState.selected)
+              ? const TextStyle(
+                  color: AppStyles.primary,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600)
               : const TextStyle(color: AppStyles.textSecondary, fontSize: 12)),
-          iconTheme: WidgetStateProperty.resolveWith((s) =>
-            IconThemeData(color: s.contains(WidgetState.selected)
-              ? AppStyles.primary : AppStyles.textSecondary)),
+          iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
+              color: s.contains(WidgetState.selected)
+                  ? AppStyles.primary
+                  : AppStyles.textSecondary)),
         ),
         dividerColor: AppStyles.border,
         dialogTheme: const DialogThemeData(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
-          titleTextStyle: TextStyle(color: AppStyles.textPrimary,
-              fontSize: 18, fontWeight: FontWeight.bold),
-          contentTextStyle: TextStyle(color: AppStyles.textSecondary,
-              fontSize: 14),
+          titleTextStyle: TextStyle(
+              color: AppStyles.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
+          contentTextStyle:
+              TextStyle(color: AppStyles.textSecondary, fontSize: 14),
         ),
         snackBarTheme: SnackBarThemeData(
           backgroundColor: AppStyles.textPrimary,
           contentTextStyle: const TextStyle(color: Colors.white),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           behavior: SnackBarBehavior.floating,
         ),
         checkboxTheme: CheckboxThemeData(
           fillColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected) ? AppStyles.primary : Colors.transparent),
+              s.contains(WidgetState.selected)
+                  ? AppStyles.primary
+                  : Colors.transparent),
           checkColor: WidgetStateProperty.all(Colors.white),
           side: const BorderSide(color: AppStyles.border, width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         radioTheme: RadioThemeData(
           fillColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected) ? AppStyles.primary : AppStyles.border),
+              s.contains(WidgetState.selected)
+                  ? AppStyles.primary
+                  : AppStyles.border),
         ),
         tabBarTheme: const TabBarThemeData(
           labelColor: AppStyles.primary,
@@ -155,11 +169,13 @@ class LanWashApp extends StatelessWidget {
           headerBackgroundColor: AppStyles.primary,
           headerForegroundColor: Colors.white,
           dayForegroundColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected)
-                ? Colors.white : AppStyles.textPrimary),
+              s.contains(WidgetState.selected)
+                  ? Colors.white
+                  : AppStyles.textPrimary),
           dayBackgroundColor: WidgetStateProperty.resolveWith((s) =>
-            s.contains(WidgetState.selected)
-                ? AppStyles.primary : Colors.transparent),
+              s.contains(WidgetState.selected)
+                  ? AppStyles.primary
+                  : Colors.transparent),
           todayForegroundColor: WidgetStateProperty.all(AppStyles.primary),
           todayBackgroundColor: WidgetStateProperty.all(AppStyles.primaryBg),
         ),
@@ -171,7 +187,8 @@ class LanWashApp extends StatelessWidget {
 
 class _AppRouter extends StatefulWidget {
   const _AppRouter();
-  @override State<_AppRouter> createState() => _AppRouterState();
+  @override
+  State<_AppRouter> createState() => _AppRouterState();
 }
 
 class _AppRouterState extends State<_AppRouter> {
@@ -185,9 +202,8 @@ class _AppRouterState extends State<_AppRouter> {
       final auth = context.read<AuthProvider>();
       final provider = context.read<AppProvider>();
       if (auth.isLoggedIn) {
-         provider.init(auth);
+        provider.init(auth);
       }
-
     });
   }
 
@@ -196,7 +212,8 @@ class _AppRouterState extends State<_AppRouter> {
     final auth = Provider.of<AuthProvider>(context, listen: true);
     final provider = context.read<AppProvider>();
 
-    debugPrint('[DEBUG] _AppRouter: Build() Auth: loggedIn=${auth.isLoggedIn}, resumed=$_sessionResumed, init=${auth.initialized}');
+    debugPrint(
+        '[DEBUG] _AppRouter: Build() Auth: loggedIn=${auth.isLoggedIn}, resumed=$_sessionResumed, init=${auth.initialized}');
 
     // При выходе — сбросить данные
     if (_wasLoggedIn == true && !auth.isLoggedIn) {
@@ -205,15 +222,17 @@ class _AppRouterState extends State<_AppRouter> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         provider.clearData();
         if (!mounted) return;
-        debugPrint('[DEBUG] _AppRouter: Clearing stack and showing LoginScreen.');
+        debugPrint(
+            '[DEBUG] _AppRouter: Clearing stack and showing LoginScreen.');
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
-    
+
     // При входе — инициализация
     if (auth.isLoggedIn && _wasLoggedIn != true) {
       debugPrint('[DEBUG] _AppRouter: Login detected, initializing provider.');
-      _sessionResumed = true; // Устанавливаем в true для нового входа, чтобы не показывать экран возобновления
+      _sessionResumed =
+          true; // Устанавливаем в true для нового входа, чтобы не показывать экран возобновления
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         provider.init(auth);
@@ -223,7 +242,7 @@ class _AppRouterState extends State<_AppRouter> {
     }
 
     _wasLoggedIn = auth.isLoggedIn;
-    
+
     if (!auth.initialized) return const SplashScreen();
 
     // Экран логина: либо вообще не вошли, либо вошли но сессия не продолжена
@@ -234,7 +253,7 @@ class _AppRouterState extends State<_AppRouter> {
         isResume: true,
       );
     }
-    
+
     if (auth.isClient) return ClientShell(key: ClientShell.shellKey);
     if (auth.isWasher) return const WasherShell();
     return const HomeShell();
