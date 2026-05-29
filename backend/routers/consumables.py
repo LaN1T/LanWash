@@ -47,7 +47,7 @@ async def update_consumable(request: Request, consumable_id: str, req: Consumabl
     await db.commit()
     if result.rowcount == 0:
         raise HTTPException(404, "Расходник не найден")
-    return await get_consumable(consumable_id, db)
+    return await get_consumable(request, consumable_id, db)
 
 @router.delete("/{consumable_id}")
 @limiter.limit("10/minute")

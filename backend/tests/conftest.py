@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 import pytest
 import pytest_asyncio
 
@@ -13,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from main import app, lifespan
 from database import init_db, AsyncSessionLocal
-from db_models import Base
+from db_models import Base, User
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # Отключаем rate limiting для тестов
@@ -54,3 +55,52 @@ async def async_client(db_engine):
         # Инициализируем БД (seed_data)
         await init_db()
         yield client
+
+
+@pytest_asyncio.fixture
+async def admin_token(async_client):
+    """Токен администратора (из seed_data)."""
+    response = await async_client.post("/api/auth/login", json={
+        "username": "admin",
+        "password": os.getenv("INITIAL_ADMIN_PASSWORD"),
+    })
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+
+@pytest_asyncio.fixture
+async def washer_token(async_client, db_session):
+    """Токен мойщика (создаётся напрямую в БД с role='washer')."""
+    from services.auth_service import get_password_hash
+    user = User(
+        username="washer_test",
+        passwordHash=get_password_hash("TestPass123!"),
+        role="washer",
+        displayName="Washer Test",
+        createdAt=datetime.now().isoformat(),
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    response = await async_client.post("/api/auth/login", json={
+        "username": "washer_test",
+        "password": "TestPass123!",
+    })
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+
+@pytest_asyncio.fixture
+async def client_token(async_client):
+    """Токен обычного клиента (создаётся на лету)."""
+    await async_client.post("/api/auth/register", json={
+        "username": "client_test",
+        "password": "TestPass123!",
+        "displayName": "Client Test",
+    })
+    response = await async_client.post("/api/auth/login", json={
+        "username": "client_test",
+        "password": "TestPass123!",
+    })
+    assert response.status_code == 200
+    return response.json()["access_token"]
