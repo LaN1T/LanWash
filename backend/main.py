@@ -67,14 +67,24 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Prometheus metrics (exposed at /metrics)
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# CORS — development allows any localhost port; production uses strict whitelist
+if settings.is_production:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
+else:
+    # Development / testing: allow any localhost port (Flutter web random ports)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"https?://localhost(:\d+)?",
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
 # Security headers middleware
 @app.middleware("http")
