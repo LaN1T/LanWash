@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/constants.dart';
+import '../core/api_client.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
 import '../models/log_entry.dart';
@@ -31,24 +31,10 @@ class PaginatedAppointments {
 class ApiService {
   static String get _baseUrl => ApiConstants.baseUrl;
 
-  static const _storage = FlutterSecureStorage();
-  static String? _token;
-
-  static Future<String?> getToken() async {
-    if (_token != null) return _token;
-    _token = await _storage.read(key: 'jwt_token');
-    return _token;
-  }
-
-  static Future<void> setToken(String token) async {
-    _token = token;
-    await _storage.write(key: 'jwt_token', value: token);
-  }
-
-  static Future<void> deleteToken() async {
-    _token = null;
-    await _storage.delete(key: 'jwt_token');
-  }
+  // Token management делегируется ApiClient (единая точка правды)
+  static Future<String?> getToken() => ApiClient.getToken();
+  static Future<void> setToken(String token) => ApiClient.setToken(token);
+  static Future<void> deleteToken() => ApiClient.deleteToken();
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await getToken();
