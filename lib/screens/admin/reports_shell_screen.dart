@@ -11,7 +11,8 @@ class ReportsShellScreen extends StatefulWidget {
   State<ReportsShellScreen> createState() => _ReportsShellScreenState();
 }
 
-class _ReportsShellScreenState extends State<ReportsShellScreen> with SingleTickerProviderStateMixin {
+class _ReportsShellScreenState extends State<ReportsShellScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -40,9 +41,15 @@ class _ReportsShellScreenState extends State<ReportsShellScreen> with SingleTick
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: const [
-            Tab(child: Text('Средний чек', style: TextStyle(color: Colors.white))),
-            Tab(child: Text('Популярные услуги', style: TextStyle(color: Colors.white))),
-            Tab(child: Text('Расходники', style: TextStyle(color: Colors.white))),
+            Tab(
+                child:
+                    Text('Средний чек', style: TextStyle(color: Colors.white))),
+            Tab(
+                child: Text('Популярные услуги',
+                    style: TextStyle(color: Colors.white))),
+            Tab(
+                child:
+                    Text('Расходники', style: TextStyle(color: Colors.white))),
           ],
         ),
       ),

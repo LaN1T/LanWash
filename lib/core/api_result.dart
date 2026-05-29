@@ -7,7 +7,8 @@ sealed class ApiResult<T> {
   bool get isFailure => this is Failure<T>;
 
   T? get data => (this is Success<T>) ? (this as Success<T>).value : null;
-  AppError? get error => (this is Failure<T>) ? (this as Failure<T>).error : null;
+  AppError? get error =>
+      (this is Failure<T>) ? (this as Failure<T>).error : null;
 
   R when<R>({
     required R Function(T data) success,
@@ -43,14 +44,16 @@ class AppError {
     this.originalError,
   });
 
-  factory AppError.network([dynamic original]) =>
-      AppError(message: 'Ошибка сети. Проверьте подключение.', originalError: original);
+  factory AppError.network([dynamic original]) => AppError(
+      message: 'Ошибка сети. Проверьте подключение.', originalError: original);
 
-  factory AppError.unauthorized() =>
-      const AppError(message: 'Сессия истекла. Войдите снова.', statusCode: 401);
+  factory AppError.unauthorized() => const AppError(
+      message: 'Сессия истекла. Войдите снова.', statusCode: 401);
 
-  factory AppError.server([int? code, dynamic original]) =>
-      AppError(message: 'Ошибка сервера. Попробуйте позже.', statusCode: code, originalError: original);
+  factory AppError.server([int? code, dynamic original]) => AppError(
+      message: 'Ошибка сервера. Попробуйте позже.',
+      statusCode: code,
+      originalError: original);
 
   factory AppError.unknown([dynamic original]) =>
       AppError(message: 'Неизвестная ошибка.', originalError: original);

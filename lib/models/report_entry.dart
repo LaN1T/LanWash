@@ -7,9 +7,7 @@ class MonthlyReport {
   factory MonthlyReport.fromJson(Map<String, dynamic> json) {
     return MonthlyReport(
       date: json['date'] ?? '',
-      data: (json['data'] as List)
-          .map((e) => ReportEntry.fromJson(e))
-          .toList(),
+      data: (json['data'] as List).map((e) => ReportEntry.fromJson(e)).toList(),
     );
   }
 }

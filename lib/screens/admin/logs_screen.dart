@@ -6,7 +6,8 @@ import '../../services/log_service.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
-  @override State<LogsScreen> createState() => _LogsScreenState();
+  @override
+  State<LogsScreen> createState() => _LogsScreenState();
 }
 
 class _LogsScreenState extends State<LogsScreen> {
@@ -30,7 +31,11 @@ class _LogsScreenState extends State<LogsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final logs = await LogService.instance.getAll();
-    if (mounted) setState(() { _logs = logs; _loading = false; });
+    if (mounted)
+      setState(() {
+        _logs = logs;
+        _loading = false;
+      });
   }
 
   Future<void> _confirmClear() async {
@@ -42,12 +47,15 @@ class _LogsScreenState extends State<LogsScreen> {
         title: const Text('Очистить журнал?'),
         content: const Text('Все записи журнала будут удалены безвозвратно.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
               child: const Text('Отмена')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.danger, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                backgroundColor: AppStyles.danger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8))),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Очистить'),
           ),
@@ -62,8 +70,9 @@ class _LogsScreenState extends State<LogsScreen> {
 
   List<LogEntry> get _filtered {
     if (_filterUser.isEmpty) return _logs;
-    return _logs.where((l) =>
-        l.username.contains(_filterUser.toLowerCase())).toList();
+    return _logs
+        .where((l) => l.username.contains(_filterUser.toLowerCase()))
+        .toList();
   }
 
   @override
@@ -89,7 +98,8 @@ class _LogsScreenState extends State<LogsScreen> {
             tooltip: 'Обновить',
           ),
           IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined, color: AppStyles.danger),
+            icon: const Icon(Icons.delete_sweep_outlined,
+                color: AppStyles.danger),
             onPressed: _confirmClear,
             tooltip: 'Очистить журнал',
           ),
@@ -102,8 +112,8 @@ class _LogsScreenState extends State<LogsScreen> {
           child: TextField(
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _filterUser = v),
-            decoration: AppStyles.inputDecoration(
-                'Фильтр по логину', icon: Icons.person_search_outlined),
+            decoration: AppStyles.inputDecoration('Фильтр по логину',
+                icon: Icons.person_search_outlined),
             style: AppStyles.bodyLarge,
           ),
         ),
@@ -112,9 +122,8 @@ class _LogsScreenState extends State<LogsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(children: [
-              Text('Записей: ${filtered.length}',
-                  style: AppStyles.bodySmall),
-              if (_filterUser.isNotEmpty) ...[ 
+              Text('Записей: ${filtered.length}', style: AppStyles.bodySmall),
+              if (_filterUser.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () {
@@ -122,14 +131,17 @@ class _LogsScreenState extends State<LogsScreen> {
                     setState(() => _filterUser = '');
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppStyles.primaryBg,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text('× сбросить',
-                        style: TextStyle(color: AppStyles.primary,
-                            fontSize: 11, fontWeight: FontWeight.w600)),
+                        style: TextStyle(
+                            color: AppStyles.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -137,21 +149,25 @@ class _LogsScreenState extends State<LogsScreen> {
           ),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppStyles.primary))
               : filtered.isEmpty
-              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.history_rounded,
-                      size: 56, color: AppStyles.textSecondary),
-                  const SizedBox(height: 12),
-                  Text(_filterUser.isEmpty ? 'Журнал пуст' : 'Нет записей',
-                      style: const TextStyle(color: AppStyles.textSecondary,
-                          fontSize: 16, fontWeight: FontWeight.w500)),
-                ]))
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) => _LogCard(entry: filtered[i]),
-                ),
+                  ? Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.history_rounded,
+                          size: 56, color: AppStyles.textSecondary),
+                      const SizedBox(height: 12),
+                      Text(_filterUser.isEmpty ? 'Журнал пуст' : 'Нет записей',
+                          style: const TextStyle(
+                              color: AppStyles.textSecondary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500)),
+                    ]))
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) => _LogCard(entry: filtered[i]),
+                    ),
         ),
       ]),
     );
@@ -177,7 +193,8 @@ class _LogCard extends StatelessWidget {
 
   IconData get _actionIcon {
     final a = entry.action;
-    if (a.contains('Вход') && a.contains('Неудачн')) return Icons.lock_open_rounded;
+    if (a.contains('Вход') && a.contains('Неудачн'))
+      return Icons.lock_open_rounded;
     if (a.contains('Вход')) return Icons.login_rounded;
     if (a.contains('Выход')) return Icons.logout_rounded;
     if (a.contains('Регистрация')) return Icons.person_add_rounded;
@@ -207,33 +224,41 @@ class _LogCard extends StatelessWidget {
             child: Icon(_actionIcon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppStyles.primaryBg,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(entry.username,
-                    style: const TextStyle(color: AppStyles.primary,
-                        fontSize: 11, fontWeight: FontWeight.w700)),
-              ),
-              const Spacer(),
-              Text(
-                DateFormat('d MMM, HH:mm', 'ru').format(entry.timestamp),
-                style: AppStyles.bodySmall,
-              ),
-            ]),
-            const SizedBox(height: 5),
-            Text(entry.action, style: TextStyle(
-                color: color, fontSize: 13, fontWeight: FontWeight.w600)),
-            if (entry.details.isNotEmpty) ...[ 
-              const SizedBox(height: 2),
-              Text(entry.details, style: AppStyles.bodySmall),
-            ],
-          ])),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Row(children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppStyles.primaryBg,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(entry.username,
+                        style: const TextStyle(
+                            color: AppStyles.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  const Spacer(),
+                  Text(
+                    DateFormat('d MMM, HH:mm', 'ru').format(entry.timestamp),
+                    style: AppStyles.bodySmall,
+                  ),
+                ]),
+                const SizedBox(height: 5),
+                Text(entry.action,
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+                if (entry.details.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(entry.details, style: AppStyles.bodySmall),
+                ],
+              ])),
         ]),
       ),
     );

@@ -6,14 +6,19 @@ import '../../models/service.dart';
 import '../../providers/app_provider.dart';
 
 const _categories = [
-  'Мойка кузова', 'Обработка стёкол', 'Защитные покрытия',
-  'Уход за салоном', 'Специальные услуги', 'Детейлинг',
+  'Мойка кузова',
+  'Обработка стёкол',
+  'Защитные покрытия',
+  'Уход за салоном',
+  'Специальные услуги',
+  'Детейлинг',
 ];
 
 class AddEditServiceScreen extends StatefulWidget {
   final Service? service;
   const AddEditServiceScreen({super.key, this.service});
-  @override State<AddEditServiceScreen> createState() => _State();
+  @override
+  State<AddEditServiceScreen> createState() => _State();
 }
 
 class _State extends State<AddEditServiceScreen> {
@@ -30,17 +35,20 @@ class _State extends State<AddEditServiceScreen> {
   void initState() {
     super.initState();
     final s = widget.service;
-    _nameCtrl  = TextEditingController(text: s?.name        ?? '');
-    _descCtrl  = TextEditingController(text: s?.description ?? '');
+    _nameCtrl = TextEditingController(text: s?.name ?? '');
+    _descCtrl = TextEditingController(text: s?.description ?? '');
     _priceCtrl = TextEditingController(text: s != null ? '${s.price}' : '');
-    _durCtrl   = TextEditingController(text: s != null ? '${s.durationMinutes}' : '');
-    _category  = s?.category ?? _categories.first;
+    _durCtrl =
+        TextEditingController(text: s != null ? '${s.durationMinutes}' : '');
+    _category = s?.category ?? _categories.first;
   }
 
   @override
   void dispose() {
-    _nameCtrl.dispose(); _descCtrl.dispose();
-    _priceCtrl.dispose(); _durCtrl.dispose();
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _priceCtrl.dispose();
+    _durCtrl.dispose();
     super.dispose();
   }
 
@@ -59,55 +67,65 @@ class _State extends State<AddEditServiceScreen> {
           _label('Название и описание'),
           TextFormField(
             controller: _nameCtrl,
-            decoration: AppStyles.inputDecoration('Название услуги', icon: Icons.label),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите название' : null,
+            decoration:
+                AppStyles.inputDecoration('Название услуги', icon: Icons.label),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Введите название' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _descCtrl,
-            decoration: AppStyles.inputDecoration('Описание', icon: Icons.description),
+            decoration:
+                AppStyles.inputDecoration('Описание', icon: Icons.description),
             maxLines: 4,
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите описание' : null,
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Введите описание' : null,
           ),
           const SizedBox(height: 20),
-
           _label('Стоимость и длительность'),
           Row(children: [
-            Expanded(child: TextFormField(
+            Expanded(
+                child: TextFormField(
               controller: _priceCtrl,
-              decoration: AppStyles.inputDecoration('Цена (₽)', icon: Icons.payments),
+              decoration:
+                  AppStyles.inputDecoration('Цена (₽)', icon: Icons.payments),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) => (v == null || v.isEmpty) ? 'Введите цену' : null,
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? 'Введите цену' : null,
             )),
             const SizedBox(width: 12),
-            Expanded(child: TextFormField(
+            Expanded(
+                child: TextFormField(
               controller: _durCtrl,
-              decoration: AppStyles.inputDecoration('Время (мин)', icon: Icons.access_time),
+              decoration: AppStyles.inputDecoration('Время (мин)',
+                  icon: Icons.access_time),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              validator: (v) => (v == null || v.isEmpty) ? 'Введите время' : null,
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? 'Введите время' : null,
             )),
           ]),
           const SizedBox(height: 20),
-
           _label('Категория'),
           Container(
             decoration: AppStyles.cardDecoration,
             child: Column(
-              children: _categories.map((cat) => RadioListTile<String>(
-                value: cat,
-                groupValue: _category,
-                onChanged: (v) => setState(() => _category = v!),
-                title: Text(cat, style: AppStyles.bodyLarge),
-                activeColor: AppStyles.primary,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                dense: true,
-              )).toList(),
+              children: _categories
+                  .map((cat) => RadioListTile<String>(
+                        value: cat,
+                        groupValue: _category,
+                        onChanged: (v) => setState(() => _category = v!),
+                        title: Text(cat, style: AppStyles.bodyLarge),
+                        activeColor: AppStyles.primary,
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                        dense: true,
+                      ))
+                  .toList(),
             ),
           ),
           const SizedBox(height: 24),
-
           ElevatedButton.icon(
             icon: const Icon(Icons.save),
             label: Text(_isEditing ? 'Сохранить изменения' : 'Добавить услугу'),
@@ -121,9 +139,11 @@ class _State extends State<AddEditServiceScreen> {
   }
 
   Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, left: 2),
-    child: Text(text, style: AppStyles.label.copyWith(fontSize: 13, color: AppStyles.primary)),
-  );
+        padding: const EdgeInsets.only(bottom: 8, left: 2),
+        child: Text(text,
+            style: AppStyles.label
+                .copyWith(fontSize: 13, color: AppStyles.primary)),
+      );
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;

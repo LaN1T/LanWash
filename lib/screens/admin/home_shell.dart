@@ -32,11 +32,15 @@ class _HomeShellState extends State<HomeShell> {
     if (provider.loading) {
       return const Scaffold(
         backgroundColor: AppStyles.bgPage,
-        body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        body: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.local_car_wash, color: AppStyles.primary, size: 72),
           SizedBox(height: 20),
-          Text('LanWash', style: TextStyle(color: AppStyles.textPrimary,
-              fontSize: 28, fontWeight: FontWeight.bold)),
+          Text('LanWash',
+              style: TextStyle(
+                  color: AppStyles.textPrimary,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold)),
           SizedBox(height: 24),
           CircularProgressIndicator(color: AppStyles.primary),
         ])),
@@ -54,18 +58,21 @@ class _HomeShellState extends State<HomeShell> {
         elevation: 0,
         title: Row(children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
             ),
-            child: const Icon(Icons.local_car_wash,
-                color: Colors.white, size: 18),
+            child:
+                const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 10),
-          Text(_titles[_index], style: const TextStyle(
-              fontSize: 17, fontWeight: FontWeight.w600,
-              color: AppStyles.textPrimary)),
+          Text(_titles[_index],
+              style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: AppStyles.textPrimary)),
           Container(
             margin: const EdgeInsets.only(left: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -74,7 +81,9 @@ class _HomeShellState extends State<HomeShell> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text('Администратор',
-                style: TextStyle(color: AppStyles.primary, fontSize: 10,
+                style: TextStyle(
+                    color: AppStyles.primary,
+                    fontSize: 10,
                     fontWeight: FontWeight.w600)),
           ),
         ]),
@@ -89,18 +98,21 @@ class _HomeShellState extends State<HomeShell> {
           FavoritesScreen(),
         ],
       ),
-      floatingActionButton: _index == 2 ? null :
-        FloatingActionButton.extended(
-          icon: const Icon(Icons.add),
-          label: Text(_index == 0 ? 'Новая запись' : 'Новая услуга'),
-          backgroundColor: AppStyles.primary,
-          foregroundColor: Colors.white,
-          onPressed: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => _index == 0
-                ? const AddEditAppointmentScreen()
-                : const AddEditServiceScreen(),
-          )),
-        ),
+      floatingActionButton: _index == 2
+          ? null
+          : FloatingActionButton.extended(
+              icon: const Icon(Icons.add),
+              label: Text(_index == 0 ? 'Новая запись' : 'Новая услуга'),
+              backgroundColor: AppStyles.primary,
+              foregroundColor: Colors.white,
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => _index == 0
+                        ? const AddEditAppointmentScreen()
+                        : const AddEditServiceScreen(),
+                  )),
+            ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -116,12 +128,14 @@ class _HomeShellState extends State<HomeShell> {
             const NavigationDestination(
               icon: Icon(Icons.calendar_today_outlined,
                   color: AppStyles.textSecondary),
-              selectedIcon: Icon(Icons.calendar_today, color: AppStyles.primary),
+              selectedIcon:
+                  Icon(Icons.calendar_today, color: AppStyles.primary),
               label: 'Записи',
             ),
             const NavigationDestination(
               icon: Icon(Icons.local_car_wash, color: AppStyles.textSecondary),
-              selectedIcon: Icon(Icons.local_car_wash, color: AppStyles.primary),
+              selectedIcon:
+                  Icon(Icons.local_car_wash, color: AppStyles.primary),
               label: 'Услуги',
             ),
             NavigationDestination(
@@ -148,174 +162,197 @@ class _HomeShellState extends State<HomeShell> {
       child: SafeArea(
         bottom: false,
         child: ListView(children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          color: Colors.white,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppStyles.primaryGradient,
-                boxShadow: [BoxShadow(
-                  color: AppStyles.primary.withOpacity(0.3),
-                  blurRadius: 20,
-                )],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            color: Colors.white,
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppStyles.primaryGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppStyles.primary.withOpacity(0.3),
+                      blurRadius: 20,
+                    )
+                  ],
+                ),
+                child: const Icon(Icons.local_car_wash,
+                    color: Colors.white, size: 32),
               ),
-              child: const Icon(Icons.local_car_wash,
-                  color: Colors.white, size: 32),
-            ),
-            const SizedBox(height: 14),
-            const Text('LanWash',
-                style: TextStyle(color: AppStyles.textPrimary,
-                    fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppStyles.primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 14),
+              const Text('LanWash',
+                  style: TextStyle(
+                      color: AppStyles.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppStyles.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(auth.username,
+                    style: const TextStyle(
+                        color: AppStyles.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
               ),
-              child: Text(auth.username,
-                  style: const TextStyle(color: AppStyles.primary, fontSize: 11,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ]),
-        ),
-        const Divider(color: AppStyles.border, height: 1),
-        const SizedBox(height: 8),
-        _drawerItem(ctx, 0, Icons.calendar_today_outlined,
-            Icons.calendar_today, 'Записи на мойку', null),
-        _drawerItem(ctx, 1, Icons.local_car_wash,
-            Icons.local_car_wash, 'Каталог услуг', null),
-        _drawerItem(ctx, 2, Icons.star_outline,
-            Icons.star, 'Избранное', favCount > 0 ? '$favCount' : null),
-        const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
-        // Расписание
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.calendar_month_outlined,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Расписание',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const AdminScheduleScreen()));
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ]),
           ),
-        ),
-        // Заметки мойщиков
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: Badge(
-              isLabelVisible: context.watch<AppProvider>().unreadNotes > 0,
-              label: Text('${context.watch<AppProvider>().unreadNotes}'),
-              backgroundColor: AppStyles.danger,
-              child: const Icon(Icons.note_alt_outlined,
+          const Divider(color: AppStyles.border, height: 1),
+          const SizedBox(height: 8),
+          _drawerItem(ctx, 0, Icons.calendar_today_outlined,
+              Icons.calendar_today, 'Записи на мойку', null),
+          _drawerItem(ctx, 1, Icons.local_car_wash, Icons.local_car_wash,
+              'Каталог услуг', null),
+          _drawerItem(ctx, 2, Icons.star_outline, Icons.star, 'Избранное',
+              favCount > 0 ? '$favCount' : null),
+          const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+          // Расписание
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.calendar_month_outlined,
                   color: AppStyles.textSecondary, size: 22),
+              title: const Text('Расписание',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const AdminScheduleScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            title: const Text('Заметки мойщиков',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const NotesScreen()));
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-        ),
-        // Журнал действий
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.history_rounded,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Журнал действий',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const LogsScreen()));
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          // Заметки мойщиков
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Badge(
+                isLabelVisible: context.watch<AppProvider>().unreadNotes > 0,
+                label: Text('${context.watch<AppProvider>().unreadNotes}'),
+                backgroundColor: AppStyles.danger,
+                child: const Icon(Icons.note_alt_outlined,
+                    color: AppStyles.textSecondary, size: 22),
+              ),
+              title: const Text('Заметки мойщиков',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const NotesScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
           ),
-        ),
-        // Отчёты
-        if (auth.isAdmin) Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.show_chart_rounded,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Отчёты',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const ReportsShellScreen()));
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          // Журнал действий
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.history_rounded,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Журнал действий',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx, MaterialPageRoute(builder: (_) => const LogsScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
           ),
-        ),
-        // Настройки
-        if (auth.isAdmin) Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.settings_rounded,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Настройки',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const WashTypeSettingsScreen()));
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          // Отчёты
+          if (auth.isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: const Icon(Icons.show_chart_rounded,
+                    color: AppStyles.textSecondary, size: 22),
+                title: const Text('Отчёты',
+                    style: TextStyle(color: AppStyles.textPrimary)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const ReportsShellScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          // Настройки
+          if (auth.isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: const Icon(Icons.settings_rounded,
+                    color: AppStyles.textSecondary, size: 22),
+                title: const Text('Настройки',
+                    style: TextStyle(color: AppStyles.textPrimary)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const WashTypeSettingsScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          // Профиль
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.person_outline_rounded,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Профиль',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
           ),
-        ),
-        // Профиль
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.person_outline_rounded,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Профиль',
-                style: TextStyle(color: AppStyles.textPrimary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              Navigator.push(ctx, MaterialPageRoute(
-                  builder: (_) => const ProfileScreen()));
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.logout_outlined,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Сменить профиль',
+                  style: TextStyle(color: AppStyles.textSecondary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                ctx.read<AuthProvider>().logout();
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: ListTile(
-            minLeadingWidth: 24,
-            leading: const Icon(Icons.logout_outlined,
-                color: AppStyles.textSecondary, size: 22),
-            title: const Text('Сменить профиль',
-                style: TextStyle(color: AppStyles.textSecondary)),
-            onTap: () {
-              Navigator.pop(ctx);
-              ctx.read<AuthProvider>().logout();
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        const SizedBox(height: 16),
-      ]),
+          const SizedBox(height: 16),
+        ]),
       ),
     );
   }
@@ -327,25 +364,34 @@ class _HomeShellState extends State<HomeShell> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ListTile(
         minLeadingWidth: 24,
-        leading: Icon(sel ? selIcon : icon, size: 22,
-            color: sel ? AppStyles.primary : AppStyles.textSecondary),
-        title: Text(label, style: TextStyle(
-          color: sel ? AppStyles.primary : AppStyles.textPrimary,
-          fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-        )),
-        trailing: badge != null ? Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppStyles.primary,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(badge, style: const TextStyle(
-              color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-        ) : null,
+        leading: Icon(sel ? selIcon : icon,
+            size: 22, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+        title: Text(label,
+            style: TextStyle(
+              color: sel ? AppStyles.primary : AppStyles.textPrimary,
+              fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
+            )),
+        trailing: badge != null
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppStyles.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(badge,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+              )
+            : null,
         selected: sel,
         selectedTileColor: AppStyles.primary.withOpacity(0.08),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        onTap: () { setState(() => _index = index); Navigator.pop(ctx); },
+        onTap: () {
+          setState(() => _index = index);
+          Navigator.pop(ctx);
+        },
       ),
     );
   }

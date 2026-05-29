@@ -23,7 +23,8 @@ class NotificationService {
   Stream<String> get onAppointmentUpdated => _updateController.stream;
 
   FirebaseMessaging? _fcm;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   final ApiService _apiService = ApiService();
 
   bool _isInitialized = false;
@@ -41,7 +42,7 @@ class NotificationService {
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const InitializationSettings initializationSettings =
           InitializationSettings(android: initializationSettingsAndroid);
-      
+
       await _localNotifications.initialize(
         settings: initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -49,11 +50,14 @@ class NotificationService {
         },
       );
 
-      if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
         _fcm = FirebaseMessaging.instance;
-        
+
         // Зарегистрировать обработчик фоновых сообщений
-        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+        FirebaseMessaging.onBackgroundMessage(
+            _firebaseMessagingBackgroundHandler);
 
         // Регистрируем токен сразу при получении
         _fcm!.onTokenRefresh.listen((newToken) {
@@ -65,16 +69,19 @@ class NotificationService {
           badge: true,
           sound: true,
         );
-        debugPrint('[DEBUG] NotificationService: User granted permission: ${settings.authorizationStatus}');
+        debugPrint(
+            '[DEBUG] NotificationService: User granted permission: ${settings.authorizationStatus}');
 
         FirebaseMessaging.onMessage.listen((message) {
-          debugPrint('[DEBUG] NotificationService: Received foreground message: ${message.notification?.title}');
+          debugPrint(
+              '[DEBUG] NotificationService: Received foreground message: ${message.notification?.title}');
           _handleMessage(message);
           _showLocalNotification(message);
         });
 
         FirebaseMessaging.onMessageOpenedApp.listen((message) {
-          debugPrint('[DEBUG] NotificationService: App opened from notification: ${message.notification?.title}');
+          debugPrint(
+              '[DEBUG] NotificationService: App opened from notification: ${message.notification?.title}');
           _handleMessage(message);
         });
       }
@@ -97,7 +104,8 @@ class NotificationService {
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
-    debugPrint('[DEBUG] NotificationService: _showLocalNotification called. Notification: ${notification?.title}');
+    debugPrint(
+        '[DEBUG] NotificationService: _showLocalNotification called. Notification: ${notification?.title}');
     if (notification == null) {
       debugPrint('[DEBUG] NotificationService: No notification payload.');
       return;
@@ -105,8 +113,8 @@ class NotificationService {
 
     const NotificationDetails details = NotificationDetails(
       android: AndroidNotificationDetails(
-        'lanwash_channel', 
-        'LanWash', 
+        'lanwash_channel',
+        'LanWash',
         importance: Importance.max,
         priority: Priority.high,
         icon: '@mipmap/ic_launcher',
@@ -123,7 +131,8 @@ class NotificationService {
       );
       debugPrint('[DEBUG] NotificationService: Local notification displayed.');
     } catch (e) {
-      debugPrint('[DEBUG] NotificationService: Error showing local notification: $e');
+      debugPrint(
+          '[DEBUG] NotificationService: Error showing local notification: $e');
     }
   }
 
@@ -148,9 +157,10 @@ class NotificationService {
       if (token == null) {
         await Future.delayed(const Duration(seconds: 2));
         token = await _fcm!.getToken();
-        debugPrint('[DEBUG] NotificationService: Got token after delay: $token');
+        debugPrint(
+            '[DEBUG] NotificationService: Got token after delay: $token');
       }
-      
+
       return token;
     } catch (e) {
       debugPrint('[DEBUG] NotificationService: Error getting token: $e');
@@ -159,14 +169,17 @@ class NotificationService {
   }
 
   Future<void> updateTokenOnServer(String username) async {
-    debugPrint('[DEBUG] NotificationService: Updating token on server for $username');
+    debugPrint(
+        '[DEBUG] NotificationService: Updating token on server for $username');
     String? token = await getToken();
     if (token != null) {
-      debugPrint('[DEBUG] NotificationService: Calling apiService.saveFcmToken with token: $token');
+      debugPrint(
+          '[DEBUG] NotificationService: Calling apiService.saveFcmToken with token: $token');
       final result = await _apiService.saveFcmToken(username, token);
       debugPrint('[DEBUG] NotificationService: SaveFcmToken result: $result');
     } else {
-      debugPrint('[DEBUG] NotificationService: Failed to get token, not updating server.');
+      debugPrint(
+          '[DEBUG] NotificationService: Failed to get token, not updating server.');
     }
   }
 }

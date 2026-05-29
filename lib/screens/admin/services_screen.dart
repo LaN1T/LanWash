@@ -9,7 +9,8 @@ import 'add_edit_service_screen.dart';
 class ServicesScreen extends StatefulWidget {
   final bool showHelp;
   const ServicesScreen({super.key, this.showHelp = false});
-  @override State<ServicesScreen> createState() => _ServicesScreenState();
+  @override
+  State<ServicesScreen> createState() => _ServicesScreenState();
 }
 
 class _ServicesScreenState extends State<ServicesScreen> {
@@ -23,21 +24,26 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   List<Service> _filtered(List<Service> all) => all.where((s) {
-    final matchCat = _selectedCategory == 'Все' || s.category == _selectedCategory;
-    final q = _searchText.toLowerCase();
-    final matchSearch = q.isEmpty ||
-        s.name.toLowerCase().contains(q) ||
-        s.description.toLowerCase().contains(q);
-    return matchCat && matchSearch;
-  }).toList();
+        final matchCat =
+            _selectedCategory == 'Все' || s.category == _selectedCategory;
+        final q = _searchText.toLowerCase();
+        final matchSearch = q.isEmpty ||
+            s.name.toLowerCase().contains(q) ||
+            s.description.toLowerCase().contains(q);
+        return matchCat && matchSearch;
+      }).toList();
 
   @override
-  void dispose() { _search.dispose(); super.dispose(); }
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    if (provider.loading) return const Center(child: CircularProgressIndicator());
+    if (provider.loading)
+      return const Center(child: CircularProgressIndicator());
 
     final cats = _categories(provider.services);
     final list = _filtered(provider.services);
@@ -49,7 +55,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
         child: TextField(
           controller: _search,
           onChanged: (v) => setState(() => _searchText = v),
-          decoration: AppStyles.inputDecoration('Поиск по услугам', icon: Icons.search),
+          decoration:
+              AppStyles.inputDecoration('Поиск по услугам', icon: Icons.search),
         ),
       ),
 
@@ -81,10 +88,14 @@ class _ServicesScreenState extends State<ServicesScreen> {
       // Список услуг
       Expanded(
         child: list.isEmpty
-            ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.local_car_wash, size: 56, color: AppStyles.textSecondary.withOpacity(0.3)),
+            ? Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.local_car_wash,
+                    size: 56, color: AppStyles.textSecondary.withOpacity(0.3)),
                 const SizedBox(height: 12),
-                Text('Услуги не найдены', style: AppStyles.bodyLarge.copyWith(color: AppStyles.textSecondary)),
+                Text('Услуги не найдены',
+                    style: AppStyles.bodyLarge
+                        .copyWith(color: AppStyles.textSecondary)),
               ]))
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
@@ -94,8 +105,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   showHelp: widget.showHelp,
                   isFavorite: provider.isServiceFavorite(list[i].id),
                   onFavorite: () => provider.toggleServiceFavorite(list[i].id),
-                  onTap: () => Navigator.push(ctx,
-                      MaterialPageRoute(builder: (_) => ServiceDetailScreen(service: list[i]))),
+                  onTap: () => Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              ServiceDetailScreen(service: list[i]))),
                 ),
               ),
       ),
@@ -110,10 +124,15 @@ class _ServiceCard extends StatelessWidget {
   final bool showHelp;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
-  const _ServiceCard({required this.service, required this.isFavorite,
-      required this.showHelp, required this.onFavorite, required this.onTap});
+  const _ServiceCard(
+      {required this.service,
+      required this.isFavorite,
+      required this.showHelp,
+      required this.onFavorite,
+      required this.onTap});
 
-  Color get _catColor => service.isFromApi ? AppStyles.apiTag : AppStyles.primary;
+  Color get _catColor =>
+      service.isFromApi ? AppStyles.apiTag : AppStyles.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -127,72 +146,93 @@ class _ServiceCard extends StatelessWidget {
           padding: AppStyles.cardPadding,
           child: Row(children: [
             Container(
-              width: 48, height: 48,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: _catColor.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(_categoryIcon(s.category), color: _catColor, size: 24),
+              child:
+                  Icon(_categoryIcon(s.category), color: _catColor, size: 24),
             ),
             const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(s.name,
-                    style: AppStyles.headingMedium.copyWith(fontSize: 15),
-                    overflow: TextOverflow.ellipsis)),
-                if (showHelp) ...[
-                  const SizedBox(width: 4),
-                  Tooltip(
-                    message: s.description,
-                    child: const Icon(Icons.help_outline, size: 14, color: AppStyles.textSecondary),
-                  ),
-                ],
-                IconButton(
-                  icon: Icon(isFavorite ? Icons.star : Icons.star_border,
-                      color: isFavorite ? AppStyles.favorite : AppStyles.textSecondary, size: 20),
-                  onPressed: onFavorite,
-                  padding: EdgeInsets.zero, constraints: const BoxConstraints(),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              Text(s.description, style: AppStyles.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
-              Row(children: [
-                _chip(Icons.access_time, s.durationLabel),
-                const SizedBox(width: 8),
-                if (s.isFromApi)
-                  _chip(Icons.local_offer, 'Акция', color: AppStyles.apiTag),
-                const Spacer(),
-                Text('${s.price} ₽', style: AppStyles.price.copyWith(fontSize: 16)),
-              ]),
-            ])),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Row(children: [
+                    Expanded(
+                        child: Text(s.name,
+                            style:
+                                AppStyles.headingMedium.copyWith(fontSize: 15),
+                            overflow: TextOverflow.ellipsis)),
+                    if (showHelp) ...[
+                      const SizedBox(width: 4),
+                      Tooltip(
+                        message: s.description,
+                        child: const Icon(Icons.help_outline,
+                            size: 14, color: AppStyles.textSecondary),
+                      ),
+                    ],
+                    IconButton(
+                      icon: Icon(isFavorite ? Icons.star : Icons.star_border,
+                          color: isFavorite
+                              ? AppStyles.favorite
+                              : AppStyles.textSecondary,
+                          size: 20),
+                      onPressed: onFavorite,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(s.description,
+                      style: AppStyles.bodySmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    _chip(Icons.access_time, s.durationLabel),
+                    const SizedBox(width: 8),
+                    if (s.isFromApi)
+                      _chip(Icons.local_offer, 'Акция',
+                          color: AppStyles.apiTag),
+                    const Spacer(),
+                    Text('${s.price} ₽',
+                        style: AppStyles.price.copyWith(fontSize: 16)),
+                  ]),
+                ])),
           ]),
         ),
       ),
     );
   }
 
-  Widget _chip(IconData icon, String text, {Color color = AppStyles.textSecondary}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 12, color: color),
-      const SizedBox(width: 4),
-      Text(text, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
-    ]),
-  );
+  Widget _chip(IconData icon, String text,
+          {Color color = AppStyles.textSecondary}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(text,
+              style: TextStyle(
+                  fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+        ]),
+      );
 
   IconData _categoryIcon(String cat) => switch (cat) {
-    'Мойка кузова'       => Icons.local_car_wash,
-    'Обработка стёкол'   => Icons.window,
-    'Защитные покрытия'  => Icons.shield,
-    'Уход за салоном'    => Icons.airline_seat_recline_normal,
-    'Специальные услуги' => Icons.build,
-    'Детейлинг'          => Icons.auto_awesome,
-    'Акции'              => Icons.local_offer,
-    _                    => Icons.car_repair,
-  };
+        'Мойка кузова' => Icons.local_car_wash,
+        'Обработка стёкол' => Icons.window,
+        'Защитные покрытия' => Icons.shield,
+        'Уход за салоном' => Icons.airline_seat_recline_normal,
+        'Специальные услуги' => Icons.build,
+        'Детейлинг' => Icons.auto_awesome,
+        'Акции' => Icons.local_offer,
+        _ => Icons.car_repair,
+      };
 }

@@ -21,7 +21,9 @@ class _NotesScreenState extends State<NotesScreen> {
   String _displayName(String username) {
     final w = _washers.where((w) => w.username == username);
     if (w.isNotEmpty) {
-      return w.first.displayName.isNotEmpty ? w.first.displayName : w.first.username;
+      return w.first.displayName.isNotEmpty
+          ? w.first.displayName
+          : w.first.username;
     }
     return username;
   }
@@ -46,102 +48,104 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   void _showAddDialog() {
-  final titleCtrl = TextEditingController();
-  final msgCtrl = TextEditingController();
-  String category = 'general';
+    final titleCtrl = TextEditingController();
+    final msgCtrl = TextEditingController();
+    String category = 'general';
 
-  showDialog(
-    context: context,
-    builder: (ctx) => Theme(
-      data: Theme.of(context).copyWith(
-        scrollbarTheme: ScrollbarThemeData(
-          thickness: WidgetStateProperty.all(0),
-        ),
-      ),
-      child: StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Новая заметка'),
-          content: SizedBox(
-            width: 300,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: titleCtrl,
-                    decoration: AppStyles.inputDecoration(
-                      'Заголовок',
-                      icon: Icons.title_rounded,
-                    ),
-                    style: AppStyles.bodyLarge,
-                    minLines: 1,
-                    maxLines: 3, // Теперь заголовок может быть до 3 строк
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: msgCtrl,
-                    decoration: AppStyles.inputDecoration(
-                      'Описание (необязательно)',
-                      icon: Icons.message_outlined,
-                    ),
-                    style: AppStyles.bodyLarge,
-                    minLines: 3,
-                    maxLines: 5,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: category,
-                    decoration: AppStyles.inputDecoration(
-                      'Категория',
-                      icon: Icons.category_outlined,
-                    ),
-                    items: Note.categories.entries
-                        .map((e) => DropdownMenuItem(
-                              value: e.key,
-                              child: Text(e.value),
-                            ))
-                        .toList(),
-                    onChanged: (v) => setDialogState(() => category = v ?? 'general'),
-                  ),
-                ],
-              ),
-            ),
+    showDialog(
+      context: context,
+      builder: (ctx) => Theme(
+        data: Theme.of(context).copyWith(
+          scrollbarTheme: ScrollbarThemeData(
+            thickness: WidgetStateProperty.all(0),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Отмена'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+        ),
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Новая заметка'),
+            content: SizedBox(
+              width: 300,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: titleCtrl,
+                      decoration: AppStyles.inputDecoration(
+                        'Заголовок',
+                        icon: Icons.title_rounded,
+                      ),
+                      style: AppStyles.bodyLarge,
+                      minLines: 1,
+                      maxLines: 3, // Теперь заголовок может быть до 3 строк
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: msgCtrl,
+                      decoration: AppStyles.inputDecoration(
+                        'Описание (необязательно)',
+                        icon: Icons.message_outlined,
+                      ),
+                      style: AppStyles.bodyLarge,
+                      minLines: 3,
+                      maxLines: 5,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: category,
+                      decoration: AppStyles.inputDecoration(
+                        'Категория',
+                        icon: Icons.category_outlined,
+                      ),
+                      items: Note.categories.entries
+                          .map((e) => DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ))
+                          .toList(),
+                      onChanged: (v) =>
+                          setDialogState(() => category = v ?? 'general'),
+                    ),
+                  ],
                 ),
               ),
-              onPressed: () async {
-                if (titleCtrl.text.trim().isEmpty) return;
-                final auth = context.read<AuthProvider>();
-                await context.read<AppProvider>().addNote(
-                      auth.userLogin,
-                      titleCtrl.text.trim(),
-                      msgCtrl.text.trim(),
-                      category,
-                    );
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Добавить'),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Отмена'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppStyles.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () async {
+                  if (titleCtrl.text.trim().isEmpty) return;
+                  final auth = context.read<AuthProvider>();
+                  await context.read<AppProvider>().addNote(
+                        auth.userLogin,
+                        titleCtrl.text.trim(),
+                        msgCtrl.text.trim(),
+                        category,
+                      );
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Добавить'),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,33 +155,37 @@ class _NotesScreenState extends State<NotesScreen> {
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
-      appBar: widget.isEmbedded ? null : AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppStyles.border),
-        ),
-        title: Text(
-          auth.isAdmin ? 'Заметки мойщиков' : 'Мои заметки',
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _load,
-            tooltip: 'Обновить',
-          ),
-          if (auth.isAdmin && notes.any((n) => !n.isRead))
-            IconButton(
-              icon: const Icon(Icons.done_all_rounded, color: AppStyles.primary),
-              onPressed: () => provider.markAllNotesRead(),
-              tooltip: 'Прочитать все',
+      appBar: widget.isEmbedded
+          ? null
+          : AppBar(
+              backgroundColor: Colors.white,
+              foregroundColor: AppStyles.textPrimary,
+              elevation: 0,
+              surfaceTintColor: Colors.transparent,
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1),
+                child: Container(height: 1, color: AppStyles.border),
+              ),
+              title: Text(
+                auth.isAdmin ? 'Заметки мойщиков' : 'Мои заметки',
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: _load,
+                  tooltip: 'Обновить',
+                ),
+                if (auth.isAdmin && notes.any((n) => !n.isRead))
+                  IconButton(
+                    icon: const Icon(Icons.done_all_rounded,
+                        color: AppStyles.primary),
+                    onPressed: () => provider.markAllNotesRead(),
+                    tooltip: 'Прочитать все',
+                  ),
+              ],
             ),
-        ],
-      ),
       floatingActionButton: auth.isWasher
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.add),
@@ -188,7 +196,8 @@ class _NotesScreenState extends State<NotesScreen> {
             )
           : null,
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
           : notes.isEmpty
               ? Center(
                   child: Column(
@@ -353,7 +362,8 @@ class _NoteCard extends StatelessWidget {
                         ],
                         const Spacer(),
                         Text(
-                          DateFormat('d MMM, HH:mm', 'ru').format(note.createdAt),
+                          DateFormat('d MMM, HH:mm', 'ru')
+                              .format(note.createdAt),
                           style: AppStyles.bodySmall,
                         ),
                       ],

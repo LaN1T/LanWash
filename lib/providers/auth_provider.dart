@@ -9,7 +9,8 @@ class AuthProvider extends ChangeNotifier {
   final ApiService _api;
   final NotificationService _notifications;
 
-  AuthProvider({required ApiService api, required NotificationService notifications})
+  AuthProvider(
+      {required ApiService api, required NotificationService notifications})
       : _api = api,
         _notifications = notifications;
 
@@ -18,16 +19,16 @@ class AuthProvider extends ChangeNotifier {
   bool _loading = false;
   String? _errorMessage;
 
-  User?   get user         => _user;
-  bool    get initialized  => _initialized;
-  bool    get loading      => _loading;
+  User? get user => _user;
+  bool get initialized => _initialized;
+  bool get loading => _loading;
   String? get errorMessage => _errorMessage;
-  bool    get isLoggedIn   => _user != null;
-  bool    get isClient     => _user?.role == UserRole.client;
-  bool    get isAdmin      => _user?.role == UserRole.admin;
-  bool    get isWasher     => _user?.role == UserRole.washer;
-  String  get username     => _user?.displayName ?? '';
-  String  get userLogin    => _user?.username ?? '';
+  bool get isLoggedIn => _user != null;
+  bool get isClient => _user?.role == UserRole.client;
+  bool get isAdmin => _user?.role == UserRole.admin;
+  bool get isWasher => _user?.role == UserRole.washer;
+  String get username => _user?.displayName ?? '';
+  String get userLogin => _user?.username ?? '';
 
   static const _kUserKey = 'saved_user';
   final _storage = const FlutterSecureStorage();
@@ -81,7 +82,8 @@ class AuthProvider extends ChangeNotifier {
       _loading = false;
       if (user == null) {
         notifyListeners();
-        await _api.createLog(username, 'Неудачная попытка входа', 'Логин: $username');
+        await _api.createLog(
+            username, 'Неудачная попытка входа', 'Логин: $username');
         return 'Неверный логин или пароль';
       }
 
@@ -90,7 +92,8 @@ class AuthProvider extends ChangeNotifier {
       _notifications.updateTokenOnServer(user.username);
 
       notifyListeners();
-      await _api.createLog(username, 'Вход в систему', 'Роль: ${user.role.name}');
+      await _api.createLog(
+          username, 'Вход в систему', 'Роль: ${user.role.name}');
       return null;
     } catch (e, st) {
       _loading = false;
@@ -134,7 +137,8 @@ class AuthProvider extends ChangeNotifier {
       _user = User.fromMap(result['user']);
       await _saveUser(_user!);
       notifyListeners();
-      await _api.createLog(username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
+      await _api.createLog(
+          username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
       return null;
     } catch (e, st) {
       _loading = false;
@@ -168,7 +172,8 @@ class AuthProvider extends ChangeNotifier {
         _user = updated;
         await _saveUser(updated);
         notifyListeners();
-        await _api.createLog(updated.username, 'Обновление профиля', 'Имя: ${updated.displayName}');
+        await _api.createLog(updated.username, 'Обновление профиля',
+            'Имя: ${updated.displayName}');
         return null;
       }
       return 'Ошибка обновления профиля';

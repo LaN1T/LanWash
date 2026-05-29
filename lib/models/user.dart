@@ -38,46 +38,52 @@ class User {
   }
 
   Map<String, dynamic> toMap() => {
-    if (id != null) 'id': id,
-    'username': username,
-    'passwordHash': passwordHash,
-    'role': role.name,
-    'displayName': displayName,
-    'phone': phone,
-    'carModel': carModel,
-    'carNumber': carNumber,
-    'createdAt': createdAt.toIso8601String(),
-    'isFavoriteAdmin': isFavoriteAdmin ? 1 : 0,
-  };
+        if (id != null) 'id': id,
+        'username': username,
+        'passwordHash': passwordHash,
+        'role': role.name,
+        'displayName': displayName,
+        'phone': phone,
+        'carModel': carModel,
+        'carNumber': carNumber,
+        'createdAt': createdAt.toIso8601String(),
+        'isFavoriteAdmin': isFavoriteAdmin ? 1 : 0,
+      };
 
   factory User.fromMap(Map<String, dynamic> m) => User(
-    id: m['id'] as int?,
-    username: m['username'] ?? '',
-    passwordHash: m['passwordHash'] ?? '',
-    role: UserRole.values.firstWhere(
-      (r) => r.name == m['role'], orElse: () => UserRole.client),
-    displayName: m['displayName'] ?? m['username'] ?? '',
-    phone: m['phone'] ?? '',
-    carModel: m['carModel'] ?? '',
-    carNumber: m['carNumber'] ?? '',
-    createdAt: m['createdAt'] != null
-        ? DateTime.parse(m['createdAt']) : DateTime.now(),
-    isFavoriteAdmin: m['isFavoriteAdmin'] == 1,
-  );
+        id: m['id'] as int?,
+        username: m['username'] ?? '',
+        passwordHash: m['passwordHash'] ?? '',
+        role: UserRole.values.firstWhere((r) => r.name == m['role'],
+            orElse: () => UserRole.client),
+        displayName: m['displayName'] ?? m['username'] ?? '',
+        phone: m['phone'] ?? '',
+        carModel: m['carModel'] ?? '',
+        carNumber: m['carNumber'] ?? '',
+        createdAt: m['createdAt'] != null
+            ? DateTime.parse(m['createdAt'])
+            : DateTime.now(),
+        isFavoriteAdmin: m['isFavoriteAdmin'] == 1,
+      );
 
   User copyWith({
-    String? displayName, String? phone, String? carModel,
-    String? carNumber, String? passwordHash, bool? isFavoriteAdmin,
-  }) => User(
-    id: id,
-    username: username,
-    passwordHash: passwordHash ?? this.passwordHash,
-    role: role,
-    displayName: displayName ?? this.displayName,
-    phone: phone ?? this.phone,
-    carModel: carModel ?? this.carModel,
-    carNumber: carNumber ?? this.carNumber,
-    createdAt: createdAt,
-    isFavoriteAdmin: isFavoriteAdmin ?? this.isFavoriteAdmin,
-  );
+    String? displayName,
+    String? phone,
+    String? carModel,
+    String? carNumber,
+    String? passwordHash,
+    bool? isFavoriteAdmin,
+  }) =>
+      User(
+        id: id,
+        username: username,
+        passwordHash: passwordHash ?? this.passwordHash,
+        role: role,
+        displayName: displayName ?? this.displayName,
+        phone: phone ?? this.phone,
+        carModel: carModel ?? this.carModel,
+        carNumber: carNumber ?? this.carNumber,
+        createdAt: createdAt,
+        isFavoriteAdmin: isFavoriteAdmin ?? this.isFavoriteAdmin,
+      );
 }

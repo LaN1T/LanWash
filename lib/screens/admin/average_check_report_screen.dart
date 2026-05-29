@@ -14,13 +14,24 @@ class AverageCheckReportScreen extends StatefulWidget {
   const AverageCheckReportScreen({super.key});
 
   @override
-  State<AverageCheckReportScreen> createState() => _AverageCheckReportScreenState();
+  State<AverageCheckReportScreen> createState() =>
+      _AverageCheckReportScreenState();
 }
 
 class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   final List<String> _monthNames = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+    'Январь',
+    'Февраль',
+    'Март',
+    'Апрель',
+    'Май',
+    'Июнь',
+    'Июль',
+    'Август',
+    'Сентябрь',
+    'Октябрь',
+    'Ноябрь',
+    'Декабрь'
   ];
   MonthlyReport? _report;
   String _selectedDate = DateFormat('yyyy-MM').format(DateTime.now());
@@ -59,18 +70,20 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   Future<void> downloadPdf() async {
     if (_report == null) return;
     final headers = ['Модель авто', 'Кол-во записей', 'Средний чек (₽)'];
-    final data = _report!.data.map((e) => [
-      e.carModel,
-      e.visitCount.toString(),
-      e.avgCheck.toStringAsFixed(0)
-    ]).toList();
-    
+    final data = _report!.data
+        .map((e) => [
+              e.carModel,
+              e.visitCount.toString(),
+              e.avgCheck.toStringAsFixed(0)
+            ])
+        .toList();
+
     final pdfBytes = await PdfExportService.createPdfBytes(
-      'Отчет: Средний чек за $_selectedDate', headers, data
-    );
+        'Отчет: Средний чек за $_selectedDate', headers, data);
 
     if (kIsWeb) {
-      await Printing.sharePdf(bytes: pdfBytes, filename: 'Средний чек_${_selectedDate}.pdf');
+      await Printing.sharePdf(
+          bytes: pdfBytes, filename: 'Средний чек_${_selectedDate}.pdf');
     } else {
       if (!mounted) return;
       await PdfExportService.showExportDialog(
@@ -85,7 +98,10 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.tryParse(_selectedDate.length == 7 ? '$_selectedDate-01' : _selectedDate) ?? DateTime.now(),
+      initialDate: DateTime.tryParse(_selectedDate.length == 7
+              ? '$_selectedDate-01'
+              : _selectedDate) ??
+          DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       initialDatePickerMode: DatePickerMode.day,
@@ -114,13 +130,18 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppStyles.danger, fontSize: 16)))
+              ? Center(
+                  child: Text(_error!,
+                      style: const TextStyle(
+                          color: AppStyles.danger, fontSize: 16)))
               : Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       color: Colors.white,
                       child: Row(
                         children: [
@@ -129,21 +150,25 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                               _selectedDate.length == 7
                                   ? 'Отчет: ${_monthNames[DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
                                   : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.picture_as_pdf, color: Colors.black),
+                            icon: const Icon(Icons.picture_as_pdf,
+                                color: Colors.black),
                             tooltip: 'Скачать отчет',
                             onPressed: downloadPdf,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.calendar_month, color: AppStyles.primary),
+                            icon: const Icon(Icons.calendar_month,
+                                color: AppStyles.primary),
                             tooltip: 'Весь месяц',
                             onPressed: _setMonthMode,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.date_range, color: AppStyles.primary),
+                            icon: const Icon(Icons.date_range,
+                                color: AppStyles.primary),
                             tooltip: 'Выбрать день',
                             onPressed: () => _selectDate(context),
                           ),
@@ -159,11 +184,19 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                               itemBuilder: (context, index) {
                                 final entry = _report!.data[index];
                                 return Card(
-                                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
                                   child: ListTile(
-                                    title: Text(entry.carModel, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: Text('Чеков: ${entry.visitCount}'),
-                                    trailing: Text('${entry.avgCheck.toStringAsFixed(0)} ₽', style: const TextStyle(color: AppStyles.primary, fontWeight: FontWeight.bold)),
+                                    title: Text(entry.carModel,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    subtitle:
+                                        Text('Чеков: ${entry.visitCount}'),
+                                    trailing: Text(
+                                        '${entry.avgCheck.toStringAsFixed(0)} ₽',
+                                        style: const TextStyle(
+                                            color: AppStyles.primary,
+                                            fontWeight: FontWeight.bold)),
                                   ),
                                 );
                               },

@@ -8,8 +8,8 @@ class Appointment {
   String carModel;
   String carNumber;
   DateTime dateTime;
-  String washTypeId;                  // FK → wash_types.id
-  List<String> additionalServices;    // id доп.услуг (services.id)
+  String washTypeId; // FK → wash_types.id
+  List<String> additionalServices; // id доп.услуг (services.id)
   String status;
   String notes;
   bool isFavorite;
@@ -21,7 +21,7 @@ class Appointment {
   bool isModifiedByWasher;
   bool isSeenByClient;
   List<String> assignedWashers;
-  String? promoId;                    // FK → promos.id
+  String? promoId; // FK → promos.id
   int box_index;
 
   Appointment({
@@ -48,50 +48,52 @@ class Appointment {
   }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'clientName': clientName,
-    'carModel': carModel,
-    'carNumber': carNumber,
-    'dateTime': dateTime.toIso8601String(),
-    'washTypeId': washTypeId,
-    'additionalServices': jsonEncode(additionalServices),
-    'status': status,
-    'notes': notes,
-    'isFavorite': isFavorite,
-    'ownerUsername': ownerUsername,
-    'promoPrice': promoPrice,
-    'paidPrice': paidPrice,
-    'originalPrice': originalPrice,
-    'isModifiedByAdmin': isModifiedByAdmin,
-    'isModifiedByWasher': isModifiedByWasher,
-    'isSeenByClient': isSeenByClient,
-    'assignedWasher': jsonEncode(assignedWashers),
-    'promoId': promoId,
-    'box_index': box_index,
-  };
+        'id': id,
+        'clientName': clientName,
+        'carModel': carModel,
+        'carNumber': carNumber,
+        'dateTime': dateTime.toIso8601String(),
+        'washTypeId': washTypeId,
+        'additionalServices': jsonEncode(additionalServices),
+        'status': status,
+        'notes': notes,
+        'isFavorite': isFavorite,
+        'ownerUsername': ownerUsername,
+        'promoPrice': promoPrice,
+        'paidPrice': paidPrice,
+        'originalPrice': originalPrice,
+        'isModifiedByAdmin': isModifiedByAdmin,
+        'isModifiedByWasher': isModifiedByWasher,
+        'isSeenByClient': isSeenByClient,
+        'assignedWasher': jsonEncode(assignedWashers),
+        'promoId': promoId,
+        'box_index': box_index,
+      };
 
   factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
-    id: m['id'],
-    clientName: m['clientName'] ?? '',
-    carModel: m['carModel'] ?? '',
-    carNumber: m['carNumber'] ?? '',
-    dateTime: DateTime.parse(m['dateTime']),
-    washTypeId: m['washTypeId']?.toString() ?? '',
-    additionalServices: _parseExtras(m['additionalServices']),
-    status: m['status'] ?? 'scheduled',
-    notes: m['notes'] ?? '',
-    isFavorite: m['isFavorite'] == 1 || m['isFavorite'] == true,
-    ownerUsername: m['ownerUsername'] ?? '',
-    promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
-    paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
-    originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
-    isModifiedByAdmin: m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
-    isModifiedByWasher: m['isModifiedByWasher'] == 1 || m['isModifiedByWasher'] == true,
-    isSeenByClient: m['isSeenByClient'] == 1 || m['isSeenByClient'] == true,
-    assignedWashers: _parseWashers(m['assignedWasher']),
-    promoId: m['promoId']?.toString(),
-    box_index: (m['box_index'] as num?)?.toInt() ?? 0,
-  );
+        id: m['id'],
+        clientName: m['clientName'] ?? '',
+        carModel: m['carModel'] ?? '',
+        carNumber: m['carNumber'] ?? '',
+        dateTime: DateTime.parse(m['dateTime']),
+        washTypeId: m['washTypeId']?.toString() ?? '',
+        additionalServices: _parseExtras(m['additionalServices']),
+        status: m['status'] ?? 'scheduled',
+        notes: m['notes'] ?? '',
+        isFavorite: m['isFavorite'] == 1 || m['isFavorite'] == true,
+        ownerUsername: m['ownerUsername'] ?? '',
+        promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
+        paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
+        originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
+        isModifiedByAdmin:
+            m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
+        isModifiedByWasher:
+            m['isModifiedByWasher'] == 1 || m['isModifiedByWasher'] == true,
+        isSeenByClient: m['isSeenByClient'] == 1 || m['isSeenByClient'] == true,
+        assignedWashers: _parseWashers(m['assignedWasher']),
+        promoId: m['promoId']?.toString(),
+        box_index: (m['box_index'] as num?)?.toInt() ?? 0,
+      );
 
   static List<String> _parseExtras(dynamic v) {
     if (v == null) return [];
@@ -121,34 +123,48 @@ class Appointment {
   }
 
   Appointment copyWith({
-    String? clientName, String? carModel, String? carNumber,
-    DateTime? dateTime, String? washTypeId, List<String>? additionalServices,
-    String? status, String? notes, bool? isFavorite,
-    String? ownerUsername, int? promoPrice, int? paidPrice, int? originalPrice,
-    bool? isModifiedByAdmin, bool? isModifiedByWasher, bool? isSeenByClient, List<String>? assignedWashers,
-    String? promoId, int? box_index,
-  }) => Appointment(
-    id: id,
-    clientName: clientName ?? this.clientName,
-    carModel: carModel ?? this.carModel,
-    carNumber: carNumber ?? this.carNumber,
-    dateTime: dateTime ?? this.dateTime,
-    washTypeId: washTypeId ?? this.washTypeId,
-    additionalServices: additionalServices ?? this.additionalServices,
-    status: status ?? this.status,
-    notes: notes ?? this.notes,
-    isFavorite: isFavorite ?? this.isFavorite,
-    ownerUsername: ownerUsername ?? this.ownerUsername,
-    promoPrice: promoPrice ?? this.promoPrice,
-    paidPrice: paidPrice ?? this.paidPrice,
-    originalPrice: originalPrice ?? this.originalPrice,
-    isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
-    isModifiedByWasher: isModifiedByWasher ?? this.isModifiedByWasher,
-    isSeenByClient: isSeenByClient ?? this.isSeenByClient,
-    assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
-    promoId: promoId ?? this.promoId,
-    box_index: box_index ?? this.box_index,
-  );
+    String? clientName,
+    String? carModel,
+    String? carNumber,
+    DateTime? dateTime,
+    String? washTypeId,
+    List<String>? additionalServices,
+    String? status,
+    String? notes,
+    bool? isFavorite,
+    String? ownerUsername,
+    int? promoPrice,
+    int? paidPrice,
+    int? originalPrice,
+    bool? isModifiedByAdmin,
+    bool? isModifiedByWasher,
+    bool? isSeenByClient,
+    List<String>? assignedWashers,
+    String? promoId,
+    int? box_index,
+  }) =>
+      Appointment(
+        id: id,
+        clientName: clientName ?? this.clientName,
+        carModel: carModel ?? this.carModel,
+        carNumber: carNumber ?? this.carNumber,
+        dateTime: dateTime ?? this.dateTime,
+        washTypeId: washTypeId ?? this.washTypeId,
+        additionalServices: additionalServices ?? this.additionalServices,
+        status: status ?? this.status,
+        notes: notes ?? this.notes,
+        isFavorite: isFavorite ?? this.isFavorite,
+        ownerUsername: ownerUsername ?? this.ownerUsername,
+        promoPrice: promoPrice ?? this.promoPrice,
+        paidPrice: paidPrice ?? this.paidPrice,
+        originalPrice: originalPrice ?? this.originalPrice,
+        isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
+        isModifiedByWasher: isModifiedByWasher ?? this.isModifiedByWasher,
+        isSeenByClient: isSeenByClient ?? this.isSeenByClient,
+        assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
+        promoId: promoId ?? this.promoId,
+        box_index: box_index ?? this.box_index,
+      );
 
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
 

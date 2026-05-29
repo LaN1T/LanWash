@@ -14,18 +14,18 @@ class LogEntry {
   });
 
   factory LogEntry.fromMap(Map<String, dynamic> m) => LogEntry(
-    id: m['id'] as int?,
-    username: m['username'] ?? '',
-    action: m['action'] ?? '',
-    details: m['details'] ?? '',
-    timestamp: DateTime.parse(m['timestamp']),
-  );
+        id: m['id'] as int?,
+        username: m['username'] ?? '',
+        action: m['action'] ?? '',
+        details: m['details'] ?? '',
+        timestamp: DateTime.parse(m['timestamp']),
+      );
 
   Map<String, dynamic> toMap() => {
-    if (id != null) 'id': id,
-    'username': username,
-    'action': action,
-    'details': details,
-    'timestamp': timestamp.toIso8601String(),
-  };
+        if (id != null) 'id': id,
+        'username': username,
+        'action': action,
+        'details': details,
+        'timestamp': timestamp.toIso8601String(),
+      };
 }
