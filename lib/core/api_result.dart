@@ -50,10 +50,11 @@ class AppError {
   factory AppError.unauthorized() => const AppError(
       message: 'Сессия истекла. Войдите снова.', statusCode: 401);
 
-  factory AppError.server([int? code, dynamic original]) => AppError(
-      message: 'Ошибка сервера. Попробуйте позже.',
-      statusCode: code,
-      originalError: original);
+  factory AppError.server([int? code, dynamic original]) {
+    String msg = 'Ошибка сервера. Попробуйте позже.';
+    if (original is String && original.isNotEmpty) msg = original;
+    return AppError(message: msg, statusCode: code, originalError: original);
+  }
 
   factory AppError.unknown([dynamic original]) =>
       AppError(message: 'Неизвестная ошибка.', originalError: original);
