@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Literal
 
 
@@ -29,6 +29,8 @@ class RegisterRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     username: str
     role: str
@@ -67,6 +69,8 @@ class WashTypeRequest(BaseModel):
 
 
 class WashTypeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     code: str
     name: str
@@ -83,7 +87,7 @@ class AppointmentRequest(BaseModel):
     clientName: str = Field(..., max_length=100)
     carModel: str = Field(..., max_length=50)
     carNumber: str = Field(..., max_length=20)
-    dateTime: str = Field(..., max_length=25)
+    dateTime: str = Field(..., max_length=30)
     washTypeId: str = Field(..., max_length=36)
     additionalServices: str = Field(default="[]", max_length=1000)
     status: Literal["scheduled", "in_progress", "completed", "cancelled"] = "scheduled"
@@ -102,6 +106,8 @@ class AppointmentRequest(BaseModel):
 
 
 class AppointmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     userId: Optional[int] = None
     clientName: str
@@ -142,6 +148,8 @@ class ServiceRequest(BaseModel):
 
 
 class ServiceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     description: str
@@ -154,6 +162,8 @@ class ServiceResponse(BaseModel):
 
 # ─── Promos ──────────────────────────────────────────────────────────────────
 class PromoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     washTypeId: str
     name: str
@@ -177,6 +187,8 @@ class LogQueryParams(BaseModel):
 
 
 class LogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     username: str
     action: str
@@ -192,6 +204,8 @@ class NoteRequest(BaseModel):
 
 
 class NoteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     username: str
     title: str
@@ -207,6 +221,8 @@ class ConsumableRequest(BaseModel):
     unit: str = Field(default="", max_length=20)
 
 class ConsumableResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     unit: str
@@ -217,6 +233,8 @@ class ServiceConsumableRequest(BaseModel):
     quantity_per_service: float = Field(..., ge=0)
 
 class ServiceConsumableResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     serviceId: str
     consumableId: str
     quantity_per_service: float
