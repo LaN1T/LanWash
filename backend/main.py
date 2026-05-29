@@ -67,9 +67,11 @@ app.include_router(reports.router, dependencies=[Depends(check_roles(['admin']))
 app.include_router(consumables.router, dependencies=[Depends(check_roles(['admin', 'washer']))])
 app.include_router(wash_types.router)
 
-@app.get("/debug/routes", dependencies=[Depends(check_roles(['admin']))]) # P1: Protect debug route
-async def get_routes():
-    return [{"path": route.path} for route in app.routes]
+# Debug route только в режиме разработки
+if os.getenv("DEBUG", "false").lower() == "true":
+    @app.get("/debug/routes", dependencies=[Depends(check_roles(['admin']))])
+    async def get_routes():
+        return [{"path": route.path} for route in app.routes]
 
 @app.get("/")
 async def root():
