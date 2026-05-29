@@ -194,9 +194,12 @@ Push-уведомления  <--------  Push-токены
 | Push-уведомления | Firebase Cloud Messaging |
 | HTTP-клиент | http (Dart) |
 | Локализация | intl (ru) |
-| Контейнеризация | Docker, Docker Compose |
+| Контейнеризация | Docker multi-stage, Docker Compose |
 | Логирование | structlog (JSON в production) |
 | Конфигурация | pydantic-settings |
+| Метрики | Prometheus (FastAPI instrumentator) |
+| Error tracking | Sentry |
+| Reverse proxy | Nginx |
 
 ---
 
@@ -332,7 +335,9 @@ GitHub Actions автоматически запускаются при push/PR:
 | Workflow | Что проверяет |
 |----------|---------------|
 | **Backend Tests** | pytest на Python 3.13 |
-| **Flutter Analysis** | `flutter analyze` + `dart format --set-exit-if-changed` |
+| **Flutter CI** | analyze + format + test + build APK + build Web |
+
+Flutter CI собирает release APK и web-версию как артефакты для каждого PR.
 
 ---
 
@@ -399,3 +404,60 @@ alembic current
 ```
 
 В production миграции применяются отдельно перед запуском приложения. В development и testing таблицы создаются автоматически через `Base.metadata.create_all`.
+
+## Docker
+
+### Локальный запуск (development)
+
+```bash
+docker-compose up --build
+```
+
+### Production
+
+```bash
+# 1. Скопируй .env и настрой переменные
+cp backend/.env.example backend/.env
+
+# 2. Запуск с production-настройками
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# 3. Примени миграции
+docker-compose exec backend alembic upgrade head
+```
+
+### Multi-stage build
+
+Backend Dockerfile использует multi-stage build:
+- **Stage 1** (`builder`): установка зависимостей с компиляцией
+- **Stage 2** (`production`): только runtime-зависимости, non-root пользователь, health-check
+
+## Мониторинг
+
+### Health check
+
+`GET /health` — uptime, версия, environment:
+
+```json
+{
+  "status": "healthy",
+  "service": "LanWash API",
+  "version": "1.0.0",
+  "environment": "production",
+  "uptime_seconds": 3600
+}
+```
+
+### Prometheus метрики
+
+`GET /metrics` — стандартные метрики FastAPI (RPS, latency, HTTP status codes). Готовы для сбора Grafana/Prometheus.
+
+### Sentry
+
+Для включения error tracking задай `SENTRY_DSN` в `.env`:
+
+```
+SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+```
+
+Sentry автоматически инициализируется в production-окружении с интеграциями FastAPI и Starlette.
