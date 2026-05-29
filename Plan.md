@@ -30,24 +30,32 @@
 ## Этап 4: Тестирование бэкенда (pytest) — ✅ ГОТОВО
 
 - [x] `pytest.ini` + `pytest-asyncio` strict mode
-- [x] `tests/conftest.py` — SQLite in-memory, async client, отключение rate limiting
+- [x] `tests/conftest.py` — SQLite in-memory, async client, отключение rate limiting, фикстуры токенов
 - [x] `tests/test_auth.py` — регистрация, логин, профиль, защищённые endpoint
 - [x] `tests/test_security.py` — валидация пароля, JWT encode/decode, expiration
-- [x] Все **18/18 тестов проходят**
+- [x] `tests/test_wash_types.py` — CRUD типов мойки
+- [x] `tests/test_logs.py` — публичное создание, фильтры, очистка
+- [x] `tests/test_notes.py` — заметки мойщиков, unread count, mark read
+- [x] `tests/test_consumables.py` — CRUD расходников, связи с услугами
+- [x] `tests/test_services.py` — CRUD услуг, акции, избранное
+- [x] `tests/test_reports.py` — месячные отчёты, популярные услуги, расход материалов
+- [x] `tests/test_appointments.py` — жизненный цикл записи, назначение мойщика, статистика
+- [x] Все **78/78 тестов проходят**
 - [x] Исправлены deprecation warnings (`datetime.utcnow()`)
+- [x] **Найден и исправлен баг:** `routers/consumables.py:50` — `get_consumable` вызывался без `request`
 
-## Этап 5: Тестирование Flutter — 🔄 ОЖИДАЕТСЯ
-
-- [ ] Unit-тесты для `ApiResult`, `ApiClient`
-- [ ] Моки для `ApiService`
-- [ ] Widget-тесты для критических экранов
-
-## Этап 6: CI/CD и DevOps — 🔄 ОЖИДАЕТСЯ
+## Этап 5: CI/CD и DevOps — 🔄 ТЕКУЩИЙ
 
 - [ ] GitHub Actions: pytest на PR
 - [ ] GitHub Actions: flutter test + build
 - [ ] Docker-compose для локальной разработки
 - [ ] Health-check endpoint
+
+## Этап 6: Тестирование Flutter — 🔄 ОЖИДАЕТСЯ
+
+- [ ] Unit-тесты для `ApiResult`, `ApiClient`
+- [ ] Моки для `ApiService`
+- [ ] Widget-тесты для критических экранов
 
 ## Этап 7: Документация — 🔄 ОЖИДАЕТСЯ
 
@@ -57,4 +65,4 @@
 
 ---
 
-**Текущий статус:** 18/18 backend тестов проходят. Готов к следующему этапу.
+**Текущий статус:** 78/78 backend тестов проходят. Этап 4 завершён. Готов к CI/CD (Этап 5).
