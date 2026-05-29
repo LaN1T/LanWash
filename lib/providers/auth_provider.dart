@@ -6,8 +6,12 @@ import '../services/api_service.dart';
 import '../services/notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final _api = ApiService();
-  final _notifications = NotificationService();
+  final ApiService _api;
+  final NotificationService _notifications;
+
+  AuthProvider({required ApiService api, required NotificationService notifications})
+      : _api = api,
+        _notifications = notifications;
 
   User? _user;
   bool _initialized = false;

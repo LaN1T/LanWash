@@ -6,8 +6,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'app_styles.dart';
+import 'core/service_locator.dart';
 import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
+import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'screens/shared/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -17,15 +19,18 @@ import 'screens/washer/washer_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Инициализация DI
+  setupServiceLocator();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
   await initializeDateFormatting('ru', null);
-  
+
   // Инициализация уведомлений
-  NotificationService().init().catchError((e) => print("Firebase error: $e"));
+  sl<NotificationService>().init().catchError((e) => debugPrint("Firebase error: $e"));
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -35,8 +40,18 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
-        ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(
+            api: sl<ApiService>(),
+            notifications: sl<NotificationService>(),
+          )..init(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AppProvider(
+            api: sl<ApiService>(),
+            notificationService: sl<NotificationService>(),
+          ),
+        ),
       ],
       child: const LanWashApp(),
     ),
