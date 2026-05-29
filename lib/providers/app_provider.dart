@@ -15,7 +15,9 @@ class AppProvider extends ChangeNotifier {
   final NotificationService _notificationService;
   StreamSubscription? _updateSubscription;
 
-  AppProvider({required ApiService api, required NotificationService notificationService})
+  AppProvider(
+      {required ApiService api,
+      required NotificationService notificationService})
       : _api = api,
         _notificationService = notificationService {
     _updateSubscription = _notificationService.onAppointmentUpdated.listen((_) {
@@ -28,52 +30,57 @@ class AppProvider extends ChangeNotifier {
   }
 
   List<Appointment> _appointmentList = [];
-  List<Service>     _serviceList     = [];
-  List<Promo>       _promoList       = [];
-  List<WashType>    _washTypeList    = [];
-  List<Note>        _noteList        = [];
-  Set<String>       _extraFavSet     = {};
-  Set<String>       _serviceFavSet   = {};
-  String            _currentUser     = '';
-  bool _loading    = true;
+  List<Service> _serviceList = [];
+  List<Promo> _promoList = [];
+  List<WashType> _washTypeList = [];
+  List<Note> _noteList = [];
+  Set<String> _extraFavSet = {};
+  Set<String> _serviceFavSet = {};
+  String _currentUser = '';
+  bool _loading = true;
   bool _hasDeletedByAdmin = false;
   final bool _loadingApi = false;
-  int  _unreadNotes = 0;
-  int  _currentPage = 1;
-  int  _totalPages = 1;
+  int _unreadNotes = 0;
+  int _currentPage = 1;
+  int _totalPages = 1;
   String _currentDate = '';
   List<String> _uniqueDates = [];
   String? _errorMessage;
-  
+
   final Map<int, List<Appointment>> _cacheAppointments = {};
   final Map<int, String> _cacheDates = {};
   final Map<int, int> _cacheTotalPages = {};
 
-  int               get currentPage    => _currentPage;
-  int               get totalPages     => _totalPages;
-  String            get currentDate    => _currentDate;
-  List<String>      get uniqueDates    => _uniqueDates;
-  List<Appointment> get appointments   => _appointmentList;
-  List<Service>     get services       => _serviceList;
-  List<Promo>       get promos         => _promoList;
-  List<WashType>    get washTypes      => _washTypeList;
-  List<Note>        get notes          => _noteList;
-  Set<String>       get extraFavorites => _extraFavSet;
-  bool              get loading        => _loading;
-  bool              get loadingApi     => _loadingApi;
-  int               get unreadNotes    => _unreadNotes;
-  bool              get hasDeletedByAdmin => _hasDeletedByAdmin;
-  String?           get errorMessage   => _errorMessage;
+  int get currentPage => _currentPage;
+  int get totalPages => _totalPages;
+  String get currentDate => _currentDate;
+  List<String> get uniqueDates => _uniqueDates;
+  List<Appointment> get appointments => _appointmentList;
+  List<Service> get services => _serviceList;
+  List<Promo> get promos => _promoList;
+  List<WashType> get washTypes => _washTypeList;
+  List<Note> get notes => _noteList;
+  Set<String> get extraFavorites => _extraFavSet;
+  bool get loading => _loading;
+  bool get loadingApi => _loadingApi;
+  int get unreadNotes => _unreadNotes;
+  bool get hasDeletedByAdmin => _hasDeletedByAdmin;
+  String? get errorMessage => _errorMessage;
 
   void clearError() {
     _errorMessage = null;
   }
 
-  Map<String, dynamic> _busySlots = {'num_boxes': 2, 'busy_slots': [[], []]};
+  Map<String, dynamic> _busySlots = {
+    'num_boxes': 2,
+    'busy_slots': [[], []]
+  };
   Map<String, dynamic> get busySlots => _busySlots;
 
-  List<Appointment> get favoriteAppointments => _appointmentList.where((a) => a.isFavorite).toList();
-  List<Service> get favoriteServices => _serviceList.where((s) => _serviceFavSet.contains(s.id)).toList();
+  List<Appointment> get favoriteAppointments =>
+      _appointmentList.where((a) => a.isFavorite).toList();
+  List<Service> get favoriteServices =>
+      _serviceList.where((s) => _serviceFavSet.contains(s.id)).toList();
   bool isServiceFavorite(String id) => _serviceFavSet.contains(id);
   bool isExtraFavorite(String serviceId) => _extraFavSet.contains(serviceId);
 
@@ -81,10 +88,12 @@ class AppProvider extends ChangeNotifier {
     final results = _washTypeList.where((w) => w.id == id);
     return results.isNotEmpty ? results.first : null;
   }
+
   WashType? washTypeByCode(String code) {
     final results = _washTypeList.where((w) => w.code == code);
     return results.isNotEmpty ? results.first : null;
   }
+
   String washTypeName(String id) => washTypeById(id)?.name ?? id;
   Promo? promoById(String id) {
     final results = _promoList.where((p) => p.id == id);
@@ -103,19 +112,21 @@ class AppProvider extends ChangeNotifier {
     _cacheTotalPages.clear();
   }
 
-  Future<List<Appointment>> _fetchAppointments(AuthProvider auth, {String? targetDate}) async {
+  Future<List<Appointment>> _fetchAppointments(AuthProvider auth,
+      {String? targetDate}) async {
     if (auth.isAdmin) {
-      final res = await _api.getAppointments(page: _currentPage, date: targetDate);
+      final res =
+          await _api.getAppointments(page: _currentPage, date: targetDate);
       _totalPages = res.totalPages;
       _currentPage = res.currentPage;
       _currentDate = res.currentDate;
       _uniqueDates = res.uniqueDates;
-      
+
       // Update cache
       _cacheAppointments[_currentPage] = res.appointments;
       _cacheDates[_currentPage] = res.currentDate;
       _cacheTotalPages[_currentPage] = res.totalPages;
-      
+
       return res.appointments;
     }
     if (auth.isWasher) return _api.getAppointmentsByWasher(auth.userLogin);
@@ -124,11 +135,11 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _prefetchAdjacent(AuthProvider auth) async {
     if (!auth.isAdmin) return;
-    
+
     final current = _currentPage;
     final next = current + 1;
     final prev = current - 1;
-    
+
     if (next <= _totalPages && !_cacheAppointments.containsKey(next)) {
       try {
         final res = await _api.getAppointments(page: next);
@@ -139,7 +150,7 @@ class AppProvider extends ChangeNotifier {
         debugPrint('[AppProvider._prefetchAdjacent next] error: $e\n$st');
       }
     }
-    
+
     if (prev >= 1 && !_cacheAppointments.containsKey(prev)) {
       try {
         final res = await _api.getAppointments(page: prev);
@@ -155,18 +166,18 @@ class AppProvider extends ChangeNotifier {
   Future<void> setPage(int page, AuthProvider auth) async {
     if (!auth.isAdmin) return;
     if (page < 1 || page > _totalPages) return;
-    
+
     _currentPage = page;
     clearError();
-    
+
     if (_cacheAppointments.containsKey(page)) {
       _appointmentList = _cacheAppointments[page]!;
       _currentDate = _cacheDates[page]!;
       _totalPages = _cacheTotalPages[page]!;
       notifyListeners();
-      
+
       _prefetchAdjacent(auth);
-      
+
       try {
         final freshList = await _fetchAppointments(auth);
         _appointmentList = freshList;
@@ -203,8 +214,8 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     clearCache();
     try {
-      _serviceList  = await _api.getServices();
-      _promoList    = await _api.getPromos();
+      _serviceList = await _api.getServices();
+      _promoList = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
       _appointmentList = await _fetchAppointments(auth);
     } catch (e, st) {
@@ -234,8 +245,8 @@ class AppProvider extends ChangeNotifier {
     clearCache();
     try {
       _appointmentList = await _fetchAppointments(auth);
-      _extraFavSet     = await _api.getExtraFavorites(_currentUser);
-      _serviceFavSet   = await _api.getServiceFavorites(_currentUser);
+      _extraFavSet = await _api.getExtraFavorites(_currentUser);
+      _serviceFavSet = await _api.getServiceFavorites(_currentUser);
       _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
       notifyListeners();
     } catch (e, st) {
@@ -246,8 +257,13 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> clearData() async {
-    _appointmentList = []; _noteList = []; _extraFavSet = {}; _serviceFavSet = {};
-    _currentUser = ''; _unreadNotes = 0; _hasDeletedByAdmin = false;
+    _appointmentList = [];
+    _noteList = [];
+    _extraFavSet = {};
+    _serviceFavSet = {};
+    _currentUser = '';
+    _unreadNotes = 0;
+    _hasDeletedByAdmin = false;
     notifyListeners();
   }
 
@@ -318,7 +334,8 @@ class AppProvider extends ChangeNotifier {
       if (ok) {
         final i = _appointmentList.indexWhere((a) => a.id == id);
         if (i != -1) {
-          _appointmentList[i] = _appointmentList[i].copyWith(isFavorite: !_appointmentList[i].isFavorite);
+          _appointmentList[i] = _appointmentList[i]
+              .copyWith(isFavorite: !_appointmentList[i].isFavorite);
           notifyListeners();
         }
       }
@@ -432,22 +449,24 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<List<User>> getWashers() => _api.getWashers();
-  Future<List<Appointment>> getAppointmentsByWasher(String username) => _api.getAppointmentsByWasher(username);
+  Future<List<Appointment>> getAppointmentsByWasher(String username) =>
+      _api.getAppointmentsByWasher(username);
 
   Future<bool> assignWasher(String appointmentId, String washerUsername) async {
     final ok = await _api.assignWasher(appointmentId, washerUsername);
     if (ok) {
-        final i = _appointmentList.indexWhere((a) => a.id == appointmentId);
-        if (i != -1) {
-            final current = List<String>.from(_appointmentList[i].assignedWashers);
-            if (current.contains(washerUsername)) {
-              current.remove(washerUsername);
-            } else {
-              current.add(washerUsername);
-            }
-            _appointmentList[i] = _appointmentList[i].copyWith(assignedWashers: current);
-            notifyListeners();
+      final i = _appointmentList.indexWhere((a) => a.id == appointmentId);
+      if (i != -1) {
+        final current = List<String>.from(_appointmentList[i].assignedWashers);
+        if (current.contains(washerUsername)) {
+          current.remove(washerUsername);
+        } else {
+          current.add(washerUsername);
         }
+        _appointmentList[i] =
+            _appointmentList[i].copyWith(assignedWashers: current);
+        notifyListeners();
+      }
     }
     return ok;
   }
@@ -455,7 +474,9 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadNotes({String? username}) async {
     clearError();
     try {
-      _noteList = username != null ? await _api.getNotesByUser(username) : await _api.getNotes();
+      _noteList = username != null
+          ? await _api.getNotesByUser(username)
+          : await _api.getNotes();
       _unreadNotes = _noteList.where((n) => !n.isRead).length;
       notifyListeners();
     } catch (e, st) {
@@ -475,7 +496,8 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<Note?> addNote(String username, String title, String message, String category) async {
+  Future<Note?> addNote(
+      String username, String title, String message, String category) async {
     clearError();
     try {
       final note = await _api.createNote(username, title, message, category);
@@ -534,7 +556,7 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[AppProvider.deleteNote] error: $e\n$st');
     }
   }
-  
+
   Future<void> clearDeletedByAdminFlag() async {
     try {
       await _api.clearDeletedNotification(_currentUser);
@@ -544,15 +566,16 @@ class AppProvider extends ChangeNotifier {
       debugPrint('[AppProvider.clearDeletedByAdminFlag] error: $e\n$st');
     }
   }
-  
+
   Future<void> clearModifiedFlag(String id) async {
     try {
       final ok = await _api.clearAdminModifiedFlag(id);
       if (ok) {
         final i = _appointmentList.indexWhere((a) => a.id == id);
-        if (i != -1) { 
-          _appointmentList[i] = _appointmentList[i].copyWith(isModifiedByAdmin: false, isModifiedByWasher: false); 
-          notifyListeners(); 
+        if (i != -1) {
+          _appointmentList[i] = _appointmentList[i]
+              .copyWith(isModifiedByAdmin: false, isModifiedByWasher: false);
+          notifyListeners();
         }
       }
     } catch (e, st) {
@@ -566,7 +589,8 @@ class AppProvider extends ChangeNotifier {
       try {
         final ok = await _api.markAppointmentSeen(id);
         if (ok) {
-          _appointmentList[i] = _appointmentList[i].copyWith(isSeenByClient: true);
+          _appointmentList[i] =
+              _appointmentList[i].copyWith(isSeenByClient: true);
           notifyListeners();
         }
       } catch (e, st) {

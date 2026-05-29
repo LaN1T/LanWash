@@ -16,7 +16,8 @@ import 'client_shell.dart';
 class BookingWizardScreen extends StatefulWidget {
   final Promo? initialPromo;
   const BookingWizardScreen({super.key, this.initialPromo});
-  @override State<BookingWizardScreen> createState() => _BWState();
+  @override
+  State<BookingWizardScreen> createState() => _BWState();
 }
 
 class _BWState extends State<BookingWizardScreen> {
@@ -35,7 +36,7 @@ class _BWState extends State<BookingWizardScreen> {
   final _formKey = GlobalKey<FormState>();
 
   Promo? get _promo => widget.initialPromo;
-  bool   get _isPromo => _promo != null;
+  bool get _isPromo => _promo != null;
 
   bool get _weekendOnly => _promo?.weekendOnly ?? false;
 
@@ -71,14 +72,14 @@ class _BWState extends State<BookingWizardScreen> {
 
     final start = dt;
     final end = dt.add(Duration(minutes: duration));
-    
+
     // Check if at least one box is free
     for (int boxIdx = 0; boxIdx < busy.length; boxIdx++) {
       bool isBoxFree = true;
       for (final slot in busy[boxIdx]) {
         final slotStart = DateTime.parse(slot['start']);
         final slotEnd = DateTime.parse(slot['end']);
-        
+
         if (start.isBefore(slotEnd) && end.isAfter(slotStart)) {
           isBoxFree = false;
           break;
@@ -93,11 +94,18 @@ class _BWState extends State<BookingWizardScreen> {
     final provider = context.read<AppProvider>();
     final wt = provider.washTypeById(_washTypeId);
     int duration = wt?.durationMinutes ?? 30;
-    
+
     final locked = _lockedExtras();
     for (final id in _extras) {
       if (!locked.contains(id)) {
-        final svc = provider.services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
+        final svc = provider.services.firstWhere((s) => s.id == id,
+            orElse: () => Service(
+                id: id,
+                name: id,
+                description: '',
+                price: 0,
+                durationMinutes: 0,
+                category: ''));
         duration += svc.durationMinutes;
       }
     }
@@ -115,19 +123,29 @@ class _BWState extends State<BookingWizardScreen> {
 
   int _extraPrice(String id) {
     final svc = context.read<AppProvider>().services.firstWhere(
-      (s) => s.id == id,
-      orElse: () => Service(id: id, name: id, description: '',
-          price: 0, durationMinutes: 0, category: ''),
-    );
+          (s) => s.id == id,
+          orElse: () => Service(
+              id: id,
+              name: id,
+              description: '',
+              price: 0,
+              durationMinutes: 0,
+              category: ''),
+        );
     return svc.price;
   }
 
   int _extraDuration(String id) {
     final svc = context.read<AppProvider>().services.firstWhere(
-      (s) => s.id == id,
-      orElse: () => Service(id: id, name: id, description: '',
-          price: 0, durationMinutes: 0, category: ''),
-    );
+          (s) => s.id == id,
+          orElse: () => Service(
+              id: id,
+              name: id,
+              description: '',
+              price: 0,
+              durationMinutes: 0,
+              category: ''),
+        );
     return svc.durationMinutes;
   }
 
@@ -159,14 +177,16 @@ class _BWState extends State<BookingWizardScreen> {
     return _promo!.price;
   }
 
-  int get _finalPrice => _isPromo ? _promoBasePrice + _extrasPrice : _regularPrice;
+  int get _finalPrice =>
+      _isPromo ? _promoBasePrice + _extrasPrice : _regularPrice;
   bool get _hasDiscount => _isPromo && _finalPrice < _regularPrice;
 
   DateTime get _finalDateTime {
     if (_selectedSlotIndex == -1) return DateTime.now(); // Should not happen
     final hour = 8 + (_selectedSlotIndex ~/ 2);
     final minute = (_selectedSlotIndex % 2) * 30;
-    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, minute);
+    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
+        hour, minute);
   }
 
   String get _totalDurationLabel {
@@ -186,7 +206,7 @@ class _BWState extends State<BookingWizardScreen> {
     if (d > 0) parts.add('$d д');
     if (h > 0) parts.add('$h ч');
     if (m > 0) parts.add('$m мин');
-    
+
     return parts.isEmpty ? '0 мин' : parts.join(' ');
   }
 
@@ -195,14 +215,14 @@ class _BWState extends State<BookingWizardScreen> {
     super.initState();
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
-    _carCtrl  = TextEditingController(text: user?.carModel    ?? '');
-    _numCtrl  = TextEditingController(text: user?.carNumber   ?? '');
+    _carCtrl = TextEditingController(text: user?.carModel ?? '');
+    _numCtrl = TextEditingController(text: user?.carNumber ?? '');
     _extras = {};
     _selectedDate = _nextValidDate();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-        _initFromProvider();
-        _updateBusySlots();
+      _initFromProvider();
+      _updateBusySlots();
     });
   }
 
@@ -212,8 +232,8 @@ class _BWState extends State<BookingWizardScreen> {
       _washTypeId = _promo!.washTypeId;
       _extras = Set.from(_promo!.includedExtraIds);
     } else {
-      final basic = provider.washTypeByCode('basic')
-          ?? (provider.washTypes.isNotEmpty ? provider.washTypes.first : null);
+      final basic = provider.washTypeByCode('basic') ??
+          (provider.washTypes.isNotEmpty ? provider.washTypes.first : null);
       _washTypeId = basic?.id ?? '';
     }
     _addIncludedExtras();
@@ -229,7 +249,9 @@ class _BWState extends State<BookingWizardScreen> {
   void dispose() {
     _pageCtrl.dispose();
     _serviceScrollCtrl.dispose();
-    _nameCtrl.dispose(); _carCtrl.dispose(); _numCtrl.dispose();
+    _nameCtrl.dispose();
+    _carCtrl.dispose();
+    _numCtrl.dispose();
     super.dispose();
   }
 
@@ -267,21 +289,25 @@ class _BWState extends State<BookingWizardScreen> {
   void _confirm() {
     final auth = context.read<AuthProvider>();
     final login = auth.userLogin.toLowerCase();
-    context.read<AppProvider>().addAppointment(Appointment(
-      id: 'a_${DateTime.now().millisecondsSinceEpoch}',
-      clientName: _nameCtrl.text.trim(),
-      carModel: _carCtrl.text.trim(),
-      carNumber: _numCtrl.text.trim().toUpperCase(),
-      dateTime: _finalDateTime,
-      washTypeId: _washTypeId,
-      additionalServices: _extras.toList(),
-      status: 'scheduled',
-      notes: _isPromo ? 'Акция: ${_promo!.name}' : '',
-      ownerUsername: login,
-      promoPrice: _isPromo ? (_promo!.price > 0 ? _promo!.price : _promoBasePrice) : 0,
-      paidPrice: _finalPrice,
-      promoId: _promo?.id,
-    ), auth);
+    context.read<AppProvider>().addAppointment(
+        Appointment(
+          id: 'a_${DateTime.now().millisecondsSinceEpoch}',
+          clientName: _nameCtrl.text.trim(),
+          carModel: _carCtrl.text.trim(),
+          carNumber: _numCtrl.text.trim().toUpperCase(),
+          dateTime: _finalDateTime,
+          washTypeId: _washTypeId,
+          additionalServices: _extras.toList(),
+          status: 'scheduled',
+          notes: _isPromo ? 'Акция: ${_promo!.name}' : '',
+          ownerUsername: login,
+          promoPrice: _isPromo
+              ? (_promo!.price > 0 ? _promo!.price : _promoBasePrice)
+              : 0,
+          paidPrice: _finalPrice,
+          promoId: _promo?.id,
+        ),
+        auth);
     Navigator.of(context).popUntil((route) => route.isFirst);
     ClientShell.shellKey.currentState?.switchToBookings();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -315,7 +341,8 @@ class _BWState extends State<BookingWizardScreen> {
         foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(1),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
             child: Container(height: 1, color: AppStyles.border)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
@@ -323,7 +350,9 @@ class _BWState extends State<BookingWizardScreen> {
         ),
         title: Row(children: [
           const Text('Запись на мойку',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600,
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
                   color: AppStyles.textPrimary)),
           if (_isPromo) ...[
             const SizedBox(width: 8),
@@ -333,9 +362,11 @@ class _BWState extends State<BookingWizardScreen> {
                 gradient: AppStyles.primaryGradient,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text('Акция', style: TextStyle(
-                  color: Colors.white, fontSize: 11,
-                  fontWeight: FontWeight.w600)),
+              child: const Text('Акция',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600)),
             ),
           ],
         ]),
@@ -387,7 +418,8 @@ class _BWState extends State<BookingWizardScreen> {
                 getFinalDateTime: () => _finalDateTime,
               ),
               _ConfirmationStep(
-                date: DateFormat('d MMMM yyyy, HH:mm', 'ru').format(_finalDateTime),
+                date: DateFormat('d MMMM yyyy, HH:mm', 'ru')
+                    .format(_finalDateTime),
                 washType: _washType,
                 extras: _extras.toList(),
                 services: provider.services,
@@ -406,7 +438,9 @@ class _BWState extends State<BookingWizardScreen> {
         _BottomBar(
           step: _step,
           onAction: _step < 2 ? _next : _confirm,
-          selectedTimeLabel: _selectedSlotIndex == -1 ? null : DateFormat("d MMMM, HH:mm", "ru").format(_finalDateTime),
+          selectedTimeLabel: _selectedSlotIndex == -1
+              ? null
+              : DateFormat("d MMMM, HH:mm", "ru").format(_finalDateTime),
         ),
       ]),
     );
@@ -424,9 +458,11 @@ class _StepIndicator extends StatelessWidget {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      child: Row(children: List.generate(_steps.length * 2 - 1, (i) {
+      child: Row(
+          children: List.generate(_steps.length * 2 - 1, (i) {
         if (i.isOdd) {
-          return Expanded(child: Container(
+          return Expanded(
+              child: Container(
             height: 2,
             decoration: BoxDecoration(
               color: i ~/ 2 < current ? AppStyles.primary : AppStyles.border,
@@ -434,33 +470,46 @@ class _StepIndicator extends StatelessWidget {
             ),
           ));
         }
-        final idx    = i ~/ 2;
-        final done   = idx < current;
+        final idx = i ~/ 2;
+        final done = idx < current;
         final active = idx == current;
         return Column(mainAxisSize: MainAxisSize.min, children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: done ? AppStyles.primary :
-                     active ? AppStyles.primaryBg : AppStyles.bgMuted,
+              color: done
+                  ? AppStyles.primary
+                  : active
+                      ? AppStyles.primaryBg
+                      : AppStyles.bgMuted,
               border: Border.all(
                 color: (done || active) ? AppStyles.primary : AppStyles.border,
                 width: active ? 2 : 1,
               ),
             ),
-            child: Center(child: done
-                ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
-                : Text('${idx + 1}', style: TextStyle(
-                    color: active ? AppStyles.primary : AppStyles.textSecondary,
-                    fontSize: 13, fontWeight: FontWeight.bold))),
+            child: Center(
+                child: done
+                    ? const Icon(Icons.check_rounded,
+                        color: Colors.white, size: 14)
+                    : Text('${idx + 1}',
+                        style: TextStyle(
+                            color: active
+                                ? AppStyles.primary
+                                : AppStyles.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold))),
           ),
           const SizedBox(height: 5),
-          Text(_steps[idx], style: TextStyle(
-            color: (done || active) ? AppStyles.primary : AppStyles.textMuted,
-            fontSize: 10, fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-          )),
+          Text(_steps[idx],
+              style: TextStyle(
+                color:
+                    (done || active) ? AppStyles.primary : AppStyles.textMuted,
+                fontSize: 10,
+                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+              )),
         ]);
       })),
     );
@@ -493,7 +542,8 @@ class _DateTimeStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final days = List.generate(14, (i) => DateTime.now().add(Duration(days: i)));
+    final days =
+        List.generate(14, (i) => DateTime.now().add(Duration(days: i)));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -511,7 +561,9 @@ class _DateTimeStep extends StatelessWidget {
               Icon(Icons.info_outline, color: AppStyles.warning, size: 16),
               SizedBox(width: 8),
               Text('Акция доступна только по выходным',
-                  style: TextStyle(color: AppStyles.warning, fontSize: 12,
+                  style: TextStyle(
+                      color: AppStyles.warning,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500)),
             ]),
           ),
@@ -524,42 +576,64 @@ class _DateTimeStep extends StatelessWidget {
             itemCount: days.length,
             itemBuilder: (_, i) {
               final d = days[i];
-              final sel = d.day == selectedDate.day && d.month == selectedDate.month;
+              final sel =
+                  d.day == selectedDate.day && d.month == selectedDate.month;
               final allowed = isDateAllowed(d);
               return GestureDetector(
                 onTap: allowed ? () => onDateChanged(d) : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 62, margin: const EdgeInsets.only(right: 10),
+                  width: 62,
+                  margin: const EdgeInsets.only(right: 10),
                   decoration: BoxDecoration(
-                    color: sel ? AppStyles.primary :
-                           !allowed ? AppStyles.bgMuted : Colors.white,
+                    color: sel
+                        ? AppStyles.primary
+                        : !allowed
+                            ? AppStyles.bgMuted
+                            : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                         color: sel ? AppStyles.primary : AppStyles.border),
-                    boxShadow: sel ? [BoxShadow(
-                        color: AppStyles.primary.withOpacity(0.25),
-                        blurRadius: 8, offset: const Offset(0, 3))] : [],
+                    boxShadow: sel
+                        ? [
+                            BoxShadow(
+                                color: AppStyles.primary.withOpacity(0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3))
+                          ]
+                        : [],
                   ),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center,
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                    Text(DateFormat('EE', 'ru').format(d).toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-                            color: sel ? Colors.white70 :
-                                   !allowed ? AppStyles.textMuted :
-                                   AppStyles.textSecondary)),
-                    const SizedBox(height: 4),
-                    Text('${d.day}', style: TextStyle(fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: sel ? Colors.white :
-                               !allowed ? AppStyles.textMuted :
-                               AppStyles.textPrimary)),
-                    Text(DateFormat('MMM', 'ru').format(d),
-                        style: TextStyle(fontSize: 11,
-                            color: sel ? Colors.white70 :
-                                   !allowed ? AppStyles.textMuted :
-                                   AppStyles.textSecondary)),
-                  ]),
+                        Text(DateFormat('EE', 'ru').format(d).toUpperCase(),
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: sel
+                                    ? Colors.white70
+                                    : !allowed
+                                        ? AppStyles.textMuted
+                                        : AppStyles.textSecondary)),
+                        const SizedBox(height: 4),
+                        Text('${d.day}',
+                            style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: sel
+                                    ? Colors.white
+                                    : !allowed
+                                        ? AppStyles.textMuted
+                                        : AppStyles.textPrimary)),
+                        Text(DateFormat('MMM', 'ru').format(d),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: sel
+                                    ? Colors.white70
+                                    : !allowed
+                                        ? AppStyles.textMuted
+                                        : AppStyles.textSecondary)),
+                      ]),
                 ),
               );
             },
@@ -572,7 +646,9 @@ class _DateTimeStep extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8,
+            crossAxisCount: 3,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
             childAspectRatio: 2.5,
           ),
           itemCount: (22 - 8) * 2, // 08:00 - 21:30
@@ -582,24 +658,35 @@ class _DateTimeStep extends StatelessWidget {
             final startMinutes = hour * 60 + minute;
             final duration = getDuration();
             final endMinutes = startMinutes + duration + 5;
-            
+
             final overflow = endMinutes > 22 * 60 ? endMinutes - (22 * 60) : 0;
             final isTooLong = overflow > 480;
-            
-            final time = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour, minute);
+
+            final time = DateTime(selectedDate.year, selectedDate.month,
+                selectedDate.day, hour, minute);
             final busy = isSlotAvailable(time, duration);
             final sel = index == selectedSlot;
 
             return GestureDetector(
-              onTap: (!isTooLong && (busy || overflow > 0)) ? () => onSlotChanged(index) : null,
+              onTap: (!isTooLong && (busy || overflow > 0))
+                  ? () => onSlotChanged(index)
+                  : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: sel ? AppStyles.primary : ((busy || overflow > 0) && !isTooLong ? Colors.white : Colors.grey.shade100),
+                  color: sel
+                      ? AppStyles.primary
+                      : ((busy || overflow > 0) && !isTooLong
+                          ? Colors.white
+                          : Colors.grey.shade100),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: sel ? AppStyles.primary : (overflow > 0 ? const Color(0xFFE53935) : AppStyles.border),
+                    color: sel
+                        ? AppStyles.primary
+                        : (overflow > 0
+                            ? const Color(0xFFE53935)
+                            : AppStyles.border),
                     width: (sel || overflow > 0) ? 2 : 1,
                   ),
                 ),
@@ -607,17 +694,27 @@ class _DateTimeStep extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     FittedBox(
-                      child: Text('${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          color: sel ? Colors.white : (busy || overflow > 0 ? AppStyles.textPrimary : AppStyles.textMuted),
-                          fontSize: 11, fontWeight: FontWeight.bold,
-                        )),
+                      child: Text(
+                          '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            color: sel
+                                ? Colors.white
+                                : (busy || overflow > 0
+                                    ? AppStyles.textPrimary
+                                    : AppStyles.textMuted),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          )),
                     ),
                     if (overflow > 0 && !isTooLong) ...[
                       const SizedBox(height: 2),
                       FittedBox(
-                        child: Text('⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}',
-                          style: const TextStyle(color: Color(0xFFE53935), fontSize: 9, fontWeight: FontWeight.w600)),
+                        child: Text(
+                            '⚠ Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                                color: Color(0xFFE53935),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600)),
                       ),
                     ]
                   ],
@@ -645,11 +742,19 @@ class _ServiceStep extends StatelessWidget {
   final ValueChanged<WashType> onWashTypeChanged;
   final void Function(String id, bool value) onExtrasChanged;
 
-  const _ServiceStep({this.scrollCtrl, required this.formKey, required this.washTypes,
-    required this.washTypeId, required this.extras, required this.lockedExtras,
-    required this.nameCtrl, required this.carCtrl, required this.numCtrl,
-    required this.isPromo, required this.onWashTypeChanged,
-    required this.onExtrasChanged});
+  const _ServiceStep(
+      {this.scrollCtrl,
+      required this.formKey,
+      required this.washTypes,
+      required this.washTypeId,
+      required this.extras,
+      required this.lockedExtras,
+      required this.nameCtrl,
+      required this.carCtrl,
+      required this.numCtrl,
+      required this.isPromo,
+      required this.onWashTypeChanged,
+      required this.onExtrasChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -674,7 +779,8 @@ class _ServiceStep extends StatelessWidget {
                 icon: Icons.person_outline_rounded),
             textCapitalization: TextCapitalization.words,
             onChanged: (v) => applyTranslitRu(nameCtrl, v),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -684,30 +790,35 @@ class _ServiceStep extends StatelessWidget {
                 icon: Icons.directions_car_outlined),
             textCapitalization: TextCapitalization.words,
             onChanged: (v) => applyTranslitEn(carCtrl, v),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: numCtrl,
-            style: const TextStyle(color: AppStyles.textPrimary,
-                letterSpacing: 1.5, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                color: AppStyles.textPrimary,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.w600),
             decoration: _ServiceStep._plateDecoration(),
             inputFormatters: [PlateInputFormatter()],
             validator: validatePlate,
           ),
           const SizedBox(height: 24),
-
           Row(children: [
             const Text('Выберите услугу', style: AppStyles.headingMedium),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: AppStyles.primaryBg,
+                decoration: BoxDecoration(
+                    color: AppStyles.primaryBg,
                     borderRadius: BorderRadius.circular(6)),
                 child: const Text('Задано акцией',
-                    style: TextStyle(color: AppStyles.primary,
-                        fontSize: 11, fontWeight: FontWeight.w500)),
+                    style: TextStyle(
+                        color: AppStyles.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
               ),
             ],
           ]),
@@ -728,51 +839,76 @@ class _ServiceStep extends StatelessWidget {
                       color: sel ? AppStyles.primary : AppStyles.border,
                       width: sel ? 2 : 1,
                     ),
-                    boxShadow: sel ? [
-                      BoxShadow(color: AppStyles.primary.withOpacity(0.1),
-                          blurRadius: 10, offset: const Offset(0, 4))
-                    ] : [
-                      BoxShadow(color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4, offset: const Offset(0, 2))
-                    ],
+                    boxShadow: sel
+                        ? [
+                            BoxShadow(
+                                color: AppStyles.primary.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4))
+                          ]
+                        : [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2))
+                          ],
                   ),
                   child: Row(children: [
-                    Expanded(child: Column(
+                    Expanded(
+                        child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(wt.name, style: TextStyle(
-                          color: AppStyles.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        )),
+                        Text(wt.name,
+                            style: TextStyle(
+                              color: AppStyles.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            )),
                         const SizedBox(height: 4),
-                        Text(wt.description, style: const TextStyle(
-                          color: AppStyles.textSecondary,
-                          fontSize: 12,
-                        )),
+                        Text(wt.description,
+                            style: const TextStyle(
+                              color: AppStyles.textSecondary,
+                              fontSize: 12,
+                            )),
                         const SizedBox(height: 8),
                         Row(children: [
                           Icon(Icons.access_time_rounded,
-                              size: 14, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+                              size: 14,
+                              color: sel
+                                  ? AppStyles.primary
+                                  : AppStyles.textSecondary),
                           const SizedBox(width: 4),
-                          Text(wt.durationLabel, style: TextStyle(
-                              color: sel ? AppStyles.primary : AppStyles.textSecondary,
-                              fontSize: 12, fontWeight: FontWeight.w500)),
+                          Text(wt.durationLabel,
+                              style: TextStyle(
+                                  color: sel
+                                      ? AppStyles.primary
+                                      : AppStyles.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500)),
                           const SizedBox(width: 16),
                           Icon(Icons.payments_outlined,
-                              size: 14, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+                              size: 14,
+                              color: sel
+                                  ? AppStyles.primary
+                                  : AppStyles.textSecondary),
                           const SizedBox(width: 4),
-                          Text('${wt.basePrice} ₽', style: TextStyle(
-                              color: sel ? AppStyles.primary : AppStyles.textSecondary,
-                              fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text('${wt.basePrice} ₽',
+                              style: TextStyle(
+                                  color: sel
+                                      ? AppStyles.primary
+                                      : AppStyles.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
                         ]),
                       ],
                     )),
                     if (sel)
-                      const Icon(Icons.check_circle_rounded, color: AppStyles.primary, size: 24)
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppStyles.primary, size: 24)
                     else
                       Container(
-                        width: 24, height: 24,
+                        width: 24,
+                        height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: AppStyles.border, width: 2),
@@ -783,7 +919,6 @@ class _ServiceStep extends StatelessWidget {
               ),
             );
           }),
-          
           const SizedBox(height: 12),
           Row(children: [
             const Text('Дополнительно', style: AppStyles.headingMedium),
@@ -791,11 +926,14 @@ class _ServiceStep extends StatelessWidget {
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: AppStyles.primaryBg,
+                decoration: BoxDecoration(
+                    color: AppStyles.primaryBg,
                     borderRadius: BorderRadius.circular(6)),
                 child: const Text('Можно добавить',
-                    style: TextStyle(color: AppStyles.primary,
-                        fontSize: 11, fontWeight: FontWeight.w500)),
+                    style: TextStyle(
+                        color: AppStyles.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
               ),
             ],
           ]),
@@ -804,39 +942,50 @@ class _ServiceStep extends StatelessWidget {
             decoration: AppStyles.cardDecoration,
             child: Column(
               children: extraServices.asMap().entries.map((entry) {
-                final i       = entry.key;
-                final svc     = entry.value;
+                final i = entry.key;
+                final svc = entry.value;
                 final checked = extras.contains(svc.id);
-                final last    = i == extraServices.length - 1;
-                final isFav   = provider.isExtraFavorite(svc.id);
-                final wt      = provider.washTypeById(washTypeId);
-                final isWashIncluded  = wt?.includedExtraIds.contains(svc.id) ?? false;
-                final isPromoIncluded = lockedExtras.contains(svc.id) && !isWashIncluded;
-                final locked  = lockedExtras.contains(svc.id);
+                final last = i == extraServices.length - 1;
+                final isFav = provider.isExtraFavorite(svc.id);
+                final wt = provider.washTypeById(washTypeId);
+                final isWashIncluded =
+                    wt?.includedExtraIds.contains(svc.id) ?? false;
+                final isPromoIncluded =
+                    lockedExtras.contains(svc.id) && !isWashIncluded;
+                final locked = lockedExtras.contains(svc.id);
                 return Column(children: [
                   InkWell(
-                    onTap: locked ? null : () => onExtrasChanged(svc.id, !checked),
+                    onTap:
+                        locked ? null : () => onExtrasChanged(svc.id, !checked),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       child: Row(children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          width: 20, height: 20,
+                          width: 20,
+                          height: 20,
                           decoration: BoxDecoration(
                             color: locked
                                 ? AppStyles.primary.withOpacity(0.6)
-                                : checked ? AppStyles.primary : Colors.white,
+                                : checked
+                                    ? AppStyles.primary
+                                    : Colors.white,
                             borderRadius: BorderRadius.circular(5),
                             border: Border.all(
                                 color: (locked || checked)
-                                    ? AppStyles.primary : AppStyles.border,
+                                    ? AppStyles.primary
+                                    : AppStyles.border,
                                 width: 1.5),
                           ),
                           child: (locked || checked)
                               ? Icon(
-                                  locked ? Icons.lock_rounded : Icons.check_rounded,
-                                  color: Colors.white, size: 13) : null,
+                                  locked
+                                      ? Icons.lock_rounded
+                                      : Icons.check_rounded,
+                                  color: Colors.white,
+                                  size: 13)
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -845,11 +994,17 @@ class _ServiceStep extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  Flexible(child: Text(svc.name, style: TextStyle(
-                                    color: checked ? AppStyles.primary : AppStyles.textPrimary,
-                                    fontSize: 14,
-                                    fontWeight: checked ? FontWeight.w500 : FontWeight.normal,
-                                  ))),
+                                  Flexible(
+                                      child: Text(svc.name,
+                                          style: TextStyle(
+                                            color: checked
+                                                ? AppStyles.primary
+                                                : AppStyles.textPrimary,
+                                            fontSize: 14,
+                                            fontWeight: checked
+                                                ? FontWeight.w500
+                                                : FontWeight.normal,
+                                          ))),
                                   const SizedBox(width: 6),
                                   Tooltip(
                                     message: svc.description.isNotEmpty
@@ -857,13 +1012,15 @@ class _ServiceStep extends StatelessWidget {
                                         : 'Описание услуги пока не добавлено',
                                     triggerMode: TooltipTriggerMode.tap,
                                     child: const Icon(Icons.help_outline,
-                                        size: 14, color: AppStyles.textSecondary),
+                                        size: 14,
+                                        color: AppStyles.textSecondary),
                                   ),
                                 ],
                               ),
                               Text(svc.durationLabel,
                                   style: const TextStyle(
-                                      color: AppStyles.textSecondary, fontSize: 11)),
+                                      color: AppStyles.textSecondary,
+                                      fontSize: 11)),
                             ],
                           ),
                         ),
@@ -876,8 +1033,10 @@ class _ServiceStep extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text('Включено',
-                                style: TextStyle(color: AppStyles.primary,
-                                    fontSize: 10, fontWeight: FontWeight.w600)),
+                                style: TextStyle(
+                                    color: AppStyles.primary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600)),
                           )
                         else if (isPromoIncluded)
                           Container(
@@ -888,14 +1047,20 @@ class _ServiceStep extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text('Задано акцией',
-                                style: TextStyle(color: AppStyles.favorite,
-                                    fontSize: 10, fontWeight: FontWeight.w600)),
+                                style: TextStyle(
+                                    color: AppStyles.favorite,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600)),
                           )
                         else
-                          Text('+${svc.price} ₽', style: TextStyle(
-                            color: checked ? AppStyles.primary : AppStyles.textSecondary,
-                            fontSize: 13, fontWeight: FontWeight.w600,
-                          )),
+                          Text('+${svc.price} ₽',
+                              style: TextStyle(
+                                color: checked
+                                    ? AppStyles.primary
+                                    : AppStyles.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              )),
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () => provider.toggleExtraFavorite(svc.id),
@@ -903,18 +1068,24 @@ class _ServiceStep extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.all(4),
                             child: Icon(
-                              isFav ? Icons.star_rounded : Icons.star_outline_rounded,
+                              isFav
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
                               size: 20,
-                              color: isFav ? AppStyles.favorite : AppStyles.textMuted,
+                              color: isFav
+                                  ? AppStyles.favorite
+                                  : AppStyles.textMuted,
                             ),
                           ),
                         ),
                       ]),
                     ),
                   ),
-                  if (!last) Container(
-                      height: 1, color: AppStyles.border,
-                      margin: const EdgeInsets.only(left: 48)),
+                  if (!last)
+                    Container(
+                        height: 1,
+                        color: AppStyles.border,
+                        margin: const EdgeInsets.only(left: 48)),
                 ]);
               }).toList(),
             ),
@@ -931,8 +1102,8 @@ class _ServiceStep extends StatelessWidget {
     return base.copyWith(
       floatingLabelBehavior: FloatingLabelBehavior.always,
       helperText: 'Формат: А000АА777 · EN→RU авто',
-      helperStyle: const TextStyle(
-          color: AppStyles.textSecondary, fontSize: 11),
+      helperStyle:
+          const TextStyle(color: AppStyles.textSecondary, fontSize: 11),
     );
   }
 }
@@ -948,11 +1119,19 @@ class _ConfirmationStep extends StatelessWidget {
   final String? promoName;
   final String totalDurationLabel;
 
-  const _ConfirmationStep({required this.date, required this.washType, required this.extras,
-    required this.services,
-    required this.name, required this.car, required this.number,
-    required this.finalPrice, required this.regularPrice,
-    required this.hasDiscount, this.promoName, required this.totalDurationLabel});
+  const _ConfirmationStep(
+      {required this.date,
+      required this.washType,
+      required this.extras,
+      required this.services,
+      required this.name,
+      required this.car,
+      required this.number,
+      required this.finalPrice,
+      required this.regularPrice,
+      required this.hasDiscount,
+      this.promoName,
+      required this.totalDurationLabel});
 
   String _serviceName(String id) {
     for (final s in services) {
@@ -968,150 +1147,180 @@ class _ConfirmationStep extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Подтверждение', style: AppStyles.headingMedium),
-        const SizedBox(height: 4),
-        const Text('Проверьте данные перед записью', style: AppStyles.bodyMedium),
-        const SizedBox(height: 20),
-
-        if (promoName != null) ...[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: AppStyles.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Подтверждение', style: AppStyles.headingMedium),
+            const SizedBox(height: 4),
+            const Text('Проверьте данные перед записью',
+                style: AppStyles.bodyMedium),
+            const SizedBox(height: 20),
+            if (promoName != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: AppStyles.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.local_offer_rounded,
+                      color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text(promoName!,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600))),
+                ]),
+              ),
+              const SizedBox(height: 14),
+            ],
+            _ConfirmCard(
+                icon: Icons.event_rounded,
+                label: 'Дата и время',
+                value: date,
+                highlight: true),
+            const SizedBox(height: 10),
+            Container(
+              decoration: AppStyles.cardDecoration,
+              child: Column(children: [
+                _ConfirmRow(Icons.person_outline_rounded, 'Клиент', name),
+                Container(height: 1, color: AppStyles.border),
+                _ConfirmRow(Icons.directions_car_outlined, 'Автомобиль', car),
+                Container(height: 1, color: AppStyles.border),
+                _ConfirmRow(Icons.pin_outlined, 'Гос. номер', number),
+              ]),
             ),
-            child: Row(children: [
-              const Icon(Icons.local_offer_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(child: Text(promoName!,
-                  style: const TextStyle(color: Colors.white,
-                      fontSize: 13, fontWeight: FontWeight.w600))),
-            ]),
-          ),
-          const SizedBox(height: 14),
-        ],
-
-        _ConfirmCard(icon: Icons.event_rounded, label: 'Дата и время',
-            value: date, highlight: true),
-        const SizedBox(height: 10),
-
-        Container(
-          decoration: AppStyles.cardDecoration,
-          child: Column(children: [
-            _ConfirmRow(Icons.person_outline_rounded, 'Клиент', name),
-            Container(height: 1, color: AppStyles.border),
-            _ConfirmRow(Icons.directions_car_outlined, 'Автомобиль', car),
-            Container(height: 1, color: AppStyles.border),
-            _ConfirmRow(Icons.pin_outlined, 'Гос. номер', number),
-          ]),
-        ),
-        const SizedBox(height: 10),
-
-        Container(
-          decoration: AppStyles.cardDecoration,
-          child: Column(children: [
-            _ConfirmRow(Icons.local_car_wash_rounded, 'Тип мойки',
-                washType?.name ?? '—'),
-            Container(height: 1, color: AppStyles.border),
-            _ConfirmRow(Icons.access_time_rounded, 'Время',
-                totalDurationLabel),
-            if (extras.isNotEmpty) ...[
-              Container(height: 1, color: AppStyles.border),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Row(children: [
-                    Icon(Icons.add_circle_outline_rounded,
-                        size: 16, color: AppStyles.textSecondary),
-                    SizedBox(width: 10),
-                    Text('Доп. услуги', style: TextStyle(
-                        color: AppStyles.textSecondary, fontSize: 13)),
-                  ]),
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 8, runSpacing: 6,
-                    children: extras.map((id) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppStyles.primaryBg,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: AppStyles.primary.withOpacity(0.2)),
-                      ),
-                      child: Text(_serviceName(id), style: const TextStyle(
-                          color: AppStyles.primary, fontSize: 12,
+            const SizedBox(height: 10),
+            Container(
+              decoration: AppStyles.cardDecoration,
+              child: Column(children: [
+                _ConfirmRow(Icons.local_car_wash_rounded, 'Тип мойки',
+                    washType?.name ?? '—'),
+                Container(height: 1, color: AppStyles.border),
+                _ConfirmRow(
+                    Icons.access_time_rounded, 'Время', totalDurationLabel),
+                if (extras.isNotEmpty) ...[
+                  Container(height: 1, color: AppStyles.border),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(children: [
+                            Icon(Icons.add_circle_outline_rounded,
+                                size: 16, color: AppStyles.textSecondary),
+                            SizedBox(width: 10),
+                            Text('Доп. услуги',
+                                style: TextStyle(
+                                    color: AppStyles.textSecondary,
+                                    fontSize: 13)),
+                          ]),
+                          const SizedBox(height: 10),
+                          Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: extras
+                                  .map((id) => Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: AppStyles.primaryBg,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: AppStyles.primary
+                                                  .withOpacity(0.2)),
+                                        ),
+                                        child: Text(_serviceName(id),
+                                            style: const TextStyle(
+                                                color: AppStyles.primary,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500)),
+                                      ))
+                                  .toList()),
+                        ]),
+                  ),
+                ],
+              ]),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppStyles.primaryBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.payments_outlined,
+                    color: AppStyles.primary, size: 22),
+                const SizedBox(width: 12),
+                const Text('Итого',
+                    style: TextStyle(
+                        color: AppStyles.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600)),
+                const Spacer(),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text('$finalPrice ₽',
+                      style: const TextStyle(
+                          color: AppStyles.primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold)),
+                  if (hasDiscount)
+                    Text('$regularPrice ₽',
+                        style: const TextStyle(
+                            color: AppStyles.textSecondary,
+                            fontSize: 14,
+                            decoration: TextDecoration.lineThrough,
+                            decorationColor: AppStyles.textSecondary)),
+                ]),
+              ]),
+            ),
+            if (hasDiscount) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppStyles.successBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppStyles.success.withOpacity(0.3)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.savings_rounded,
+                      color: AppStyles.success, size: 16),
+                  const SizedBox(width: 8),
+                  Text('Экономия по акции: ${regularPrice - finalPrice} ₽',
+                      style: const TextStyle(
+                          color: AppStyles.success,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500)),
-                    )).toList()),
                 ]),
               ),
             ],
-          ]),
-        ),
-        const SizedBox(height: 14),
-
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppStyles.primaryBg,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.payments_outlined, color: AppStyles.primary, size: 22),
-            const SizedBox(width: 12),
-            const Text('Итого', style: TextStyle(color: AppStyles.textPrimary,
-                fontSize: 16, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('$finalPrice ₽', style: const TextStyle(
-                  color: AppStyles.primary, fontSize: 24,
-                  fontWeight: FontWeight.bold)),
-              if (hasDiscount)
-                Text('$regularPrice ₽', style: const TextStyle(
-                    color: AppStyles.textSecondary, fontSize: 14,
-                    decoration: TextDecoration.lineThrough,
-                    decorationColor: AppStyles.textSecondary)),
-            ]),
-          ]),
-        ),
-        if (hasDiscount) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppStyles.successBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppStyles.success.withOpacity(0.3)),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppStyles.bgMuted,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(children: [
+                Icon(Icons.info_outline,
+                    color: AppStyles.textSecondary, size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                    child: Text(
+                  'После подтверждения администратор свяжется с вами для уточнения деталей',
+                  style:
+                      TextStyle(color: AppStyles.textSecondary, fontSize: 12),
+                )),
+              ]),
             ),
-            child: Row(children: [
-              const Icon(Icons.savings_rounded, color: AppStyles.success, size: 16),
-              const SizedBox(width: 8),
-              Text('Экономия по акции: ${regularPrice - finalPrice} ₽',
-                  style: const TextStyle(color: AppStyles.success,
-                      fontSize: 13, fontWeight: FontWeight.w500)),
-            ]),
-          ),
-        ],
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Row(children: [
-            Icon(Icons.info_outline, color: AppStyles.textSecondary, size: 16),
-            SizedBox(width: 8),
-            Expanded(child: Text(
-              'После подтверждения администратор свяжется с вами для уточнения деталей',
-              style: TextStyle(color: AppStyles.textSecondary, fontSize: 12),
-            )),
+            const SizedBox(height: 32),
           ]),
-        ),
-        const SizedBox(height: 32),
-      ]),
         ),
       ),
     );
@@ -1122,33 +1331,38 @@ class _ConfirmCard extends StatelessWidget {
   final IconData icon;
   final String label, value;
   final bool highlight;
-  const _ConfirmCard({required this.icon, required this.label,
-    required this.value, this.highlight = false});
+  const _ConfirmCard(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      this.highlight = false});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: AppStyles.cardDecoration,
-    child: Row(children: [
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppStyles.primaryBg,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: AppStyles.primary, size: 20),
-      ),
-      const SizedBox(width: 14),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: AppStyles.label),
-        const SizedBox(height: 3),
-        Text(value, style: TextStyle(
-          color: highlight ? AppStyles.primary : AppStyles.textPrimary,
-          fontSize: 16, fontWeight: FontWeight.w600,
-        )),
-      ]),
-    ]),
-  );
+        padding: const EdgeInsets.all(16),
+        decoration: AppStyles.cardDecoration,
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppStyles.primaryBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppStyles.primary, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: AppStyles.label),
+            const SizedBox(height: 3),
+            Text(value,
+                style: TextStyle(
+                  color: highlight ? AppStyles.primary : AppStyles.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                )),
+          ]),
+        ]),
+      );
 }
 
 class _ConfirmRow extends StatelessWidget {
@@ -1158,79 +1372,99 @@ class _ConfirmRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    child: Row(children: [
-      Container(
-        width: 32, height: 32,
-        decoration: BoxDecoration(
-          color: AppStyles.bgMuted,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 16, color: AppStyles.textSecondary),
-      ),
-      const SizedBox(width: 12),
-      SizedBox(
-        width: 110,
-        child: Text(label, style: AppStyles.bodyMedium),
-      ),
-      Expanded(child: Text(value,
-          style: const TextStyle(color: AppStyles.textPrimary,
-              fontSize: 14, fontWeight: FontWeight.w600),
-          textAlign: TextAlign.right)),
-    ]),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppStyles.bgMuted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: AppStyles.textSecondary),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 110,
+            child: Text(label, style: AppStyles.bodyMedium),
+          ),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(
+                      color: AppStyles.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.right)),
+        ]),
+      );
 }
 
 class _BottomBar extends StatelessWidget {
   final int step;
   final VoidCallback onAction;
   final String? selectedTimeLabel;
-  const _BottomBar({required this.step, required this.onAction, this.selectedTimeLabel});
+  const _BottomBar(
+      {required this.step, required this.onAction, this.selectedTimeLabel});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border(top: BorderSide(color: AppStyles.border)),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
-          blurRadius: 12, offset: const Offset(0, -4))],
-    ),
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      if (selectedTimeLabel != null) ...[
-        Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppStyles.primaryBg,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppStyles.primary.withOpacity(0.1)),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppStyles.border)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, -4))
+          ],
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (selectedTimeLabel != null) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppStyles.primaryBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppStyles.primary.withOpacity(0.1)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.event_rounded,
+                    color: AppStyles.primary, size: 16),
+                const SizedBox(width: 8),
+                Text('Выбранное время: $selectedTimeLabel',
+                    style: const TextStyle(
+                        color: AppStyles.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: AppStyles.primaryButton,
+              onPressed: onAction,
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(
+                    step == 0
+                        ? 'Далее: выбор времени'
+                        : step == 1
+                            ? 'Далее: подтверждение'
+                            : 'Записаться',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Icon(
+                    step == 2
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 18),
+              ]),
+            ),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.event_rounded, color: AppStyles.primary, size: 16),
-            const SizedBox(width: 8),
-            Text('Выбранное время: $selectedTimeLabel',
-                style: const TextStyle(color: AppStyles.primary, fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ],
-      SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: AppStyles.primaryButton,
-          onPressed: onAction,
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(step == 0 ? 'Далее: выбор времени' :
-                 step == 1 ? 'Далее: подтверждение' : 'Записаться',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            Icon(step == 2
-                ? Icons.check_circle_outline_rounded
-                : Icons.arrow_forward_rounded, size: 18),
-          ]),
-        ),
-      ),
-    ]),
-  );
+        ]),
+      );
 }

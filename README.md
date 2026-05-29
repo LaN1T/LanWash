@@ -260,6 +260,103 @@ FCM_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 
 ---
 
+## API Endpoints
+
+Бэкенд предоставляет REST API с автоматической документацией Swagger UI: `http://localhost:8000/docs` (при запущенном сервере).
+
+### Основные группы endpoint'ов
+
+| Префикс | Описание | Доступ |
+|---------|----------|--------|
+| `/api/auth` | Регистрация, логин, профиль, FCM-токены | Все |
+| `/api/appointments` | CRUD записей, назначение мойщиков, статистика | Авторизованные |
+| `/api/services` | Услуги, категории, акции, избранное | Авторизованные |
+| `/api/wash-types` | Типы мойки | Авторизованные |
+| `/api/consumables` | Расходники и связи с услугами | admin/washer |
+| `/api/notes` | Заметки мойщикам | admin/washer |
+| `/api/logs` | Журнал действий | admin (чтение/очистка), публичное создание |
+| `/api/reports` | Аналитические отчёты | admin |
+
+### Пагинация записей
+
+`GET /api/appointments/?page=1` возвращает записи постранично по дням. Заголовки ответа:
+- `X-Total-Pages` — общее количество страниц (дней)
+- `X-Current-Page` — текущая страница
+- `X-Current-Date` — дата текущей страницы
+- `X-Unique-Dates` — JSON-массив всех дат
+
+---
+
+## Тестирование
+
+### Backend (pytest)
+
+```bash
+cd backend
+python -m pytest tests/ -v
+```
+
+Покрытие: 78 тестов, SQLite in-memory, async HTTP-клиент (httpx + ASGI).
+
+### Flutter
+
+```bash
+flutter test
+```
+
+Покрытие: 47 unit-тестов (ApiResult, ApiClient, модели, ApiService).
+
+---
+
+## CI/CD
+
+GitHub Actions автоматически запускаются при push/PR:
+
+| Workflow | Что проверяет |
+|----------|---------------|
+| **Backend Tests** | pytest на Python 3.13 |
+| **Flutter Analysis** | `flutter analyze` + `dart format --set-exit-if-changed` |
+
+---
+
+## Структура проекта
+
+```
+LanWash/
+├── backend/                 # FastAPI + SQLAlchemy
+│   ├── routers/             # API endpoint'ы
+│   ├── services/            # Бизнес-логика (auth, FCM, workload)
+│   ├── models.py            # Pydantic схемы
+│   ├── db_models.py         # SQLAlchemy модели
+│   ├── tests/               # pytest
+│   └── requirements.txt
+├── lib/                     # Flutter приложение
+│   ├── core/                # ApiClient, ApiResult, DI
+│   ├── models/              # Dart модели
+│   ├── providers/           # AuthProvider, AppProvider
+│   ├── screens/             # Экраны (client/admin/washer)
+│   ├── services/            # ApiService
+│   └── main.dart
+├── test/                    # Flutter тесты
+├── .github/workflows/       # GitHub Actions
+└── docker-compose.yml
+```
+
+---
+
+## Безопасность
+
+Применённые меры:
+- JWT с минимальной длиной ключа 32 символа
+- Пароли хешируются Argon2
+- Rate limiting (slowapi) на все endpoint'ы
+- CORS из переменной окружения `ALLOWED_ORIGINS`
+- Security headers middleware
+- Pydantic валидация входных данных
+- Debug endpoint'ы скрыты за флагом `DEBUG=true`
+
+---
+
 ## Лицензия
 
 Проект создан в учебных целях.

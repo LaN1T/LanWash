@@ -9,7 +9,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 
 class PdfExportService {
-  static Future<Uint8List> createPdfBytes(String title, List<String> headers, List<List<String>> data) async {
+  static Future<Uint8List> createPdfBytes(
+      String title, List<String> headers, List<List<String>> data) async {
     final pdf = pw.Document();
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
@@ -26,7 +27,9 @@ class PdfExportService {
           return pw.Container(
             alignment: pw.Alignment.centerRight,
             margin: const pw.EdgeInsets.only(top: 20),
-            child: pw.Text('Страница ${context.pageNumber} из ${context.pagesCount}', style: const pw.TextStyle(fontSize: 10)),
+            child: pw.Text(
+                'Страница ${context.pageNumber} из ${context.pagesCount}',
+                style: const pw.TextStyle(fontSize: 10)),
           );
         },
         build: (pw.Context context) {
@@ -34,10 +37,15 @@ class PdfExportService {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                  pw.Text('LanWash - Система управления автомойкой', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14)),
-                  pw.Text('Официальный отчет', style: const pw.TextStyle(fontSize: 10)),
-                ]),
+                pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('LanWash - Система управления автомойкой',
+                          style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold, fontSize: 14)),
+                      pw.Text('Официальный отчет',
+                          style: const pw.TextStyle(fontSize: 10)),
+                    ]),
                 pw.ClipOval(
                   child: pw.Container(
                     width: 45,
@@ -49,19 +57,26 @@ class PdfExportService {
             ),
             pw.Divider(),
             pw.SizedBox(height: 20),
-            pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-            pw.Text('Дата формирования: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 10)),
+            pw.Text(title,
+                style:
+                    pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            pw.Text(
+                'Дата формирования: ${DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now())}',
+                style: const pw.TextStyle(fontSize: 10)),
             pw.SizedBox(height: 20),
             pw.Table.fromTextArray(
               context: context,
               headers: headers,
               data: data,
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
+              headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerDecoration:
+                  const pw.BoxDecoration(color: PdfColors.blue800),
               cellStyle: const pw.TextStyle(fontSize: 12),
               cellAlignment: pw.Alignment.centerLeft,
               border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey400),
-              oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              oddRowDecoration:
+                  const pw.BoxDecoration(color: PdfColors.grey100),
             ),
           ];
         },
@@ -70,12 +85,14 @@ class PdfExportService {
     return pdf.save();
   }
 
-  static Future<void> showExportDialog(BuildContext context, {
+  static Future<void> showExportDialog(
+    BuildContext context, {
     required String title,
     required String fileName,
     required Uint8List pdfBytes,
   }) async {
-    final isMobile = defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
+    final isMobile = defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -87,7 +104,8 @@ class PdfExportService {
               Navigator.pop(ctx);
               try {
                 if (isMobile) {
-                  await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+                  await Printing.sharePdf(
+                      bytes: pdfBytes, filename: '$fileName.pdf');
                 } else if (!kIsWeb) {
                   String? outputFile = await FilePicker.platform.saveFile(
                     dialogTitle: 'Сохранить отчёт как...',
@@ -103,7 +121,8 @@ class PdfExportService {
                     );
                   }
                 } else {
-                  await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+                  await Printing.sharePdf(
+                      bytes: pdfBytes, filename: '$fileName.pdf');
                 }
               } catch (e) {
                 print("Ошибка сохранения: $e");
@@ -115,7 +134,8 @@ class PdfExportService {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+                await Printing.sharePdf(
+                    bytes: pdfBytes, filename: '$fileName.pdf');
               },
               child: const Text('Поделиться'),
             ),

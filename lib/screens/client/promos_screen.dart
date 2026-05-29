@@ -11,7 +11,7 @@ class PromosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final promos   = provider.promos;
+    final promos = provider.promos;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -21,24 +21,31 @@ class PromosScreen extends StatelessWidget {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text('Акции и спецпредложения',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600,
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
                 color: AppStyles.textPrimary)),
       ),
       body: provider.loading && promos.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
           : promos.isEmpty
-          ? Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: const [
-                Icon(Icons.local_offer_outlined, size: 44, color: AppStyles.primary),
-                SizedBox(height: 16),
-                Text('Нет активных акций', style: TextStyle(color: AppStyles.textSecondary, fontSize: 16)),
-              ]),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: promos.length,
-              itemBuilder: (ctx, i) => _PromoCard(promo: promos[i]),
-            ),
+              ? Center(
+                  child:
+                      Column(mainAxisSize: MainAxisSize.min, children: const [
+                    Icon(Icons.local_offer_outlined,
+                        size: 44, color: AppStyles.primary),
+                    SizedBox(height: 16),
+                    Text('Нет активных акций',
+                        style: TextStyle(
+                            color: AppStyles.textSecondary, fontSize: 16)),
+                  ]),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: promos.length,
+                  itemBuilder: (ctx, i) => _PromoCard(promo: promos[i]),
+                ),
     );
   }
 }
@@ -55,8 +62,10 @@ class _PromoCard extends StatelessWidget {
         ? wt.basePrice * (100 - promo.discountPercent) ~/ 100
         : promo.price;
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => BookingWizardScreen(initialPromo: promo))),
+      onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => BookingWizardScreen(initialPromo: promo))),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: AppStyles.cardDecoration,
@@ -76,36 +85,52 @@ class _PromoCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: AppStyles.primaryGradient,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text('АКЦИЯ', style: TextStyle(
-                        color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.chevron_right_rounded, size: 20, color: AppStyles.textSecondary),
-                ]),
-                const SizedBox(height: 8),
-                Text(promo.name, style: const TextStyle(
-                    color: AppStyles.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(promo.description, style: AppStyles.bodySmall,
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 10),
-                Row(children: [
-                  Text('$displayPrice ₽', style: const TextStyle(
-                      color: AppStyles.primary, fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.access_time_rounded, size: 13, color: AppStyles.textSecondary),
-                  const SizedBox(width: 3),
-                  Text('${promo.duration} мин', style: AppStyles.bodySmall),
-                ]),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          gradient: AppStyles.primaryGradient,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('АКЦИЯ',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 20, color: AppStyles.textSecondary),
+                    ]),
+                    const SizedBox(height: 8),
+                    Text(promo.name,
+                        style: const TextStyle(
+                            color: AppStyles.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(promo.description,
+                        style: AppStyles.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Text('$displayPrice ₽',
+                          style: const TextStyle(
+                              color: AppStyles.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.access_time_rounded,
+                          size: 13, color: AppStyles.textSecondary),
+                      const SizedBox(width: 3),
+                      Text('${promo.duration} мин', style: AppStyles.bodySmall),
+                    ]),
+                  ]),
             ),
           ),
           const SizedBox(width: 14),

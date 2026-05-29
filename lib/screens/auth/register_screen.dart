@@ -17,7 +17,8 @@ class _PhoneInputFormatter extends TextInputFormatter {
     } else if (digits.isNotEmpty) {
       digits = '7' + digits;
     } else {
-      return newValue.copyWith(text: '+7', selection: const TextSelection.collapsed(offset: 2));
+      return newValue.copyWith(
+          text: '+7', selection: const TextSelection.collapsed(offset: 2));
     }
     final buf = StringBuffer('+7');
     if (digits.length > 1) {
@@ -25,9 +26,12 @@ class _PhoneInputFormatter extends TextInputFormatter {
       buf.write(' ($area');
       if (digits.length >= 4) buf.write(') ');
     }
-    if (digits.length > 4) buf.write(digits.substring(4, digits.length.clamp(4, 7)));
-    if (digits.length > 7) buf.write('-${digits.substring(7, digits.length.clamp(7, 9))}');
-    if (digits.length > 9) buf.write('-${digits.substring(9, digits.length.clamp(9, 11))}');
+    if (digits.length > 4)
+      buf.write(digits.substring(4, digits.length.clamp(4, 7)));
+    if (digits.length > 7)
+      buf.write('-${digits.substring(7, digits.length.clamp(7, 9))}');
+    if (digits.length > 9)
+      buf.write('-${digits.substring(9, digits.length.clamp(9, 11))}');
     final result = buf.toString();
     return newValue.copyWith(
       text: result,
@@ -38,29 +42,35 @@ class _PhoneInputFormatter extends TextInputFormatter {
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
-  @override State<RegisterScreen> createState() => _RegisterScreenState();
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey    = GlobalKey<FormState>();
-  final _loginCtrl  = TextEditingController();
-  final _passCtrl   = TextEditingController();
-  final _nameCtrl   = TextEditingController();
-  final _phoneCtrl  = TextEditingController(text: '+7');
+  final _formKey = GlobalKey<FormState>();
+  final _loginCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController(text: '+7');
   bool _obscure = true;
   bool _loading = false;
   String? _error;
 
   @override
   void dispose() {
-    _loginCtrl.dispose(); _passCtrl.dispose();
-    _nameCtrl.dispose(); _phoneCtrl.dispose();
+    _loginCtrl.dispose();
+    _passCtrl.dispose();
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     final auth = context.read<AuthProvider>();
     final err = await auth.register(
@@ -72,7 +82,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!mounted) return;
     if (err != null) {
-      setState(() { _loading = false; _error = err; });
+      setState(() {
+        _loading = false;
+        _error = err;
+      });
       return;
     }
 
@@ -105,14 +118,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               key: _formKey,
               child: Column(children: [
                 Container(
-                  width: 72, height: 72,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: AppStyles.primaryGradient,
-                    boxShadow: [BoxShadow(
-                      color: AppStyles.primary.withOpacity(0.25),
-                      blurRadius: 20,
-                    )],
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppStyles.primary.withOpacity(0.25),
+                        blurRadius: 20,
+                      )
+                    ],
                   ),
                   child: const Icon(Icons.person_add_rounded,
                       color: Colors.white, size: 36),
@@ -123,7 +139,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Text('Заполните данные для регистрации',
                     style: AppStyles.bodyMedium),
                 const SizedBox(height: 28),
-
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: AppStyles.cardDecoration,
@@ -135,7 +150,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           icon: Icons.person_outline_rounded),
                       textCapitalization: TextCapitalization.words,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Введите имя' : null,
+                          ? 'Введите имя'
+                          : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -145,7 +161,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: 'только латиница и цифры',
                           icon: Icons.alternate_email_rounded),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) return 'Введите логин';
+                        if (v == null || v.trim().isEmpty)
+                          return 'Введите логин';
                         if (v.trim().length < 3) return 'Минимум 3 символа';
                         return null;
                       },
@@ -156,12 +173,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       obscureText: _obscure,
                       style: const TextStyle(color: AppStyles.textPrimary),
                       decoration: AppStyles.inputDecoration('Пароль',
-                          icon: Icons.lock_outline_rounded).copyWith(
+                              icon: Icons.lock_outline_rounded)
+                          .copyWith(
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                              color: AppStyles.textSecondary, size: 20),
+                          icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: AppStyles.textSecondary,
+                              size: 20),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
@@ -181,9 +201,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       keyboardType: TextInputType.phone,
                       inputFormatters: [_PhoneInputFormatter()],
                       validator: (v) {
-                        if (v == null || v.trim().length <= 2) return 'Введите телефон';
+                        if (v == null || v.trim().length <= 2)
+                          return 'Введите телефон';
                         final digits = v.replaceAll(RegExp(r'\D'), '');
-                        if (digits.length < 11) return 'Введите полный номер (+7 и 10 цифр)';
+                        if (digits.length < 11)
+                          return 'Введите полный номер (+7 и 10 цифр)';
                         return null;
                       },
                     ),
@@ -201,8 +223,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const Icon(Icons.error_outline,
                               color: AppStyles.danger, size: 18),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(_error!, style: const TextStyle(
-                              color: AppStyles.danger, fontSize: 13))),
+                          Expanded(
+                              child: Text(_error!,
+                                  style: const TextStyle(
+                                      color: AppStyles.danger, fontSize: 13))),
                         ]),
                       ),
                     ],
@@ -213,7 +237,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: AppStyles.primaryButton,
                         onPressed: _loading ? null : _submit,
                         child: _loading
-                            ? const SizedBox(width: 20, height: 20,
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
                                     color: Colors.white, strokeWidth: 2))
                             : const Text('Зарегистрироваться'),

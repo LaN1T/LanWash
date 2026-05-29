@@ -11,7 +11,8 @@ import '../../models/service.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
-  @override State<AppointmentsScreen> createState() => _AppointmentsScreenState();
+  @override
+  State<AppointmentsScreen> createState() => _AppointmentsScreenState();
 }
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> {
@@ -21,13 +22,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   static const _filters = [
     ('all', 'Все'),
-    ('scheduled',   'Запланированы'),
+    ('scheduled', 'Запланированы'),
     ('in_progress', 'В процессе'),
-    ('completed',   'Завершены'),
+    ('completed', 'Завершены'),
   ];
 
   @override
-  void dispose() { _search.dispose(); super.dispose(); }
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   void _onFilterSelected(String filterKey) {
     setState(() {
@@ -42,7 +46,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         } else {
           _selectedFilters.remove('all');
           _selectedFilters.add(filterKey);
-          
+
           final specificFilters = {'scheduled', 'in_progress', 'completed'};
           final intersection = _selectedFilters.intersection(specificFilters);
           if (intersection.length == 3) {
@@ -54,22 +58,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   List<Appointment> _filtered(List<Appointment> all) {
-    debugPrint('[DEBUG] Filtering ${all.length} appointments. Filters: $_selectedFilters, Search: $_searchText');
+    debugPrint(
+        '[DEBUG] Filtering ${all.length} appointments. Filters: $_selectedFilters, Search: $_searchText');
     final filtered = all.where((a) {
-      final matchStatus = _selectedFilters.contains('all') || _selectedFilters.contains(a.status);
+      final matchStatus = _selectedFilters.contains('all') ||
+          _selectedFilters.contains(a.status);
       final q = _searchText.toLowerCase();
       final matchSearch = q.isEmpty ||
           a.clientName.toLowerCase().contains(q) ||
           a.carModel.toLowerCase().contains(q) ||
           a.carNumber.toLowerCase().contains(q);
-      
+
       if (!matchStatus || !matchSearch) {
-        debugPrint('[DEBUG] Excluded appt: ${a.id}, status: ${a.status}, client: ${a.clientName}');
+        debugPrint(
+            '[DEBUG] Excluded appt: ${a.id}, status: ${a.status}, client: ${a.clientName}');
       }
       return matchStatus && matchSearch;
     }).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
-    
+
     debugPrint('[DEBUG] Filtered result count: ${filtered.length}');
     return filtered;
   }
@@ -77,7 +84,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    if (provider.loading) return const Center(child: CircularProgressIndicator());
+    if (provider.loading)
+      return const Center(child: CircularProgressIndicator());
 
     final list = _filtered(provider.appointments);
 
@@ -87,7 +95,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       Expanded(
         child: RefreshIndicator(
           color: AppStyles.primary,
-          onRefresh: () => provider.reloadAppointments(context.read<AuthProvider>()),
+          onRefresh: () =>
+              provider.reloadAppointments(context.read<AuthProvider>()),
           child: list.isEmpty
               ? _emptyState()
               : ListView.builder(
@@ -96,9 +105,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   itemBuilder: (ctx, i) => _AppointmentCard(
                     appointment: list[i],
                     services: provider.services,
-                    onFavorite: () => provider.toggleAppointmentFavorite(list[i].id),
-                    onTap: () => Navigator.push(ctx,
-                      MaterialPageRoute(builder: (_) => AppointmentDetailScreen(appointment: list[i]))),
+                    onFavorite: () =>
+                        provider.toggleAppointmentFavorite(list[i].id),
+                    onTap: () => Navigator.push(
+                        ctx,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                AppointmentDetailScreen(appointment: list[i]))),
                   ),
                 ),
         ),
@@ -116,12 +129,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       final month = int.parse(parts[1]);
       final day = int.parse(parts[2]);
       final date = DateTime(year, month, day);
-      
+
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final yesterday = today.subtract(const Duration(days: 1));
       final tomorrow = today.add(const Duration(days: 1));
-      
+
       final compareDate = DateTime(date.year, date.month, date.day);
       if (compareDate == today) {
         return 'Сегодня, ${DateFormat('d MMMM', 'ru').format(date)}';
@@ -155,7 +168,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            onPressed: currentPage > 1 
+            onPressed: currentPage > 1
                 ? () => provider.setPage(currentPage - 1, auth)
                 : null,
             icon: const Icon(Icons.chevron_left, size: 28),
@@ -169,10 +182,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               if (initialDateStr.isNotEmpty) {
                 final parts = initialDateStr.split('-');
                 if (parts.length == 3) {
-                  initialDate = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+                  initialDate = DateTime(int.parse(parts[0]),
+                      int.parse(parts[1]), int.parse(parts[2]));
                 }
               }
-              
+
               final picked = await showDatePicker(
                 context: context,
                 initialDate: initialDate,
@@ -196,7 +210,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   );
                 },
               );
-              
+
               if (picked != null) {
                 final formattedPicked = DateFormat('yyyy-MM-dd').format(picked);
                 provider.setDate(formattedPicked, auth);
@@ -204,11 +218,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             },
             borderRadius: BorderRadius.circular(8),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_today_outlined, size: 16, color: AppStyles.primary),
+                  const Icon(Icons.calendar_today_outlined,
+                      size: 16, color: AppStyles.primary),
                   const SizedBox(width: 8),
                   Text(
                     _formatDate(provider.currentDate),
@@ -223,9 +239,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ),
           const SizedBox(width: 12),
           IconButton(
-            onPressed: hasNext 
-                ? () => provider.setPage(currentPage + 1, auth)
-                : null,
+            onPressed:
+                hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
             icon: const Icon(Icons.chevron_right, size: 28),
             color: AppStyles.primary,
           ),
@@ -235,48 +250,53 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   Widget _buildSearchBar() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-    child: TextField(
-      controller: _search,
-      onChanged: (v) => setState(() => _searchText = v),
-      decoration: AppStyles.inputDecoration('Поиск по клиенту, авто, номеру', icon: Icons.search),
-      style: AppStyles.bodyLarge,
-    ),
-  );
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: TextField(
+          controller: _search,
+          onChanged: (v) => setState(() => _searchText = v),
+          decoration: AppStyles.inputDecoration(
+              'Поиск по клиенту, авто, номеру',
+              icon: Icons.search),
+          style: AppStyles.bodyLarge,
+        ),
+      );
 
   Widget _buildFilters() => SizedBox(
-    height: 48,
-    child: ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      scrollDirection: Axis.horizontal,
-      children: _filters.map((f) {
-        final selected = _selectedFilters.contains(f.$1);
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: ChoiceChip(
-            label: Text(f.$2),
-            selected: selected,
-            onSelected: (_) => _onFilterSelected(f.$1),
-            selectedColor: AppStyles.primary,
-            labelStyle: TextStyle(
-              color: selected ? Colors.white : AppStyles.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-        );
-      }).toList(),
-    ),
-  );
+        height: 48,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          scrollDirection: Axis.horizontal,
+          children: _filters.map((f) {
+            final selected = _selectedFilters.contains(f.$1);
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(f.$2),
+                selected: selected,
+                onSelected: (_) => _onFilterSelected(f.$1),
+                selectedColor: AppStyles.primary,
+                labelStyle: TextStyle(
+                  color: selected ? Colors.white : AppStyles.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
 
   Widget _emptyState() => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.calendar_today_outlined, size: 64, color: AppStyles.textSecondary.withOpacity(0.4)),
-      const SizedBox(height: 12),
-      Text('Нет записей', style: AppStyles.headingMedium.copyWith(color: AppStyles.textSecondary)),
-      const SizedBox(height: 6),
-      Text('Нажмите + чтобы добавить запись', style: AppStyles.bodyMedium),
-    ]),
-  );
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.calendar_today_outlined,
+              size: 64, color: AppStyles.textSecondary.withOpacity(0.4)),
+          const SizedBox(height: 12),
+          Text('Нет записей',
+              style: AppStyles.headingMedium
+                  .copyWith(color: AppStyles.textSecondary)),
+          const SizedBox(height: 6),
+          Text('Нажмите + чтобы добавить запись', style: AppStyles.bodyMedium),
+        ]),
+      );
 }
 
 // ─── Карточка записи ─────────────────────────────────────────────────────────
@@ -286,7 +306,11 @@ class _AppointmentCard extends StatelessWidget {
   final VoidCallback onFavorite;
   final VoidCallback onTap;
 
-  const _AppointmentCard({required this.appointment, required this.services, required this.onFavorite, required this.onTap});
+  const _AppointmentCard(
+      {required this.appointment,
+      required this.services,
+      required this.onFavorite,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -301,7 +325,8 @@ class _AppointmentCard extends StatelessWidget {
         decoration: AppStyles.cardDecoration,
         child: Padding(
           padding: AppStyles.cardPadding,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               // Статус-иконка
               Container(
@@ -310,66 +335,100 @@ class _AppointmentCard extends StatelessWidget {
                   color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(AppStyles.statusIcon(a.status), color: statusColor, size: 20),
+                child: Icon(AppStyles.statusIcon(a.status),
+                    color: statusColor, size: 20),
               ),
               const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(a.clientName, style: AppStyles.headingMedium, overflow: TextOverflow.ellipsis),
-                Text(a.carModel, style: AppStyles.bodyMedium),
-              ])),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(a.clientName,
+                        style: AppStyles.headingMedium,
+                        overflow: TextOverflow.ellipsis),
+                    Text(a.carModel, style: AppStyles.bodyMedium),
+                  ])),
               IconButton(
                 icon: Icon(a.isFavorite ? Icons.star : Icons.star_border,
-                    color: a.isFavorite ? AppStyles.favorite : AppStyles.textSecondary),
+                    color: a.isFavorite
+                        ? AppStyles.favorite
+                        : AppStyles.textSecondary),
                 onPressed: onFavorite,
-                padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ]),
             const SizedBox(height: 10),
             const Divider(height: 1, color: AppStyles.divider),
             const SizedBox(height: 10),
             Row(children: [
-              _info(Icons.calendar_today,  dateStr),
+              _info(Icons.calendar_today, dateStr),
               const SizedBox(width: 16),
-              _info(Icons.pin,             a.carNumber),
+              _info(Icons.pin, a.carNumber),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(AppStyles.statusLabel(a.status),
-                    style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
               ),
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              _info(Icons.local_car_wash, context.watch<AppProvider>().washTypeName(a.washTypeId)),
+              _info(Icons.local_car_wash,
+                  context.watch<AppProvider>().washTypeName(a.washTypeId)),
               const Spacer(),
-              if (a.priceChanged) Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text('${a.paidPrice} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
-                Text('${a.originalPrice} ₽', style: const TextStyle(
-                  fontSize: 12, color: AppStyles.textSecondary,
-                  decoration: TextDecoration.lineThrough,
-                  decorationColor: AppStyles.textSecondary,
-                )),
-              ]) else
-                Text('${a.calculateTotalPrice(services.cast<Service>(), context.watch<AppProvider>().washTypeById(a.washTypeId))} ₽', style: AppStyles.price.copyWith(fontSize: 15)),
+              if (a.priceChanged)
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text('${a.paidPrice} ₽',
+                      style: AppStyles.price.copyWith(fontSize: 15)),
+                  Text('${a.originalPrice} ₽',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppStyles.textSecondary,
+                        decoration: TextDecoration.lineThrough,
+                        decorationColor: AppStyles.textSecondary,
+                      )),
+                ])
+              else
+                Text(
+                    '${a.calculateTotalPrice(services.cast<Service>(), context.watch<AppProvider>().washTypeById(a.washTypeId))} ₽',
+                    style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 4, children: a.additionalServices.map((id) {
-                final service = services.firstWhere((s) => s.id == id, orElse: () => Service(id: id, name: id, description: '', price: 0, durationMinutes: 0, category: ''));
-                final name = service.name;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppStyles.primaryLight.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(name, style: AppStyles.bodySmall.copyWith(color: AppStyles.primaryDark)),
-                );
-              }).toList()),
+              Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: a.additionalServices.map((id) {
+                    final service = services.firstWhere((s) => s.id == id,
+                        orElse: () => Service(
+                            id: id,
+                            name: id,
+                            description: '',
+                            price: 0,
+                            durationMinutes: 0,
+                            category: ''));
+                    final name = service.name;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primaryLight.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(name,
+                          style: AppStyles.bodySmall
+                              .copyWith(color: AppStyles.primaryDark)),
+                    );
+                  }).toList()),
             ],
           ]),
         ),
@@ -377,9 +436,10 @@ class _AppointmentCard extends StatelessWidget {
     );
   }
 
-  Widget _info(IconData icon, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
-    Icon(icon, size: 14, color: AppStyles.textSecondary),
-    const SizedBox(width: 4),
-    Text(text, style: AppStyles.bodySmall),
-  ]);
+  Widget _info(IconData icon, String text) =>
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: AppStyles.textSecondary),
+        const SizedBox(width: 4),
+        Text(text, style: AppStyles.bodySmall),
+      ]);
 }

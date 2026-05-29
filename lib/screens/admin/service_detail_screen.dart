@@ -13,7 +13,8 @@ class ServiceDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final s = provider.services.firstWhere(
-      (x) => x.id == service.id, orElse: () => service,
+      (x) => x.id == service.id,
+      orElse: () => service,
     );
 
     return Scaffold(
@@ -24,19 +25,28 @@ class ServiceDetailScreen extends StatelessWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Детали услуги',
-            style: TextStyle(color: Colors.white,
-                fontSize: 17, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600)),
         actions: [
           IconButton(
-            icon: Icon(provider.isServiceFavorite(s.id) ? Icons.star : Icons.star_border,
-                color: provider.isServiceFavorite(s.id) ? AppStyles.favorite : Colors.white70),
+            icon: Icon(
+                provider.isServiceFavorite(s.id)
+                    ? Icons.star
+                    : Icons.star_border,
+                color: provider.isServiceFavorite(s.id)
+                    ? AppStyles.favorite
+                    : Colors.white70),
             onPressed: () => provider.toggleServiceFavorite(s.id),
           ),
           if (!s.isFromApi)
             IconButton(
               icon: const Icon(Icons.edit, color: Colors.white),
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => AddEditServiceScreen(service: s))),
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => AddEditServiceScreen(service: s))),
             ),
         ],
       ),
@@ -47,11 +57,13 @@ class ServiceDetailScreen extends StatelessWidget {
             width: double.infinity,
             decoration: AppStyles.cardDecoration,
             padding: AppStyles.cardPadding,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (s.isFromApi)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppStyles.apiTag.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6),
@@ -59,9 +71,11 @@ class ServiceDetailScreen extends StatelessWidget {
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.local_offer, size: 14, color: AppStyles.apiTag),
                     SizedBox(width: 4),
-                    Text('Акция от партнёров', style: TextStyle(
-                        color: AppStyles.apiTag, fontSize: 12,
-                        fontWeight: FontWeight.w600)),
+                    Text('Акция от партнёров',
+                        style: TextStyle(
+                            color: AppStyles.apiTag,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
                   ]),
                 ),
               Text(s.name, style: AppStyles.headingLarge),
@@ -77,14 +91,13 @@ class ServiceDetailScreen extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Время', style: AppStyles.label),
                   Text(s.durationLabel,
-                      style: AppStyles.headingMedium.copyWith(
-                          color: AppStyles.primary)),
+                      style: AppStyles.headingMedium
+                          .copyWith(color: AppStyles.primary)),
                 ]),
               ]),
             ]),
           ),
           const SizedBox(height: 16),
-
           _label('Описание услуги'),
           Container(
             width: double.infinity,
@@ -94,15 +107,15 @@ class ServiceDetailScreen extends StatelessWidget {
                 style: AppStyles.bodyLarge.copyWith(height: 1.5)),
           ),
           const SizedBox(height: 24),
-
-          if (!s.isFromApi) ...[ 
+          if (!s.isFromApi) ...[
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.edit),
                 label: const Text('Редактировать услугу'),
                 style: AppStyles.primaryButton,
-                onPressed: () => Navigator.push(context,
+                onPressed: () => Navigator.push(
+                    context,
                     MaterialPageRoute(
                         builder: (_) => AddEditServiceScreen(service: s))),
               ),
@@ -112,7 +125,9 @@ class ServiceDetailScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              icon: Icon(provider.isServiceFavorite(s.id) ? Icons.star : Icons.star_border),
+              icon: Icon(provider.isServiceFavorite(s.id)
+                  ? Icons.star
+                  : Icons.star_border),
               label: Text(provider.isServiceFavorite(s.id)
                   ? 'Убрать из избранного'
                   : 'Добавить в избранное'),
@@ -126,8 +141,9 @@ class ServiceDetailScreen extends StatelessWidget {
   }
 
   Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8, left: 2),
-    child: Text(text,
-        style: AppStyles.label.copyWith(fontSize: 13, color: AppStyles.primary)),
-  );
+        padding: const EdgeInsets.only(bottom: 8, left: 2),
+        child: Text(text,
+            style: AppStyles.label
+                .copyWith(fontSize: 13, color: AppStyles.primary)),
+      );
 }

@@ -6,11 +6,12 @@ import '../../utils/plate_formatter.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
-  @override State<ProfileScreen> createState() => _ProfileScreenState();
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _formKey    = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
   late TextEditingController _carModelCtrl;
@@ -19,27 +20,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _passCtrl;
   late TextEditingController _passConfirmCtrl;
 
-  bool _saving       = false;
-  bool _showPass     = false;
-  bool _changePass   = false;
+  bool _saving = false;
+  bool _showPass = false;
+  bool _changePass = false;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<AuthProvider>().user;
-    _nameCtrl       = TextEditingController(text: user?.displayName ?? '');
-    _phoneCtrl      = TextEditingController(text: user?.phone       ?? '');
-    _carModelCtrl   = TextEditingController(text: user?.carModel    ?? '');
-    _carNumberCtrl  = TextEditingController(text: user?.carNumber   ?? '');
-    _usernameCtrl   = TextEditingController(text: user?.username    ?? '');
-    _passCtrl       = TextEditingController();
-    _passConfirmCtrl= TextEditingController();
+    _nameCtrl = TextEditingController(text: user?.displayName ?? '');
+    _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _carModelCtrl = TextEditingController(text: user?.carModel ?? '');
+    _carNumberCtrl = TextEditingController(text: user?.carNumber ?? '');
+    _usernameCtrl = TextEditingController(text: user?.username ?? '');
+    _passCtrl = TextEditingController();
+    _passConfirmCtrl = TextEditingController();
   }
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl,_phoneCtrl,_carModelCtrl,_carNumberCtrl,
-                     _usernameCtrl,_passCtrl,_passConfirmCtrl]) c.dispose();
+    for (final c in [
+      _nameCtrl,
+      _phoneCtrl,
+      _carModelCtrl,
+      _carNumberCtrl,
+      _usernameCtrl,
+      _passCtrl,
+      _passConfirmCtrl
+    ]) c.dispose();
     super.dispose();
   }
 
@@ -51,13 +59,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     setState(() => _saving = true);
     await context.read<AuthProvider>().updateProfile(
-      displayName: _nameCtrl.text.trim(),
-      phone:       _phoneCtrl.text.trim(),
-      carModel:    _carModelCtrl.text.trim(),
-      carNumber:   _carNumberCtrl.text.trim().toUpperCase(),
-      newPassword: _changePass && _passCtrl.text.isNotEmpty
-          ? _passCtrl.text : null,
-    );
+          displayName: _nameCtrl.text.trim(),
+          phone: _phoneCtrl.text.trim(),
+          carModel: _carModelCtrl.text.trim(),
+          carNumber: _carNumberCtrl.text.trim().toUpperCase(),
+          newPassword:
+              _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
+        );
     setState(() => _saving = false);
     if (mounted) _showSnack('Профиль сохранён');
   }
@@ -71,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth   = context.watch<AuthProvider>();
+    final auth = context.watch<AuthProvider>();
     final isAdmin = auth.isAdmin;
 
     return Scaffold(
@@ -86,7 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(height: 1, color: AppStyles.border),
         ),
         title: const Text('Профиль',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600,
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
                 color: AppStyles.textPrimary)),
       ),
       body: Form(
@@ -98,29 +108,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: Column(children: [
                 Container(
-                  width: 80, height: 80,
+                  width: 80,
+                  height: 80,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: AppStyles.primaryGradient,
                   ),
-                  child: Icon(isAdmin ? Icons.admin_panel_settings_rounded
-                      : Icons.person_rounded,
-                      color: Colors.white, size: 38),
+                  child: Icon(
+                      isAdmin
+                          ? Icons.admin_panel_settings_rounded
+                          : Icons.person_rounded,
+                      color: Colors.white,
+                      size: 38),
                 ),
                 const SizedBox(height: 12),
                 Text(auth.username,
-                    style: const TextStyle(color: AppStyles.textPrimary,
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: AppStyles.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppStyles.primaryBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(isAdmin ? 'Администратор' : 'Клиент',
-                      style: const TextStyle(color: AppStyles.primary,
-                          fontSize: 12, fontWeight: FontWeight.w600)),
+                      style: const TextStyle(
+                          color: AppStyles.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
                 ),
               ]),
             ),
@@ -159,28 +178,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               controller: _phoneCtrl,
               style: const TextStyle(color: AppStyles.textPrimary),
               decoration: AppStyles.inputDecoration('Номер телефона',
-                  hint: '+7 999 000-00-00',
-                  icon: Icons.phone_outlined),
+                  hint: '+7 999 000-00-00', icon: Icons.phone_outlined),
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 24),
 
-            if (!isAdmin) ...[ // Данные авто только для клиентов
+            if (!isAdmin) ...[
+              // Данные авто только для клиентов
               _sectionLabel('Данные автомобиля'),
               const SizedBox(height: 4),
               const Padding(
                 padding: EdgeInsets.only(left: 2, bottom: 10),
                 child: Text('Будут автоматически заполняться при записи',
-                    style: TextStyle(color: AppStyles.textSecondary,
-                        fontSize: 12)),
+                    style: TextStyle(
+                        color: AppStyles.textSecondary, fontSize: 12)),
               ),
 
               TextFormField(
                 controller: _carModelCtrl,
                 style: const TextStyle(color: AppStyles.textPrimary),
                 decoration: AppStyles.inputDecoration('Марка и модель авто',
-                    hint: 'Toyota Camry',
-                    icon: Icons.directions_car_outlined),
+                    hint: 'Toyota Camry', icon: Icons.directions_car_outlined),
               ),
               const SizedBox(height: 12),
 
@@ -203,21 +221,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: AppStyles.cardDecoration,
               child: SwitchListTile(
                 title: const Text('Изменить пароль',
-                    style: TextStyle(color: AppStyles.textPrimary,
-                        fontSize: 14, fontWeight: FontWeight.w500)),
+                    style: TextStyle(
+                        color: AppStyles.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500)),
                 subtitle: const Text('Задать новый пароль для входа',
-                    style: TextStyle(color: AppStyles.textSecondary,
-                        fontSize: 12)),
+                    style: TextStyle(
+                        color: AppStyles.textSecondary, fontSize: 12)),
                 value: _changePass,
                 activeColor: AppStyles.primary,
                 onChanged: (v) => setState(() {
                   _changePass = v;
-                  if (!v) { _passCtrl.clear(); _passConfirmCtrl.clear(); }
+                  if (!v) {
+                    _passCtrl.clear();
+                    _passConfirmCtrl.clear();
+                  }
                 }),
               ),
             ),
 
-            if (_changePass) ...[ 
+            if (_changePass) ...[
               const SizedBox(height: 12),
               TextFormField(
                 controller: _passCtrl,
@@ -226,8 +249,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: AppStyles.inputDecoration('Новый пароль',
                     icon: Icons.lock_outline_rounded),
                 validator: _changePass
-                    ? (v) => (v == null || v.length < 4)
-                        ? 'Минимум 4 символа' : null
+                    ? (v) =>
+                        (v == null || v.length < 4) ? 'Минимум 4 символа' : null
                     : null,
               ),
               const SizedBox(height: 12),
@@ -243,13 +266,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onTap: () => setState(() => _showPass = !_showPass),
                 child: Row(children: [
                   const SizedBox(width: 4),
-                  Icon(_showPass ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                      size: 16, color: AppStyles.textSecondary),
+                  Icon(
+                      _showPass
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 16,
+                      color: AppStyles.textSecondary),
                   const SizedBox(width: 6),
                   Text(_showPass ? 'Скрыть пароль' : 'Показать пароль',
-                      style: const TextStyle(color: AppStyles.textSecondary,
-                          fontSize: 12)),
+                      style: const TextStyle(
+                          color: AppStyles.textSecondary, fontSize: 12)),
                 ]),
               ),
             ],
@@ -262,12 +288,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: AppStyles.primaryButton,
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 20, height: 20,
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2))
                     : const Text('Сохранить изменения',
-                        style: TextStyle(fontSize: 15,
-                            fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 32),
@@ -285,12 +313,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           letterSpacing: 1));
 
   InputDecoration _plateDecoration() {
-    final base = AppStyles.inputDecoration('Гос. номер',
-        icon: Icons.pin_outlined);
+    final base =
+        AppStyles.inputDecoration('Гос. номер', icon: Icons.pin_outlined);
     return base.copyWith(
       helperText: 'Формат: А000АА777',
-      helperStyle: const TextStyle(
-          color: AppStyles.textSecondary, fontSize: 11),
+      helperStyle:
+          const TextStyle(color: AppStyles.textSecondary, fontSize: 11),
     );
   }
 }

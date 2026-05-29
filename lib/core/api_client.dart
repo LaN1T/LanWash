@@ -13,6 +13,15 @@ import 'api_result.dart';
 class ApiClient {
   static const _storage = FlutterSecureStorage();
   static String? _cachedToken;
+  static http.Client _httpClient = http.Client();
+
+  /// Для тестов: позволяет подменить HTTP-клиент.
+  @visibleForTesting
+  static set httpClient(http.Client client) => _httpClient = client;
+
+  /// Для тестов: позволяет установить токен без обращения к хранилищу.
+  @visibleForTesting
+  static set token(String? token) => _cachedToken = token;
 
   static Future<String?> getToken() async {
     _cachedToken ??= await _storage.read(key: 'jwt_token');
@@ -52,7 +61,7 @@ class ApiClient {
     return _request(
       method: 'GET',
       path: path,
-      requestFn: (url, headers) => http.get(url, headers: headers),
+      requestFn: (url, headers) => _httpClient.get(url, headers: headers),
     );
   }
 
@@ -64,7 +73,7 @@ class ApiClient {
       method: 'POST',
       path: path,
       body: body,
-      requestFn: (url, headers) => http.post(
+      requestFn: (url, headers) => _httpClient.post(
         url,
         headers: headers,
         body: body != null ? jsonEncode(body) : null,
@@ -80,7 +89,7 @@ class ApiClient {
       method: 'PUT',
       path: path,
       body: body,
-      requestFn: (url, headers) => http.put(
+      requestFn: (url, headers) => _httpClient.put(
         url,
         headers: headers,
         body: body != null ? jsonEncode(body) : null,
@@ -92,7 +101,7 @@ class ApiClient {
     return _request(
       method: 'DELETE',
       path: path,
-      requestFn: (url, headers) => http.delete(url, headers: headers),
+      requestFn: (url, headers) => _httpClient.delete(url, headers: headers),
     );
   }
 
@@ -101,7 +110,9 @@ class ApiClient {
   static Future<ApiResult<Map<String, dynamic>>> _request({
     required String method,
     required String path,
-    required Future<http.Response> Function(Uri url, Map<String, String> headers) requestFn,
+    required Future<http.Response> Function(
+            Uri url, Map<String, String> headers)
+        requestFn,
     Map<String, dynamic>? body,
   }) async {
     final url = Uri.parse('${AppConfig.baseUrl}$path');
@@ -110,11 +121,14 @@ class ApiClient {
     _log(method, url.toString(), body: body);
 
     try {
-      final response = await requestFn(url, headers).timeout(AppConfig.requestTimeout);
+      final response =
+          await requestFn(url, headers).timeout(AppConfig.requestTimeout);
       _log(method, url.toString(), status: response.statusCode);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = response.body.isNotEmpty ? jsonDecode(response.body) : <String, dynamic>{};
+        final data = response.body.isNotEmpty
+            ? jsonDecode(response.body)
+            : <String, dynamic>{};
         return Success(data as Map<String, dynamic>);
       }
 
@@ -125,7 +139,8 @@ class ApiClient {
       String message = 'Ошибка сервера';
       try {
         final data = jsonDecode(response.body);
-        if (data is Map && data['detail'] != null) message = data['detail'].toString();
+        if (data is Map && data['detail'] != null)
+          message = data['detail'].toString();
       } catch (_) {}
 
       return Failure(AppError.server(response.statusCode, message));
@@ -146,7 +161,8 @@ class ApiClient {
       success: (resp) {
         final data = jsonDecode(resp.body);
         if (data is List) return Success(data);
-        return Failure(AppError.validation('Expected list, got ${data.runtimeType}'));
+        return Failure(
+            AppError.validation('Expected list, got ${data.runtimeType}'));
       },
       failure: (err) => Failure(err),
     );
@@ -158,7 +174,9 @@ class ApiClient {
     final url = Uri.parse('${AppConfig.baseUrl}$path');
     final headers = await _headers();
     try {
-      final resp = await http.get(url, headers: headers).timeout(AppConfig.requestTimeout);
+      final resp = await _httpClient
+          .get(url, headers: headers)
+          .timeout(AppConfig.requestTimeout);
       if (resp.statusCode >= 200 && resp.statusCode < 300) return Success(resp);
       if (resp.statusCode == 401) return Failure(AppError.unauthorized());
       return Failure(AppError.server(resp.statusCode));
