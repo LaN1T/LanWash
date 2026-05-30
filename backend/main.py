@@ -5,14 +5,17 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+import os
 
 from database import init_db
-from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types
+from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts
 from services.auth_service import check_roles
 
 from core.limiter import limiter
 from core.config import get_settings
 from core.logging import configure_logging
+from core.metrics import update_business_metrics
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -60,6 +63,11 @@ app = FastAPI(
     docs_url="/docs" if not settings.is_production else None,
     redoc_url="/redoc" if not settings.is_production else None,
 )
+
+# Static files for avatars
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # Apply rate limiter
 app.state.limiter = limiter
@@ -121,6 +129,17 @@ async def app_check_middleware(request, call_next):
         await verify_app_check_token(request)
     return await call_next(request)
 
+# Business metrics middleware
+@app.middleware("http")
+async def business_metrics_middleware(request, call_next):
+    if request.url.path == "/metrics":
+        try:
+            await update_business_metrics()
+        except Exception as e:
+            logger.warning("business_metrics_update_failed", error=str(e))
+    return await call_next(request)
+
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request, call_next):
@@ -172,6 +191,7 @@ app.include_router(notes.router)
 app.include_router(reports.router, dependencies=[Depends(check_roles(["admin"]))])
 app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(wash_types.router)
+app.include_router(shifts.router)
 
 
 if __name__ == "__main__":

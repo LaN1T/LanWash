@@ -177,11 +177,18 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  void updateAvatar(String url) {
+    if (_user == null) return;
+    _user = _user!.copyWith(avatarUrl: url);
+    _saveUser(_user!);
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     final who = _user?.username ?? 'unknown';
     try {
       await _api.createLog(who, 'Выход из системы', '');
-    } catch (e) {}
+    } catch (_) {}
     _user = null;
     await _clearUser();
     notifyListeners();

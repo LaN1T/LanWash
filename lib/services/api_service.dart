@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../core/api_client.dart';
+import '../core/config.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
 import '../models/log_entry.dart';
@@ -9,6 +11,8 @@ import '../models/user.dart';
 import '../models/report_entry.dart';
 import '../models/promo.dart';
 import '../models/wash_type.dart';
+import '../models/shift.dart';
+import '../models/consumable.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -643,6 +647,33 @@ class ApiService {
     );
   }
 
+  // ─── Consumables ───────────────────────────────────────────────────────────
+  Future<List<Consumable>> getConsumables() async {
+    final result = await ApiClient.getList('/consumables/');
+    return result.when(
+      success: (list) => list.map((m) => Consumable.fromMap(m)).toList(),
+      failure: (_) => <Consumable>[],
+    );
+  }
+
+  Future<List<Consumable>> getLowStockAlerts() async {
+    final result = await ApiClient.getList('/consumables/alerts/low-stock');
+    return result.when(
+      success: (list) => list.map((m) => Consumable.fromMap(m)).toList(),
+      failure: (_) => <Consumable>[],
+    );
+  }
+
+  Future<Consumable?> refillConsumable(String id, double amount) async {
+    final result = await ApiClient.post('/consumables/$id/refill', body: {
+      'amount': amount,
+    });
+    return result.when(
+      success: (data) => Consumable.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
   Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date,
       {String? category}) async {
     var path = '/reports/consumables-usage/';
@@ -659,5 +690,76 @@ class ApiService {
         return null;
       },
     );
+  }
+
+  // ─── User Stats ────────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>?> getUserStats(String username) async {
+    final result = await ApiClient.get('/auth/stats/$username');
+    return result.when(
+      success: (data) => data,
+      failure: (_) => null,
+    );
+  }
+
+  Future<String?> uploadAvatar(
+      int userId, Uint8List bytes, String filename) async {
+    final token = await ApiClient.getToken();
+    final uri = Uri.parse('${AppConfig.baseUrl}/auth/avatar/$userId');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files
+          .add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final response = await request.send();
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final body = await response.stream.bytesToString();
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      return data['avatarUrl'] as String?;
+    }
+    return null;
+  }
+
+  // ─── Shifts ────────────────────────────────────────────────────────────────
+  Future<List<Shift>> getShifts(String startDate, String endDate) async {
+    final result = await ApiClient.getList(
+        '/shifts/?start_date=$startDate&end_date=$endDate');
+    return result.when(
+      success: (list) => list.map((m) => Shift.fromMap(m)).toList(),
+      failure: (_) => <Shift>[],
+    );
+  }
+
+  Future<Shift?> createShift(
+      int userId, String date, String startTime, String endTime) async {
+    final result = await ApiClient.post('/shifts/', body: {
+      'userId': userId,
+      'date': date,
+      'startTime': startTime,
+      'endTime': endTime,
+    });
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<Shift?> approveShift(int shiftId) async {
+    final result = await ApiClient.put('/shifts/$shiftId/approve');
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<Shift?> rejectShift(int shiftId) async {
+    final result = await ApiClient.put('/shifts/$shiftId/reject');
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> deleteShift(int shiftId) async {
+    final result = await ApiClient.delete('/shifts/$shiftId');
+    return result.isSuccess;
   }
 }

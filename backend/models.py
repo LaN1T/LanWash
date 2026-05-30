@@ -38,6 +38,7 @@ class UserResponse(BaseModel):
     phone: str
     carModel: str
     carNumber: str
+    avatarUrl: str = ""
     createdAt: str
     isFavoriteAdmin: bool
 
@@ -47,7 +48,17 @@ class UpdateProfileRequest(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=20)
     carModel: Optional[str] = Field(default=None, max_length=50)
     carNumber: Optional[str] = Field(default=None, max_length=20)
+    avatarUrl: Optional[str] = Field(default=None, max_length=5000)
     newPassword: Optional[str] = Field(default=None, min_length=8, max_length=128)
+
+
+class UserStatsResponse(BaseModel):
+    totalAppointments: int
+    totalSpent: int
+    favoriteWashType: str
+    level: str
+    levelProgress: int  # процент до следующего уровня
+    points: int
 
 
 class FcmTokenRequest(BaseModel):
@@ -226,6 +237,13 @@ class ConsumableResponse(BaseModel):
     id: str
     name: str
     unit: str
+    currentStock: float = 0.0
+    minStock: float = 0.0
+
+
+class RefillRequest(BaseModel):
+    amount: float = Field(..., ge=0)
+
 
 class ServiceConsumableRequest(BaseModel):
     serviceId: str = Field(..., max_length=36)
@@ -238,6 +256,28 @@ class ServiceConsumableResponse(BaseModel):
     serviceId: str
     consumableId: str
     quantity_per_service: float
+
+
+# ─── Shifts ──────────────────────────────────────────────────────────────────
+class ShiftRequest(BaseModel):
+    userId: int = Field(..., ge=1)
+    date: str = Field(..., max_length=10, description="YYYY-MM-DD")
+    startTime: str = Field(..., max_length=5, description="HH:MM")
+    endTime: str = Field(..., max_length=5, description="HH:MM")
+
+
+class ShiftResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    date: str
+    startTime: str
+    endTime: str
+    status: str
+    createdBy: str
+    createdAt: str
+    updatedAt: str
 
 
 # ─── Favorites ───────────────────────────────────────────────────────────────

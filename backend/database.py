@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from db_models import (
     Base, User, Service, Consumable, ServiceConsumable, Promo,
     WashType, WashTypeIncludedExtra, WashTypeConsumable, PromoIncludedExtra,
+    Shift,
 )
 from datetime import datetime
 from passlib.context import CryptContext
@@ -47,15 +48,32 @@ async def seed_data():
         else:
             # Upsert админа с использованием Argon2
             stmt = insert(User).values(
-                username="admin", 
+                username="admin",
                 passwordHash=pwd_context.hash(admin_pass),
                 role="admin",
-                displayName="Администратор", 
+                displayName="Администратор",
                 createdAt=now
             ).on_conflict_do_nothing(index_elements=['username'])
             await session.execute(stmt)
             await session.commit()
 
+        # Seed мойщиков для dev
+        washers = [
+            ("washer1", "Иван", "+79001234567"),
+            ("washer2", "Петр", "+79007654321"),
+            ("washer3", "Алексей", "+79001112233"),
+        ]
+        for login, name, phone in washers:
+            stmt = insert(User).values(
+                username=login,
+                passwordHash=pwd_context.hash("Washer123!"),
+                role="washer",
+                displayName=name,
+                phone=phone,
+                createdAt=now
+            ).on_conflict_do_nothing(index_elements=['username'])
+            await session.execute(stmt)
+        await session.commit()
 
         # Wash Types
         res = await session.execute(select(func.count(WashType.id)))
@@ -101,26 +119,26 @@ async def seed_data():
             session.add_all(services)
             await session.flush()
 
-            # Consumables
+            # Consumables (starting stock for dev)
             session.add_all([
-                Consumable(id="c_shampoo", name="Автошампунь", unit="мл"),
-                Consumable(id="c_cleaner", name="Очиститель салона", unit="мл"),
-                Consumable(id="c_engine", name="Очиститель ДВС", unit="мл"),
-                Consumable(id="c_glass_polish", name="Паста для стекла", unit="мл"),
-                Consumable(id="c_antidogd", name="Антидождь", unit="мл"),
-                Consumable(id="c_wax", name="Воск", unit="мл"),
-                Consumable(id="c_silant", name="Силант", unit="мл"),
-                Consumable(id="c_ceramic", name="Керамика", unit="мл"),
-                Consumable(id="c_teflon", name="Тефлон", unit="мл"),
-                Consumable(id="c_bitumen", name="Очиститель битума", unit="мл"),
-                Consumable(id="c_tire_black", name="Чернитель шин", unit="мл"),
-                Consumable(id="c_vac", name="Ресурс пылесоса", unit="сеанс"),
-                Consumable(id="c_chem", name="Химия для химчистки", unit="мл"),
-                Consumable(id="c_leather", name="Кондиционер для кожи", unit="мл"),
-                Consumable(id="c_aroma", name="Ароматизатор", unit="мл"),
-                Consumable(id="c_ozone", name="Сеанс озонирования", unit="сеанс"),
-                Consumable(id="c_polish", name="Полировальная паста", unit="мл"),
-                Consumable(id="c_anticor", name="Антикор", unit="мл"),
+                Consumable(id="c_shampoo", name="Автошампунь", unit="мл", currentStock=5000.0, minStock=500.0),
+                Consumable(id="c_cleaner", name="Очиститель салона", unit="мл", currentStock=3000.0, minStock=300.0),
+                Consumable(id="c_engine", name="Очиститель ДВС", unit="мл", currentStock=2000.0, minStock=200.0),
+                Consumable(id="c_glass_polish", name="Паста для стекла", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_antidogd", name="Антидождь", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_wax", name="Воск", unit="мл", currentStock=2000.0, minStock=200.0),
+                Consumable(id="c_silant", name="Силант", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_ceramic", name="Керамика", unit="мл", currentStock=500.0, minStock=50.0),
+                Consumable(id="c_teflon", name="Тефлон", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_bitumen", name="Очиститель битума", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_tire_black", name="Чернитель шин", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_vac", name="Ресурс пылесоса", unit="сеанс", currentStock=100.0, minStock=10.0),
+                Consumable(id="c_chem", name="Химия для химчистки", unit="мл", currentStock=3000.0, minStock=300.0),
+                Consumable(id="c_leather", name="Кондиционер для кожи", unit="мл", currentStock=1000.0, minStock=100.0),
+                Consumable(id="c_aroma", name="Ароматизатор", unit="мл", currentStock=500.0, minStock=50.0),
+                Consumable(id="c_ozone", name="Сеанс озонирования", unit="сеанс", currentStock=50.0, minStock=5.0),
+                Consumable(id="c_polish", name="Полировальная паста", unit="мл", currentStock=2000.0, minStock=200.0),
+                Consumable(id="c_anticor", name="Антикор", unit="мл", currentStock=1000.0, minStock=100.0),
             ])
             await session.flush()
 
