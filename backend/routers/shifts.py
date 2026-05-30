@@ -32,7 +32,7 @@ async def list_shifts(
     start_date: str,
     end_date: str,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     if not _parse_date(start_date) or not _parse_date(end_date):
         raise HTTPException(status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD")
@@ -47,7 +47,7 @@ async def list_shifts(
 async def create_shift(
     req: ShiftRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     if not _parse_date(req.date):
         raise HTTPException(status_code=400, detail="Неверный формат даты")
@@ -59,8 +59,8 @@ async def create_shift(
     if not target_user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    is_admin = current_user.get("role") == "admin"
-    caller = current_user.get("username", "")
+    is_admin = current_user.role == "admin"
+    caller = current_user.username
 
     if not is_admin:
         if target_user.username != caller:
@@ -111,9 +111,9 @@ async def create_shift(
 async def approve_shift(
     shift_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    if current_user.get("role") != "admin":
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Только администратор может одобрять смены")
 
     res = await db.execute(select(Shift).where(Shift.id == shift_id))
@@ -132,9 +132,9 @@ async def approve_shift(
 async def reject_shift(
     shift_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    if current_user.get("role") != "admin":
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Только администратор может отклонять смены")
 
     res = await db.execute(select(Shift).where(Shift.id == shift_id))
@@ -153,10 +153,10 @@ async def reject_shift(
 async def delete_shift(
     shift_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    is_admin = current_user.get("role") == "admin"
-    caller = current_user.get("username", "")
+    is_admin = current_user.role == "admin"
+    caller = current_user.username
 
     res = await db.execute(select(Shift).where(Shift.id == shift_id))
     shift = res.scalar_one_or_none()
