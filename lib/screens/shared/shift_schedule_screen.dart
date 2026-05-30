@@ -24,7 +24,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   void initState() {
     super.initState();
     _weekStart = _mondayOf(DateTime.now());
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
   DateTime _mondayOf(DateTime date) {

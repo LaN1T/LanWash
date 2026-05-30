@@ -168,3 +168,68 @@ class TestConsumables:
         assert "daysLeft" in data
         assert "suggestedPurchase" in data
         assert data["unit"] in ["л", "мл"]
+
+    @pytest.mark.asyncio
+    async def test_export_excel(self, async_client, admin_token):
+        response = await async_client.get(
+            "/api/consumables/export",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert len(response.content) > 100
+
+    @pytest.mark.asyncio
+    async def test_import_template(self, async_client, admin_token):
+        response = await async_client.get(
+            "/api/consumables/import-template",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert len(response.content) > 100
+
+    @pytest.mark.asyncio
+    async def test_import_refills(self, async_client, admin_token):
+        import io
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["name", "amount"])
+        ws.append(["Автошампунь", 25.0])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        response = await async_client.post(
+            "/api/consumables/import-refills",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            files={"file": ("refills.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded"] >= 1
+        assert data["failed"] == 0
+
+    @pytest.mark.asyncio
+    async def test_import_refills_invalid(self, async_client, admin_token):
+        import io
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["name", "amount"])
+        ws.append(["Несуществующий расходник 12345", 10.0])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+
+        response = await async_client.post(
+            "/api/consumables/import-refills",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            files={"file": ("refills.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["failed"] == 1
