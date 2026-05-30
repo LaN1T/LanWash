@@ -135,7 +135,7 @@ class _PopularServicesReportScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppStyles.primary))
@@ -149,7 +149,7 @@ class _PopularServicesReportScreenState
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
-                      color: Colors.white,
+                      color: AppStyles.adaptiveCard(context),
                       child: Row(
                         children: [
                           Expanded(
@@ -188,8 +188,8 @@ class _PopularServicesReportScreenState
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.picture_as_pdf,
-                                color: Colors.black),
+                            icon: Icon(Icons.picture_as_pdf,
+                                color: AppStyles.adaptiveTextPrimary(context)),
                             tooltip: 'Скачать отчет',
                             onPressed: downloadPdf,
                           ),
@@ -227,7 +227,7 @@ class _PopularServicesReportScreenState
                               labelStyle: TextStyle(
                                 color: selected
                                     ? Colors.white
-                                    : AppStyles.textSecondary,
+                                    : AppStyles.adaptiveTextSecondary(context),
                                 fontSize: 13,
                               ),
                             ),

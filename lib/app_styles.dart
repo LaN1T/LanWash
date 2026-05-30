@@ -43,6 +43,40 @@ class AppStyles {
   static const Color bgMedium = Color(0xFF1E293B);
   static const Color textMuted2 = textMuted;
 
+  // ─── Тёмная тема ─────────────────────────────────────────────────────────
+  static const Color darkCard = Color(0xFF1E293B);
+  static const Color darkBorder = Color(0xFF334155);
+  static const Color darkTextPrimary = Color(0xFFF1F5F9);
+  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkTextMuted = Color(0xFF64748B);
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color adaptiveTextPrimary(BuildContext context) =>
+      isDark(context) ? darkTextPrimary : textPrimary;
+
+  static Color adaptiveTextSecondary(BuildContext context) =>
+      isDark(context) ? darkTextSecondary : textSecondary;
+
+  static Color adaptiveTextMuted(BuildContext context) =>
+      isDark(context) ? darkTextMuted : textMuted;
+
+  static Color adaptiveBorder(BuildContext context) =>
+      isDark(context) ? darkBorder : border;
+
+  static Color adaptiveCard(BuildContext context) =>
+      isDark(context) ? darkCard : bgCard;
+
+  static Color adaptiveBgMuted(BuildContext context) =>
+      isDark(context) ? const Color(0xFF1E293B) : bgMuted;
+
+  static Color adaptiveInnerCard(BuildContext context) =>
+      isDark(context) ? const Color(0xFF334155) : bgMuted;
+
+  static Color adaptivePrimaryBg(BuildContext context) =>
+      isDark(context) ? const Color(0xFF1E3A5F) : primaryBg;
+
   // ─── Текст ───────────────────────────────────────────────────────────────
   static const TextStyle headingLarge = TextStyle(
     fontSize: 24,
@@ -136,6 +170,23 @@ class AppStyles {
     end: Alignment.bottomCenter,
   );
 
+  // ─── Карточки (адаптивные) ──────────────────────────────────────────────
+  static BoxDecoration cardDecorationFor(BuildContext context) => BoxDecoration(
+        color: adaptiveCard(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: adaptiveBorder(context)),
+        boxShadow: [
+          BoxShadow(
+              color: primary.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 1)),
+        ],
+      );
+
   // ─── Поля ввода ──────────────────────────────────────────────────────────
   static InputDecoration inputDecoration(String labelText,
       {String? hint, IconData? icon, bool obscure = false}) {
@@ -159,6 +210,36 @@ class AppStyles {
           borderSide: const BorderSide(color: danger)),
       filled: true,
       fillColor: bgCard,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  static InputDecoration inputDecorationFor(
+      BuildContext context, String labelText,
+      {String? hint, IconData? icon, bool obscure = false}) {
+    final dark = isDark(context);
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hint,
+      labelStyle: TextStyle(
+          color: dark ? darkTextSecondary : textSecondary, fontSize: 14),
+      hintStyle:
+          TextStyle(color: dark ? darkTextMuted : textMuted, fontSize: 14),
+      prefixIcon: icon != null ? Icon(icon, color: primary, size: 20) : null,
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: dark ? darkBorder : border)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: dark ? darkBorder : border)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: primary, width: 2)),
+      errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: danger)),
+      filled: true,
+      fillColor: adaptiveCard(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }

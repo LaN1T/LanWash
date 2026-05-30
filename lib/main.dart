@@ -11,6 +11,7 @@ import 'app_styles.dart';
 import 'core/service_locator.dart';
 import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'screens/shared/splash_screen.dart';
@@ -57,6 +58,7 @@ void main() async {
         Provider(
           create: (_) => sl<ApiService>(),
         ),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(
             api: sl<ApiService>(),
@@ -80,6 +82,8 @@ class LanWashApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return MaterialApp(
       title: 'LanWash',
       debugShowCheckedModeBanner: false,
@@ -90,110 +94,222 @@ class LanWashApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(
-        colorScheme: ColorScheme.light(
-          primary: AppStyles.primary,
-          secondary: AppStyles.primaryLight,
-          surface: AppStyles.bgCard,
-          surfaceVariant: AppStyles.bgPage,
-        ),
-        useMaterial3: true,
-        scaffoldBackgroundColor: AppStyles.bgPage,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: AppStyles.textPrimary,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            color: AppStyles.textPrimary,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppStyles.border),
-          ),
-        ),
-        navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: Colors.white,
-          indicatorColor: AppStyles.primaryBg,
-          labelTextStyle: WidgetStateProperty.resolveWith((s) => s
-                  .contains(WidgetState.selected)
-              ? const TextStyle(
-                  color: AppStyles.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)
-              : const TextStyle(color: AppStyles.textSecondary, fontSize: 12)),
-          iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
-              color: s.contains(WidgetState.selected)
-                  ? AppStyles.primary
-                  : AppStyles.textSecondary)),
-        ),
-        dividerColor: AppStyles.border,
-        dialogTheme: const DialogThemeData(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          titleTextStyle: TextStyle(
-              color: AppStyles.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold),
-          contentTextStyle:
-              TextStyle(color: AppStyles.textSecondary, fontSize: 14),
-        ),
-        snackBarTheme: SnackBarThemeData(
-          backgroundColor: AppStyles.textPrimary,
-          contentTextStyle: const TextStyle(color: Colors.white),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          behavior: SnackBarBehavior.floating,
-        ),
-        checkboxTheme: CheckboxThemeData(
-          fillColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected)
-                  ? AppStyles.primary
-                  : Colors.transparent),
-          checkColor: WidgetStateProperty.all(Colors.white),
-          side: const BorderSide(color: AppStyles.border, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        ),
-        radioTheme: RadioThemeData(
-          fillColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected)
-                  ? AppStyles.primary
-                  : AppStyles.border),
-        ),
-        tabBarTheme: const TabBarThemeData(
-          labelColor: AppStyles.primary,
-          unselectedLabelColor: AppStyles.textSecondary,
-          indicatorColor: AppStyles.primary,
-          dividerColor: AppStyles.border,
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: AppStyles.primary,
-          foregroundColor: Colors.white,
-        ),
-        datePickerTheme: DatePickerThemeData(
-          backgroundColor: Colors.white,
-          headerBackgroundColor: AppStyles.primary,
-          headerForegroundColor: Colors.white,
-          dayForegroundColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected)
-                  ? Colors.white
-                  : AppStyles.textPrimary),
-          dayBackgroundColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected)
-                  ? AppStyles.primary
-                  : Colors.transparent),
-          todayForegroundColor: WidgetStateProperty.all(AppStyles.primary),
-          todayBackgroundColor: WidgetStateProperty.all(AppStyles.primaryBg),
+      themeMode: themeProvider.themeMode,
+      theme: _buildLightTheme(),
+      darkTheme: _buildDarkTheme(),
+      home: const _AppRouter(),
+    );
+  }
+
+  ThemeData _buildLightTheme() {
+    return ThemeData(
+      colorScheme: ColorScheme.light(
+        primary: AppStyles.primary,
+        secondary: AppStyles.primaryLight,
+        surface: AppStyles.bgCard,
+        surfaceVariant: AppStyles.bgPage,
+      ),
+      useMaterial3: true,
+      scaffoldBackgroundColor: AppStyles.bgPage,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: AppStyles.textPrimary,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: AppStyles.textPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
         ),
       ),
-      home: const _AppRouter(),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppStyles.border),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: AppStyles.primaryBg,
+        labelTextStyle: WidgetStateProperty.resolveWith((s) => s
+                .contains(WidgetState.selected)
+            ? const TextStyle(
+                color: AppStyles.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600)
+            : const TextStyle(color: AppStyles.textSecondary, fontSize: 12)),
+        iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
+            color: s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : AppStyles.textSecondary)),
+      ),
+      dividerColor: AppStyles.border,
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+            color: AppStyles.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold),
+        contentTextStyle:
+            TextStyle(color: AppStyles.textSecondary, fontSize: 14),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppStyles.textPrimary,
+        contentTextStyle: const TextStyle(color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        behavior: SnackBarBehavior.floating,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : Colors.transparent),
+        checkColor: WidgetStateProperty.all(Colors.white),
+        side: const BorderSide(color: AppStyles.border, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : AppStyles.border),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: AppStyles.primary,
+        unselectedLabelColor: AppStyles.textSecondary,
+        indicatorColor: AppStyles.primary,
+        dividerColor: AppStyles.border,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppStyles.primary,
+        foregroundColor: Colors.white,
+      ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: Colors.white,
+        headerBackgroundColor: AppStyles.primary,
+        headerForegroundColor: Colors.white,
+        dayForegroundColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? Colors.white
+                : AppStyles.textPrimary),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : Colors.transparent),
+        todayForegroundColor: WidgetStateProperty.all(AppStyles.primary),
+        todayBackgroundColor: WidgetStateProperty.all(AppStyles.primaryBg),
+      ),
+    );
+  }
+
+  ThemeData _buildDarkTheme() {
+    const darkBg = Color(0xFF0F172A);
+    const darkCard = Color(0xFF1E293B);
+    const darkBorder = Color(0xFF334155);
+    const darkTextPrimary = Color(0xFFF1F5F9);
+    const darkTextSecondary = Color(0xFF94A3B8);
+
+    return ThemeData(
+      colorScheme: ColorScheme.dark(
+        primary: AppStyles.primaryLight,
+        secondary: AppStyles.primary,
+        surface: darkCard,
+        surfaceVariant: darkBg,
+      ),
+      useMaterial3: true,
+      scaffoldBackgroundColor: darkBg,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: darkCard,
+        foregroundColor: darkTextPrimary,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: darkTextPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: darkCard,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: darkBorder),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: darkCard,
+        indicatorColor: AppStyles.primary.withValues(alpha: 0.2),
+        labelTextStyle: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? const TextStyle(
+                    color: AppStyles.primaryLight,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)
+                : TextStyle(color: darkTextSecondary, fontSize: 12)),
+        iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
+            color: s.contains(WidgetState.selected)
+                ? AppStyles.primaryLight
+                : darkTextSecondary)),
+      ),
+      dividerColor: darkBorder,
+      dialogTheme: const DialogThemeData(
+        backgroundColor: darkCard,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+            color: darkTextPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+        contentTextStyle: TextStyle(color: darkTextSecondary, fontSize: 14),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: darkTextPrimary,
+        contentTextStyle: const TextStyle(color: darkBg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        behavior: SnackBarBehavior.floating,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppStyles.primaryLight
+                : Colors.transparent),
+        checkColor: WidgetStateProperty.all(darkBg),
+        side: const BorderSide(color: darkBorder, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppStyles.primaryLight
+                : darkBorder),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: AppStyles.primaryLight,
+        unselectedLabelColor: darkTextSecondary,
+        indicatorColor: AppStyles.primaryLight,
+        dividerColor: darkBorder,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppStyles.primaryLight,
+        foregroundColor: Colors.white,
+      ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: darkCard,
+        headerBackgroundColor: AppStyles.primary,
+        headerForegroundColor: Colors.white,
+        dayForegroundColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected) ? Colors.white : darkTextPrimary),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppStyles.primary
+                : Colors.transparent),
+        todayForegroundColor: WidgetStateProperty.all(AppStyles.primaryLight),
+        todayBackgroundColor:
+            WidgetStateProperty.all(AppStyles.primary.withValues(alpha: 0.2)),
+      ),
     );
   }
 }

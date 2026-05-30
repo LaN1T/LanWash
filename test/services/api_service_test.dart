@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:lanwash/core/api_client.dart';
 import 'package:lanwash/models/appointment.dart';
 import 'package:lanwash/models/service.dart';
-import 'package:lanwash/models/user.dart';
 import 'package:lanwash/services/api_service.dart';
 import 'package:mocktail/mocktail.dart';
 

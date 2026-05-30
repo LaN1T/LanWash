@@ -62,7 +62,7 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
         child: StatefulBuilder(
           builder: (ctx, setDialogState) => AlertDialog(
-            backgroundColor: Colors.white,
+            backgroundColor: AppStyles.adaptiveCard(context),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Text('Новая заметка'),
@@ -75,7 +75,8 @@ class _NotesScreenState extends State<NotesScreen> {
                   children: [
                     TextField(
                       controller: titleCtrl,
-                      decoration: AppStyles.inputDecoration(
+                      decoration: AppStyles.inputDecorationFor(
+                        context,
                         'Заголовок',
                         icon: Icons.title_rounded,
                       ),
@@ -86,7 +87,8 @@ class _NotesScreenState extends State<NotesScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: msgCtrl,
-                      decoration: AppStyles.inputDecoration(
+                      decoration: AppStyles.inputDecorationFor(
+                        context,
                         'Описание (необязательно)',
                         icon: Icons.message_outlined,
                       ),
@@ -97,7 +99,8 @@ class _NotesScreenState extends State<NotesScreen> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: category,
-                      decoration: AppStyles.inputDecoration(
+                      decoration: AppStyles.inputDecorationFor(
+                        context,
                         'Категория',
                         icon: Icons.category_outlined,
                       ),
@@ -154,17 +157,16 @@ class _NotesScreenState extends State<NotesScreen> {
     final notes = provider.notes;
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: widget.isEmbedded
           ? null
           : AppBar(
-              backgroundColor: Colors.white,
-              foregroundColor: AppStyles.textPrimary,
               elevation: 0,
               surfaceTintColor: Colors.transparent,
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(1),
-                child: Container(height: 1, color: AppStyles.border),
+                child: Container(
+                    height: 1, color: AppStyles.adaptiveBorder(context)),
               ),
               title: Text(
                 auth.isAdmin ? 'Заметки мойщиков' : 'Мои заметки',
@@ -203,18 +205,18 @@ class _NotesScreenState extends State<NotesScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.note_alt_outlined,
                         size: 56,
-                        color: AppStyles.textSecondary,
+                        color: AppStyles.adaptiveTextSecondary(context),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         auth.isWasher
                             ? 'Нет заметок. Нажмите + чтобы добавить'
                             : 'Заметок пока нет',
-                        style: const TextStyle(
-                          color: AppStyles.textSecondary,
+                        style: TextStyle(
+                          color: AppStyles.adaptiveTextSecondary(context),
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -254,7 +256,7 @@ class _NoteCard extends StatelessWidget {
     this.onDelete,
   });
 
-  Color get _categoryColor {
+  Color _categoryColor(BuildContext context) {
     switch (note.category) {
       case 'urgent':
         return AppStyles.danger;
@@ -263,7 +265,7 @@ class _NoteCard extends StatelessWidget {
       case 'equipment':
         return AppStyles.primary;
       default:
-        return AppStyles.textSecondary;
+        return AppStyles.adaptiveTextSecondary(context);
     }
   }
 
@@ -282,14 +284,16 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _categoryColor;
+    final color = _categoryColor(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppStyles.adaptiveCard(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: note.isRead ? AppStyles.border : color.withOpacity(0.4),
+          color: note.isRead
+              ? AppStyles.adaptiveBorder(context)
+              : color.withValues(alpha: 0.4),
           width: note.isRead ? 1 : 1.5,
         ),
       ),
@@ -304,7 +308,7 @@ class _NoteCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(_categoryIcon, color: color, size: 18),
@@ -320,7 +324,7 @@ class _NoteCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppStyles.primaryBg,
+                            color: AppStyles.adaptivePrimaryBg(context),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
@@ -337,7 +341,7 @@ class _NoteCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
@@ -371,8 +375,8 @@ class _NoteCard extends StatelessWidget {
                     const SizedBox(height: 5),
                     Text(
                       note.title,
-                      style: const TextStyle(
-                        color: AppStyles.textPrimary,
+                      style: TextStyle(
+                        color: AppStyles.adaptiveTextPrimary(context),
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -391,10 +395,10 @@ class _NoteCard extends StatelessWidget {
               ),
               if (onDelete != null)
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.delete_outline,
                     size: 18,
-                    color: AppStyles.textSecondary,
+                    color: AppStyles.adaptiveTextSecondary(context),
                   ),
                   onPressed: onDelete,
                   padding: EdgeInsets.zero,

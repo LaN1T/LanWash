@@ -30,20 +30,21 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final theme = Theme.of(context);
     if (provider.loading) {
-      return const Scaffold(
-        backgroundColor: AppStyles.bgPage,
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.local_car_wash, color: AppStyles.primary, size: 72),
-          SizedBox(height: 20),
+          const Icon(Icons.local_car_wash, color: AppStyles.primary, size: 72),
+          const SizedBox(height: 20),
           Text('LanWash',
               style: TextStyle(
-                  color: AppStyles.textPrimary,
+                  color: AppStyles.adaptiveTextPrimary(context),
                   fontSize: 28,
                   fontWeight: FontWeight.bold)),
-          SizedBox(height: 24),
-          CircularProgressIndicator(color: AppStyles.primary),
+          const SizedBox(height: 24),
+          const CircularProgressIndicator(color: AppStyles.primary),
         ])),
       );
     }
@@ -52,10 +53,8 @@ class _HomeShellState extends State<HomeShell> {
     final favCount = provider.favoriteAppointments.length;
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         title: Row(children: [
           Container(
@@ -72,10 +71,8 @@ class _HomeShellState extends State<HomeShell> {
           Expanded(
             child: Text(_titles[_index],
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: AppStyles.textPrimary)),
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           ),
         ]),
         // Кнопка выхода убрана из appBar — только в drawer
@@ -106,16 +103,17 @@ class _HomeShellState extends State<HomeShell> {
       ),
       floatingActionButton: null,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppStyles.border)),
+        decoration: BoxDecoration(
+          color: AppStyles.adaptiveCard(context),
+          border:
+              Border(top: BorderSide(color: AppStyles.adaptiveBorder(context))),
         ),
         child: NavigationBar(
           selectedIndex: _index,
           onDestinationSelected: (i) => setState(() => _index = i),
           backgroundColor: Colors.transparent,
           elevation: 0,
-          indicatorColor: AppStyles.primaryBg,
+          indicatorColor: AppStyles.adaptivePrimaryBg(context),
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.calendar_today_outlined,
@@ -150,14 +148,14 @@ class _HomeShellState extends State<HomeShell> {
   Widget _buildDrawer(BuildContext ctx, int favCount) {
     final auth = ctx.watch<AuthProvider>();
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
         bottom: false,
         child: ListView(children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            color: Colors.white,
+            color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
@@ -176,9 +174,9 @@ class _HomeShellState extends State<HomeShell> {
                     color: Colors.white, size: 32),
               ),
               const SizedBox(height: 14),
-              const Text('LanWash',
+              Text('LanWash',
                   style: TextStyle(
-                      color: AppStyles.textPrimary,
+                      color: AppStyles.adaptiveTextPrimary(ctx),
                       fontSize: 20,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
@@ -197,7 +195,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ]),
           ),
-          const Divider(color: AppStyles.border, height: 1),
+          Divider(color: AppStyles.adaptiveBorder(ctx), height: 1),
           const SizedBox(height: 8),
           _drawerItem(ctx, 0, Icons.calendar_today_outlined,
               Icons.calendar_today, 'Записи на мойку', null),
@@ -205,16 +203,17 @@ class _HomeShellState extends State<HomeShell> {
               'Каталог услуг', null),
           _drawerItem(ctx, 2, Icons.star_outline, Icons.star, 'Избранное',
               favCount > 0 ? '$favCount' : null),
-          const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+          Divider(
+              color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
           // Сменное расписание
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.schedule_outlined,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Сменное расписание',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              leading: Icon(Icons.schedule_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Расписание',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(
@@ -235,11 +234,11 @@ class _HomeShellState extends State<HomeShell> {
                 isLabelVisible: context.watch<AppProvider>().unreadNotes > 0,
                 label: Text('${context.watch<AppProvider>().unreadNotes}'),
                 backgroundColor: AppStyles.danger,
-                child: const Icon(Icons.note_alt_outlined,
-                    color: AppStyles.textSecondary, size: 22),
+                child: Icon(Icons.note_alt_outlined,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
               ),
-              title: const Text('Заметки мойщиков',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              title: Text('Заметки мойщиков',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(ctx,
@@ -254,10 +253,10 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.history_rounded,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Журнал действий',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              leading: Icon(Icons.history_rounded,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Журнал действий',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(
@@ -273,10 +272,11 @@ class _HomeShellState extends State<HomeShell> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
                 minLeadingWidth: 24,
-                leading: const Icon(Icons.show_chart_rounded,
-                    color: AppStyles.textSecondary, size: 22),
-                title: const Text('Отчёты',
-                    style: TextStyle(color: AppStyles.textPrimary)),
+                leading: Icon(Icons.show_chart_rounded,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Отчёты',
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -294,10 +294,11 @@ class _HomeShellState extends State<HomeShell> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
                 minLeadingWidth: 24,
-                leading: const Icon(Icons.inventory_2_outlined,
-                    color: AppStyles.textSecondary, size: 22),
-                title: const Text('Управление запасами',
-                    style: TextStyle(color: AppStyles.textPrimary)),
+                leading: Icon(Icons.inventory_2_outlined,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Управление запасами',
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -315,10 +316,11 @@ class _HomeShellState extends State<HomeShell> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
                 minLeadingWidth: 24,
-                leading: const Icon(Icons.settings_rounded,
-                    color: AppStyles.textSecondary, size: 22),
-                title: const Text('Настройки',
-                    style: TextStyle(color: AppStyles.textPrimary)),
+                leading: Icon(Icons.settings_rounded,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Настройки',
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -335,10 +337,10 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.person_outline_rounded,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Профиль',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              leading: Icon(Icons.person_outline_rounded,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Профиль',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(ctx,
@@ -352,10 +354,11 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.logout_outlined,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Сменить профиль',
-                  style: TextStyle(color: AppStyles.textSecondary)),
+              leading: Icon(Icons.logout_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Сменить профиль',
+                  style:
+                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 ctx.read<AuthProvider>().logout();
@@ -378,10 +381,13 @@ class _HomeShellState extends State<HomeShell> {
       child: ListTile(
         minLeadingWidth: 24,
         leading: Icon(sel ? selIcon : icon,
-            size: 22, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+            size: 22,
+            color:
+                sel ? AppStyles.primary : AppStyles.adaptiveTextSecondary(ctx)),
         title: Text(label,
             style: TextStyle(
-              color: sel ? AppStyles.primary : AppStyles.textPrimary,
+              color:
+                  sel ? AppStyles.primary : AppStyles.adaptiveTextPrimary(ctx),
               fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
             )),
         trailing: badge != null

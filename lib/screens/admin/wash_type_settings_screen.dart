@@ -14,15 +14,13 @@ class WashTypeSettingsScreen extends StatelessWidget {
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppStyles.border),
+          child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
         title: Row(children: [
           Container(
@@ -66,14 +64,14 @@ class _WashTypeCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: AppStyles.cardDecoration,
+      decoration: AppStyles.cardDecorationFor(context),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppStyles.primaryBg,
+              color: AppStyles.adaptivePrimaryBg(context),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.local_car_wash,
@@ -85,8 +83,8 @@ class _WashTypeCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(washType.name,
-                  style: const TextStyle(
-                      color: AppStyles.textPrimary,
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextPrimary(context),
                       fontSize: 16,
                       fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
@@ -115,19 +113,21 @@ class _WashTypeCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
+            color: AppStyles.adaptiveInnerCard(context),
             borderRadius: BorderRadius.circular(8),
           ),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Включённые доп. услуги',
+            Text('Включённые доп. услуги',
                 style: TextStyle(
-                    color: AppStyles.textSecondary,
+                    color: AppStyles.adaptiveTextSecondary(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             if (includedNames.isEmpty)
-              const Text('—', style: AppStyles.bodyMedium)
+              Text('—',
+                  style: AppStyles.bodyMedium.copyWith(
+                      color: AppStyles.adaptiveTextSecondary(context)))
             else
               Wrap(
                   spacing: 6,
@@ -137,12 +137,13 @@ class _WashTypeCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppStyles.primaryBg,
+                              color: AppStyles.adaptiveCard(context),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(n,
-                                style: const TextStyle(
-                                    color: AppStyles.primary,
+                                style: TextStyle(
+                                    color:
+                                        AppStyles.adaptiveTextPrimary(context),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500)),
                           ))
@@ -176,14 +177,15 @@ class _NameHolder {
 class _Stat extends StatelessWidget {
   final IconData icon;
   final String label, value;
-  const _Stat(this.icon, this.label, this.value);
+  // ignore: prefer_const_constructors_in_immutables
+  _Stat(this.icon, this.label, this.value);
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  color: AppStyles.textSecondary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextSecondary(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
@@ -251,9 +253,9 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
       maxChildSize: 0.95,
       expand: false,
       builder: (_, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: AppStyles.adaptiveCard(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(children: [
           const SizedBox(height: 8),
@@ -261,7 +263,7 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppStyles.border,
+              color: AppStyles.adaptiveBorder(context),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -316,14 +318,14 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                   )),
                 ]),
                 const SizedBox(height: 20),
-                const Text('Включённые доп. услуги',
+                Text('Включённые доп. услуги',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppStyles.textPrimary)),
+                        color: AppStyles.adaptiveTextPrimary(context))),
                 const SizedBox(height: 8),
                 Container(
-                  decoration: AppStyles.cardDecoration,
+                  decoration: AppStyles.cardDecorationFor(context),
                   child: Column(
                     children: extras
                         .map((s) => CheckboxListTile(
@@ -333,10 +335,15 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                                     ? _includedIds.add(s.id)
                                     : _includedIds.remove(s.id);
                               }),
-                              title: Text(s.name, style: AppStyles.bodyLarge),
+                              title: Text(s.name,
+                                  style: AppStyles.bodyLarge.copyWith(
+                                      color: AppStyles.adaptiveTextPrimary(
+                                          context))),
                               subtitle: Text(
                                   '+${s.price} ₽ · ${s.durationLabel}',
-                                  style: AppStyles.bodySmall),
+                                  style: AppStyles.bodySmall.copyWith(
+                                      color: AppStyles.adaptiveTextSecondary(
+                                          context))),
                               activeColor: AppStyles.primary,
                               controlAffinity: ListTileControlAffinity.leading,
                               contentPadding:

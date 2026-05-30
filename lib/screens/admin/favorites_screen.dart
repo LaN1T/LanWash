@@ -16,17 +16,14 @@ class FavoritesScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Column(children: [
-        Container(
-          color: Colors.white,
-          child: const TabBar(
-            labelColor: AppStyles.primary,
-            unselectedLabelColor: AppStyles.textSecondary,
-            indicatorColor: AppStyles.primary,
-            tabs: [
-              Tab(icon: Icon(Icons.calendar_today, size: 18), text: 'Записи'),
-              Tab(icon: Icon(Icons.local_car_wash, size: 18), text: 'Услуги'),
-            ],
-          ),
+        TabBar(
+          labelColor: AppStyles.primary,
+          unselectedLabelColor: AppStyles.adaptiveTextSecondary(context),
+          indicatorColor: AppStyles.primary,
+          tabs: const [
+            Tab(icon: Icon(Icons.calendar_today, size: 18), text: 'Записи'),
+            Tab(icon: Icon(Icons.local_car_wash, size: 18), text: 'Услуги'),
+          ],
         ),
         const Expanded(
           child: TabBarView(children: [
@@ -49,7 +46,8 @@ class _FavAppointmentsTab extends StatelessWidget {
     final favs = provider.favoriteAppointments;
 
     if (favs.isEmpty)
-      return _empty('Нет избранных записей', Icons.calendar_today_outlined);
+      return _empty(
+          context, 'Нет избранных записей', Icons.calendar_today_outlined);
 
     return ListView.builder(
       padding: AppStyles.pagePadding,
@@ -81,30 +79,33 @@ class _FavAppointmentTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        decoration: AppStyles.cardDecoration,
+        decoration: AppStyles.cardDecorationFor(context),
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppStyles.favorite.withOpacity(0.15),
+              color: AppStyles.favorite.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.star, color: AppStyles.favorite, size: 22),
           ),
           title: Text(a.clientName,
-              style: AppStyles.headingMedium.copyWith(fontSize: 15)),
+              style: AppStyles.headingMedium.copyWith(
+                  fontSize: 15, color: AppStyles.adaptiveTextPrimary(context))),
           subtitle:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const SizedBox(height: 2),
-            Text('${a.carModel} · ${a.carNumber}', style: AppStyles.bodySmall),
+            Text('${a.carModel} · ${a.carNumber}',
+                style: AppStyles.bodySmall
+                    .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 4),
             Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(AppStyles.statusLabel(a.status),
@@ -115,7 +116,8 @@ class _FavAppointmentTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(DateFormat('d MMM, HH:mm', 'ru').format(a.dateTime),
-                  style: AppStyles.bodySmall),
+                  style: AppStyles.bodySmall.copyWith(
+                      color: AppStyles.adaptiveTextSecondary(context))),
             ]),
           ]),
           trailing: IconButton(
@@ -139,7 +141,7 @@ class _FavServicesTab extends StatelessWidget {
     final favs = provider.favoriteServices;
 
     if (favs.isEmpty)
-      return _empty('Нет избранных услуг', Icons.local_car_wash);
+      return _empty(context, 'Нет избранных услуг', Icons.local_car_wash);
 
     return ListView.builder(
       padding: AppStyles.pagePadding,
@@ -170,27 +172,32 @@ class _FavServiceTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        decoration: AppStyles.cardDecoration,
+        decoration: AppStyles.cardDecorationFor(context),
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppStyles.favorite.withOpacity(0.15),
+              color: AppStyles.favorite.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.star, color: AppStyles.favorite, size: 22),
           ),
           title: Text(s.name,
-              style: AppStyles.headingMedium.copyWith(fontSize: 15)),
+              style: AppStyles.headingMedium.copyWith(
+                  fontSize: 15, color: AppStyles.adaptiveTextPrimary(context))),
           subtitle:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const SizedBox(height: 2),
-            Text(s.category, style: AppStyles.bodySmall),
+            Text(s.category,
+                style: AppStyles.bodySmall
+                    .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 4),
             Row(children: [
-              Text(s.durationLabel, style: AppStyles.bodySmall),
+              Text(s.durationLabel,
+                  style: AppStyles.bodySmall.copyWith(
+                      color: AppStyles.adaptiveTextSecondary(context))),
               const SizedBox(width: 12),
               Text('${s.price} ₽',
                   style: AppStyles.price.copyWith(fontSize: 14)),
@@ -208,16 +215,20 @@ class _FavServiceTile extends StatelessWidget {
 }
 
 // ─── Утилиты ─────────────────────────────────────────────────────────────────
-Widget _empty(String text, IconData icon) => Center(
+Widget _empty(BuildContext context, String text, IconData icon) => Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 64, color: AppStyles.textSecondary.withOpacity(0.3)),
+        Icon(icon,
+            size: 64,
+            color: AppStyles.adaptiveTextSecondary(context)
+                .withValues(alpha: 0.3)),
         const SizedBox(height: 12),
         Text(text,
-            style:
-                AppStyles.bodyLarge.copyWith(color: AppStyles.textSecondary)),
+            style: AppStyles.bodyLarge
+                .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
         const SizedBox(height: 6),
-        const Text('Нажмите ★ на любой записи или услуге',
-            style: AppStyles.bodyMedium),
+        Text('Нажмите ★ на любой записи или услуге',
+            style: AppStyles.bodyMedium
+                .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
       ]),
     );
 
@@ -225,8 +236,10 @@ void _confirmRemove(BuildContext ctx, VoidCallback onConfirm, String name) {
   showDialog(
     context: ctx,
     builder: (_) => AlertDialog(
-      title: const Text('Убрать из избранного?'),
-      content: Text('«$name» будет удалён из избранного.'),
+      title: Text('Убрать из избранного?',
+          style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+      content: Text('«$name» будет удалён из избранного.',
+          style: TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
       actions: [
         TextButton(
             onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
