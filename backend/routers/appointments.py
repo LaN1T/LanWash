@@ -385,11 +385,27 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     is_owner = current_user.username == appt.ownerUsername
     is_admin = current_user.role == 'admin'
     is_washer = current_user.role == 'washer'
-    
+
     assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
     is_assigned_washer = is_washer and current_user.username in assigned_washers
 
-    if not (is_owner or is_admin or is_assigned_washer):
+    # Мойщик может редактировать записи, которые попадают в его смену
+    is_shift_washer = False
+    if is_washer and not is_assigned_washer:
+        appt_date = appt.dateTime[:10] if appt.dateTime else None
+        appt_time = appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        if appt_date and appt_time:
+            shift_res = await db.execute(
+                select(Shift).where(
+                    Shift.userId == current_user.id,
+                    Shift.date == appt_date,
+                    Shift.startTime <= appt_time,
+                    Shift.endTime >= appt_time,
+                )
+            )
+            is_shift_washer = shift_res.scalar_one_or_none() is not None
+
+    if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
 
     old_status = appt.status

@@ -49,12 +49,11 @@ class _WasherShellState extends State<WasherShell> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         title: Row(children: [
           Container(
@@ -66,10 +65,8 @@ class _WasherShellState extends State<WasherShell> {
                   color: Colors.white, size: 18)),
           const SizedBox(width: 10),
           Text(_tabIndex == 0 ? 'Мои записи' : 'Мои заметки',
-              style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppStyles.textPrimary)),
+              style:
+                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
         ]),
       ),
       drawer: _buildDrawer(context, auth),
@@ -122,15 +119,7 @@ class _WasherShellState extends State<WasherShell> {
               controller: PageController(initialPage: 500000),
               itemCount: 1000000,
               onPageChanged: (pageIndex) {
-                final today = DateTime.now();
-                final currentWeekStart =
-                    today.subtract(Duration(days: today.weekday - 1));
-                final newWeekStart = currentWeekStart
-                    .add(Duration(days: (pageIndex - 500000) * 7));
-                setState(() {
-                  _selectedDay = newWeekStart
-                      .add(Duration(days: _selectedDay.weekday - 1));
-                });
+                // Неделя перелистнута, но выбранный день НЕ меняется автоматически
               },
               itemBuilder: (ctx, pageIndex) {
                 final today = DateTime.now();
@@ -161,15 +150,16 @@ class _WasherShellState extends State<WasherShell> {
                               horizontal: 2, vertical: 8),
                           child: Container(
                             decoration: BoxDecoration(
-                              color:
-                                  isSelected ? AppStyles.primary : Colors.white,
+                              color: isSelected
+                                  ? AppStyles.primary
+                                  : AppStyles.adaptiveCard(context),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                   color: isSelected
                                       ? AppStyles.primary
                                       : (isToday
                                           ? AppStyles.primary
-                                          : Colors.grey.shade200),
+                                          : AppStyles.adaptiveBorder(context)),
                                   width: isToday ? 2 : 1),
                             ),
                             child: Column(
@@ -182,13 +172,15 @@ class _WasherShellState extends State<WasherShell> {
                                     style: TextStyle(
                                         color: isSelected
                                             ? Colors.white
-                                            : AppStyles.textSecondary,
+                                            : AppStyles.adaptiveTextSecondary(
+                                                context),
                                         fontSize: 9)),
                                 Text('${d.day}',
                                     style: TextStyle(
                                         color: isSelected
                                             ? Colors.white
-                                            : AppStyles.textPrimary,
+                                            : AppStyles.adaptiveTextPrimary(
+                                                context),
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold)),
                                 if (count > 0)
@@ -229,15 +221,18 @@ class _WasherShellState extends State<WasherShell> {
                       children: [
                         Icon(Icons.event_note_outlined,
                             size: 64,
-                            color:
-                                AppStyles.textSecondary.withValues(alpha: 0.4)),
+                            color: AppStyles.adaptiveTextSecondary(context)
+                                .withValues(alpha: 0.4)),
                         const SizedBox(height: 12),
                         Text('На выбранный день записей нет',
-                            style: AppStyles.headingMedium
-                                .copyWith(color: AppStyles.textSecondary)),
+                            style: AppStyles.headingMedium.copyWith(
+                                color:
+                                    AppStyles.adaptiveTextSecondary(context))),
                         const SizedBox(height: 6),
-                        const Text('Выберите другой день или проверьте фильтры',
-                            style: AppStyles.bodyMedium),
+                        Text('Выберите другой день или проверьте фильтры',
+                            style: AppStyles.bodyMedium.copyWith(
+                                color:
+                                    AppStyles.adaptiveTextSecondary(context))),
                       ],
                     ),
                   )
@@ -258,15 +253,16 @@ class _WasherShellState extends State<WasherShell> {
   }
 
   Widget _buildDrawer(BuildContext ctx, AuthProvider auth) {
+    final dark = AppStyles.isDark(ctx);
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
         bottom: false,
         child: Column(children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            color: Colors.white,
+            color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
@@ -286,9 +282,9 @@ class _WasherShellState extends State<WasherShell> {
                     color: Colors.white, size: 28),
               ),
               const SizedBox(height: 14),
-              const Text('LanWash',
+              Text('LanWash',
                   style: TextStyle(
-                      color: AppStyles.textPrimary,
+                      color: AppStyles.adaptiveTextPrimary(ctx),
                       fontSize: 20,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
@@ -296,10 +292,11 @@ class _WasherShellState extends State<WasherShell> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppStyles.warning.withValues(alpha: 0.1),
+                  color: AppStyles.warning.withValues(alpha: dark ? 0.2 : 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: AppStyles.warning.withValues(alpha: 0.2)),
+                      color: AppStyles.warning
+                          .withValues(alpha: dark ? 0.3 : 0.2)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.person_rounded,
@@ -314,7 +311,7 @@ class _WasherShellState extends State<WasherShell> {
               ),
             ]),
           ),
-          const Divider(color: AppStyles.border, height: 1),
+          Divider(color: AppStyles.adaptiveBorder(ctx), height: 1),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -326,13 +323,13 @@ class _WasherShellState extends State<WasherShell> {
                       : Icons.calendar_today_outlined,
                   color: _tabIndex == 0
                       ? AppStyles.primary
-                      : AppStyles.textSecondary,
+                      : AppStyles.adaptiveTextSecondary(ctx),
                   size: 22),
               title: Text('Мои записи',
                   style: TextStyle(
                       color: _tabIndex == 0
                           ? AppStyles.primary
-                          : AppStyles.textPrimary,
+                          : AppStyles.adaptiveTextPrimary(ctx),
                       fontWeight: _tabIndex == 0
                           ? FontWeight.w600
                           : FontWeight.normal)),
@@ -356,13 +353,13 @@ class _WasherShellState extends State<WasherShell> {
                       : Icons.note_alt_outlined,
                   color: _tabIndex == 1
                       ? AppStyles.primary
-                      : AppStyles.textSecondary,
+                      : AppStyles.adaptiveTextSecondary(ctx),
                   size: 22),
               title: Text('Мои заметки',
                   style: TextStyle(
                       color: _tabIndex == 1
                           ? AppStyles.primary
-                          : AppStyles.textPrimary,
+                          : AppStyles.adaptiveTextPrimary(ctx),
                       fontWeight: _tabIndex == 1
                           ? FontWeight.w600
                           : FontWeight.normal)),
@@ -376,15 +373,16 @@ class _WasherShellState extends State<WasherShell> {
               },
             ),
           ),
-          const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+          Divider(
+              color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.schedule_outlined,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Сменное расписание',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              leading: Icon(Icons.schedule_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Расписание',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(
@@ -400,10 +398,10 @@ class _WasherShellState extends State<WasherShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.person_outline_rounded,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Профиль',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              leading: Icon(Icons.person_outline_rounded,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Профиль',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(ctx,
@@ -417,10 +415,11 @@ class _WasherShellState extends State<WasherShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.logout_outlined,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Выйти',
-                  style: TextStyle(color: AppStyles.textSecondary)),
+              leading: Icon(Icons.logout_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Выйти',
+                  style:
+                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmLogout(ctx);
@@ -438,13 +437,17 @@ class _WasherShellState extends State<WasherShell> {
     showDialog(
       context: ctx,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Выйти из аккаунта?'),
-        content: const Text('Вы вернётесь на экран входа.'),
+        title: Text('Выйти из аккаунта?',
+            style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+        content: Text('Вы вернётесь на экран входа.',
+            style: TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Отмена',
+                  style:
+                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx)))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppStyles.primary,
@@ -505,10 +508,10 @@ class _WasherAppointmentCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: Colors.white,
+      color: AppStyles.adaptiveCard(context),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: AppStyles.border)),
+          side: BorderSide(color: AppStyles.adaptiveBorder(context))),
       elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -546,7 +549,7 @@ class _WasherAppointmentCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                      color: AppStyles.primaryBg,
+                      color: AppStyles.adaptivePrimaryBg(context),
                       borderRadius: BorderRadius.circular(6)),
                   child: Text(timeStr,
                       style: const TextStyle(
@@ -557,28 +560,31 @@ class _WasherAppointmentCard extends StatelessWidget {
               ]),
               const SizedBox(height: 10),
               Row(children: [
-                const Icon(Icons.person,
-                    size: 16, color: AppStyles.textSecondary),
+                Icon(Icons.person,
+                    size: 16, color: AppStyles.adaptiveTextSecondary(context)),
                 const SizedBox(width: 6),
                 Expanded(
                     child: Text(a.clientName,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500))),
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppStyles.adaptiveTextPrimary(context)))),
               ]),
               const SizedBox(height: 6),
               Row(children: [
-                const Icon(Icons.directions_car,
-                    size: 16, color: AppStyles.textSecondary),
+                Icon(Icons.directions_car,
+                    size: 16, color: AppStyles.adaptiveTextSecondary(context)),
                 const SizedBox(width: 6),
                 Text(a.carModel,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppStyles.textSecondary)),
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppStyles.adaptiveTextSecondary(context))),
                 const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                      color: AppStyles.primaryBg,
+                      color: AppStyles.adaptivePrimaryBg(context),
                       borderRadius: BorderRadius.circular(4)),
                   child: Text('Бокс №${a.box_index + 1}',
                       style: const TextStyle(

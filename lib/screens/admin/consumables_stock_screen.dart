@@ -208,17 +208,15 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
     final alerts = _consumables.where((c) => c.isLowStock).toList();
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Управление запасами'),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           PopupMenuButton<String>(
@@ -314,14 +312,14 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: Colors.white,
+      color: AppStyles.adaptiveCard(context),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: isLow
               ? AppStyles.danger.withValues(alpha: 0.3)
-              : Colors.grey.shade200,
+              : AppStyles.adaptiveBorder(context),
         ),
       ),
       child: InkWell(
@@ -365,7 +363,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
               const SizedBox(height: 8),
               LinearProgressIndicator(
                 value: progress,
-                backgroundColor: Colors.grey.shade200,
+                backgroundColor: AppStyles.adaptiveBorder(context),
                 valueColor: AlwaysStoppedAnimation(
                   isLow ? AppStyles.danger : AppStyles.primary,
                 ),
@@ -379,16 +377,18 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                     '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
                     style: TextStyle(
                       fontSize: 13,
-                      color: isLow ? AppStyles.danger : AppStyles.textPrimary,
+                      color: isLow
+                          ? AppStyles.danger
+                          : AppStyles.adaptiveTextPrimary(context),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Spacer(),
                   Text(
                     'мин. ${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppStyles.textSecondary,
+                      color: AppStyles.adaptiveTextSecondary(context),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -473,9 +473,10 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppStyles.adaptiveCard(context),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
               children: [
@@ -484,7 +485,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppStyles.adaptiveBorder(context),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -501,7 +502,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
                 TabBar(
                   controller: _tabController,
                   labelColor: AppStyles.primary,
-                  unselectedLabelColor: AppStyles.textSecondary,
+                  unselectedLabelColor:
+                      AppStyles.adaptiveTextSecondary(context),
                   indicatorColor: AppStyles.primary,
                   tabs: const [
                     Tab(text: 'Обзор'),
@@ -546,11 +548,11 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
           _kpiCard(
               'Минимальный запас',
               '${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
-              AppStyles.textSecondary),
+              AppStyles.adaptiveTextSecondary(context)),
           const SizedBox(height: 16),
           LinearProgressIndicator(
             value: progress,
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: AppStyles.adaptiveBorder(context),
             valueColor: AlwaysStoppedAnimation(
               isLow ? AppStyles.danger : AppStyles.primary,
             ),
@@ -618,8 +620,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
               '${log.refilledBy}  •  ${fmt.format(DateTime.parse(log.timestamp))}'),
           trailing: Text(
             '${log.oldStock.toStringAsFixed(1)} → ${log.newStock.toStringAsFixed(1)}',
-            style:
-                const TextStyle(fontSize: 12, color: AppStyles.textSecondary),
+            style: TextStyle(
+                fontSize: 12, color: AppStyles.adaptiveTextSecondary(context)),
           ),
         );
       },
@@ -651,8 +653,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
                 '${f.daysLeft!.toStringAsFixed(f.daysLeft! % 1 == 0 ? 0 : 1)} дн.',
                 f.daysLeft! < 7 ? AppStyles.danger : AppStyles.success)
           else
-            _kpiCard(
-                'Хватит на', 'Недостаточно данных', AppStyles.textSecondary),
+            _kpiCard('Хватит на', 'Недостаточно данных',
+                AppStyles.adaptiveTextSecondary(context)),
           const SizedBox(height: 10),
           _kpiCard(
               'Рекомендуемая закупка',
@@ -661,8 +663,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
           const SizedBox(height: 10),
           Text(
             'Целевой запас: ${f.targetStock.toStringAsFixed(f.targetStock % 1 == 0 ? 0 : 1)} ${f.unit}',
-            style:
-                const TextStyle(color: AppStyles.textSecondary, fontSize: 13),
+            style: TextStyle(
+                color: AppStyles.adaptiveTextSecondary(context), fontSize: 13),
           ),
         ],
       ),

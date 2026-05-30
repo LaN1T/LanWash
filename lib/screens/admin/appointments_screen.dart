@@ -89,7 +89,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           onRefresh: () =>
               provider.reloadAppointments(context.read<AuthProvider>()),
           child: list.isEmpty
-              ? _emptyState()
+              ? _emptyState(context)
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
                   itemCount: list.length,
@@ -152,8 +152,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
       decoration: BoxDecoration(
-        color: AppStyles.bgCard,
-        border: const Border(top: BorderSide(color: AppStyles.border)),
+        color: AppStyles.adaptiveCard(context),
+        border:
+            Border(top: BorderSide(color: AppStyles.adaptiveBorder(context))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -220,7 +221,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     _formatDate(provider.currentDate),
                     style: AppStyles.bodyMedium.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppStyles.textPrimary,
+                      color: AppStyles.adaptiveTextPrimary(context),
                     ),
                   ),
                 ],
@@ -245,8 +246,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         child: TextField(
           controller: _search,
           onChanged: (v) => setState(() => _searchText = v),
-          decoration: AppStyles.inputDecoration(
-              'Поиск по клиенту, авто, номеру',
+          decoration: AppStyles.inputDecorationFor(
+              context, 'Поиск по клиенту, авто, номеру',
               icon: Icons.search),
           style: AppStyles.bodyLarge,
         ),
@@ -267,7 +268,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 onSelected: (_) => _onFilterSelected(f.$1),
                 selectedColor: AppStyles.primary,
                 labelStyle: TextStyle(
-                  color: selected ? Colors.white : AppStyles.textSecondary,
+                  color: selected
+                      ? Colors.white
+                      : AppStyles.adaptiveTextSecondary(context),
                   fontSize: 13,
                 ),
               ),
@@ -276,16 +279,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ),
       );
 
-  Widget _emptyState() => Center(
+  Widget _emptyState(BuildContext context) => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.calendar_today_outlined,
-              size: 64, color: AppStyles.textSecondary.withOpacity(0.4)),
+              size: 64,
+              color: AppStyles.adaptiveTextSecondary(context)
+                  .withValues(alpha: 0.4)),
           const SizedBox(height: 12),
           Text('Нет записей',
               style: AppStyles.headingMedium
-                  .copyWith(color: AppStyles.textSecondary)),
+                  .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
           const SizedBox(height: 6),
-          Text('Нажмите + чтобы добавить запись', style: AppStyles.bodyMedium),
+          Text('Нажмите + чтобы добавить запись',
+              style: AppStyles.bodyMedium
+                  .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
         ]),
       );
 }
@@ -313,7 +320,7 @@ class _AppointmentCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        decoration: AppStyles.cardDecoration,
+        decoration: AppStyles.cardDecorationFor(context),
         child: Padding(
           padding: AppStyles.cardPadding,
           child:
@@ -323,7 +330,7 @@ class _AppointmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(AppStyles.statusIcon(a.status),
@@ -335,33 +342,36 @@ class _AppointmentCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text(a.clientName,
-                        style: AppStyles.headingMedium,
+                        style: AppStyles.headingMedium.copyWith(
+                            color: AppStyles.adaptiveTextPrimary(context)),
                         overflow: TextOverflow.ellipsis),
-                    Text(a.carModel, style: AppStyles.bodyMedium),
+                    Text(a.carModel,
+                        style: AppStyles.bodyMedium.copyWith(
+                            color: AppStyles.adaptiveTextSecondary(context))),
                   ])),
               IconButton(
                 icon: Icon(a.isFavorite ? Icons.star : Icons.star_border,
                     color: a.isFavorite
                         ? AppStyles.favorite
-                        : AppStyles.textSecondary),
+                        : AppStyles.adaptiveTextSecondary(context)),
                 onPressed: onFavorite,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ]),
             const SizedBox(height: 10),
-            const Divider(height: 1, color: AppStyles.divider),
+            Divider(height: 1, color: AppStyles.adaptiveBorder(context)),
             const SizedBox(height: 10),
             Row(children: [
-              _info(Icons.calendar_today, dateStr),
+              _info(context, Icons.calendar_today, dateStr),
               const SizedBox(width: 16),
-              _info(Icons.pin, a.carNumber),
+              _info(context, Icons.pin, a.carNumber),
               const Spacer(),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(AppStyles.statusLabel(a.status),
@@ -373,7 +383,7 @@ class _AppointmentCard extends StatelessWidget {
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              _info(Icons.local_car_wash,
+              _info(context, Icons.local_car_wash,
                   context.watch<AppProvider>().washTypeName(a.washTypeId)),
               const Spacer(),
               if (a.priceChanged)
@@ -381,11 +391,12 @@ class _AppointmentCard extends StatelessWidget {
                   Text('${a.paidPrice} ₽',
                       style: AppStyles.price.copyWith(fontSize: 15)),
                   Text('${a.originalPrice} ₽',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppStyles.textSecondary,
+                        color: AppStyles.adaptiveTextSecondary(context),
                         decoration: TextDecoration.lineThrough,
-                        decorationColor: AppStyles.textSecondary,
+                        decorationColor:
+                            AppStyles.adaptiveTextSecondary(context),
                       )),
                 ])
               else
@@ -412,7 +423,7 @@ class _AppointmentCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppStyles.primaryLight.withOpacity(0.15),
+                        color: AppStyles.primaryLight.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(name,
@@ -427,10 +438,12 @@ class _AppointmentCard extends StatelessWidget {
     );
   }
 
-  Widget _info(IconData icon, String text) =>
+  Widget _info(BuildContext context, IconData icon, String text) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: AppStyles.textSecondary),
+        Icon(icon, size: 14, color: AppStyles.adaptiveTextSecondary(context)),
         const SizedBox(width: 4),
-        Text(text, style: AppStyles.bodySmall),
+        Text(text,
+            style: AppStyles.bodySmall
+                .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
       ]);
 }

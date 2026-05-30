@@ -30,27 +30,30 @@ class _ReportsShellScreenState extends State<ReportsShellScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Отчёты', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(
-                child:
-                    Text('Средний чек', style: TextStyle(color: Colors.white))),
-            Tab(
-                child: Text('Популярные услуги',
-                    style: TextStyle(color: Colors.white))),
-            Tab(
-                child:
-                    Text('Расходники', style: TextStyle(color: Colors.white))),
-          ],
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Отчёты',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight + 1),
+          child: Column(
+            children: [
+              Container(height: 1, color: AppStyles.adaptiveBorder(context)),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: AppStyles.primary,
+                labelColor: AppStyles.primary,
+                unselectedLabelColor: AppStyles.adaptiveTextSecondary(context),
+                tabs: const [
+                  Tab(child: Text('Средний чек')),
+                  Tab(child: Text('Популярные услуги')),
+                  Tab(child: Text('Расходники')),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       body: TabBarView(

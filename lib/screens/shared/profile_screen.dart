@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/appointment.dart';
 import '../../models/user_stats.dart';
@@ -146,24 +147,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isAdmin = auth.isAdmin;
+    final isWasher = auth.isWasher;
     final user = auth.user;
 
+    String roleLabel;
+    if (isAdmin) {
+      roleLabel = 'Администратор';
+    } else if (isWasher) {
+      roleLabel = 'Мойщик';
+    } else {
+      roleLabel = 'Клиент';
+    }
+
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppStyles.border),
+          child: Container(height: 1, color: theme.dividerColor),
         ),
         title: const Text('Профиль',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: AppStyles.textPrimary)),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
       ),
       body: Form(
         key: _formKey,
@@ -225,8 +232,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(auth.username,
-                    style: const TextStyle(
-                        color: AppStyles.textPrimary,
+                    style: TextStyle(
+                        color: AppStyles.adaptiveTextPrimary(context),
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
@@ -234,10 +241,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppStyles.primaryBg,
+                    color: AppStyles.adaptivePrimaryBg(context),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(isAdmin ? 'Администратор' : 'Клиент',
+                  child: Text(roleLabel,
                       style: const TextStyle(
                           color: AppStyles.primary,
                           fontSize: 12,
@@ -261,8 +268,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             TextFormField(
               controller: _nameCtrl,
-              style: const TextStyle(color: AppStyles.textPrimary),
-              decoration: AppStyles.inputDecoration('Имя',
+              style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+              decoration: AppStyles.inputDecorationFor(context, 'Имя',
                   icon: Icons.person_outline_rounded),
               textCapitalization: TextCapitalization.words,
               validator: (v) =>
@@ -273,22 +280,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextFormField(
               controller: _usernameCtrl,
               enabled: false,
-              style: const TextStyle(color: AppStyles.textSecondary),
-              decoration: AppStyles.inputDecoration('Логин',
+              style: TextStyle(color: AppStyles.adaptiveTextSecondary(context)),
+              decoration: AppStyles.inputDecorationFor(context, 'Логин',
                   icon: Icons.alternate_email_rounded),
             ),
             const SizedBox(height: 4),
-            const Padding(
-              padding: EdgeInsets.only(left: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
               child: Text('Логин нельзя изменить',
-                  style: TextStyle(color: AppStyles.textMuted, fontSize: 11)),
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextMuted(context),
+                      fontSize: 11)),
             ),
             const SizedBox(height: 12),
 
             TextFormField(
               controller: _phoneCtrl,
-              style: const TextStyle(color: AppStyles.textPrimary),
-              decoration: AppStyles.inputDecoration('Номер телефона',
+              style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+              decoration: AppStyles.inputDecorationFor(
+                  context, 'Номер телефона',
                   hint: '+7 999 000-00-00', icon: Icons.phone_outlined),
               keyboardType: TextInputType.phone,
             ),
@@ -297,23 +307,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (!isAdmin) ...[
               _sectionLabel('Данные автомобиля'),
               const SizedBox(height: 4),
-              const Padding(
-                padding: EdgeInsets.only(left: 2, bottom: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 2, bottom: 10),
                 child: Text('Будут автоматически заполняться при записи',
                     style: TextStyle(
-                        color: AppStyles.textSecondary, fontSize: 12)),
+                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 12)),
               ),
               TextFormField(
                 controller: _carModelCtrl,
-                style: const TextStyle(color: AppStyles.textPrimary),
-                decoration: AppStyles.inputDecoration('Марка и модель авто',
+                style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                decoration: AppStyles.inputDecorationFor(
+                    context, 'Марка и модель авто',
                     hint: 'Toyota Camry', icon: Icons.directions_car_outlined),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _carNumberCtrl,
-                style: const TextStyle(
-                    color: AppStyles.textPrimary,
+                style: TextStyle(
+                    color: AppStyles.adaptiveTextPrimary(context),
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600),
                 decoration: _plateDecoration(),
@@ -326,16 +338,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 10),
 
             Container(
-              decoration: AppStyles.cardDecoration,
+              decoration: AppStyles.cardDecorationFor(context),
               child: SwitchListTile(
-                title: const Text('Изменить пароль',
+                title: Text('Изменить пароль',
                     style: TextStyle(
-                        color: AppStyles.textPrimary,
+                        color: AppStyles.adaptiveTextPrimary(context),
                         fontSize: 14,
                         fontWeight: FontWeight.w500)),
-                subtitle: const Text('Задать новый пароль для входа',
+                subtitle: Text('Задать новый пароль для входа',
                     style: TextStyle(
-                        color: AppStyles.textSecondary, fontSize: 12)),
+                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 12)),
                 value: _changePass,
                 activeThumbColor: AppStyles.primary,
                 onChanged: (v) => setState(() {
@@ -353,8 +366,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextFormField(
                 controller: _passCtrl,
                 obscureText: !_showPass,
-                style: const TextStyle(color: AppStyles.textPrimary),
-                decoration: AppStyles.inputDecoration('Новый пароль',
+                style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                decoration: AppStyles.inputDecorationFor(
+                    context, 'Новый пароль',
                     icon: Icons.lock_outline_rounded),
                 validator: _changePass
                     ? (v) =>
@@ -365,8 +379,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextFormField(
                 controller: _passConfirmCtrl,
                 obscureText: !_showPass,
-                style: const TextStyle(color: AppStyles.textPrimary),
-                decoration: AppStyles.inputDecoration('Повторите пароль',
+                style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                decoration: AppStyles.inputDecorationFor(
+                    context, 'Повторите пароль',
                     icon: Icons.lock_outline_rounded),
               ),
               const SizedBox(height: 8),
@@ -379,14 +394,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
                       size: 16,
-                      color: AppStyles.textSecondary),
+                      color: AppStyles.adaptiveTextSecondary(context)),
                   const SizedBox(width: 6),
                   Text(_showPass ? 'Скрыть пароль' : 'Показать пароль',
-                      style: const TextStyle(
-                          color: AppStyles.textSecondary, fontSize: 12)),
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextSecondary(context),
+                          fontSize: 12)),
                 ]),
               ),
             ],
+
+            const SizedBox(height: 28),
+
+            _sectionLabel('Внешний вид'),
+            const SizedBox(height: 10),
+            Container(
+              decoration: AppStyles.cardDecorationFor(context),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Тема оформления',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text('Выберите режим отображения',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextSecondary(context),
+                          fontSize: 12)),
+                  const SizedBox(height: 10),
+                  _buildThemeSelector(),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 28),
 
@@ -421,9 +463,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final stats = _stats;
     if (stats == null) return const SizedBox.shrink();
 
+    final isWasher = context.read<AuthProvider>().isWasher;
+
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: AppStyles.cardDecoration,
+      decoration: AppStyles.cardDecorationFor(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -441,35 +485,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       fontWeight: FontWeight.w700)),
             ),
             const Spacer(),
-            const Icon(Icons.star, size: 14, color: AppStyles.warning),
+            const Icon(Icons.local_car_wash,
+                size: 16, color: AppStyles.primary),
             const SizedBox(width: 4),
-            Text('${stats.points} баллов',
-                style: const TextStyle(
-                    color: AppStyles.textPrimary,
+            Text('${stats.totalAppointments} ${isWasher ? 'помыто' : 'моек'}',
+                style: TextStyle(
+                    color: AppStyles.adaptiveTextPrimary(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w600)),
           ]),
           const SizedBox(height: 12),
           LinearProgressIndicator(
             value: stats.levelProgress / 100,
-            backgroundColor: AppStyles.border,
+            backgroundColor: AppStyles.adaptiveBorder(context),
             color: AppStyles.primary,
             minHeight: 6,
             borderRadius: BorderRadius.circular(3),
           ),
           const SizedBox(height: 6),
           Text('${stats.levelProgress}% до следующего уровня',
-              style: const TextStyle(
-                  color: AppStyles.textSecondary, fontSize: 11)),
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextSecondary(context),
+                  fontSize: 11)),
           const SizedBox(height: 16),
           Row(children: [
-            _statItem('${stats.totalAppointments}', 'Моек'),
-            Container(width: 1, height: 32, color: AppStyles.border),
-            _statItem('${stats.totalSpent} ₽', 'Потрачено'),
-            Container(width: 1, height: 32, color: AppStyles.border),
-            _statItem(
-                stats.favoriteWashType == '-' ? '—' : stats.favoriteWashType,
-                'Любимая мойка'),
+            _statItem('${stats.totalAppointments}',
+                isWasher ? 'Помыто авто' : 'Моек'),
+            if (!isWasher) ...[
+              Container(
+                  width: 1,
+                  height: 32,
+                  color: AppStyles.adaptiveBorder(context)),
+              _statItem(
+                  stats.favoriteWashType == '-' ? '—' : stats.favoriteWashType,
+                  'Любимая мойка'),
+            ],
           ]),
         ],
       ),
@@ -479,14 +529,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _statItem(String value, String label) => Expanded(
         child: Column(children: [
           Text(value,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: AppStyles.textPrimary)),
+                  color: AppStyles.adaptiveTextPrimary(context))),
           const SizedBox(height: 2),
           Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppStyles.textSecondary)),
+              style: TextStyle(
+                  fontSize: 11,
+                  color: AppStyles.adaptiveTextSecondary(context))),
         ]),
       );
 
@@ -506,13 +557,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ...items.map((a) => Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
-              decoration: AppStyles.cardDecoration,
+              decoration: AppStyles.cardDecorationFor(context),
               child: Row(children: [
                 Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppStyles.primaryBg,
+                    color: AppStyles.adaptivePrimaryBg(context),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.local_car_wash,
@@ -525,14 +576,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(
                           '${DateFormat('d MMM', 'ru').format(a.dateTime)} · ${DateFormat('HH:mm').format(a.dateTime)}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppStyles.textSecondary)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppStyles.adaptiveTextSecondary(context))),
                       const SizedBox(height: 2),
                       Text(a.carModel,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppStyles.textPrimary)),
+                              color: AppStyles.adaptiveTextPrimary(context))),
                     ],
                   ),
                 ),
@@ -548,19 +600,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _sectionLabel(String text) => Text(text,
-      style: const TextStyle(
-          color: AppStyles.textSecondary,
+      style: TextStyle(
+          color: AppStyles.adaptiveTextSecondary(context),
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1));
 
+  Widget _buildThemeSelector() {
+    final themeProvider = context.watch<ThemeProvider>();
+    return SegmentedButton<AppThemeMode>(
+      segments: const [
+        ButtonSegment(
+          value: AppThemeMode.system,
+          label: Text('Системная', style: TextStyle(fontSize: 12)),
+          icon: Icon(Icons.settings_brightness, size: 18),
+        ),
+        ButtonSegment(
+          value: AppThemeMode.light,
+          label: Text('Светлая', style: TextStyle(fontSize: 12)),
+          icon: Icon(Icons.wb_sunny, size: 18),
+        ),
+        ButtonSegment(
+          value: AppThemeMode.dark,
+          label: Text('Тёмная', style: TextStyle(fontSize: 12)),
+          icon: Icon(Icons.dark_mode, size: 18),
+        ),
+      ],
+      selected: {themeProvider.appThemeMode},
+      onSelectionChanged: (selection) {
+        if (selection.isNotEmpty) {
+          themeProvider.setMode(selection.first);
+        }
+      },
+      style: ButtonStyle(
+        padding:
+            WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 8)),
+      ),
+    );
+  }
+
   InputDecoration _plateDecoration() {
-    final base =
-        AppStyles.inputDecoration('Гос. номер', icon: Icons.pin_outlined);
+    final base = AppStyles.inputDecorationFor(context, 'Гос. номер',
+        icon: Icons.pin_outlined);
     return base.copyWith(
       helperText: 'Формат: А000АА777',
-      helperStyle:
-          const TextStyle(color: AppStyles.textSecondary, fontSize: 11),
+      helperStyle: TextStyle(
+          color: AppStyles.adaptiveTextSecondary(context), fontSize: 11),
     );
   }
 }

@@ -42,10 +42,12 @@ class _LogsScreenState extends State<LogsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppStyles.adaptiveCard(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Очистить журнал?'),
-        content: const Text('Все записи журнала будут удалены безвозвратно.'),
+        title: Text('Очистить журнал?',
+            style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
+        content: Text('Все записи журнала будут удалены безвозвратно.',
+            style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -79,15 +81,13 @@ class _LogsScreenState extends State<LogsScreen> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppStyles.border),
+          child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
         title: const Text('Журнал действий',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -112,7 +112,8 @@ class _LogsScreenState extends State<LogsScreen> {
           child: TextField(
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _filterUser = v),
-            decoration: AppStyles.inputDecoration('Фильтр по логину',
+            decoration: AppStyles.inputDecorationFor(
+                context, 'Фильтр по логину',
                 icon: Icons.person_search_outlined),
             style: AppStyles.bodyLarge,
           ),
@@ -134,7 +135,7 @@ class _LogsScreenState extends State<LogsScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppStyles.primaryBg,
+                      color: AppStyles.adaptivePrimaryBg(context),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text('× сбросить',
@@ -154,12 +155,13 @@ class _LogsScreenState extends State<LogsScreen> {
               : filtered.isEmpty
                   ? Center(
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.history_rounded,
-                          size: 56, color: AppStyles.textSecondary),
+                      Icon(Icons.history_rounded,
+                          size: 56,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(height: 12),
                       Text(_filterUser.isEmpty ? 'Журнал пуст' : 'Нет записей',
-                          style: const TextStyle(
-                              color: AppStyles.textSecondary,
+                          style: TextStyle(
+                              color: AppStyles.adaptiveTextSecondary(context),
                               fontSize: 16,
                               fontWeight: FontWeight.w500)),
                     ]))
@@ -211,14 +213,14 @@ class _LogCard extends StatelessWidget {
     final color = _actionColor;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: AppStyles.cardDecoration,
+      decoration: AppStyles.cardDecorationFor(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(_actionIcon, color: color, size: 18),
@@ -233,7 +235,7 @@ class _LogCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppStyles.primaryBg,
+                      color: AppStyles.adaptivePrimaryBg(context),
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(entry.username,
