@@ -192,8 +192,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _washers.isEmpty
-          ? const Center(child: Text('Нет мойщиков для отображения'))
-          : _buildTable(),
+              ? const Center(child: Text('Нет мойщиков для отображения'))
+              : _buildTable(),
     );
   }
 
@@ -339,16 +339,16 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           border: Border.all(
             color: shift == null
                 ? (isWeekend
-                      ? AppStyles.danger.withValues(alpha: 0.12)
-                      : Colors.grey.shade200)
+                    ? AppStyles.danger.withValues(alpha: 0.12)
+                    : Colors.grey.shade200)
                 : Colors.transparent,
           ),
         ),
         alignment: Alignment.center,
         child: label.isEmpty
             ? canEdit
-                  ? Icon(Icons.add, size: 16, color: Colors.grey.shade300)
-                  : const SizedBox.shrink()
+                ? Icon(Icons.add, size: 16, color: Colors.grey.shade300)
+                : const SizedBox.shrink()
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -489,9 +489,9 @@ class _ShiftDialogState extends State<_ShiftDialog> {
           ElevatedButton(
             onPressed: canSave
                 ? () => Navigator.pop(
-                    context,
-                    _EditResult(start: _start, end: _end),
-                  )
+                      context,
+                      _EditResult(start: _start, end: _end),
+                    )
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppStyles.primary,
