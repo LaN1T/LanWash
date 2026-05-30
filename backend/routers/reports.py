@@ -12,7 +12,11 @@ import json
 import random
 from collections import defaultdict
 
-router = APIRouter(prefix="/api/reports", tags=["reports"])
+router = APIRouter(
+    prefix="/api/reports",
+    tags=["reports"],
+    
+)
 
 WASH_CATEGORY = "Мойка кузова"
 
