@@ -24,7 +24,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   void initState() {
     super.initState();
     _weekStart = _mondayOf(DateTime.now());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isWasher) {
+        _jumpToMyNearestShiftWeek();
+      } else {
+        _loadData();
+      }
+    });
   }
 
   DateTime _mondayOf(DateTime date) {
@@ -36,6 +42,29 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     ).subtract(Duration(days: wd - 1));
   }
 
+  Future<void> _jumpToMyNearestShiftWeek() async {
+    final api = context.read<ApiService>();
+    final myShifts = await api.getMyShifts();
+    if (myShifts.isNotEmpty) {
+      final now = DateTime.now();
+      Shift? nearest;
+      var minDiff = const Duration(days: 365);
+      for (final s in myShifts) {
+        final d = DateTime.parse(s.date);
+        final diff = d.difference(now).abs();
+        if (diff < minDiff) {
+          minDiff = diff;
+          nearest = s;
+        }
+      }
+      if (nearest != null) {
+        final d = DateTime.parse(nearest.date);
+        setState(() => _weekStart = _mondayOf(d));
+      }
+    }
+    if (mounted) _loadData();
+  }
+
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final api = context.read<ApiService>();
@@ -43,24 +72,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final end = _weekStart.add(const Duration(days: 6));
     final fmt = DateFormat('yyyy-MM-dd');
     final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
-    debugPrint(
-        '[ShiftSchedule] washers=${washers.length}, shifts=${shifts.length}, week=${fmt.format(_weekStart)}..${fmt.format(end)}');
     if (mounted) {
       setState(() {
         _washers = washers;
         _shifts = shifts;
         _loading = false;
       });
-
-      // Подсказка мойщику, если на текущей неделе нет смен
-      final auth = context.read<AuthProvider>();
-      if (auth.isWasher && auth.user?.id != null) {
-        final myShifts =
-            shifts.where((s) => s.userId == auth.user!.id).toList();
-        if (myShifts.isEmpty && shifts.isNotEmpty) {
-          _showSnack('На этой неделе у вас нет смен');
-        }
-      }
     }
   }
 
@@ -82,6 +99,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   bool get _isAdmin {
     final auth = context.read<AuthProvider>();
     return auth.isAdmin;
+  }
+
+  bool get _isWasher {
+    final auth = context.read<AuthProvider>();
+    return auth.isWasher;
   }
 
   bool _canEdit(User washer) {
