@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -31,8 +29,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   DateTime _mondayOf(DateTime date) {
     final wd = date.weekday;
-    return DateTime(date.year, date.month, date.day)
-        .subtract(Duration(days: wd - 1));
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: wd - 1));
   }
 
   Future<void> _loadData() async {
@@ -60,9 +61,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final fmt = DateFormat('yyyy-MM-dd');
     final d = fmt.format(date);
     try {
-      return _shifts.firstWhere(
-        (s) => s.userId == userId && s.date == d,
-      );
+      return _shifts.firstWhere((s) => s.userId == userId && s.date == d);
     } catch (_) {
       return null;
     }
@@ -193,103 +192,87 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _washers.isEmpty
-              ? const Center(child: Text('Нет мойщиков для отображения'))
-              : _buildTable(),
+          ? const Center(child: Text('Нет мойщиков для отображения'))
+          : _buildTable(),
     );
   }
 
   Widget _buildTable() {
     final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
-    const nameWidth = 150.0;
-    const hoursWidth = 70.0;
-    const minDayWidth = 100.0;
-    final minTableWidth = nameWidth + hoursWidth + days.length * minDayWidth;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final targetWidth = max(constraints.maxWidth, minTableWidth);
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.all(16),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: SizedBox(
-              width: targetWidth,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppStyles.border),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Table(
-                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                    columnWidths: {
-                      0: const FixedColumnWidth(nameWidth),
-                      for (var i = 0; i < days.length; i++)
-                        i + 1: const FlexColumnWidth(1),
-                      days.length + 1: const FixedColumnWidth(hoursWidth),
-                    },
-                    border: TableBorder(
-                      horizontalInside: BorderSide(color: Colors.grey.shade100),
-                      verticalInside: BorderSide(color: Colors.grey.shade100),
-                    ),
-                    children: [
-                      // Header
-                      TableRow(
-                        decoration: const BoxDecoration(
-                          color: AppStyles.bgPage,
-                        ),
-                        children: [
-                          _headerCell('Мойщик', align: Alignment.centerLeft),
-                          ...days.map((d) => _headerCell(
-                                _dayLabel(d),
-                                isWeekend: d.weekday >= 6,
-                              )),
-                          _headerCell('Часов'),
-                        ],
-                      ),
-                      // Rows
-                      ..._washers.map((w) {
-                        var totalMinutes = 0;
-                        final shiftCells = days.map((d) {
-                          final shift = _findShift(w.id!, d);
-                          if (shift != null && shift.status == 'confirmed') {
-                            totalMinutes += shift.durationMinutes;
-                          }
-                          return _shiftCell(w, d, shift);
-                        }).toList();
-
-                        return TableRow(
-                          children: [
-                            _nameCell(w),
-                            ...shiftCells,
-                            _hoursCell(totalMinutes),
-                          ],
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppStyles.border),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Table(
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            columnWidths: {
+              0: const FractionColumnWidth(0.17),
+              for (var i = 0; i < days.length; i++)
+                i + 1: const FractionColumnWidth(0.10),
+              days.length + 1: const FractionColumnWidth(0.07),
+            },
+            border: TableBorder(
+              horizontalInside: BorderSide(color: Colors.grey.shade100),
+              verticalInside: BorderSide(color: Colors.grey.shade100),
             ),
+            children: [
+              // Header
+              TableRow(
+                decoration: const BoxDecoration(color: AppStyles.bgPage),
+                children: [
+                  _headerCell('Мойщик', align: Alignment.centerLeft),
+                  ...days.map(
+                    (d) => _headerCell(_dayLabel(d), isWeekend: d.weekday >= 6),
+                  ),
+                  _headerCell('Часов'),
+                ],
+              ),
+              // Rows
+              ..._washers.map((w) {
+                var totalMinutes = 0;
+                final shiftCells = days.map((d) {
+                  final shift = _findShift(w.id!, d);
+                  if (shift != null && shift.status == 'confirmed') {
+                    totalMinutes += shift.durationMinutes;
+                  }
+                  return _shiftCell(w, d, shift);
+                }).toList();
+
+                return TableRow(
+                  children: [
+                    _nameCell(w),
+                    ...shiftCells,
+                    _hoursCell(totalMinutes),
+                  ],
+                );
+              }),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _headerCell(String text,
-      {bool isWeekend = false, Alignment align = Alignment.center}) {
+  Widget _headerCell(
+    String text, {
+    bool isWeekend = false,
+    Alignment align = Alignment.center,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       alignment: align,
       child: Text(
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
           color: isWeekend ? AppStyles.danger : AppStyles.textPrimary,
           height: 1.3,
@@ -305,11 +288,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _nameCell(User w) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       child: Text(
         w.displayName,
         style: const TextStyle(
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppStyles.textPrimary,
         ),
@@ -333,57 +316,57 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       textColor = AppStyles.textSecondary;
     } else if (shift.status == 'pending') {
       bgColor = AppStyles.warning;
-      label = '${shift.startTime}\n${shift.endTime}';
+      label = '${shift.startTime}→${shift.endTime}';
       textColor = Colors.white;
     } else if (shift.status == 'rejected') {
       bgColor = AppStyles.danger;
-      label = 'Отклонена';
+      label = 'Откл.';
       textColor = Colors.white;
     } else {
       bgColor = AppStyles.primary;
-      label = '${shift.startTime}\n${shift.endTime}';
+      label = '${shift.startTime}→${shift.endTime}';
       textColor = Colors.white;
     }
 
     return GestureDetector(
       onTap: () => _openEditor(washer, date, shift),
       child: Container(
-        height: 64,
-        margin: const EdgeInsets.all(4),
+        height: 48,
+        margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: shift == null
                 ? (isWeekend
-                    ? AppStyles.danger.withValues(alpha: 0.12)
-                    : Colors.grey.shade200)
+                      ? AppStyles.danger.withValues(alpha: 0.12)
+                      : Colors.grey.shade200)
                 : Colors.transparent,
           ),
         ),
         alignment: Alignment.center,
         child: label.isEmpty
             ? canEdit
-                ? Icon(Icons.add, size: 18, color: Colors.grey.shade300)
-                : const SizedBox.shrink()
+                  ? Icon(Icons.add, size: 16, color: Colors.grey.shade300)
+                  : const SizedBox.shrink()
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     label,
                     textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: textColor,
-                      height: 1.4,
                     ),
                   ),
                   if (shift?.status == 'pending')
                     const Text(
-                      'Ожидает',
+                      'ожид.',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 8,
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
                       ),
@@ -398,12 +381,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final hours = totalMinutes / 60;
     final hasHours = totalMinutes > 0;
     return Container(
-      height: 64,
+      height: 48,
       alignment: Alignment.center,
       child: Text(
         hours.toStringAsFixed(1),
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: hasHours ? FontWeight.w700 : FontWeight.w600,
           color: hasHours ? AppStyles.primary : AppStyles.textSecondary,
         ),
@@ -477,9 +460,13 @@ class _ShiftDialogState extends State<_ShiftDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(dateLabel,
-                style: const TextStyle(
-                    fontSize: 14, color: AppStyles.textSecondary)),
+            Text(
+              dateLabel,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppStyles.textSecondary,
+              ),
+            ),
             const SizedBox(height: 20),
             _timeRow('Начало', _start, (t) => setState(() => _start = t)),
             const Divider(height: 24),
@@ -502,9 +489,9 @@ class _ShiftDialogState extends State<_ShiftDialog> {
           ElevatedButton(
             onPressed: canSave
                 ? () => Navigator.pop(
-                      context,
-                      _EditResult(start: _start, end: _end),
-                    )
+                    context,
+                    _EditResult(start: _start, end: _end),
+                  )
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppStyles.primary,
@@ -545,11 +532,14 @@ class _ShiftDialogState extends State<_ShiftDialog> {
         ),
         child: Row(
           children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppStyles.textPrimary)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppStyles.textPrimary,
+              ),
+            ),
             const Spacer(),
             Text(
               timeStr,
@@ -665,8 +655,10 @@ class _DigitalTimePickerState extends State<_DigitalTimePicker> {
                         ),
                         side: BorderSide(color: Colors.grey.shade300),
                       ),
-                      child:
-                          const Text('Отмена', style: TextStyle(fontSize: 16)),
+                      child: const Text(
+                        'Отмена',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -688,7 +680,9 @@ class _DigitalTimePickerState extends State<_DigitalTimePicker> {
                       child: const Text(
                         'Готово',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
