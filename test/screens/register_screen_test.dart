@@ -114,7 +114,7 @@ void main() {
           )).thenAnswer((_) async => null);
       when(() => mockAuth.userLogin).thenReturn('ivan123');
       when(() => mockApp.reloadForUser(any(), any()))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) => Future.value());
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();

@@ -15,7 +15,7 @@ void main() {
   late MockAuthProvider mockAuth;
   late MockAppProvider mockApp;
 
-  final _testWashType = WashType(
+  final testWashType = WashType(
     id: 'w1',
     code: 'basic',
     name: 'Базовая',
@@ -25,7 +25,7 @@ void main() {
     sortOrder: 1,
   );
 
-  final _testService = Service(
+  final testService = Service(
     id: 's1',
     name: 'Чернение шин',
     description: '',
@@ -34,7 +34,7 @@ void main() {
     category: 'extra',
   );
 
-  Appointment _createAppointment({
+  Appointment createAppointment({
     required String id,
     required String clientName,
     required String status,
@@ -104,14 +104,14 @@ void main() {
 
     testWidgets('shows list of appointments', (tester) async {
       final appointments = [
-        _createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
-        _createAppointment(id: 'a2', clientName: 'Мария', status: 'completed'),
+        createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
+        createAppointment(id: 'a2', clientName: 'Мария', status: 'completed'),
       ];
 
       when(() => mockApp.loading).thenReturn(false);
       when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([_testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(_testWashType);
+      when(() => mockApp.services).thenReturn([testService]);
+      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
       when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
       when(() => mockApp.totalPages).thenReturn(1);
       when(() => mockApp.currentPage).thenReturn(1);
@@ -128,14 +128,14 @@ void main() {
 
     testWidgets('filters appointments by status', (tester) async {
       final appointments = [
-        _createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
-        _createAppointment(id: 'a2', clientName: 'Мария', status: 'completed'),
+        createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
+        createAppointment(id: 'a2', clientName: 'Мария', status: 'completed'),
       ];
 
       when(() => mockApp.loading).thenReturn(false);
       when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([_testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(_testWashType);
+      when(() => mockApp.services).thenReturn([testService]);
+      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
       when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
       when(() => mockApp.totalPages).thenReturn(1);
       when(() => mockApp.currentPage).thenReturn(1);
@@ -166,14 +166,14 @@ void main() {
 
     testWidgets('searches appointments by client name', (tester) async {
       final appointments = [
-        _createAppointment(id: 'a1', clientName: 'Иван Петров', status: 'scheduled'),
-        _createAppointment(id: 'a2', clientName: 'Мария Сидорова', status: 'scheduled'),
+        createAppointment(id: 'a1', clientName: 'Иван Петров', status: 'scheduled'),
+        createAppointment(id: 'a2', clientName: 'Мария Сидорова', status: 'scheduled'),
       ];
 
       when(() => mockApp.loading).thenReturn(false);
       when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([_testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(_testWashType);
+      when(() => mockApp.services).thenReturn([testService]);
+      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
       when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
       when(() => mockApp.totalPages).thenReturn(1);
       when(() => mockApp.currentPage).thenReturn(1);
@@ -232,20 +232,20 @@ void main() {
 
     testWidgets('triggers refresh on pull', (tester) async {
       final appointments = [
-        _createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
+        createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
       ];
 
       when(() => mockApp.loading).thenReturn(false);
       when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([_testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(_testWashType);
+      when(() => mockApp.services).thenReturn([testService]);
+      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
       when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
       when(() => mockApp.totalPages).thenReturn(1);
       when(() => mockApp.currentPage).thenReturn(1);
       when(() => mockApp.currentDate).thenReturn('2026-05-30');
       when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
       when(() => mockApp.reloadAppointments(any()))
-          .thenAnswer((_) async {});
+          .thenAnswer((_) => Future.value());
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();

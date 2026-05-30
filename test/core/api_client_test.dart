@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:lanwash/core/api_client.dart';
-import 'package:lanwash/core/api_result.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockHttpClient extends Mock implements http.Client {}
