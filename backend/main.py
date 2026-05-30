@@ -54,6 +54,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="LanWash API",
+    description="REST API для системы управления автомойкой. Поддерживает роли: client, washer, admin.",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs" if not settings.is_production else None,

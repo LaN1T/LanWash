@@ -7,7 +7,11 @@ from db_models import WashType, WashTypeIncludedExtra, User
 from models import WashTypeRequest, WashTypeResponse
 from services.auth_service import get_current_user, check_roles
 
-router = APIRouter(prefix="/api/wash-types", tags=["wash-types"])
+router = APIRouter(
+    prefix="/api/wash-types",
+    tags=["wash-types"],
+    
+)
 
 
 async def _to_response(db: AsyncSession, wt: WashType) -> dict:

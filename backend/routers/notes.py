@@ -8,7 +8,11 @@ from db_models import WasherNote, User
 from datetime import datetime
 from services.auth_service import get_current_user, check_roles
 
-router = APIRouter(prefix="/api/notes", tags=["notes"])
+router = APIRouter(
+    prefix="/api/notes",
+    tags=["notes"],
+    
+)
 
 @router.get("/", response_model=list[NoteResponse])
 @limiter.limit("60/minute")

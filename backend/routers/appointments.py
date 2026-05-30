@@ -20,12 +20,20 @@ import structlog
 
 logger = structlog.get_logger()
 
-router = APIRouter(prefix="/api/appointments", tags=["appointments"])
+router = APIRouter(
+    prefix="/api/appointments",
+    tags=["appointments"],
+    
+)
 
-@router.get("/busy-slots", response_model=dict)
+@router.get(
+    "/busy-slots",
+    response_model=dict,
+    summary="Занятые слоты",
+    
+)
 @limiter.limit("30/minute")
 async def get_busy_slots(request: Request, date: str, db: AsyncSession = Depends(get_db)):
-    """date: YYYY-MM-DD"""
     return await workload_service.get_busy_slots(db, date)
 
 @router.get("/last-updated", response_model=dict)
@@ -36,7 +44,12 @@ async def get_last_updated(request: Request, db: AsyncSession = Depends(get_db))
     count, max_id = res.one()
     return {"count": count, "max_id": max_id}
 
-@router.get("/", response_model=list[AppointmentResponse])
+@router.get(
+    "/",
+    response_model=list[AppointmentResponse],
+    summary="Список записей (с пагинацией)",
+    
+)
 @limiter.limit("60/minute")
 async def get_all(
     request: Request,
@@ -197,7 +210,12 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
             timestamp=datetime.now().isoformat()
         ))
 
-@router.post("/", response_model=AppointmentResponse)
+@router.post(
+    "/",
+    response_model=AppointmentResponse,
+    summary="Создание записи",
+    
+)
 @limiter.limit("10/minute")
 async def create(request: Request, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
@@ -286,7 +304,12 @@ def format_date(dt_str):
         return str(dt_str)
 
 
-@router.put("/{appt_id}", response_model=AppointmentResponse)
+@router.put(
+    "/{appt_id}",
+    response_model=AppointmentResponse,
+    summary="Редактирование записи",
+    
+)
 @limiter.limit("10/minute")
 async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
@@ -463,7 +486,11 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     await db.refresh(appt)
     return appt
 
-@router.delete("/{appt_id}")
+@router.delete(
+    "/{appt_id}",
+    summary="Удаление записи",
+    
+)
 @limiter.limit("10/minute")
 async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - Only admin or the owner can delete.
@@ -509,7 +536,11 @@ async def toggle_favorite(request: Request, appt_id: str, db: AsyncSession = Dep
     await db.commit()
     return {"ok": True}
 
-@router.post("/{appt_id}/assign-washer")
+@router.post(
+    "/{appt_id}/assign-washer",
+    summary="Назначение мойщика",
+    
+)
 @limiter.limit("10/minute")
 async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
     # Only admin can assign/unassign washers.

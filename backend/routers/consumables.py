@@ -8,7 +8,12 @@ from models import ConsumableRequest, ConsumableResponse, ServiceConsumableReque
 from db_models import Consumable, ServiceConsumable, Service, User
 from services.auth_service import get_current_user, check_roles
 
-router = APIRouter(prefix="/api/consumables", tags=["consumables"], dependencies=[Depends(check_roles(['admin', 'washer']))])
+router = APIRouter(
+    prefix="/api/consumables",
+    tags=["consumables"],
+    dependencies=[Depends(check_roles(['admin', 'washer']))],
+    
+)
 
 @router.get("/", response_model=list[ConsumableResponse])
 @limiter.limit("60/minute")
