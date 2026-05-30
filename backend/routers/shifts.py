@@ -40,10 +40,17 @@ async def list_shifts(
     stmt = select(Shift).where(and_(Shift.date >= start_date, Shift.date <= end_date))
     result = await db.execute(stmt)
     shifts = result.scalars().all()
-    print(f"[shifts.list] {start_date}..{end_date} -> {len(shifts)} shifts")
-    for s in shifts:
-        print(f"  shift id={s.id} userId={s.userId} date={s.date} {s.startTime}-{s.endTime} status={s.status}")
     return shifts
+
+
+@router.get("/my", response_model=List[ShiftResponse])
+async def list_my_shifts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    stmt = select(Shift).where(Shift.userId == current_user.id).order_by(Shift.date.asc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
 @router.post("/", response_model=ShiftResponse, status_code=status.HTTP_201_CREATED)

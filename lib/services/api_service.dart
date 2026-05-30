@@ -787,6 +787,14 @@ class ApiService {
     );
   }
 
+  Future<List<Shift>> getMyShifts() async {
+    final result = await ApiClient.getList('/shifts/my');
+    return result.when(
+      success: (list) => list.map((m) => Shift.fromMap(m)).toList(),
+      failure: (_) => <Shift>[],
+    );
+  }
+
   Future<Shift?> createShift(
       int userId, String date, String startTime, String endTime) async {
     final result = await ApiClient.post('/shifts/', body: {
