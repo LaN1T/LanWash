@@ -101,6 +101,14 @@ async def get_all(
     response.headers["X-Current-Page"] = str(page)
     response.headers["X-Current-Date"] = target_date or ""
     response.headers["X-Unique-Dates"] = json.dumps(unique_dates)
+    logger.info(
+        "appointments_pagination_headers",
+        x_total_pages=total_pages,
+        x_current_page=page,
+        x_current_date=target_date,
+        x_unique_dates_count=len(unique_dates),
+        unique_dates=unique_dates[:5],
+    )
 
     if not target_date:
         logger.debug("appointments_empty", reason="no_target_date", total_pages=total_pages, page=page)
