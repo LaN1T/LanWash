@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
+import '../../models/shift.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
-import '../../services/notification_service.dart'; // Add this
+import '../../services/api_service.dart';
+import '../../services/notification_service.dart';
 import '../shared/profile_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../admin/notes_screen.dart';
@@ -22,7 +24,8 @@ class WasherShell extends StatefulWidget {
 class _WasherShellState extends State<WasherShell> {
   int _tabIndex = 0;
   DateTime _selectedDay = DateTime.now();
-  StreamSubscription? _appointmentSub; // подписка на обновления записей
+  Shift? _myShift;
+  StreamSubscription? _appointmentSub;
 
   @override
   void initState() {
@@ -31,13 +34,26 @@ class _WasherShellState extends State<WasherShell> {
       final auth = context.read<AuthProvider>();
       context.read<AppProvider>().loadNotes(username: auth.userLogin);
       context.read<AppProvider>().reloadAppointments(auth);
+      _loadMyShift();
 
-      // Listen for updates
       _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
         if (mounted) {
           context.read<AppProvider>().reloadAppointments(auth);
         }
       });
+    });
+  }
+
+  Future<void> _loadMyShift() async {
+    final api = context.read<ApiService>();
+    final shifts = await api.getMyShifts();
+    final fmt = DateFormat('yyyy-MM-dd');
+    final d = fmt.format(_selectedDay);
+    setState(() {
+      _myShift = shifts.cast<Shift?>().firstWhere(
+            (s) => s?.date == d,
+            orElse: () => null,
+          );
     });
   }
 
@@ -132,6 +148,7 @@ class _WasherShellState extends State<WasherShell> {
                   _selectedDay = newWeekStart
                       .add(Duration(days: _selectedDay.weekday - 1));
                 });
+                _loadMyShift();
               },
               itemBuilder: (ctx, pageIndex) {
                 final today = DateTime.now();
@@ -156,7 +173,10 @@ class _WasherShellState extends State<WasherShell> {
                         d.year == _selectedDay.year;
                     return Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _selectedDay = d),
+                        onTap: () {
+                          setState(() => _selectedDay = d);
+                          _loadMyShift();
+                        },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 2, vertical: 8),
@@ -221,6 +241,7 @@ class _WasherShellState extends State<WasherShell> {
               },
             ),
           ),
+          if (_myShift != null) _buildShiftCard(_myShift!),
           SizedBox(
             height: MediaQuery.of(context).size.height - 250,
             child: filteredAppts.isEmpty
@@ -252,6 +273,61 @@ class _WasherShellState extends State<WasherShell> {
                           appointment: filteredAppts[index]);
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShiftCard(Shift shift) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: AppStyles.primaryGradient,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.access_time, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Ваша смена',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${shift.startTime} – ${shift.endTime}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              shift.status == 'confirmed' ? 'Подтверждена' : 'На рассмотрении',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

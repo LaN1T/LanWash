@@ -72,14 +72,6 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final end = _weekStart.add(const Duration(days: 6));
     final fmt = DateFormat('yyyy-MM-dd');
     final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
-    debugPrint(
-        '[ShiftSchedule] loaded washers=${washers.length}, shifts=${shifts.length}');
-    for (final w in washers) {
-      debugPrint('  washer id=${w.id} name=${w.displayName}');
-    }
-    for (final s in shifts) {
-      debugPrint('  shift id=${s.id} userId=${s.userId} date=${s.date}');
-    }
     if (mounted) {
       setState(() {
         _washers = washers;
@@ -98,14 +90,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final fmt = DateFormat('yyyy-MM-dd');
     final d = fmt.format(date);
     try {
-      final shift =
-          _shifts.firstWhere((s) => s.userId == userId && s.date == d);
-      debugPrint(
-          '[_findShift] found shift id=${shift.id} for userId=$userId date=$d');
-      return shift;
+      return _shifts.firstWhere((s) => s.userId == userId && s.date == d);
     } catch (_) {
-      debugPrint(
-          '[_findShift] NO shift for userId=$userId date=$d (checked ${_shifts.length})');
       return null;
     }
   }
