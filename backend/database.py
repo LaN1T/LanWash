@@ -48,15 +48,32 @@ async def seed_data():
         else:
             # Upsert админа с использованием Argon2
             stmt = insert(User).values(
-                username="admin", 
+                username="admin",
                 passwordHash=pwd_context.hash(admin_pass),
                 role="admin",
-                displayName="Администратор", 
+                displayName="Администратор",
                 createdAt=now
             ).on_conflict_do_nothing(index_elements=['username'])
             await session.execute(stmt)
             await session.commit()
 
+        # Seed мойщиков для dev
+        washers = [
+            ("washer1", "Иван", "+79001234567"),
+            ("washer2", "Петр", "+79007654321"),
+            ("washer3", "Алексей", "+79001112233"),
+        ]
+        for login, name, phone in washers:
+            stmt = insert(User).values(
+                username=login,
+                passwordHash=pwd_context.hash("Washer123!"),
+                role="washer",
+                displayName=name,
+                phone=phone,
+                createdAt=now
+            ).on_conflict_do_nothing(index_elements=['username'])
+            await session.execute(stmt)
+        await session.commit()
 
         # Wash Types
         res = await session.execute(select(func.count(WashType.id)))

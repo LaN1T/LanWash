@@ -294,17 +294,17 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       label = '';
       textColor = AppStyles.textSecondary;
     } else if (shift.status == 'pending') {
-      bgColor = AppStyles.warning.withValues(alpha: 0.15);
+      bgColor = AppStyles.warning;
       label = '${shift.startTime}→${shift.endTime}';
-      textColor = AppStyles.warning;
+      textColor = Colors.white;
     } else if (shift.status == 'rejected') {
-      bgColor = AppStyles.danger.withValues(alpha: 0.08);
+      bgColor = AppStyles.danger;
       label = 'Отклонена';
-      textColor = AppStyles.danger;
+      textColor = Colors.white;
     } else {
-      bgColor = AppStyles.primary.withValues(alpha: 0.10);
+      bgColor = AppStyles.primary;
       label = '${shift.startTime}→${shift.endTime}';
-      textColor = AppStyles.primary;
+      textColor = Colors.white;
     }
 
     return GestureDetector(
