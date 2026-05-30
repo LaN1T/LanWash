@@ -80,7 +80,8 @@ class ConsumableForecast {
       minStock: (map['minStock'] as num).toDouble(),
       targetStock: (map['targetStock'] as num).toDouble(),
       avgDailyUsage: (map['avgDailyUsage'] as num).toDouble(),
-      daysLeft: map['daysLeft'] != null ? (map['daysLeft'] as num).toDouble() : null,
+      daysLeft:
+          map['daysLeft'] != null ? (map['daysLeft'] as num).toDouble() : null,
       suggestedPurchase: (map['suggestedPurchase'] as num).toDouble(),
       unit: map['unit'] as String,
     );

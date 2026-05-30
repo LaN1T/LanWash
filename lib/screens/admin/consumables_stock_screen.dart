@@ -97,7 +97,8 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
       _showSnack('Не удалось скачать отчёт', color: AppStyles.danger);
       return;
     }
-    final name = 'consumables_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
+    final name =
+        'consumables_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
     await FileSaver.instance.saveFile(
       name: name.replaceAll('.xlsx', ''),
       bytes: bytes,
@@ -127,7 +128,9 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
       allowedExtensions: ['xlsx', 'xls'],
       withData: true,
     );
-    if (result == null || result.files.isEmpty || result.files.first.bytes == null) return;
+    if (result == null ||
+        result.files.isEmpty ||
+        result.files.first.bytes == null) return;
     if (!mounted) return;
 
     final bytes = result.files.first.bytes!;
@@ -140,8 +143,12 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
         title: const Text('Импорт пополнений'),
         content: Text('Загрузить файл "$fileName"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Загрузить')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Загрузить')),
         ],
       ),
     );
@@ -163,7 +170,8 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
     if (failed == 0) {
       _showSnack('Успешно импортировано: $succeeded');
     } else {
-      _showSnack('Успешно: $succeeded, ошибок: $failed', color: AppStyles.warning);
+      _showSnack('Успешно: $succeeded, ошибок: $failed',
+          color: AppStyles.warning);
       if (errors.isNotEmpty && mounted) {
         showDialog(
           context: context,
@@ -176,11 +184,16 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                 itemCount: errors.length,
                 itemBuilder: (_, i) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text('• ${errors[i]}', style: const TextStyle(fontSize: 13)),
+                  child: Text('• ${errors[i]}',
+                      style: const TextStyle(fontSize: 13)),
                 ),
               ),
             ),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Закрыть'))],
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Закрыть'))
+            ],
           ),
         );
       }
@@ -216,9 +229,12 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'export', child: Text('Скачать отчёт')),
-              const PopupMenuItem(value: 'import', child: Text('Загрузить пополнения')),
-              const PopupMenuItem(value: 'template', child: Text('Скачать шаблон')),
+              const PopupMenuItem(
+                  value: 'export', child: Text('Скачать отчёт')),
+              const PopupMenuItem(
+                  value: 'import', child: Text('Загрузить пополнения')),
+              const PopupMenuItem(
+                  value: 'template', child: Text('Скачать шаблон')),
             ],
           ),
         ],
@@ -321,8 +337,8 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                   ),
                   if (isLow)
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: AppStyles.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -376,8 +392,8 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppStyles.primary,
                       foregroundColor: Colors.white,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -514,11 +530,13 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _kpiCard('Текущий запас',
+          _kpiCard(
+              'Текущий запас',
               '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
               isLow ? AppStyles.danger : AppStyles.primary),
           const SizedBox(height: 10),
-          _kpiCard('Минимальный запас',
+          _kpiCard(
+              'Минимальный запас',
               '${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
               AppStyles.textSecondary),
           const SizedBox(height: 16),
@@ -586,11 +604,14 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
             backgroundColor: AppStyles.primary.withValues(alpha: 0.1),
             child: const Icon(Icons.add, color: AppStyles.primary, size: 18),
           ),
-          title: Text('+${log.amount.toStringAsFixed(log.amount % 1 == 0 ? 0 : 1)} ${widget.consumable.unit}'),
-          subtitle: Text('${log.refilledBy}  •  ${fmt.format(DateTime.parse(log.timestamp))}'),
+          title: Text(
+              '+${log.amount.toStringAsFixed(log.amount % 1 == 0 ? 0 : 1)} ${widget.consumable.unit}'),
+          subtitle: Text(
+              '${log.refilledBy}  •  ${fmt.format(DateTime.parse(log.timestamp))}'),
           trailing: Text(
             '${log.oldStock.toStringAsFixed(1)} → ${log.newStock.toStringAsFixed(1)}',
-            style: const TextStyle(fontSize: 12, color: AppStyles.textSecondary),
+            style:
+                const TextStyle(fontSize: 12, color: AppStyles.textSecondary),
           ),
         );
       },
@@ -611,7 +632,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _kpiCard('Средний расход в день',
+          _kpiCard(
+              'Средний расход в день',
               '${f.avgDailyUsage.toStringAsFixed(f.avgDailyUsage % 1 == 0 ? 0 : 1)} ${f.unit}',
               AppStyles.primary),
           const SizedBox(height: 10),
@@ -621,7 +643,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
                 '${f.daysLeft!.toStringAsFixed(f.daysLeft! % 1 == 0 ? 0 : 1)} дн.',
                 f.daysLeft! < 7 ? AppStyles.danger : AppStyles.success)
           else
-            _kpiCard('Хватит на', 'Недостаточно данных', AppStyles.textSecondary),
+            _kpiCard(
+                'Хватит на', 'Недостаточно данных', AppStyles.textSecondary),
           const SizedBox(height: 10),
           _kpiCard(
               'Рекомендуемая закупка',
@@ -630,7 +653,8 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
           const SizedBox(height: 10),
           Text(
             'Целевой запас: ${f.targetStock.toStringAsFixed(f.targetStock % 1 == 0 ? 0 : 1)} ${f.unit}',
-            style: const TextStyle(color: AppStyles.textSecondary, fontSize: 13),
+            style:
+                const TextStyle(color: AppStyles.textSecondary, fontSize: 13),
           ),
         ],
       ),
