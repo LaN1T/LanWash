@@ -88,6 +88,21 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ]),
         // Кнопка выхода убрана из appBar — только в drawer
+        actions: _index == 2
+            ? null
+            : [
+                IconButton(
+                  icon: const Icon(Icons.add, color: AppStyles.primary),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => _index == 0
+                          ? const AddEditAppointmentScreen()
+                          : const AddEditServiceScreen(),
+                    ),
+                  ),
+                ),
+              ],
       ),
       drawer: _buildDrawer(context, favCount),
       body: IndexedStack(
@@ -98,21 +113,7 @@ class _HomeShellState extends State<HomeShell> {
           FavoritesScreen(),
         ],
       ),
-      floatingActionButton: _index == 2
-          ? null
-          : FloatingActionButton.extended(
-              icon: const Icon(Icons.add),
-              label: Text(_index == 0 ? 'Новая запись' : 'Новая услуга'),
-              backgroundColor: AppStyles.primary,
-              foregroundColor: Colors.white,
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => _index == 0
-                        ? const AddEditAppointmentScreen()
-                        : const AddEditServiceScreen(),
-                  )),
-            ),
+      floatingActionButton: null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
