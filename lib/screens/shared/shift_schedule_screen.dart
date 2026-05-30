@@ -43,6 +43,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final end = _weekStart.add(const Duration(days: 6));
     final fmt = DateFormat('yyyy-MM-dd');
     final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
+    debugPrint(
+        '[ShiftSchedule] washers=${washers.length}, shifts=${shifts.length}, week=${fmt.format(_weekStart)}..${fmt.format(end)}');
     if (mounted) {
       setState(() {
         _washers = washers;
@@ -166,7 +168,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     final weekEnd = _weekStart.add(const Duration(days: 6));
-    final fmt = DateFormat('d MMM');
+    final fmt = DateFormat('d MMM', 'ru_RU');
     final weekLabel = '${fmt.format(_weekStart)} – ${fmt.format(weekEnd)}';
 
     return Scaffold(
