@@ -33,13 +33,12 @@ router = APIRouter(
     
 )
 @limiter.limit("30/minute")
-async def get_busy_slots(request: Request, date: str, db: AsyncSession = Depends(get_db)):
+async def get_busy_slots(request: Request, date: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await workload_service.get_busy_slots(db, date)
 
 @router.get("/last-updated", response_model=dict)
 @limiter.limit("30/minute")
-async def get_last_updated(request: Request, db: AsyncSession = Depends(get_db)):
-    # Lightweight check: count of appointments and max ID as a proxy for 'has changed'
+async def get_last_updated(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     res = await db.execute(select(func.count(Appointment.id), func.max(Appointment.id)))
     count, max_id = res.one()
     return {"count": count, "max_id": max_id}
@@ -59,7 +58,7 @@ async def get_all(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Build date extraction query — dateTime is stored as ISO string YYYY-MM-DDTHH:mm:ss
+    # Построение запроса извлечения даты — dateTime хранится как ISO-строка YYYY-MM-DDTHH:mm:ss
     date_extract = func.substr(Appointment.dateTime, 1, 10)
 
     # 1. Get unique dates (days) in descending order
@@ -103,7 +102,7 @@ async def get_all(
             page = unique_dates.index(clean_date) + 1
             target_date = clean_date
         else:
-            # Date not found — return empty but preserve headers
+            # Дата не найдена — возвращаем пустой результат, но сохраняем заголовки
             page = 1
             target_date = clean_date
     else:
@@ -223,6 +222,9 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     if current_user.username != owner_username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете создавать записи для других пользователей.")
 
+    # Клиенты и мойщики могут создавать только запланированные записи
+    effective_status = req.status if current_user.role == 'admin' else 'scheduled'
+
     # Находим свободный бокс
     duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
     box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
@@ -238,7 +240,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         "dateTime": req.dateTime,
         "washTypeId": req.washTypeId,
         "additionalServices": req.additionalServices,
-        "status": req.status,
+        "status": effective_status,
         "notes": req.notes,
         "isFavorite": int(req.isFavorite),
         "ownerUsername": owner_username.lower(),
@@ -269,7 +271,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     db.add(appt)
     await db.commit()
 
-    if req.status == "completed":
+    if effective_status == "completed":
         await _track_consumables_usage(db, req.id, req.washTypeId, req.additionalServices, req.promoId)
         await db.commit()
 
@@ -317,7 +319,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     if not appt:
         raise HTTPException(404, "Запись не найдена")
 
-    # Store original values for comparison to detect actual admin changes
+    # Сохраняем оригинальные значения для сравнения и выявления изменений админом
     original_clientName = appt.clientName
     original_carModel = appt.carModel
     original_carNumber = appt.carNumber
@@ -345,8 +347,10 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     is_admin = current_user.role == 'admin'
     is_washer = current_user.role == 'washer'
     
-    if not (is_owner or is_admin or is_washer):
-        logger.debug("access_denied", is_owner=is_owner, is_admin=is_admin, is_washer=is_washer)
+    assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    is_assigned_washer = is_washer and current_user.username in assigned_washers
+
+    if not (is_owner or is_admin or is_assigned_washer):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
 
     old_status = appt.status
@@ -379,7 +383,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         appt.originalPrice = req.originalPrice
         appt.assignedWasher = req.assignedWasher
 
-        # Detect if admin made any changes that should trigger a client notification
+        # Определяем, внёс ли админ изменения, требующие уведомления клиента
         def normalize_json(s):
             try:
                 return sorted(json.loads(s)) if isinstance(json.loads(s), list) else json.loads(s)
@@ -408,7 +412,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
             logger.info("admin_changes_triggered", appt_id=appt.id)
             appt.isModifiedByAdmin = 1
             appt.isSeenByClient = 0
-        # If no changes, the flags (isModifiedByAdmin, isSeenByClient) remain as they were
+        # Если изменений нет, флаги (isModifiedByAdmin, isSeenByClient) остаются без изменений
 
     elif current_user.role == 'washer':
         # Если статус изменился, помечаем, что это изменение от мойщика
@@ -543,7 +547,7 @@ async def toggle_favorite(request: Request, appt_id: str, db: AsyncSession = Dep
 )
 @limiter.limit("10/minute")
 async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
-    # Only admin can assign/unassign washers.
+    # Только администратор может назначать/снимать мойщиков.
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
     if not appt:
@@ -666,7 +670,7 @@ async def mark_appointment_seen(request: Request, appt_id: str, db: AsyncSession
 @limiter.limit("60/minute")
 async def stats(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: Assuming stats are only for admins, or all authenticated users.
-    # For now, let's make it admin-only for demonstration.
+    # Пока оставляем только для администраторов.
     if current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ к статистике только для администраторов.")
 

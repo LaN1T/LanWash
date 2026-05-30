@@ -21,7 +21,7 @@ class WasherShell extends StatefulWidget {
 class _WasherShellState extends State<WasherShell> {
   int _tabIndex = 0;
   DateTime _selectedDay = DateTime.now();
-  StreamSubscription? _appointmentSub; // Add this
+  StreamSubscription? _appointmentSub; // подписка на обновления записей
 
   @override
   void initState() {

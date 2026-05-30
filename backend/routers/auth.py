@@ -142,9 +142,10 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
     if req.phone is not None: updates["phone"] = req.phone
     if req.carModel is not None: updates["carModel"] = req.carModel
     if req.carNumber is not None: updates["carNumber"] = req.carNumber
-    if req.newPassword is not None: 
-        if len(req.newPassword) < 8:
-            raise HTTPException(400, "Новый пароль минимум 8 символов")
+    if req.newPassword is not None:
+        password_error = validate_password_strength(req.newPassword)
+        if password_error:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=password_error)
         updates["passwordHash"] = get_password_hash(req.newPassword)
 
     if updates:

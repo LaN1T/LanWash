@@ -174,13 +174,13 @@ async def get_consumables_usage(request: Request, date: str = None, category: st
             Consumable.unit,
             ConsumableUsageLog.quantityUsed,
             ConsumableUsageLog.appointmentId,
-            Appointment.dateTime, # Include Appointment.dateTime for filtering
+            Appointment.dateTime, # включаем dateTime для фильтрации
         )
         .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
-        .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id) # Join with Appointment
+        .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id) # соединение с Appointment
         .where(and_(
-            cast(Appointment.dateTime, String).like(f"{date}%"), # Filter by Appointment.dateTime
-            Appointment.status == 'completed' # Ensure only completed appointments are considered
+            cast(Appointment.dateTime, String).like(f"{date}%"), # фильтр по Appointment.dateTime
+            Appointment.status == 'completed' # учитываем только завершённые записи
         ))
     )
     logs = (await db.execute(query)).all()
