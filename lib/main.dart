@@ -30,13 +30,16 @@ void main() async {
   );
 
   // App Check: в режиме разработки — debug-провайдеры, в релизе — production
-  await FirebaseAppCheck.instance.activate(
-    androidProvider:
-        kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
-    appleProvider: kReleaseMode
-        ? AppleProvider.deviceCheck
-        : AppleProvider.appAttestWithDeviceCheckFallback,
-  );
+  // Web не поддерживает App Check без reCAPTCHA, пропускаем
+  if (!kIsWeb) {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider:
+          kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+      appleProvider: kReleaseMode
+          ? AppleProvider.deviceCheck
+          : AppleProvider.appAttestWithDeviceCheckFallback,
+    );
+  }
 
   await initializeDateFormatting('ru', null);
 
