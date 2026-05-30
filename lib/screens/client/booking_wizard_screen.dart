@@ -341,7 +341,8 @@ class _BWState extends State<BookingWizardScreen> {
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: AppStyles.adaptiveBorder(context))),
+            child:
+                Container(height: 1, color: AppStyles.adaptiveBorder(context))),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
           onPressed: _back,
@@ -463,7 +464,9 @@ class _StepIndicator extends StatelessWidget {
               child: Container(
             height: 2,
             decoration: BoxDecoration(
-              color: i ~/ 2 < current ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+              color: i ~/ 2 < current
+                  ? AppStyles.primary
+                  : AppStyles.adaptiveBorder(context),
               borderRadius: BorderRadius.circular(1),
             ),
           ));
@@ -484,7 +487,9 @@ class _StepIndicator extends StatelessWidget {
                       ? AppStyles.adaptivePrimaryBg(context)
                       : AppStyles.adaptiveInnerCard(context),
               border: Border.all(
-                color: (done || active) ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+                color: (done || active)
+                    ? AppStyles.primary
+                    : AppStyles.adaptiveBorder(context),
                 width: active ? 2 : 1,
               ),
             ),
@@ -503,8 +508,9 @@ class _StepIndicator extends StatelessWidget {
           const SizedBox(height: 5),
           Text(_steps[idx],
               style: TextStyle(
-                color:
-                    (done || active) ? AppStyles.primary : AppStyles.adaptiveTextMuted(context),
+                color: (done || active)
+                    ? AppStyles.primary
+                    : AppStyles.adaptiveTextMuted(context),
                 fontSize: 10,
                 fontWeight: active ? FontWeight.w600 : FontWeight.normal,
               )),
@@ -553,7 +559,8 @@ class _DateTimeStep extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppStyles.warningBg,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppStyles.warning.withValues(alpha: 0.3)),
+              border:
+                  Border.all(color: AppStyles.warning.withValues(alpha: 0.3)),
             ),
             child: const Row(children: [
               Icon(Icons.info_outline, color: AppStyles.warning, size: 16),
@@ -565,7 +572,9 @@ class _DateTimeStep extends StatelessWidget {
                       fontWeight: FontWeight.w500)),
             ]),
           ),
-        Text('Выберите дату', style: AppStyles.headingMedium.copyWith(color: AppStyles.adaptiveTextPrimary(context))),
+        Text('Выберите дату',
+            style: AppStyles.headingMedium
+                .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
         const SizedBox(height: 16),
         SizedBox(
           height: 82,
@@ -591,11 +600,14 @@ class _DateTimeStep extends StatelessWidget {
                             : AppStyles.adaptiveCard(context),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: sel ? AppStyles.primary : AppStyles.adaptiveBorder(context)),
+                        color: sel
+                            ? AppStyles.primary
+                            : AppStyles.adaptiveBorder(context)),
                     boxShadow: sel
                         ? [
                             BoxShadow(
-                                color: AppStyles.primary.withValues(alpha: 0.25),
+                                color:
+                                    AppStyles.primary.withValues(alpha: 0.25),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3))
                           ]
@@ -612,7 +624,8 @@ class _DateTimeStep extends StatelessWidget {
                                     ? Colors.white70
                                     : !allowed
                                         ? AppStyles.adaptiveTextMuted(context)
-                                        : AppStyles.adaptiveTextSecondary(context))),
+                                        : AppStyles.adaptiveTextSecondary(
+                                            context))),
                         const SizedBox(height: 4),
                         Text('${d.day}',
                             style: TextStyle(
@@ -622,7 +635,8 @@ class _DateTimeStep extends StatelessWidget {
                                     ? Colors.white
                                     : !allowed
                                         ? AppStyles.adaptiveTextMuted(context)
-                                        : AppStyles.adaptiveTextPrimary(context))),
+                                        : AppStyles.adaptiveTextPrimary(
+                                            context))),
                         Text(DateFormat('MMM', 'ru').format(d),
                             style: TextStyle(
                                 fontSize: 11,
@@ -630,7 +644,8 @@ class _DateTimeStep extends StatelessWidget {
                                     ? Colors.white70
                                     : !allowed
                                         ? AppStyles.adaptiveTextMuted(context)
-                                        : AppStyles.adaptiveTextSecondary(context))),
+                                        : AppStyles.adaptiveTextSecondary(
+                                            context))),
                       ]),
                 ),
               );
@@ -638,7 +653,9 @@ class _DateTimeStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 28),
-        Text('Выберите время', style: AppStyles.headingMedium.copyWith(color: AppStyles.adaptiveTextPrimary(context))),
+        Text('Выберите время',
+            style: AppStyles.headingMedium
+                .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
         const SizedBox(height: 16),
         GridView.builder(
           shrinkWrap: true,
@@ -768,7 +785,9 @@ class _ServiceStep extends StatelessWidget {
       child: Form(
         key: formKey,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Ваши данные', style: AppStyles.headingMedium.copyWith(color: AppStyles.adaptiveTextPrimary(context))),
+          Text('Ваши данные',
+              style: AppStyles.headingMedium
+                  .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
           const SizedBox(height: 14),
           TextFormField(
             controller: nameCtrl,
@@ -784,7 +803,8 @@ class _ServiceStep extends StatelessWidget {
           TextFormField(
             controller: carCtrl,
             style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-            decoration: AppStyles.inputDecorationFor(context, 'Марка и модель авто',
+            decoration: AppStyles.inputDecorationFor(
+                context, 'Марка и модель авто',
                 icon: Icons.directions_car_outlined),
             textCapitalization: TextCapitalization.words,
             onChanged: (v) => applyTranslitEn(carCtrl, v),
@@ -804,7 +824,9 @@ class _ServiceStep extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Row(children: [
-            Text('Выберите услугу', style: AppStyles.headingMedium.copyWith(color: AppStyles.adaptiveTextPrimary(context))),
+            Text('Выберите услугу',
+                style: AppStyles.headingMedium
+                    .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
@@ -834,7 +856,9 @@ class _ServiceStep extends StatelessWidget {
                     color: AppStyles.adaptiveCard(context),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: sel ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+                      color: sel
+                          ? AppStyles.primary
+                          : AppStyles.adaptiveBorder(context),
                       width: sel ? 2 : 1,
                     ),
                     boxShadow: sel
@@ -880,7 +904,8 @@ class _ServiceStep extends StatelessWidget {
                               style: TextStyle(
                                   color: sel
                                       ? AppStyles.primary
-                                      : AppStyles.adaptiveTextSecondary(context),
+                                      : AppStyles.adaptiveTextSecondary(
+                                          context),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500)),
                           const SizedBox(width: 16),
@@ -894,7 +919,8 @@ class _ServiceStep extends StatelessWidget {
                               style: TextStyle(
                                   color: sel
                                       ? AppStyles.primary
-                                      : AppStyles.adaptiveTextSecondary(context),
+                                      : AppStyles.adaptiveTextSecondary(
+                                          context),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600)),
                         ]),
@@ -909,7 +935,9 @@ class _ServiceStep extends StatelessWidget {
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppStyles.adaptiveBorder(context), width: 2),
+                          border: Border.all(
+                              color: AppStyles.adaptiveBorder(context),
+                              width: 2),
                         ),
                       ),
                   ]),
@@ -919,7 +947,9 @@ class _ServiceStep extends StatelessWidget {
           }),
           const SizedBox(height: 12),
           Row(children: [
-            Text('Дополнительно', style: AppStyles.headingMedium.copyWith(color: AppStyles.adaptiveTextPrimary(context))),
+            Text('Дополнительно',
+                style: AppStyles.headingMedium
+                    .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
             if (isPromo) ...[
               const SizedBox(width: 8),
               Container(
@@ -997,7 +1027,8 @@ class _ServiceStep extends StatelessWidget {
                                           style: TextStyle(
                                             color: checked
                                                 ? AppStyles.primary
-                                                : AppStyles.adaptiveTextPrimary(context),
+                                                : AppStyles.adaptiveTextPrimary(
+                                                    context),
                                             fontSize: 14,
                                             fontWeight: checked
                                                 ? FontWeight.w500
@@ -1011,13 +1042,15 @@ class _ServiceStep extends StatelessWidget {
                                     triggerMode: TooltipTriggerMode.tap,
                                     child: Icon(Icons.help_outline,
                                         size: 14,
-                                        color: AppStyles.adaptiveTextSecondary(context)),
+                                        color: AppStyles.adaptiveTextSecondary(
+                                            context)),
                                   ),
                                 ],
                               ),
                               Text(svc.durationLabel,
                                   style: TextStyle(
-                                      color: AppStyles.adaptiveTextSecondary(context),
+                                      color: AppStyles.adaptiveTextSecondary(
+                                          context),
                                       fontSize: 11)),
                             ],
                           ),
@@ -1100,8 +1133,8 @@ class _ServiceStep extends StatelessWidget {
     return base.copyWith(
       floatingLabelBehavior: FloatingLabelBehavior.always,
       helperText: 'Формат: А000АА777 · EN→RU авто',
-      helperStyle:
-          TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 11),
+      helperStyle: TextStyle(
+          color: AppStyles.adaptiveTextSecondary(context), fontSize: 11),
     );
   }
 }
@@ -1147,10 +1180,13 @@ class _ConfirmationStep extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 640),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Подтверждение', style: AppStyles.headingMedium.copyWith(color: AppStyles.adaptiveTextPrimary(context))),
+            Text('Подтверждение',
+                style: AppStyles.headingMedium
+                    .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
             const SizedBox(height: 4),
             Text('Проверьте данные перед записью',
-                style: AppStyles.bodyMedium.copyWith(color: AppStyles.adaptiveTextSecondary(context))),
+                style: AppStyles.bodyMedium
+                    .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 20),
             if (promoName != null) ...[
               Container(
@@ -1199,7 +1235,8 @@ class _ConfirmationStep extends StatelessWidget {
                 _ConfirmRow(
                     Icons.access_time_rounded, 'Время', totalDurationLabel),
                 if (extras.isNotEmpty) ...[
-                  Container(height: 1, color: AppStyles.adaptiveBorder(context)),
+                  Container(
+                      height: 1, color: AppStyles.adaptiveBorder(context)),
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -1207,11 +1244,14 @@ class _ConfirmationStep extends StatelessWidget {
                         children: [
                           Row(children: [
                             Icon(Icons.add_circle_outline_rounded,
-                                size: 16, color: AppStyles.adaptiveTextSecondary(context)),
+                                size: 16,
+                                color:
+                                    AppStyles.adaptiveTextSecondary(context)),
                             const SizedBox(width: 10),
                             Text('Доп. услуги',
                                 style: TextStyle(
-                                    color: AppStyles.adaptiveTextSecondary(context),
+                                    color: AppStyles.adaptiveTextSecondary(
+                                        context),
                                     fontSize: 13)),
                           ]),
                           const SizedBox(height: 10),
@@ -1223,7 +1263,8 @@ class _ConfirmationStep extends StatelessWidget {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 5),
                                         decoration: BoxDecoration(
-                                          color: AppStyles.adaptivePrimaryBg(context),
+                                          color: AppStyles.adaptivePrimaryBg(
+                                              context),
                                           borderRadius:
                                               BorderRadius.circular(8),
                                           border: Border.all(
@@ -1248,7 +1289,8 @@ class _ConfirmationStep extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppStyles.adaptivePrimaryBg(context),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppStyles.primary.withValues(alpha: 0.2)),
+                border:
+                    Border.all(color: AppStyles.primary.withValues(alpha: 0.2)),
               ),
               child: Row(children: [
                 const Icon(Icons.payments_outlined,
@@ -1272,7 +1314,8 @@ class _ConfirmationStep extends StatelessWidget {
                             color: AppStyles.adaptiveTextSecondary(context),
                             fontSize: 14,
                             decoration: TextDecoration.lineThrough,
-                            decorationColor: AppStyles.adaptiveTextSecondary(context))),
+                            decorationColor:
+                                AppStyles.adaptiveTextSecondary(context))),
                 ]),
               ]),
             ),
@@ -1284,7 +1327,8 @@ class _ConfirmationStep extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppStyles.successBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppStyles.success.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
                   const Icon(Icons.savings_rounded,
@@ -1312,8 +1356,9 @@ class _ConfirmationStep extends StatelessWidget {
                 Expanded(
                     child: Text(
                   'После подтверждения администратор свяжется с вами для уточнения деталей',
-                  style:
-                      TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 12),
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextSecondary(context),
+                      fontSize: 12),
                 )),
               ]),
             ),
@@ -1350,11 +1395,15 @@ class _ConfirmCard extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: AppStyles.label.copyWith(color: AppStyles.adaptiveTextSecondary(context))),
+            Text(label,
+                style: AppStyles.label
+                    .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 3),
             Text(value,
                 style: TextStyle(
-                  color: highlight ? AppStyles.primary : AppStyles.adaptiveTextPrimary(context),
+                  color: highlight
+                      ? AppStyles.primary
+                      : AppStyles.adaptiveTextPrimary(context),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 )),
@@ -1379,12 +1428,15 @@ class _ConfirmRow extends StatelessWidget {
               color: AppStyles.adaptiveInnerCard(context),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: AppStyles.adaptiveTextSecondary(context)),
+            child: Icon(icon,
+                size: 16, color: AppStyles.adaptiveTextSecondary(context)),
           ),
           const SizedBox(width: 12),
           SizedBox(
             width: 110,
-            child: Text(label, style: AppStyles.bodyMedium.copyWith(color: AppStyles.adaptiveTextSecondary(context))),
+            child: Text(label,
+                style: AppStyles.bodyMedium
+                    .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
           ),
           Expanded(
               child: Text(value,
@@ -1409,7 +1461,8 @@ class _BottomBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         decoration: BoxDecoration(
           color: AppStyles.adaptiveCard(context),
-          border: Border(top: BorderSide(color: AppStyles.adaptiveBorder(context))),
+          border:
+              Border(top: BorderSide(color: AppStyles.adaptiveBorder(context))),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.04),
@@ -1425,7 +1478,8 @@ class _BottomBar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppStyles.adaptivePrimaryBg(context),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppStyles.primary.withValues(alpha: 0.1)),
+                border:
+                    Border.all(color: AppStyles.primary.withValues(alpha: 0.1)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.event_rounded,

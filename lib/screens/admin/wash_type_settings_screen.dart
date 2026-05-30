@@ -142,8 +142,8 @@ class _WashTypeCard extends StatelessWidget {
                             ),
                             child: Text(n,
                                 style: TextStyle(
-                                    color: AppStyles.adaptiveTextPrimary(
-                                        context),
+                                    color:
+                                        AppStyles.adaptiveTextPrimary(context),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500)),
                           ))
