@@ -3,13 +3,13 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
 from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, or_
+from sqlalchemy import select, update, delete, func, or_, and_
 from database import get_db
 from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User, Consumable,
+    WashTypeIncludedExtra, User, Consumable, Shift,
 )
 from datetime import datetime
 from collections import defaultdict
@@ -169,13 +169,38 @@ async def get_by_washer(request: Request, username: str, db: AsyncSession = Depe
     # P0: IDOR check - only washer or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
-    # JSON-массив в строке. Используем LIKE по точному токену "username"
+
+    user_res = await db.execute(select(User).where(User.username == username.lower()))
+    user = user_res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "Пользователь не найден")
+
+    # 1. Явно назначенные записи
     result = await db.execute(
         select(Appointment)
         .where(Appointment.assignedWasher.like(f'%"{username.lower()}"%'))
-        .order_by(Appointment.dateTime.asc())
     )
-    return result.scalars().all()
+    explicit = list(result.scalars().all())
+    explicit_ids = {a.id for a in explicit}
+
+    # 2. Записи, которые попадают в смены мойщика
+    appt_date = func.substr(Appointment.dateTime, 1, 10)
+    appt_time = func.substr(Appointment.dateTime, 12, 5)
+
+    result2 = await db.execute(
+        select(Appointment)
+        .join(Shift, and_(
+            Shift.userId == user.id,
+            Shift.date == appt_date,
+            appt_time >= Shift.startTime,
+            appt_time <= Shift.endTime,
+        ))
+    )
+    shift_based = [a for a in result2.scalars().all() if a.id not in explicit_ids]
+
+    all_appts = explicit + shift_based
+    all_appts.sort(key=lambda a: a.dateTime)
+    return all_appts
 
 async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
     # 1. Сбор расходников из типа мойки
