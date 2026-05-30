@@ -44,7 +44,6 @@ class ApiService {
         return User.fromMap(data['user']);
       },
       failure: (err) {
-        debugPrint('[ApiService.login] error: ${err.message}');
         return null;
       },
     );
@@ -72,7 +71,6 @@ class ApiService {
         return {'user': data['user']};
       },
       failure: (err) {
-        debugPrint('[ApiService.register] error: ${err.message}');
         if (err.statusCode != null &&
             err.statusCode! >= 400 &&
             err.statusCode! < 500) {
@@ -102,7 +100,6 @@ class ApiService {
     return result.when(
       success: (data) => User.fromMap(data),
       failure: (err) {
-        debugPrint('[ApiService.updateProfile] error: ${err.message}');
         return null;
       },
     );
@@ -120,15 +117,10 @@ class ApiService {
     final result = await ApiClient.rawGet('/appointments/$queryString');
     return result.when(
       success: (resp) {
-        debugPrint(
-            '[ApiService.getAppointments] status=${resp.statusCode}, bodyLength=${resp.body.length}');
-        debugPrint('[ApiService.getAppointments] headers=${resp.headers}');
-
         List<dynamic> list;
         try {
           list = jsonDecode(resp.body) as List;
-        } catch (e, st) {
-          debugPrint('[ApiService.getAppointments] jsonDecode ERROR: $e\n$st');
+        } catch (_) {
           return PaginatedAppointments(
             appointments: [],
             totalPages: 1,
@@ -142,10 +134,7 @@ class ApiService {
         for (final item in list) {
           try {
             appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
-          } catch (e, st) {
-            debugPrint(
-                '[ApiService.getAppointments] fromMap ERROR for item: $item\nError: $e\n$st');
-          }
+          } catch (_) {}
         }
 
         final totalPagesHeader =
@@ -169,14 +158,8 @@ class ApiService {
         if (uniqueDatesHeader != null && uniqueDatesHeader.isNotEmpty) {
           try {
             uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
-          } catch (e, st) {
-            debugPrint(
-                '[ApiService.getAppointments] uniqueDates decode ERROR: "$uniqueDatesHeader"\nError: $e\n$st');
-          }
+          } catch (_) {}
         }
-
-        debugPrint(
-            '[ApiService.getAppointments] parsed: totalPages=$totalPages, currentPage=$currentPage, currentDate=$currentDate, appointments=${appointments.length}');
 
         return PaginatedAppointments(
           appointments: appointments,
@@ -187,8 +170,6 @@ class ApiService {
         );
       },
       failure: (err) {
-        debugPrint(
-            '[ApiService.getAppointments] error: ${err.message} (status=${err.statusCode})');
         return PaginatedAppointments(
             appointments: [],
             totalPages: 1,
@@ -204,7 +185,6 @@ class ApiService {
     return result.when(
       success: (data) => data,
       failure: (err) {
-        debugPrint('[ApiService.getLastUpdated] error: ${err.message}');
         return {'count': 0, 'max_id': 0};
       },
     );
@@ -215,7 +195,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getAppointmentsByOwner] error: ${err.message}');
         return [];
       },
     );
@@ -226,7 +205,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.createAppointment] error: ${err.message}');
         return false;
       },
     );
@@ -238,7 +216,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.updateAppointment] error: ${err.message}');
         return false;
       },
     );
@@ -249,7 +226,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.deleteAppointment] error: ${err.message}');
         return false;
       },
     );
@@ -260,7 +236,6 @@ class ApiService {
     return result.when(
       success: (data) => data,
       failure: (err) {
-        debugPrint('[ApiService.getBusySlots] error: ${err.message}');
         return {'num_boxes': 2, 'busy_slots': []};
       },
     );
@@ -272,7 +247,6 @@ class ApiService {
     return result.when(
       success: (data) => data['hasNotification'] == true,
       failure: (err) {
-        debugPrint('[ApiService.hasDeletedNotification] error: ${err.message}');
         return false;
       },
     );
@@ -284,8 +258,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint(
-            '[ApiService.clearDeletedNotification] error: ${err.message}');
         return false;
       },
     );
@@ -296,7 +268,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.clearAdminModifiedFlag] error: ${err.message}');
         return false;
       },
     );
@@ -307,7 +278,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.markAppointmentSeen] error: ${err.message}');
         return false;
       },
     );
@@ -318,8 +288,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint(
-            '[ApiService.toggleAppointmentFavorite] error: ${err.message}');
         return false;
       },
     );
@@ -334,7 +302,6 @@ class ApiService {
         'completed': (m['completed'] ?? 0) as int,
       },
       failure: (err) {
-        debugPrint('[ApiService.getAppointmentStats] error: ${err.message}');
         return {'total': 0, 'scheduled': 0, 'completed': 0};
       },
     );
@@ -345,8 +312,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint(
-            '[ApiService.getAppointmentsByWasher] error: ${err.message}');
         return [];
       },
     );
@@ -359,7 +324,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.assignWasher] error: ${err.message}');
         return false;
       },
     );
@@ -370,7 +334,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => User.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getWashers] error: ${err.message}');
         return [];
       },
     );
@@ -382,7 +345,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Service.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getServices] error: ${err.message}');
         return [];
       },
     );
@@ -393,7 +355,6 @@ class ApiService {
     return result.when(
       success: (list) => list.cast<String>(),
       failure: (err) {
-        debugPrint('[ApiService.getServiceCategories] error: ${err.message}');
         return [];
       },
     );
@@ -406,7 +367,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.createService] error: ${err.message}');
         return false;
       },
     );
@@ -419,7 +379,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.updateService] error: ${err.message}');
         return false;
       },
     );
@@ -430,7 +389,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.deleteService] error: ${err.message}');
         return false;
       },
     );
@@ -442,7 +400,6 @@ class ApiService {
     return result.when(
       success: (list) => list.cast<String>().toSet(),
       failure: (err) {
-        debugPrint('[ApiService.getServiceFavorites] error: ${err.message}');
         return {};
       },
     );
@@ -454,7 +411,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.toggleServiceFavorite] error: ${err.message}');
         return false;
       },
     );
@@ -467,7 +423,6 @@ class ApiService {
     return result.when(
       success: (list) => list.cast<String>().toSet(),
       failure: (err) {
-        debugPrint('[ApiService.getExtraFavorites] error: ${err.message}');
         return {};
       },
     );
@@ -479,7 +434,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.toggleExtraFavorite] error: ${err.message}');
         return false;
       },
     );
@@ -491,7 +445,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Promo.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getPromos] error: ${err.message}');
         return [];
       },
     );
@@ -503,7 +456,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => WashType.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getWashTypes] error: ${err.message}');
         return [];
       },
     );
@@ -515,7 +467,6 @@ class ApiService {
     return result.when(
       success: (data) => WashType.fromMap(data),
       failure: (err) {
-        debugPrint('[ApiService.updateWashType] error: ${err.message}');
         return null;
       },
     );
@@ -527,7 +478,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => LogEntry.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getLogs] error: ${err.message}');
         return [];
       },
     );
@@ -538,7 +488,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => LogEntry.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getLogsByUser] error: ${err.message}');
         return [];
       },
     );
@@ -553,7 +502,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.createLog] error: ${err.message}');
         return false;
       },
     );
@@ -564,7 +512,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.clearLogs] error: ${err.message}');
         return false;
       },
     );
@@ -584,7 +531,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.saveFcmToken] error: ${err.message}');
         return false;
       },
     );
@@ -596,7 +542,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Note.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getNotes] error: ${err.message}');
         return [];
       },
     );
@@ -607,7 +552,6 @@ class ApiService {
     return result.when(
       success: (list) => list.map((m) => Note.fromMap(m)).toList(),
       failure: (err) {
-        debugPrint('[ApiService.getNotesByUser] error: ${err.message}');
         return [];
       },
     );
@@ -618,7 +562,6 @@ class ApiService {
     return result.when(
       success: (data) => data['count'] ?? 0,
       failure: (err) {
-        debugPrint('[ApiService.getUnreadNotesCount] error: ${err.message}');
         return 0;
       },
     );
@@ -634,7 +577,6 @@ class ApiService {
     return result.when(
       success: (data) => Note.fromMap(data),
       failure: (err) {
-        debugPrint('[ApiService.createNote] error: ${err.message}');
         return null;
       },
     );
@@ -645,7 +587,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.markNoteRead] error: ${err.message}');
         return false;
       },
     );
@@ -656,7 +597,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.markAllNotesRead] error: ${err.message}');
         return false;
       },
     );
@@ -667,7 +607,6 @@ class ApiService {
     return result.when(
       success: (_) => true,
       failure: (err) {
-        debugPrint('[ApiService.deleteNote] error: ${err.message}');
         return false;
       },
     );
@@ -682,7 +621,6 @@ class ApiService {
     return result.when(
       success: (data) => MonthlyReport.fromJson(data),
       failure: (err) {
-        debugPrint('[ApiService.getAverageCheckReport] error: ${err.message}');
         return null;
       },
     );
@@ -700,8 +638,6 @@ class ApiService {
     return result.when(
       success: (data) => PopularServicesReport.fromJson(data),
       failure: (err) {
-        debugPrint(
-            '[ApiService.getPopularAdditionalServices] error: ${err.message}');
         return null;
       },
     );
@@ -720,8 +656,6 @@ class ApiService {
     return result.when(
       success: (data) => ConsumablesUsageReport.fromJson(data),
       failure: (err) {
-        debugPrint(
-            '[ApiService.getConsumablesUsageReport] error: ${err.message}');
         return null;
       },
     );

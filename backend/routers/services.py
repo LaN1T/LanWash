@@ -8,7 +8,11 @@ from db_models import Service, ServiceFavorite, ExtraFavorite, Promo, PromoInclu
 from datetime import datetime
 from services.auth_service import get_current_user, check_roles
 
-router = APIRouter(prefix="/api/services", tags=["services"])
+router = APIRouter(
+    prefix="/api/services",
+    tags=["services"],
+    
+)
 
 @router.get("/promos", response_model=list[PromoResponse])
 @limiter.limit("60/minute")

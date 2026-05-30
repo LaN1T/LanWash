@@ -15,26 +15,26 @@ class WorkloadService:
         """
         Calculates total duration in minutes, excluding extra services already covered by the wash type.
         """
-        # 1. Base wash type duration
+        # 1. Базовая длительность типа мойки
         res_wt = await db.execute(select(WashType.durationMinutes).where(WashType.id == wash_type_id))
         base_duration = res_wt.scalar() or 30
         
-        # 2. Get services already included in this wash type
+        # 2. Получаем услуги, уже включённые в этот тип мойки
         res_included = await db.execute(select(WashTypeIncludedExtra.extraServiceId).where(WashTypeIncludedExtra.washTypeId == wash_type_id))
         included_ids = {row[0] for row in res_included.all()}
 
-        # 3. Promo duration (if it exists)
+        # 3. Длительность промо (если есть)
         if promo_id:
             res_promo = await db.execute(select(Promo.duration).where(Promo.id == promo_id))
             p_dur = res_promo.scalar()
             if p_dur and p_dur > 0:
                 base_duration = p_dur
             
-            # Also get promo included services to exclude them as well
+            # Также получаем услуги, включённые в промо, чтобы исключить их
             res_promo_inc = await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
             included_ids.update({row[0] for row in res_promo_inc.all()})
 
-        # 4. Additional services duration
+        # 4. Длительность дополнительных услуг
         total_duration = base_duration
         try:
             extra_ids = json.loads(additional_services_json)
@@ -42,7 +42,7 @@ class WorkloadService:
             extra_ids = []
             
         if extra_ids:
-            # Filter out services already included
+            # Исключаем уже включённые услуги
             filtered_ids = [eid for eid in extra_ids if eid not in included_ids]
             if filtered_ids:
                 res_extras = await db.execute(select(Service.durationMinutes).where(Service.id.in_(filtered_ids)))
@@ -59,9 +59,9 @@ class WorkloadService:
         start_dt = datetime.fromisoformat(dt_str)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
         
-        # We need to check all appointments that might overlap.
-        # Since we don't store end_time, we have to calculate it for each appointment in the range.
-        # To optimize, we can fetch all appointments for that day.
+        # Проверяем все записи, которые могут пересекаться.
+        # Так как end_time не хранится, вычисляем его для каждой записи.
+        # Для оптимизации загружаем все записи за этот день.
         day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         day_end = start_dt.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
         
@@ -80,21 +80,21 @@ class WorkloadService:
         
         box_occupancy = [False] * NUM_BOXES
         
-        # For each box, check if it's free during [start_dt, end_dt]
+        # Для каждого бокса проверяем, свободен ли он в интервале [start_dt, end_dt]
         for box_idx in range(NUM_BOXES):
             is_free = True
             for appt in day_appointments:
                 if appt.box_index != box_idx:
                     continue
                 
-                # Calculate appt duration
+                # Вычисляем длительность записи
                 appt_duration = await WorkloadService.get_appointment_duration(
                     db, appt.washTypeId, appt.additionalServices, appt.promoId
                 )
                 appt_start = datetime.fromisoformat(appt.dateTime)
                 appt_end = appt_start + timedelta(minutes=appt_duration)
                 
-                # Overlap check
+                # Проверка пересечения
                 if start_dt < appt_end and end_dt > appt_start:
                     logger.debug("box_conflict", box=box_idx + 1, appt_id=appt.id, appt_start=appt_start.isoformat(), appt_end=appt_end.isoformat())
                     is_free = False

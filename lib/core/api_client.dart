@@ -168,7 +168,7 @@ class ApiClient {
     );
   }
 
-  // ─── Raw request (for non-JSON or custom parsing) ──────────────────────────
+  // ─── Сырой запрос (для не-JSON или кастомного парсинга) ────────────────────
 
   static Future<ApiResult<http.Response>> rawGet(String path) async {
     final url = Uri.parse('${AppConfig.baseUrl}$path');

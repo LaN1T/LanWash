@@ -23,10 +23,19 @@ from slowapi import _rate_limit_exceeded_handler
 # Для использования limiter.limit в роутере, нужно получить его из core.limiter
 from core.limiter import limiter
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(
+    prefix="/api/auth",
+    tags=["auth"],
+    
+)
 
-@router.post("/login", response_model=LoginResponse)
-@limiter.limit("5/minute") # P2: Ограничение 5 запросов в минуту на эндпоинт логина
+@router.post(
+    "/login",
+    response_model=LoginResponse,
+    summary="Вход в систему",
+    
+)
+@limiter.limit("5/minute")
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
@@ -51,8 +60,13 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
         "token_type": "bearer"
     }
 
-@router.post("/register", response_model=LoginResponse)
-@limiter.limit("2/minute") # P2: Ограничение 2 запроса в минуту на эндпоинт регистрации
+@router.post(
+    "/register",
+    response_model=LoginResponse,
+    summary="Регистрация нового пользователя",
+    
+)
+@limiter.limit("2/minute")
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     if not req.username.strip():
         raise HTTPException(400, "Введите логин")
@@ -96,13 +110,23 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         "token_type": "bearer"
     }
 
-@router.get("/washers", response_model=list[UserResponse])
+@router.get(
+    "/washers",
+    response_model=list[UserResponse],
+    summary="Список мойщиков",
+    
+)
 @limiter.limit("60/minute")
 async def get_washers(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(User).where(User.role == 'washer').order_by(User.displayName.asc()))
     return result.scalars().all()
 
-@router.put("/profile/{user_id}", response_model=UserResponse)
+@router.put(
+    "/profile/{user_id}",
+    response_model=UserResponse,
+    summary="Обновление профиля",
+    
+)
 @limiter.limit("10/minute")
 async def update_profile(request: Request, user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.id != user_id and current_user.role != 'admin':
@@ -118,9 +142,10 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
     if req.phone is not None: updates["phone"] = req.phone
     if req.carModel is not None: updates["carModel"] = req.carModel
     if req.carNumber is not None: updates["carNumber"] = req.carNumber
-    if req.newPassword is not None: 
-        if len(req.newPassword) < 8:
-            raise HTTPException(400, "Новый пароль минимум 8 символов")
+    if req.newPassword is not None:
+        password_error = validate_password_strength(req.newPassword)
+        if password_error:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=password_error)
         updates["passwordHash"] = get_password_hash(req.newPassword)
 
     if updates:
@@ -130,7 +155,11 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
         
     return user
 
-@router.post("/fcm-token")
+@router.post(
+    "/fcm-token",
+    summary="Сохранение FCM-токена",
+    
+)
 @limiter.limit("10/minute")
 async def save_fcm_token(request: Request, req: FcmTokenRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.debug("save_fcm_token", user=current_user.username, req_user=req.username)

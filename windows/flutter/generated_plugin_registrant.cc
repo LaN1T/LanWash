@@ -7,6 +7,7 @@
 #include "generated_plugin_registrant.h"
 
 #include <file_saver/file_saver_plugin.h>
+#include <firebase_app_check/firebase_app_check_plugin_c_api.h>
 #include <firebase_core/firebase_core_plugin_c_api.h>
 #include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 #include <printing/printing_plugin.h>
@@ -16,6 +17,8 @@
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   FileSaverPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FileSaverPlugin"));
+  FirebaseAppCheckPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FirebaseAppCheckPluginCApi"));
   FirebaseCorePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseCorePluginCApi"));
   FlutterSecureStorageWindowsPluginRegisterWithRegistrar(

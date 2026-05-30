@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'service.dart';
 import 'wash_type.dart';
 
@@ -9,8 +8,8 @@ class Appointment {
   String carModel;
   String carNumber;
   DateTime dateTime;
-  String washTypeId; // FK → wash_types.id
-  List<String> additionalServices; // id доп.услуг (services.id)
+  String washTypeId; // внешний ключ → wash_types.id
+  List<String> additionalServices; // идентификаторы доп. услуг (services.id)
   String status;
   String notes;
   bool isFavorite;
@@ -22,7 +21,7 @@ class Appointment {
   bool isModifiedByWasher;
   bool isSeenByClient;
   List<String> assignedWashers;
-  String? promoId; // FK → promos.id
+  String? promoId; // внешний ключ → promos.id
   int box_index;
 
   Appointment({
@@ -97,22 +96,18 @@ class Appointment {
         promoId: m['promoId']?.toString(),
         box_index: (m['box_index'] as num?)?.toInt() ?? 0,
       );
-    } catch (e, st) {
-      debugPrint('[Appointment.fromMap] ERROR parsing: $m\nError: $e\n$st');
+    } catch (_) {
       rethrow;
     }
   }
 
   static DateTime _parseDateTime(dynamic value) {
     if (value == null || value == '') {
-      debugPrint(
-          '[Appointment._parseDateTime] WARNING: null/empty dateTime, using now()');
       return DateTime.now();
     }
     try {
       return DateTime.parse(value.toString());
-    } catch (e) {
-      debugPrint('[Appointment._parseDateTime] ERROR parsing "$value": $e');
+    } catch (_) {
       return DateTime.now();
     }
   }

@@ -4,6 +4,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'app_styles.dart';
 import 'core/service_locator.dart';
@@ -27,12 +29,19 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // App Check: в режиме разработки — debug-провайдеры, в релизе — production
+  await FirebaseAppCheck.instance.activate(
+    androidProvider:
+        kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+    appleProvider: kReleaseMode
+        ? AppleProvider.deviceCheck
+        : AppleProvider.appAttestWithDeviceCheckFallback,
+  );
+
   await initializeDateFormatting('ru', null);
 
-  // Инициализация уведомлений
-  sl<NotificationService>()
-      .init()
-      .catchError((e) => debugPrint("Firebase error: $e"));
+  // Инициализация push-уведомлений
+  sl<NotificationService>().init().catchError((_) {});
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -80,9 +89,7 @@ class LanWashApp extends StatelessWidget {
           primary: AppStyles.primary,
           secondary: AppStyles.primaryLight,
           surface: AppStyles.bgCard,
-          surfaceVariant:
-              AppStyles.bgPage, // Changed background to surfaceVariant
-          // Removed background as it's deprecated and surfaceVariant is the modern equivalent for background colors in Material 3
+          surfaceVariant: AppStyles.bgPage,
         ),
         useMaterial3: true,
         scaffoldBackgroundColor: AppStyles.bgPage,
@@ -212,31 +219,22 @@ class _AppRouterState extends State<_AppRouter> {
     final auth = Provider.of<AuthProvider>(context, listen: true);
     final provider = context.read<AppProvider>();
 
-    debugPrint(
-        '[DEBUG] _AppRouter: Build() Auth: loggedIn=${auth.isLoggedIn}, resumed=$_sessionResumed, init=${auth.initialized}');
-
     // При выходе — сбросить данные
     if (_wasLoggedIn == true && !auth.isLoggedIn) {
-      debugPrint('[DEBUG] _AppRouter: Logout detected, resetting state.');
       _sessionResumed = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         provider.clearData();
         if (!mounted) return;
-        debugPrint(
-            '[DEBUG] _AppRouter: Clearing stack and showing LoginScreen.');
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
 
     // При входе — инициализация
     if (auth.isLoggedIn && _wasLoggedIn != true) {
-      debugPrint('[DEBUG] _AppRouter: Login detected, initializing provider.');
-      _sessionResumed =
-          true; // Устанавливаем в true для нового входа, чтобы не показывать экран возобновления
+      _sessionResumed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         provider.init(auth);
-        // Если мы были на экране регистрации или другом временном экране — возвращаемся к корню
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }

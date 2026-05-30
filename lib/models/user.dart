@@ -28,7 +28,7 @@ class User {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'username': username,
-        // Security: never store passwordHash on client
+        // Безопасность: никогда не храним хеш пароля на клиенте
         'role': role.name,
         'displayName': displayName,
         'phone': phone,

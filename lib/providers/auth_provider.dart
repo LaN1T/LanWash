@@ -45,8 +45,7 @@ class AuthProvider extends ChangeNotifier {
         _user = User.fromMap(jsonDecode(json));
         _notifications.updateTokenOnServer(_user!.username);
       }
-    } catch (e, st) {
-      debugPrint('[AuthProvider.init] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка загрузки сессии';
     }
     _initialized = true;
@@ -56,18 +55,14 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _saveUser(User user) async {
     try {
       await _storage.write(key: _kUserKey, value: jsonEncode(user.toMap()));
-    } catch (e, st) {
-      debugPrint('[AuthProvider._saveUser] error: $e\n$st');
-    }
+    } catch (_) {}
   }
 
   Future<void> _clearUser() async {
     try {
       await _storage.delete(key: _kUserKey);
       await ApiService.deleteToken();
-    } catch (e, st) {
-      debugPrint('[AuthProvider._clearUser] error: $e\n$st');
-    }
+    } catch (_) {}
   }
 
   /// Возвращает null при успехе, иначе текст ошибки
@@ -95,9 +90,8 @@ class AuthProvider extends ChangeNotifier {
       await _api.createLog(
           username, 'Вход в систему', 'Роль: ${user.role.name}');
       return null;
-    } catch (e, st) {
+    } catch (_) {
       _loading = false;
-      debugPrint('[AuthProvider.login] error: $e\n$st');
       _errorMessage = 'Ошибка сети. Проверьте подключение.';
       notifyListeners();
       return _errorMessage;
@@ -140,9 +134,8 @@ class AuthProvider extends ChangeNotifier {
       await _api.createLog(
           username, 'Регистрация', 'Имя: ${_user?.displayName ?? displayName}');
       return null;
-    } catch (e, st) {
+    } catch (_) {
       _loading = false;
-      debugPrint('[AuthProvider.register] error: $e\n$st');
       _errorMessage = 'Ошибка сети. Проверьте подключение.';
       notifyListeners();
       return _errorMessage;
@@ -177,8 +170,7 @@ class AuthProvider extends ChangeNotifier {
         return null;
       }
       return 'Ошибка обновления профиля';
-    } catch (e, st) {
-      debugPrint('[AuthProvider.updateProfile] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка сети. Проверьте подключение.';
       notifyListeners();
       return _errorMessage;
@@ -186,13 +178,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    debugPrint('[AuthProvider.logout] called');
     final who = _user?.username ?? 'unknown';
     try {
       await _api.createLog(who, 'Выход из системы', '');
-    } catch (e) {
-      debugPrint('[AuthProvider.logout] createLog error: $e');
-    }
+    } catch (e) {}
     _user = null;
     await _clearUser();
     notifyListeners();

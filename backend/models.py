@@ -15,17 +15,17 @@ class LoginResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=8, max_length=128)
+    username: str = Field(..., min_length=3, max_length=50, description="Логин пользователя")
+    password: str = Field(..., min_length=8, max_length=128, description="Пароль")
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=8, max_length=128)
-    displayName: str = Field(..., min_length=1, max_length=100)
-    phone: str = Field(default="", max_length=20)
-    carModel: str = Field(default="", max_length=50)
-    carNumber: str = Field(default="", max_length=20)
+    username: str = Field(..., min_length=3, max_length=50, description="Уникальный логин (латиница и цифры)")
+    password: str = Field(..., min_length=8, max_length=128, description="Пароль, минимум 4 символа")
+    displayName: str = Field(..., min_length=1, max_length=100, description="Отображаемое имя")
+    phone: str = Field(default="", max_length=20, description="Номер телефона")
+    carModel: str = Field(default="", max_length=50, description="Марка и модель автомобиля")
+    carNumber: str = Field(default="", max_length=50, description="Госномер автомобиля")
 
 
 class UserResponse(BaseModel):
@@ -83,19 +83,19 @@ class WashTypeResponse(BaseModel):
 
 # ─── Appointments ────────────────────────────────────────────────────────────
 class AppointmentRequest(BaseModel):
-    id: str = Field(..., max_length=36)
-    clientName: str = Field(..., max_length=100)
-    carModel: str = Field(..., max_length=50)
-    carNumber: str = Field(..., max_length=20)
-    dateTime: str = Field(..., max_length=30)
-    washTypeId: str = Field(..., max_length=36)
-    additionalServices: str = Field(default="[]", max_length=1000)
+    id: str = Field(..., max_length=36, description="Уникальный ID записи")
+    clientName: str = Field(..., max_length=100, description="Имя клиента")
+    carModel: str = Field(..., max_length=50, description="Марка и модель авто")
+    carNumber: str = Field(..., max_length=20, description="Госномер")
+    dateTime: str = Field(..., max_length=30, description="Дата и время в ISO формате")
+    washTypeId: str = Field(..., max_length=36, description="ID типа мойки")
+    additionalServices: str = Field(default="[]", max_length=1000, description="JSON-массив ID доп. услуг")
     status: Literal["scheduled", "in_progress", "completed", "cancelled"] = "scheduled"
-    notes: str = Field(default="", max_length=1000)
+    notes: str = Field(default="", max_length=1000, description="Заметки")
     isFavorite: bool = False
-    ownerUsername: str = Field(default="", max_length=50)
-    promoPrice: int = Field(default=0, ge=0)
-    paidPrice: int = Field(default=0, ge=0)
+    ownerUsername: str = Field(default="", max_length=50, description="Логин владельца записи")
+    promoPrice: int = Field(default=0, ge=0, description="Акционная цена")
+    paidPrice: int = Field(default=0, ge=0, description="Фактически оплаченная сумма")
     isModifiedByAdmin: bool = False
     isModifiedByWasher: bool = False
     isSeenByClient: bool = True

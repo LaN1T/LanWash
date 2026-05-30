@@ -8,7 +8,11 @@ from db_models import LogEntry, User
 from datetime import datetime
 from services.auth_service import get_current_user, check_roles
 
-router = APIRouter(prefix="/api/logs", tags=["logs"])
+router = APIRouter(
+    prefix="/api/logs",
+    tags=["logs"],
+    
+)
 
 @router.get("/", response_model=list[LogResponse])
 @limiter.limit("60/minute")

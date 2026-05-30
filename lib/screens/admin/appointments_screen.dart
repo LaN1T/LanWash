@@ -6,7 +6,6 @@ import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'appointment_detail_screen.dart';
-import 'add_edit_appointment_screen.dart';
 import '../../models/service.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -58,8 +57,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   List<Appointment> _filtered(List<Appointment> all) {
-    debugPrint(
-        '[DEBUG] Filtering ${all.length} appointments. Filters: $_selectedFilters, Search: $_searchText');
     final filtered = all.where((a) {
       final matchStatus = _selectedFilters.contains('all') ||
           _selectedFilters.contains(a.status);
@@ -68,16 +65,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           a.clientName.toLowerCase().contains(q) ||
           a.carModel.toLowerCase().contains(q) ||
           a.carNumber.toLowerCase().contains(q);
-
-      if (!matchStatus || !matchSearch) {
-        debugPrint(
-            '[DEBUG] Excluded appt: ${a.id}, status: ${a.status}, client: ${a.clientName}');
-      }
       return matchStatus && matchSearch;
     }).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-    debugPrint('[DEBUG] Filtered result count: ${filtered.length}');
     return filtered;
   }
 
@@ -168,9 +159,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            onPressed: currentPage > 1
-                ? () => provider.setPage(currentPage - 1, auth)
-                : null,
+            onPressed:
+                hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
             icon: const Icon(Icons.chevron_left, size: 28),
             color: AppStyles.primary,
           ),
@@ -239,8 +229,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ),
           const SizedBox(width: 12),
           IconButton(
-            onPressed:
-                hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
+            onPressed: currentPage > 1
+                ? () => provider.setPage(currentPage - 1, auth)
+                : null,
             icon: const Icon(Icons.chevron_right, size: 28),
             color: AppStyles.primary,
           ),

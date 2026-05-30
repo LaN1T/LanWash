@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Firebase (optional for tests)
     firebase_credentials_path: str = ""
 
+    # App Check (optional)
+    app_check_enforced: bool = False
+
     # Error tracking (optional)
     sentry_dsn: str = ""
 
