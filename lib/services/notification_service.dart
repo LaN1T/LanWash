@@ -37,12 +37,13 @@ class NotificationService {
     try {
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-      const DarwinInitializationSettings initializationSettingsIOS =
+      const DarwinInitializationSettings initializationSettingsDarwin =
           DarwinInitializationSettings();
       const InitializationSettings initializationSettings =
           InitializationSettings(
         android: initializationSettingsAndroid,
-        iOS: initializationSettingsIOS,
+        iOS: initializationSettingsDarwin,
+        macOS: initializationSettingsDarwin,
       );
 
       await _localNotifications.initialize(

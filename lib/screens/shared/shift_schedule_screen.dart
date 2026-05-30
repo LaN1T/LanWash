@@ -221,8 +221,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                     Row(
                       children: [
                         SizedBox(
-                            width: nameWidth,
-                            child: _headerCell('Мойщик')),
+                            width: nameWidth, child: _headerCell('Мойщик')),
                         ...days.map((d) => Expanded(
                               child: _headerCell(
                                 _dayLabel(d),
@@ -230,8 +229,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                               ),
                             )),
                         SizedBox(
-                            width: hoursWidth,
-                            child: _headerCell('Часов')),
+                            width: hoursWidth, child: _headerCell('Часов')),
                       ],
                     ),
                     const Divider(height: 1),
@@ -249,8 +247,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
                       return Row(
                         children: [
-                          SizedBox(
-                              width: nameWidth, child: _nameCell(w)),
+                          SizedBox(width: nameWidth, child: _nameCell(w)),
                           ...rowCells,
                           SizedBox(
                               width: hoursWidth,
@@ -625,8 +622,7 @@ class _DigitalTimePickerState extends State<_DigitalTimePicker> {
                       ),
                       side: BorderSide(color: Colors.grey.shade300),
                     ),
-                    child: const Text('Отмена',
-                        style: TextStyle(fontSize: 16)),
+                    child: const Text('Отмена', style: TextStyle(fontSize: 16)),
                   ),
                 ),
                 const SizedBox(width: 12),
