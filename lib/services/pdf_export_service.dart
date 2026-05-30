@@ -124,8 +124,7 @@ class PdfExportService {
                   await Printing.sharePdf(
                       bytes: pdfBytes, filename: '$fileName.pdf');
                 }
-              } catch (e) {
-              }
+              } catch (e) {}
             },
             child: const Text('Скачать'),
           ),

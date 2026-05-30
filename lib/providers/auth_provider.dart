@@ -55,16 +55,14 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _saveUser(User user) async {
     try {
       await _storage.write(key: _kUserKey, value: jsonEncode(user.toMap()));
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _clearUser() async {
     try {
       await _storage.delete(key: _kUserKey);
       await ApiService.deleteToken();
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   /// Возвращает null при успехе, иначе текст ошибки
@@ -183,8 +181,7 @@ class AuthProvider extends ChangeNotifier {
     final who = _user?.username ?? 'unknown';
     try {
       await _api.createLog(who, 'Выход из системы', '');
-    } catch (e) {
-    }
+    } catch (e) {}
     _user = null;
     await _clearUser();
     notifyListeners();

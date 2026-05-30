@@ -117,7 +117,6 @@ class ApiService {
     final result = await ApiClient.rawGet('/appointments/$queryString');
     return result.when(
       success: (resp) {
-
         List<dynamic> list;
         try {
           list = jsonDecode(resp.body) as List;
@@ -135,8 +134,7 @@ class ApiService {
         for (final item in list) {
           try {
             appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
-          } catch (_) {
-          }
+          } catch (_) {}
         }
 
         final totalPagesHeader =
@@ -160,10 +158,8 @@ class ApiService {
         if (uniqueDatesHeader != null && uniqueDatesHeader.isNotEmpty) {
           try {
             uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
-          } catch (_) {
-          }
+          } catch (_) {}
         }
-
 
         return PaginatedAppointments(
           appointments: appointments,
