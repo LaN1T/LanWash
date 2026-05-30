@@ -40,6 +40,9 @@ async def list_shifts(
     stmt = select(Shift).where(and_(Shift.date >= start_date, Shift.date <= end_date))
     result = await db.execute(stmt)
     shifts = result.scalars().all()
+    print(f"[shifts.list] {start_date}..{end_date} -> {len(shifts)} shifts")
+    for s in shifts:
+        print(f"  shift id={s.id} userId={s.userId} date={s.date} {s.startTime}-{s.endTime} status={s.status}")
     return shifts
 
 

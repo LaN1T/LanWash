@@ -1,7 +1,6 @@
 import os
 import uuid
 import shutil
-from typing import List
 from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
@@ -308,13 +307,4 @@ async def get_user_stats(
     )
 
 
-@router.get("/washers", response_model=List[UserResponse])
-@limiter.limit("60/minute")
-async def list_washers(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    result = await db.execute(select(User).where(User.role == 'washer').order_by(User.displayName))
-    washers = result.scalars().all()
-    return washers
+
