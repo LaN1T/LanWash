@@ -68,23 +68,13 @@ class _HomeShellState extends State<HomeShell> {
                 const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 10),
-          Text(_titles[_index],
-              style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: AppStyles.textPrimary)),
-          Container(
-            margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppStyles.primary.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text('Администратор',
-                style: TextStyle(
-                    color: AppStyles.primary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Text(_titles[_index],
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: AppStyles.textPrimary)),
           ),
         ]),
         // Кнопка выхода убрана из appBar — только в drawer
