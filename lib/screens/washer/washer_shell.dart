@@ -7,7 +7,7 @@ import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
-import '../../services/notification_service.dart'; // Add this
+import '../../services/notification_service.dart';
 import '../shared/profile_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../admin/notes_screen.dart';
@@ -22,7 +22,7 @@ class WasherShell extends StatefulWidget {
 class _WasherShellState extends State<WasherShell> {
   int _tabIndex = 0;
   DateTime _selectedDay = DateTime.now();
-  StreamSubscription? _appointmentSub; // подписка на обновления записей
+  StreamSubscription? _appointmentSub;
 
   @override
   void initState() {
@@ -32,7 +32,6 @@ class _WasherShellState extends State<WasherShell> {
       context.read<AppProvider>().loadNotes(username: auth.userLogin);
       context.read<AppProvider>().reloadAppointments(auth);
 
-      // Listen for updates
       _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
         if (mounted) {
           context.read<AppProvider>().reloadAppointments(auth);
