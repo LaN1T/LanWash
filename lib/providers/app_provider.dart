@@ -146,8 +146,7 @@ class AppProvider extends ChangeNotifier {
         _cacheAppointments[next] = res.appointments;
         _cacheDates[next] = res.currentDate;
         _cacheTotalPages[next] = res.totalPages;
-      } catch (_) {
-      }
+      } catch (_) {}
     }
 
     if (prev >= 1 && !_cacheAppointments.containsKey(prev)) {
@@ -156,8 +155,7 @@ class AppProvider extends ChangeNotifier {
         _cacheAppointments[prev] = res.appointments;
         _cacheDates[prev] = res.currentDate;
         _cacheTotalPages[prev] = res.totalPages;
-      } catch (_) {
-      }
+      } catch (_) {}
     }
   }
 
@@ -329,8 +327,7 @@ class AppProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> addService(Service s) async {
@@ -383,8 +380,7 @@ class AppProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> toggleExtraFavorite(String serviceId) async {
@@ -400,8 +396,7 @@ class AppProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<List<String>> getServiceCategories() => _api.getServiceCategories();
@@ -474,8 +469,7 @@ class AppProvider extends ChangeNotifier {
     try {
       _unreadNotes = await _api.getUnreadNotesCount();
       notifyListeners();
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<Note?> addNote(
@@ -507,8 +501,7 @@ class AppProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> markAllNotesRead() async {
@@ -519,8 +512,7 @@ class AppProvider extends ChangeNotifier {
         _unreadNotes = 0;
         notifyListeners();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> deleteNote(int noteId) async {
@@ -531,8 +523,7 @@ class AppProvider extends ChangeNotifier {
         _unreadNotes = _noteList.where((n) => !n.isRead).length;
         notifyListeners();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> clearDeletedByAdminFlag() async {
@@ -540,8 +531,7 @@ class AppProvider extends ChangeNotifier {
       await _api.clearDeletedNotification(_currentUser);
       _hasDeletedByAdmin = false;
       notifyListeners();
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> clearModifiedFlag(String id) async {
@@ -555,8 +545,7 @@ class AppProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> markAsSeen(String id) async {
@@ -569,8 +558,7 @@ class AppProvider extends ChangeNotifier {
               _appointmentList[i].copyWith(isSeenByClient: true);
           notifyListeners();
         }
-      } catch (_) {
-      }
+      } catch (_) {}
     }
   }
 }
