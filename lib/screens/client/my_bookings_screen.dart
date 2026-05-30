@@ -59,11 +59,11 @@ class _State extends State<MyBookingsScreen>
 
     return Column(children: [
       Container(
-        color: Colors.white,
+        color: AppStyles.adaptiveCard(context),
         child: TabBar(
           controller: _tab,
           labelColor: AppStyles.primary,
-          unselectedLabelColor: AppStyles.textSecondary,
+          unselectedLabelColor: AppStyles.adaptiveTextSecondary(context),
           indicatorColor: AppStyles.primary,
           tabs: const [Tab(text: 'Активные'), Tab(text: 'История')],
         ),
@@ -107,7 +107,7 @@ class _BookingsList extends StatelessWidget {
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
-              decoration: AppStyles.cardDecoration,
+              decoration: AppStyles.cardDecorationFor(context),
               padding: const EdgeInsets.all(16),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,17 +127,21 @@ class _BookingsList extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                             Text(provider.washTypeName(a.washTypeId),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppStyles.adaptiveTextPrimary(
+                                        context))),
                             Row(children: [
                               Text('${a.carModel} · ${a.carNumber}',
-                                  style: AppStyles.bodySmall),
+                                  style: AppStyles.bodySmall.copyWith(
+                                      color: AppStyles.adaptiveTextSecondary(
+                                          context))),
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 1),
                                 decoration: BoxDecoration(
-                                    color: AppStyles.primaryBg,
+                                    color: AppStyles.adaptivePrimaryBg(context),
                                     borderRadius: BorderRadius.circular(4)),
                                 child: Text('Бокс №${a.box_index + 1}',
                                     style: const TextStyle(
@@ -153,11 +157,13 @@ class _BookingsList extends StatelessWidget {
                             color: AppStyles.danger, size: 20),
                     ]),
                     const SizedBox(height: 12),
-                    Container(height: 1, color: AppStyles.border),
+                    Container(
+                        height: 1, color: AppStyles.adaptiveBorder(context)),
                     const SizedBox(height: 12),
                     Row(children: [
-                      const Icon(Icons.access_time_rounded,
-                          size: 14, color: AppStyles.textSecondary),
+                      Icon(Icons.access_time_rounded,
+                          size: 14,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(width: 4),
                       Builder(builder: (context) {
                         final washType = provider.washTypeById(a.washTypeId);
@@ -200,8 +206,8 @@ class _BookingsList extends StatelessWidget {
                               '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
                         }
                         return Text(timeStr,
-                            style: const TextStyle(
-                                color: AppStyles.textPrimary,
+                            style: TextStyle(
+                                color: AppStyles.adaptiveTextPrimary(context),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500));
                       }),

@@ -1,15 +1,16 @@
 import os
 import uuid
 import shutil
+import json
 from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, and_
 from database import get_db
 from models import (
     LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest,
     FcmTokenRequest, LoginResponse, UserStatsResponse
 )
-from db_models import User, FcmToken, Appointment
+from db_models import User, FcmToken, Appointment, WashType, Shift
 from datetime import datetime, timedelta
 from services.auth_service import (
     get_password_hash,
@@ -248,54 +249,102 @@ async def get_user_stats(
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет доступа к статистике")
 
-    # Считаем завершённые мойки
-    res_count = await db.execute(
-        select(func.count(Appointment.id)).where(
-            Appointment.ownerUsername == username.lower(),
-            Appointment.status == 'completed'
-        )
-    )
-    total_appointments = res_count.scalar() or 0
+    # Определяем роль пользователя, чья статистика запрошена
+    user_res = await db.execute(select(User).where(User.username == username.lower()))
+    target_user = user_res.scalar_one_or_none()
+    if not target_user:
+        raise HTTPException(404, "Пользователь не найден")
 
-    # Сумма потраченных денег
-    res_spent = await db.execute(
-        select(func.sum(Appointment.paidPrice)).where(
-            Appointment.ownerUsername == username.lower(),
-            Appointment.status == 'completed'
+    if target_user.role == 'washer':
+        # ─── Статистика мойщика: количество помытых им машин ─────────────────
+        # 1. Явно назначенные завершённые записи
+        res_explicit = await db.execute(
+            select(Appointment).where(
+                Appointment.assignedWasher.like(f'%"{username.lower()}"%'),
+                Appointment.status == 'completed'
+            )
         )
-    )
-    total_spent = res_spent.scalar() or 0
+        explicit = list(res_explicit.scalars().all())
+        explicit_ids = {a.id for a in explicit}
 
-    # Любимый тип мойки
-    res_fav = await db.execute(
-        select(Appointment.washTypeId, func.count(Appointment.id))
-        .where(
-            Appointment.ownerUsername == username.lower(),
-            Appointment.status == 'completed'
+        # 2. Завершённые записи по смене
+        appt_date = func.substr(Appointment.dateTime, 1, 10)
+        appt_time = func.substr(Appointment.dateTime, 12, 5)
+        res_shift = await db.execute(
+            select(Appointment)
+            .join(Shift, and_(
+                Shift.userId == target_user.id,
+                Shift.date == appt_date,
+                appt_time >= Shift.startTime,
+                appt_time <= Shift.endTime,
+            ))
+            .where(Appointment.status == 'completed')
         )
-        .group_by(Appointment.washTypeId)
-        .order_by(func.count(Appointment.id).desc())
-        .limit(1)
-    )
-    fav_row = res_fav.first()
-    favorite_wash_type = fav_row[0] if fav_row else '-'
+        shift_based = [a for a in res_shift.scalars().all() if a.id not in explicit_ids]
 
-    # Уровень
-    if total_appointments == 0:
-        level = "Новичок"
-        level_progress = 0
-    elif total_appointments <= 2:
-        level = "Постоянный"
-        level_progress = ((total_appointments) * 100) // 3
-    elif total_appointments <= 9:
-        level = "Любимый клиент"
-        level_progress = ((total_appointments - 2) * 100) // 8
+        all_washed = explicit + shift_based
+        total_appointments = len(all_washed)
+        total_spent = 0
+        favorite_wash_type = '-'
+        # У мойщика своя шкала: Новичок / Опытный / Профи
+        if total_appointments == 0:
+            level = "Новичок"
+            level_progress = 0
+        elif total_appointments <= 19:
+            level = "Опытный"
+            level_progress = (total_appointments * 100) // 20
+        elif total_appointments <= 49:
+            level = "Профи"
+            level_progress = ((total_appointments - 20) * 100) // 30
+        else:
+            level = "Мастер"
+            level_progress = 100
     else:
-        level = "VIP"
-        level_progress = 100
+        # ─── Статистика клиента ──────────────────────────────────────────────
+        res_count = await db.execute(
+            select(func.count(Appointment.id)).where(
+                Appointment.ownerUsername == username.lower(),
+                Appointment.status == 'completed'
+            )
+        )
+        total_appointments = res_count.scalar() or 0
 
-    # Баллы = 10% от потраченного
-    points = int(total_spent * 0.1)
+        res_spent = await db.execute(
+            select(func.sum(Appointment.paidPrice)).where(
+                Appointment.ownerUsername == username.lower(),
+                Appointment.status == 'completed'
+            )
+        )
+        total_spent = res_spent.scalar() or 0
+
+        res_fav = await db.execute(
+            select(WashType.name, func.count(Appointment.id))
+            .join(Appointment, Appointment.washTypeId == WashType.id)
+            .where(
+                Appointment.ownerUsername == username.lower(),
+                Appointment.status == 'completed'
+            )
+            .group_by(WashType.name)
+            .order_by(func.count(Appointment.id).desc())
+            .limit(1)
+        )
+        fav_row = res_fav.first()
+        favorite_wash_type = fav_row[0] if fav_row else '-'
+
+        if total_appointments == 0:
+            level = "Новичок"
+            level_progress = 0
+        elif total_appointments <= 2:
+            level = "Постоянный"
+            level_progress = ((total_appointments) * 100) // 3
+        elif total_appointments <= 9:
+            level = "Любимый клиент"
+            level_progress = ((total_appointments - 2) * 100) // 8
+        else:
+            level = "VIP"
+            level_progress = 100
+
+    points = total_appointments
 
     return UserStatsResponse(
         totalAppointments=total_appointments,

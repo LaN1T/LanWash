@@ -55,8 +55,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
         child: TextField(
           controller: _search,
           onChanged: (v) => setState(() => _searchText = v),
-          decoration:
-              AppStyles.inputDecoration('Поиск по услугам', icon: Icons.search),
+          decoration: AppStyles.inputDecorationFor(context, 'Поиск по услугам',
+              icon: Icons.search),
         ),
       ),
 
@@ -76,7 +76,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 onSelected: (_) => setState(() => _selectedCategory = cat),
                 selectedColor: AppStyles.primary,
                 labelStyle: TextStyle(
-                  color: selected ? Colors.white : AppStyles.textSecondary,
+                  color: selected
+                      ? Colors.white
+                      : AppStyles.adaptiveTextSecondary(context),
                   fontSize: 13,
                 ),
               ),
@@ -91,11 +93,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ? Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.local_car_wash,
-                    size: 56, color: AppStyles.textSecondary.withOpacity(0.3)),
+                    size: 56,
+                    color: AppStyles.adaptiveTextSecondary(context)
+                        .withValues(alpha: 0.3)),
                 const SizedBox(height: 12),
                 Text('Услуги не найдены',
-                    style: AppStyles.bodyLarge
-                        .copyWith(color: AppStyles.textSecondary)),
+                    style: AppStyles.bodyLarge.copyWith(
+                        color: AppStyles.adaptiveTextSecondary(context))),
               ]))
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
@@ -141,7 +145,7 @@ class _ServiceCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        decoration: AppStyles.cardDecoration,
+        decoration: AppStyles.cardDecorationFor(context),
         child: Padding(
           padding: AppStyles.cardPadding,
           child: Row(children: [
@@ -149,7 +153,7 @@ class _ServiceCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _catColor.withOpacity(0.12),
+                color: _catColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child:
@@ -163,22 +167,24 @@ class _ServiceCard extends StatelessWidget {
                   Row(children: [
                     Expanded(
                         child: Text(s.name,
-                            style:
-                                AppStyles.headingMedium.copyWith(fontSize: 15),
+                            style: AppStyles.headingMedium.copyWith(
+                                fontSize: 15,
+                                color: AppStyles.adaptiveTextPrimary(context)),
                             overflow: TextOverflow.ellipsis)),
                     if (showHelp) ...[
                       const SizedBox(width: 4),
                       Tooltip(
                         message: s.description,
-                        child: const Icon(Icons.help_outline,
-                            size: 14, color: AppStyles.textSecondary),
+                        child: Icon(Icons.help_outline,
+                            size: 14,
+                            color: AppStyles.adaptiveTextSecondary(context)),
                       ),
                     ],
                     IconButton(
                       icon: Icon(isFavorite ? Icons.star : Icons.star_border,
                           color: isFavorite
                               ? AppStyles.favorite
-                              : AppStyles.textSecondary,
+                              : AppStyles.adaptiveTextSecondary(context),
                           size: 20),
                       onPressed: onFavorite,
                       padding: EdgeInsets.zero,
@@ -187,15 +193,16 @@ class _ServiceCard extends StatelessWidget {
                   ]),
                   const SizedBox(height: 4),
                   Text(s.description,
-                      style: AppStyles.bodySmall,
+                      style: AppStyles.bodySmall.copyWith(
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),
                   Row(children: [
-                    _chip(Icons.access_time, s.durationLabel),
+                    _chip(context, Icons.access_time, s.durationLabel),
                     const SizedBox(width: 8),
                     if (s.isFromApi)
-                      _chip(Icons.local_offer, 'Акция',
+                      _chip(context, Icons.local_offer, 'Акция',
                           color: AppStyles.apiTag),
                     const Spacer(),
                     Text('${s.price} ₽',
@@ -208,22 +215,26 @@ class _ServiceCard extends StatelessWidget {
     );
   }
 
-  Widget _chip(IconData icon, String text,
-          {Color color = AppStyles.textSecondary}) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(text,
-              style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w500)),
-        ]),
-      );
+  Widget _chip(BuildContext context, IconData icon, String text,
+      {Color? color}) {
+    final effectiveColor = color ?? AppStyles.adaptiveTextSecondary(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: effectiveColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: effectiveColor),
+        const SizedBox(width: 4),
+        Text(text,
+            style: TextStyle(
+                fontSize: 11,
+                color: effectiveColor,
+                fontWeight: FontWeight.w500)),
+      ]),
+    );
+  }
 
   IconData _categoryIcon(String cat) => switch (cat) {
         'Мойка кузова' => Icons.local_car_wash,

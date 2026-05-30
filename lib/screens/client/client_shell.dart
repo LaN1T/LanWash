@@ -59,16 +59,15 @@ class _ClientShellState extends State<ClientShell> {
             !a.isSeenByClient) ||
         provider.hasDeletedByAdmin;
 
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppStyles.border),
+          child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
         title: Row(children: [
           Container(
@@ -83,10 +82,8 @@ class _ClientShellState extends State<ClientShell> {
           ),
           const SizedBox(width: 10),
           Text(_titles[_index],
-              style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppStyles.textPrimary)),
+              style:
+                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
         ]),
       ),
       drawer: _buildDrawer(context, favCount, auth),
@@ -97,11 +94,12 @@ class _ClientShellState extends State<ClientShell> {
       ]),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppStyles.border)),
+          color: AppStyles.adaptiveCard(context),
+          border:
+              Border(top: BorderSide(color: AppStyles.adaptiveBorder(context))),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 12,
                 offset: const Offset(0, -4))
           ],
@@ -119,7 +117,7 @@ class _ClientShellState extends State<ClientShell> {
           },
           backgroundColor: Colors.transparent,
           elevation: 0,
-          indicatorColor: AppStyles.primaryBg,
+          indicatorColor: AppStyles.adaptivePrimaryBg(context),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           destinations: [
             const NavigationDestination(
@@ -161,7 +159,7 @@ class _ClientShellState extends State<ClientShell> {
 
   Widget _buildDrawer(BuildContext ctx, int favCount, AuthProvider auth) {
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
         bottom: false,
         child: Column(children: [
@@ -169,7 +167,7 @@ class _ClientShellState extends State<ClientShell> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            color: Colors.white,
+            color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
@@ -179,7 +177,7 @@ class _ClientShellState extends State<ClientShell> {
                   gradient: AppStyles.primaryGradient,
                   boxShadow: [
                     BoxShadow(
-                      color: AppStyles.primary.withOpacity(0.3),
+                      color: AppStyles.primary.withValues(alpha: 0.3),
                       blurRadius: 20,
                     )
                   ],
@@ -188,9 +186,9 @@ class _ClientShellState extends State<ClientShell> {
                     color: Colors.white, size: 32),
               ),
               const SizedBox(height: 14),
-              const Text('LanWash',
+              Text('LanWash',
                   style: TextStyle(
-                      color: AppStyles.textPrimary,
+                      color: AppStyles.adaptiveTextPrimary(ctx),
                       fontSize: 20,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
@@ -198,7 +196,7 @@ class _ClientShellState extends State<ClientShell> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppStyles.primary.withOpacity(0.15),
+                  color: AppStyles.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(auth.username,
@@ -209,7 +207,7 @@ class _ClientShellState extends State<ClientShell> {
               ),
             ]),
           ),
-          const Divider(color: AppStyles.border, height: 1),
+          Divider(color: AppStyles.adaptiveBorder(ctx), height: 1),
           const SizedBox(height: 8),
           _drawerItem(
               ctx, 0, Icons.home_outlined, Icons.home_rounded, 'Главная', null),
@@ -218,16 +216,17 @@ class _ClientShellState extends State<ClientShell> {
           _drawerItem(ctx, 2, Icons.star_outline, Icons.star_rounded,
               'Избранное', favCount > 0 ? '$favCount' : null),
 
-          const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+          Divider(
+              color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
           // Профиль
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.person_outline_rounded,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Профиль',
-                  style: TextStyle(color: AppStyles.textPrimary)),
+              leading: Icon(Icons.person_outline_rounded,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Профиль',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(ctx,
@@ -241,10 +240,11 @@ class _ClientShellState extends State<ClientShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: const Icon(Icons.logout_outlined,
-                  color: AppStyles.textSecondary, size: 22),
-              title: const Text('Выйти',
-                  style: TextStyle(color: AppStyles.textSecondary)),
+              leading: Icon(Icons.logout_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Выйти',
+                  style:
+                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmLogout(ctx);
@@ -266,10 +266,13 @@ class _ClientShellState extends State<ClientShell> {
       child: ListTile(
         minLeadingWidth: 24,
         leading: Icon(sel ? selIcon : icon,
-            size: 22, color: sel ? AppStyles.primary : AppStyles.textSecondary),
+            size: 22,
+            color:
+                sel ? AppStyles.primary : AppStyles.adaptiveTextSecondary(ctx)),
         title: Text(label,
             style: TextStyle(
-              color: sel ? AppStyles.primary : AppStyles.textPrimary,
+              color:
+                  sel ? AppStyles.primary : AppStyles.adaptiveTextPrimary(ctx),
               fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
             )),
         trailing: badge != null
@@ -287,7 +290,7 @@ class _ClientShellState extends State<ClientShell> {
               )
             : null,
         selected: sel,
-        selectedTileColor: AppStyles.primary.withOpacity(0.08),
+        selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: () {
           setState(() => _index = index);
@@ -301,13 +304,17 @@ class _ClientShellState extends State<ClientShell> {
     showDialog(
       context: ctx,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Выйти из аккаунта?'),
-        content: const Text('Вы вернётесь на экран входа.'),
+        title: Text('Выйти из аккаунта?',
+            style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+        content: Text('Вы вернётесь на экран входа.',
+            style: TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Отмена',
+                  style:
+                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx)))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppStyles.primary,

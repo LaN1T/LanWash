@@ -194,17 +194,15 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final weekLabel = '${fmt.format(_weekStart)} – ${fmt.format(weekEnd)}';
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Расписание смен'),
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.chevron_left),
@@ -238,9 +236,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       padding: const EdgeInsets.all(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppStyles.adaptiveCard(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppStyles.border),
+          border: Border.all(color: AppStyles.adaptiveBorder(context)),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -253,13 +251,16 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
               days.length + 1: const FractionColumnWidth(0.066),
             },
             border: TableBorder(
-              horizontalInside: BorderSide(color: Colors.grey.shade100),
-              verticalInside: BorderSide(color: Colors.grey.shade100),
+              horizontalInside:
+                  BorderSide(color: AppStyles.adaptiveBorder(context)),
+              verticalInside:
+                  BorderSide(color: AppStyles.adaptiveBorder(context)),
             ),
             children: [
               // Header
               TableRow(
-                decoration: const BoxDecoration(color: AppStyles.bgPage),
+                decoration:
+                    BoxDecoration(color: AppStyles.adaptiveBgMuted(context)),
                 children: [
                   _headerCell('Мойщик', align: Alignment.centerLeft),
                   ...days.map(
@@ -308,7 +309,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: isWeekend ? AppStyles.danger : AppStyles.textPrimary,
+          color: isWeekend
+              ? AppStyles.danger
+              : AppStyles.adaptiveTextPrimary(context),
           height: 1.3,
         ),
       ),
@@ -325,10 +328,10 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: Text(
         w.displayName,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: AppStyles.textPrimary,
+          color: AppStyles.adaptiveTextPrimary(context),
         ),
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
@@ -347,7 +350,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (shift == null) {
       bgColor = Colors.transparent;
       label = '';
-      textColor = AppStyles.textSecondary;
+      textColor = AppStyles.adaptiveTextSecondary(context);
     } else if (shift.status == 'pending') {
       bgColor = AppStyles.warning;
       label = '${shift.startTime}→${shift.endTime}';
@@ -444,7 +447,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: hasHours ? FontWeight.w700 : FontWeight.w600,
-          color: hasHours ? AppStyles.primary : AppStyles.textSecondary,
+          color: hasHours
+              ? AppStyles.primary
+              : AppStyles.adaptiveTextSecondary(context),
         ),
       ),
     );
@@ -506,7 +511,7 @@ class _ShiftDialogState extends State<_ShiftDialog> {
     final canSave = _start != null && _end != null;
 
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppStyles.adaptiveCard(context),
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(widget.washerName),
@@ -518,9 +523,9 @@ class _ShiftDialogState extends State<_ShiftDialog> {
           children: [
             Text(
               dateLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppStyles.textSecondary,
+                color: AppStyles.adaptiveTextSecondary(context),
               ),
             ),
             const SizedBox(height: 20),
@@ -584,16 +589,16 @@ class _ShiftDialogState extends State<_ShiftDialog> {
         decoration: BoxDecoration(
           color: AppStyles.bgPage,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppStyles.border),
+          border: Border.all(color: AppStyles.adaptiveBorder(context)),
         ),
         child: Row(
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppStyles.textPrimary,
+                color: AppStyles.adaptiveTextPrimary(context),
               ),
             ),
             const Spacer(),
@@ -654,7 +659,7 @@ class _DigitalTimePickerState extends State<_DigitalTimePicker> {
         width: 380,
         height: 460,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppStyles.adaptiveCard(context),
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
