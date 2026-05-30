@@ -709,6 +709,46 @@ class ApiService {
     );
   }
 
+  Future<Uint8List?> downloadConsumablesReport({DateTime? dateFrom, DateTime? dateTo}) async {
+    final params = <String>[];
+    if (dateFrom != null) params.add('date_from=${dateFrom.toIso8601String()}');
+    if (dateTo != null) params.add('date_to=${dateTo.toIso8601String()}');
+    var path = '/consumables/export';
+    if (params.isNotEmpty) path += '?${params.join('&')}';
+    final result = await ApiClient.rawGet(path);
+    return result.when(
+      success: (resp) => resp.bodyBytes,
+      failure: (_) => null,
+    );
+  }
+
+  Future<Uint8List?> downloadImportTemplate() async {
+    final result = await ApiClient.rawGet('/consumables/import-template');
+    return result.when(
+      success: (resp) => resp.bodyBytes,
+      failure: (_) => null,
+    );
+  }
+
+  Future<Map<String, dynamic>?> uploadRefillsFromExcel(Uint8List bytes) async {
+    final url = Uri.parse('${AppConfig.baseUrl}/consumables/import-refills');
+    final token = await ApiClient.getToken();
+    final request = http.MultipartRequest('POST', url)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'refills.xlsx'));
+    try {
+      final response = await request.send().timeout(AppConfig.requestTimeout);
+      final body = await response.stream.bytesToString();
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('uploadRefillsFromExcel error: $e');
+      return null;
+    }
+  }
+
   // ─── User Stats ────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>?> getUserStats(String username) async {
     final result = await ApiClient.get('/auth/stats/$username');

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
@@ -74,9 +76,9 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
     }
   }
 
-  void _showSnack(String msg) {
+  void _showSnack(String msg, {Color? color}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppStyles.success),
+      SnackBar(content: Text(msg), backgroundColor: color ?? AppStyles.success),
     );
   }
 
@@ -86,6 +88,104 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
       isScrollControlled: true,
       builder: (_) => _ConsumableDetailSheet(consumable: c),
     );
+  }
+
+  Future<void> _downloadReport() async {
+    final api = context.read<ApiService>();
+    final bytes = await api.downloadConsumablesReport();
+    if (bytes == null) {
+      _showSnack('Не удалось скачать отчёт', color: AppStyles.danger);
+      return;
+    }
+    final name = 'consumables_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
+    await FileSaver.instance.saveFile(
+      name: name.replaceAll('.xlsx', ''),
+      bytes: bytes,
+      mimeType: MimeType.microsoftExcel,
+    );
+    _showSnack('Отчёт сохранён');
+  }
+
+  Future<void> _downloadTemplate() async {
+    final api = context.read<ApiService>();
+    final bytes = await api.downloadImportTemplate();
+    if (bytes == null) {
+      _showSnack('Не удалось скачать шаблон', color: AppStyles.danger);
+      return;
+    }
+    await FileSaver.instance.saveFile(
+      name: 'consumables_import_template',
+      bytes: bytes,
+      mimeType: MimeType.microsoftExcel,
+    );
+    _showSnack('Шаблон сохранён');
+  }
+
+  Future<void> _uploadRefills() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx', 'xls'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty || result.files.first.bytes == null) return;
+    if (!mounted) return;
+
+    final bytes = result.files.first.bytes!;
+    final fileName = result.files.first.name;
+
+    // Показываем подтверждение
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Импорт пополнений'),
+        content: Text('Загрузить файл "$fileName"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Загрузить')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    final api = context.read<ApiService>();
+    final response = await api.uploadRefillsFromExcel(bytes);
+    if (!mounted) return;
+    if (response == null) {
+      _showSnack('Ошибка загрузки', color: AppStyles.danger);
+      return;
+    }
+
+    final succeeded = response['succeeded'] ?? 0;
+    final failed = response['failed'] ?? 0;
+    final errors = (response['errors'] as List?)?.cast<String>() ?? [];
+
+    if (failed == 0) {
+      _showSnack('Успешно импортировано: $succeeded');
+    } else {
+      _showSnack('Успешно: $succeeded, ошибок: $failed', color: AppStyles.warning);
+      if (errors.isNotEmpty && mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Ошибки импорта'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: errors.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text('• ${errors[i]}', style: const TextStyle(fontSize: 13)),
+                ),
+              ),
+            ),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Закрыть'))],
+          ),
+        );
+      }
+    }
+    _load();
   }
 
   @override
@@ -100,6 +200,27 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'export':
+                  _downloadReport();
+                  break;
+                case 'import':
+                  _uploadRefills();
+                  break;
+                case 'template':
+                  _downloadTemplate();
+                  break;
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'export', child: Text('Скачать отчёт')),
+              const PopupMenuItem(value: 'import', child: Text('Загрузить пополнения')),
+              const PopupMenuItem(value: 'template', child: Text('Скачать шаблон')),
+            ],
+          ),
         ],
       ),
       body: _loading
