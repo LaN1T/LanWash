@@ -43,6 +43,16 @@ async def list_shifts(
     return shifts
 
 
+@router.get("/my", response_model=List[ShiftResponse])
+async def list_my_shifts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    stmt = select(Shift).where(Shift.userId == current_user.id).order_by(Shift.date.asc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 @router.post("/", response_model=ShiftResponse, status_code=status.HTTP_201_CREATED)
 async def create_shift(
     req: ShiftRequest,
