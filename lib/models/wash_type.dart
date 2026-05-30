@@ -1,6 +1,6 @@
 class WashType {
   final String id; // w1..w4
-  final String code; // express/basic/complex/premium
+  final String code; // код типа мойки: express/basic/complex/premium
   final String name;
   final String description;
   final int basePrice;

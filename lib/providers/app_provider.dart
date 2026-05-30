@@ -146,8 +146,7 @@ class AppProvider extends ChangeNotifier {
         _cacheAppointments[next] = res.appointments;
         _cacheDates[next] = res.currentDate;
         _cacheTotalPages[next] = res.totalPages;
-      } catch (e, st) {
-        debugPrint('[AppProvider._prefetchAdjacent next] error: $e\n$st');
+      } catch (_) {
       }
     }
 
@@ -157,8 +156,7 @@ class AppProvider extends ChangeNotifier {
         _cacheAppointments[prev] = res.appointments;
         _cacheDates[prev] = res.currentDate;
         _cacheTotalPages[prev] = res.totalPages;
-      } catch (e, st) {
-        debugPrint('[AppProvider._prefetchAdjacent prev] error: $e\n$st');
+      } catch (_) {
       }
     }
   }
@@ -182,8 +180,7 @@ class AppProvider extends ChangeNotifier {
         final freshList = await _fetchAppointments(auth);
         _appointmentList = freshList;
         notifyListeners();
-      } catch (e, st) {
-        debugPrint('[AppProvider.setPage] error: $e\n$st');
+      } catch (_) {
         _errorMessage = 'Ошибка загрузки записей';
         notifyListeners();
       }
@@ -192,8 +189,7 @@ class AppProvider extends ChangeNotifier {
         _appointmentList = await _fetchAppointments(auth);
         notifyListeners();
         _prefetchAdjacent(auth);
-      } catch (e, st) {
-        debugPrint('[AppProvider.setPage] error: $e\n$st');
+      } catch (_) {
         _errorMessage = 'Ошибка загрузки записей';
         notifyListeners();
       }
@@ -218,8 +214,7 @@ class AppProvider extends ChangeNotifier {
       _promoList = await _api.getPromos();
       _washTypeList = await _api.getWashTypes();
       _appointmentList = await _fetchAppointments(auth);
-    } catch (e, st) {
-      debugPrint('[AppProvider.init] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка загрузки данных. Проверьте подключение.';
     }
     _loading = false;
@@ -232,8 +227,7 @@ class AppProvider extends ChangeNotifier {
       clearCache();
       _appointmentList = await _fetchAppointments(auth);
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.reloadAppointments] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка обновления записей';
       notifyListeners();
     }
@@ -249,8 +243,7 @@ class AppProvider extends ChangeNotifier {
       _serviceFavSet = await _api.getServiceFavorites(_currentUser);
       _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.reloadForUser] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка загрузки данных пользователя';
       notifyListeners();
     }
@@ -273,8 +266,7 @@ class AppProvider extends ChangeNotifier {
       final success = await _api.createAppointment(a);
       if (success) await reloadAppointments(auth);
       return success;
-    } catch (e, st) {
-      debugPrint('[AppProvider.addAppointment] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка создания записи';
       notifyListeners();
       return false;
@@ -294,8 +286,7 @@ class AppProvider extends ChangeNotifier {
         await reloadAppointments(auth);
       }
       return success;
-    } catch (e, st) {
-      debugPrint('[AppProvider.updateAppointment] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка обновления записи';
       notifyListeners();
       return false;
@@ -319,8 +310,7 @@ class AppProvider extends ChangeNotifier {
         await reloadAppointments(auth);
       }
       return ok;
-    } catch (e, st) {
-      debugPrint('[AppProvider.deleteAppointment] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка удаления записи';
       notifyListeners();
       return false;
@@ -339,8 +329,7 @@ class AppProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.toggleAppointmentFavorite] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -350,8 +339,7 @@ class AppProvider extends ChangeNotifier {
       await _api.createService(s);
       _serviceList = await _api.getServices();
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.addService] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка добавления услуги';
       notifyListeners();
     }
@@ -364,8 +352,7 @@ class AppProvider extends ChangeNotifier {
       final i = _serviceList.indexWhere((x) => x.id == s.id);
       if (i != -1) _serviceList[i] = s;
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.updateService] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка обновления услуги';
       notifyListeners();
     }
@@ -377,8 +364,7 @@ class AppProvider extends ChangeNotifier {
       await _api.deleteService(id);
       _serviceList.removeWhere((s) => s.id == id);
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.deleteService] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка удаления услуги';
       notifyListeners();
     }
@@ -397,8 +383,7 @@ class AppProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.toggleServiceFavorite] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -415,8 +400,7 @@ class AppProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.toggleExtraFavorite] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -479,8 +463,7 @@ class AppProvider extends ChangeNotifier {
           : await _api.getNotes();
       _unreadNotes = _noteList.where((n) => !n.isRead).length;
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.loadNotes] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка загрузки заметок';
       notifyListeners();
     }
@@ -491,8 +474,7 @@ class AppProvider extends ChangeNotifier {
     try {
       _unreadNotes = await _api.getUnreadNotesCount();
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.refreshUnreadCount] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -507,8 +489,7 @@ class AppProvider extends ChangeNotifier {
         notifyListeners();
       }
       return note;
-    } catch (e, st) {
-      debugPrint('[AppProvider.addNote] error: $e\n$st');
+    } catch (_) {
       _errorMessage = 'Ошибка создания заметки';
       notifyListeners();
       return null;
@@ -526,8 +507,7 @@ class AppProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.markNoteRead] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -539,8 +519,7 @@ class AppProvider extends ChangeNotifier {
         _unreadNotes = 0;
         notifyListeners();
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.markAllNotesRead] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -552,8 +531,7 @@ class AppProvider extends ChangeNotifier {
         _unreadNotes = _noteList.where((n) => !n.isRead).length;
         notifyListeners();
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.deleteNote] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -562,8 +540,7 @@ class AppProvider extends ChangeNotifier {
       await _api.clearDeletedNotification(_currentUser);
       _hasDeletedByAdmin = false;
       notifyListeners();
-    } catch (e, st) {
-      debugPrint('[AppProvider.clearDeletedByAdminFlag] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -578,8 +555,7 @@ class AppProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e, st) {
-      debugPrint('[AppProvider.clearModifiedFlag] error: $e\n$st');
+    } catch (_) {
     }
   }
 
@@ -593,8 +569,7 @@ class AppProvider extends ChangeNotifier {
               _appointmentList[i].copyWith(isSeenByClient: true);
           notifyListeners();
         }
-      } catch (e, st) {
-        debugPrint('[AppProvider.markAsSeen] error: $e\n$st');
+      } catch (_) {
       }
     }
   }
