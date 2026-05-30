@@ -674,6 +674,23 @@ class ApiService {
     );
   }
 
+  Future<List<ConsumableRefillLog>> getRefillHistory(String id) async {
+    final result = await ApiClient.getList('/consumables/$id/refill-history');
+    return result.when(
+      success: (list) =>
+          list.map((m) => ConsumableRefillLog.fromMap(m)).toList(),
+      failure: (_) => <ConsumableRefillLog>[],
+    );
+  }
+
+  Future<ConsumableForecast?> getConsumableForecast(String id) async {
+    final result = await ApiClient.get('/consumables/$id/forecast');
+    return result.when(
+      success: (data) => ConsumableForecast.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
   Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date,
       {String? category}) async {
     var path = '/reports/consumables-usage/';

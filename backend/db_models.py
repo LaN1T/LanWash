@@ -155,6 +155,16 @@ class ConsumableUsageLog(Base):
     quantityUsed = Column(Float, nullable=False)
     timestamp = Column(String, nullable=False)
 
+class ConsumableRefillLog(Base):
+    __tablename__ = 'consumable_refill_log'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    consumableId = Column(String, ForeignKey('consumables.id'), nullable=False)
+    amount = Column(Float, nullable=False)
+    oldStock = Column(Float, nullable=False)
+    newStock = Column(Float, nullable=False)
+    refilledBy = Column(String, nullable=False, default='')
+    timestamp = Column(String, nullable=False)
+
 class Shift(Base):
     __tablename__ = 'shifts'
     id = Column(Integer, primary_key=True, autoincrement=True)
