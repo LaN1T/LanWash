@@ -163,6 +163,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         title: const Text('Расписание смен'),
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.chevron_left),
@@ -191,54 +197,79 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _buildTable() {
     final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
+    const nameWidth = 140.0;
+    const hoursWidth = 60.0;
+    const minDayWidth = 90.0;
+    final minTableWidth = nameWidth + hoursWidth + days.length * minDayWidth;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _headerCell('Мойщик', width: 140),
-                ...days.map((d) => _headerCell(
-                      _dayLabel(d),
-                      width: 90,
-                      isWeekend: d.weekday >= 6,
-                    )),
-                _headerCell('Часов', width: 60),
-              ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final targetWidth = constraints.maxWidth > minTableWidth
+            ? constraints.maxWidth
+            : minTableWidth;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: SizedBox(
+              width: targetWidth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(
+                            width: nameWidth,
+                            child: _headerCell('Мойщик')),
+                        ...days.map((d) => Expanded(
+                              child: _headerCell(
+                                _dayLabel(d),
+                                isWeekend: d.weekday >= 6,
+                              ),
+                            )),
+                        SizedBox(
+                            width: hoursWidth,
+                            child: _headerCell('Часов')),
+                      ],
+                    ),
+                    const Divider(height: 1),
+                    ..._washers.map((w) {
+                      var totalMinutes = 0;
+                      final rowCells = days.map((d) {
+                        final shift = _findShift(w.id!, d);
+                        if (shift != null && shift.status == 'confirmed') {
+                          totalMinutes += shift.durationMinutes;
+                        }
+                        return Expanded(
+                          child: _shiftCell(w, d, shift),
+                        );
+                      }).toList();
+
+                      return Row(
+                        children: [
+                          SizedBox(
+                              width: nameWidth, child: _nameCell(w)),
+                          ...rowCells,
+                          SizedBox(
+                              width: hoursWidth,
+                              child: _hoursCell(totalMinutes)),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
             ),
-            const Divider(height: 1),
-            ..._washers.map((w) {
-              var totalMinutes = 0;
-              final rowCells = days.map((d) {
-                final shift = _findShift(w.id!, d);
-                if (shift != null && shift.status == 'confirmed') {
-                  totalMinutes += shift.durationMinutes;
-                }
-                return _shiftCell(w, d, shift);
-              }).toList();
-
-              return Row(
-                children: [
-                  _nameCell(w, width: 140),
-                  ...rowCells,
-                  _hoursCell(totalMinutes, width: 60),
-                ],
-              );
-            }),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _headerCell(String text,
-      {required double width, bool isWeekend = false}) {
+  Widget _headerCell(String text, {bool isWeekend = false}) {
     return Container(
-      width: width,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
       decoration: BoxDecoration(
         color: isWeekend ? AppStyles.danger.withValues(alpha: 0.08) : null,
@@ -264,9 +295,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     return '${names[d.weekday - 1]}\n${d.day}';
   }
 
-  Widget _nameCell(User w, {required double width}) {
+  Widget _nameCell(User w) {
     return Container(
-      width: width,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
         border: Border(
@@ -310,7 +340,6 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     return GestureDetector(
       onTap: () => _openEditor(washer, date, shift),
       child: Container(
-        width: 90,
         height: 56,
         margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
@@ -344,7 +373,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                       'Ожидает',
                       style: TextStyle(
                         fontSize: 9,
-                        color: AppStyles.warning,
+                        color: Colors.white,
                       ),
                     ),
                 ],
@@ -353,10 +382,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     );
   }
 
-  Widget _hoursCell(int totalMinutes, {required double width}) {
+  Widget _hoursCell(int totalMinutes) {
     final hours = totalMinutes / 60;
     return Container(
-      width: width,
       height: 56,
       alignment: Alignment.center,
       child: Text(
@@ -413,15 +441,11 @@ class _ShiftDialogState extends State<_ShiftDialog> {
 
   Future<TimeOfDay?> _pickTime(TimeOfDay? initial) async {
     final init = initial ?? const TimeOfDay(hour: 10, minute: 0);
-    return showTimePicker(
+    return showModalBottomSheet<TimeOfDay>(
       context: context,
-      initialTime: init,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DigitalTimePicker(initial: init),
     );
   }
 
@@ -494,6 +518,179 @@ class _ShiftDialogState extends State<_ShiftDialog> {
             child: const Text('Сохранить'),
           ),
       ],
+    );
+  }
+}
+
+class _DigitalTimePicker extends StatefulWidget {
+  final TimeOfDay initial;
+
+  const _DigitalTimePicker({required this.initial});
+
+  @override
+  State<_DigitalTimePicker> createState() => _DigitalTimePickerState();
+}
+
+class _DigitalTimePickerState extends State<_DigitalTimePicker> {
+  late int _hour;
+  late int _minute;
+  late FixedExtentScrollController _hourCtrl;
+  late FixedExtentScrollController _minuteCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _hour = widget.initial.hour;
+    _minute = widget.initial.minute;
+    _hourCtrl = FixedExtentScrollController(initialItem: _hour);
+    _minuteCtrl = FixedExtentScrollController(initialItem: _minute);
+  }
+
+  @override
+  void dispose() {
+    _hourCtrl.dispose();
+    _minuteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return Container(
+      height: size.height * 0.55,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
+            child: Text(
+              'Выберите время',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                const Spacer(),
+                _wheel(
+                  controller: _hourCtrl,
+                  count: 24,
+                  selected: _hour,
+                  onChanged: (i) => setState(() => _hour = i),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    ':',
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                ),
+                _wheel(
+                  controller: _minuteCtrl,
+                  count: 60,
+                  selected: _minute,
+                  onChanged: (i) => setState(() => _minute = i),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    child: const Text('Отмена',
+                        style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      TimeOfDay(hour: _hour, minute: _minute),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text('Готово',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _wheel({
+    required FixedExtentScrollController controller,
+    required int count,
+    required int selected,
+    required ValueChanged<int> onChanged,
+  }) {
+    return SizedBox(
+      width: 100,
+      child: ListWheelScrollView.useDelegate(
+        controller: controller,
+        itemExtent: 64,
+        diameterRatio: 1.4,
+        physics: const FixedExtentScrollPhysics(),
+        onSelectedItemChanged: onChanged,
+        childDelegate: ListWheelChildBuilderDelegate(
+          builder: (context, index) {
+            if (index < 0 || index >= count) return null;
+            final isSelected = index == selected;
+            return Container(
+              alignment: Alignment.center,
+              child: Text(
+                index.toString().padLeft(2, '0'),
+                style: TextStyle(
+                  fontSize: isSelected ? 44 : 32,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? AppStyles.primary : Colors.grey.shade400,
+                ),
+              ),
+            );
+          },
+          childCount: count,
+        ),
+      ),
     );
   }
 }
