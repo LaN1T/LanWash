@@ -1,14 +1,15 @@
 import uuid
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from database import get_db
 from models import (
     ConsumableRequest, ConsumableResponse, ServiceConsumableRequest,
     ServiceConsumableResponse, RefillRequest,
 )
-from db_models import Consumable, ServiceConsumable, Service, User
+from db_models import Consumable, ServiceConsumable, Service, User, ConsumableRefillLog, ConsumableUsageLog
 from services.auth_service import get_current_user, check_roles
 
 router = APIRouter(
@@ -69,12 +70,21 @@ async def delete_consumable(request: Request, consumable_id: str, db: AsyncSessi
 
 @router.post("/{consumable_id}/refill", response_model=ConsumableResponse)
 @limiter.limit("10/minute")
-async def refill_consumable(request: Request, consumable_id: str, req: RefillRequest, db: AsyncSession = Depends(get_db)):
+async def refill_consumable(request: Request, consumable_id: str, req: RefillRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
     consumable = result.scalar_one_or_none()
     if not consumable:
         raise HTTPException(404, "Расходник не найден")
+    old_stock = consumable.currentStock
     consumable.currentStock += req.amount
+    db.add(ConsumableRefillLog(
+        consumableId=consumable_id,
+        amount=req.amount,
+        oldStock=old_stock,
+        newStock=consumable.currentStock,
+        refilledBy=current_user.username,
+        timestamp=datetime.now().isoformat(),
+    ))
     await db.commit()
     await db.refresh(consumable)
     return consumable
@@ -86,6 +96,67 @@ async def get_low_stock_alerts(request: Request, db: AsyncSession = Depends(get_
         select(Consumable).where(Consumable.currentStock < Consumable.minStock).order_by(Consumable.name.asc())
     )
     return result.scalars().all()
+
+
+@router.get("/{consumable_id}/refill-history")
+@limiter.limit("60/minute")
+async def get_refill_history(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ConsumableRefillLog)
+        .where(ConsumableRefillLog.consumableId == consumable_id)
+        .order_by(ConsumableRefillLog.timestamp.desc())
+    )
+    logs = result.scalars().all()
+    return [
+        {
+            "id": log.id,
+            "amount": log.amount,
+            "oldStock": log.oldStock,
+            "newStock": log.newStock,
+            "refilledBy": log.refilledBy,
+            "timestamp": log.timestamp,
+        }
+        for log in logs
+    ]
+
+
+@router.get("/{consumable_id}/forecast")
+@limiter.limit("60/minute")
+async def get_consumable_forecast(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
+    consumable = res.scalar_one_or_none()
+    if not consumable:
+        raise HTTPException(404, "Расходник не найден")
+
+    # Средний расход за последние 30 дней
+    thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
+    usage_res = await db.execute(
+        select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0))
+        .where(
+            ConsumableUsageLog.consumableId == consumable_id,
+            ConsumableUsageLog.timestamp >= thirty_days_ago,
+        )
+    )
+    total_used_30d = usage_res.scalar() or 0.0
+
+    avg_daily = total_used_30d / 30.0 if total_used_30d > 0 else 0.0
+    days_left = None
+    if avg_daily > 0:
+        days_left = consumable.currentStock / avg_daily
+
+    # Сколько нужно для доведения до minStock * 3 (оптимальный запас)
+    target = consumable.minStock * 3
+    to_buy = max(0.0, target - consumable.currentStock)
+
+    return {
+        "currentStock": consumable.currentStock,
+        "minStock": consumable.minStock,
+        "targetStock": target,
+        "avgDailyUsage": round(avg_daily, 2),
+        "daysLeft": round(days_left, 1) if days_left is not None else None,
+        "suggestedPurchase": round(to_buy, 1),
+        "unit": consumable.unit,
+    }
 
 @router.post("/service-link", response_model=ServiceConsumableResponse)
 @limiter.limit("10/minute")

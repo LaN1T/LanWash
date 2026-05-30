@@ -4,15 +4,16 @@
 import asyncio
 import asyncpg
 import os
+import sys
 
-async def main():
+async def main(sql_file: str):
     url = os.environ.get("DATABASE_URL", "postgresql://lanwash_user:lanwash_password@localhost:5432/lanwash_db")
     # asyncpg не понимает +asyncpg драйвер
     url = url.replace("postgresql+asyncpg://", "postgresql://")
     
     conn = await asyncpg.connect(url)
     
-    sql_path = os.path.join(os.path.dirname(__file__), "001_add_missing_columns.sql")
+    sql_path = os.path.join(os.path.dirname(__file__), sql_file)
     with open(sql_path) as f:
         sql = f.read()
     
@@ -24,7 +25,8 @@ async def main():
             await conn.execute(stmt)
     
     await conn.close()
-    print("Migration applied successfully.")
+    print(f"Migration {sql_file} applied successfully.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    file_name = sys.argv[1] if len(sys.argv) > 1 else "001_add_missing_columns.sql"
+    asyncio.run(main(file_name))
