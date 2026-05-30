@@ -21,7 +21,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
@@ -130,7 +130,9 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
     );
     if (result == null ||
         result.files.isEmpty ||
-        result.files.first.bytes == null) return;
+        result.files.first.bytes == null) {
+      return;
+    }
     if (!mounted) return;
 
     final bytes = result.files.first.bytes!;
@@ -429,7 +431,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
   @override
