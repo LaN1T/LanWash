@@ -8,7 +8,7 @@ from datetime import datetime
 from services.auth_service import get_current_user
 from typing import List, Optional
 
-router = APIRouter(prefix="/shifts", tags=["shifts"])
+router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 
 
 def _parse_date(date_str: str) -> bool:
