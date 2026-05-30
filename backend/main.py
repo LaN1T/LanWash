@@ -107,6 +107,19 @@ async def add_security_headers(request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+
+# App Check middleware (optional, disabled by default)
+# Set APP_CHECK_ENFORCED=true to enable in production
+from core.app_check import verify_app_check_token
+
+_EXCLUDED_APP_CHECK_PATHS = {"/health", "/metrics", "/docs", "/redoc", "/openapi.json"}
+
+@app.middleware("http")
+async def app_check_middleware(request, call_next):
+    if request.url.path not in _EXCLUDED_APP_CHECK_PATHS:
+        await verify_app_check_token(request)
+    return await call_next(request)
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request, call_next):

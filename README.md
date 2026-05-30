@@ -380,6 +380,7 @@ LanWash/
 - Debug endpoint'ы скрыты за флагом `DEBUG=true`
 - Конфигурация валидируется pydantic-settings при старте
 - Структурированное логирование (structlog)
+- Firebase App Check + API Key Restrictions ([инструкция](docs/firebase-hardening.md))
 
 ---
 
