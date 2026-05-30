@@ -9,8 +9,9 @@ class User {
   final String phone;
   final String carModel;
   final String carNumber;
+  final String avatarUrl;
   final DateTime createdAt;
-  final bool isFavoriteAdmin; // для уведомлений у админа
+  final bool isFavoriteAdmin;
 
   const User({
     this.id,
@@ -21,6 +22,7 @@ class User {
     this.phone = '',
     this.carModel = '',
     this.carNumber = '',
+    this.avatarUrl = '',
     required this.createdAt,
     this.isFavoriteAdmin = false,
   });
@@ -34,6 +36,7 @@ class User {
         'phone': phone,
         'carModel': carModel,
         'carNumber': carNumber,
+        'avatarUrl': avatarUrl,
         'createdAt': createdAt.toIso8601String(),
         'isFavoriteAdmin': isFavoriteAdmin ? 1 : 0,
       };
@@ -48,6 +51,7 @@ class User {
         phone: m['phone'] ?? '',
         carModel: m['carModel'] ?? '',
         carNumber: m['carNumber'] ?? '',
+        avatarUrl: m['avatarUrl'] ?? '',
         createdAt: m['createdAt'] != null
             ? DateTime.parse(m['createdAt'])
             : DateTime.now(),
@@ -59,6 +63,7 @@ class User {
     String? phone,
     String? carModel,
     String? carNumber,
+    String? avatarUrl,
     String? passwordHash,
     bool? isFavoriteAdmin,
   }) =>
@@ -71,6 +76,7 @@ class User {
         phone: phone ?? this.phone,
         carModel: carModel ?? this.carModel,
         carNumber: carNumber ?? this.carNumber,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
         createdAt: createdAt,
         isFavoriteAdmin: isFavoriteAdmin ?? this.isFavoriteAdmin,
       );

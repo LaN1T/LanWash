@@ -13,6 +13,7 @@ class User(Base):
     phone = Column(String, nullable=False, default='')
     carModel = Column(String, nullable=False, default='')
     carNumber = Column(String, nullable=False, default='')
+    avatarUrl = Column(String, nullable=True, default='')
     createdAt = Column(String, nullable=False)
     isFavoriteAdmin = Column(Integer, nullable=False, default=0)
 
@@ -137,6 +138,8 @@ class Consumable(Base):
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     unit = Column(String, nullable=False, default='')
+    currentStock = Column(Float, nullable=False, default=0.0)
+    minStock = Column(Float, nullable=False, default=0.0)
 
 class ServiceConsumable(Base):
     __tablename__ = 'service_consumables'
@@ -151,3 +154,15 @@ class ConsumableUsageLog(Base):
     consumableId = Column(String, ForeignKey('consumables.id'), nullable=False)
     quantityUsed = Column(Float, nullable=False)
     timestamp = Column(String, nullable=False)
+
+class Shift(Base):
+    __tablename__ = 'shifts'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    userId = Column(Integer, ForeignKey('users.id'), nullable=False)
+    date = Column(String, nullable=False)
+    startTime = Column(String, nullable=False)
+    endTime = Column(String, nullable=False)
+    status = Column(String, nullable=False, default='confirmed')
+    createdBy = Column(String, nullable=False)
+    createdAt = Column(String, nullable=False)
+    updatedAt = Column(String, nullable=False)

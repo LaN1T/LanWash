@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/service.dart';
 import '../../services/notification_service.dart'; // Add this
 import '../shared/profile_screen.dart';
+import '../shared/shift_schedule_screen.dart';
 import '../admin/notes_screen.dart';
 import '../shared/appointment_detail_widget.dart';
 
@@ -49,8 +50,6 @@ class _WasherShellState extends State<WasherShell> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final provider = context.watch<AppProvider>();
-    final appts = provider.appointments;
 
     return Scaffold(
       backgroundColor: AppStyles.bgPage,
@@ -231,13 +230,14 @@ class _WasherShellState extends State<WasherShell> {
                       children: [
                         Icon(Icons.event_note_outlined,
                             size: 64,
-                            color: AppStyles.textSecondary.withOpacity(0.4)),
+                            color:
+                                AppStyles.textSecondary.withValues(alpha: 0.4)),
                         const SizedBox(height: 12),
                         Text('На выбранный день записей нет',
                             style: AppStyles.headingMedium
                                 .copyWith(color: AppStyles.textSecondary)),
                         const SizedBox(height: 6),
-                        Text('Выберите другой день или проверьте фильтры',
+                        const Text('Выберите другой день или проверьте фильтры',
                             style: AppStyles.bodyMedium),
                       ],
                     ),
@@ -278,7 +278,7 @@ class _WasherShellState extends State<WasherShell> {
                   gradient: AppStyles.primaryGradient,
                   boxShadow: [
                     BoxShadow(
-                      color: AppStyles.primary.withOpacity(0.25),
+                      color: AppStyles.primary.withValues(alpha: 0.25),
                       blurRadius: 16,
                     )
                   ],
@@ -297,9 +297,10 @@ class _WasherShellState extends State<WasherShell> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppStyles.warning.withOpacity(0.1),
+                  color: AppStyles.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppStyles.warning.withOpacity(0.2)),
+                  border: Border.all(
+                      color: AppStyles.warning.withValues(alpha: 0.2)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.person_rounded,
@@ -337,7 +338,7 @@ class _WasherShellState extends State<WasherShell> {
                           ? FontWeight.w600
                           : FontWeight.normal)),
               selected: _tabIndex == 0,
-              selectedTileColor: AppStyles.primary.withOpacity(0.08),
+              selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
               onTap: () {
@@ -367,7 +368,7 @@ class _WasherShellState extends State<WasherShell> {
                           ? FontWeight.w600
                           : FontWeight.normal)),
               selected: _tabIndex == 1,
-              selectedTileColor: AppStyles.primary.withOpacity(0.08),
+              selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
               onTap: () {
@@ -377,6 +378,25 @@ class _WasherShellState extends State<WasherShell> {
             ),
           ),
           const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.schedule_outlined,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Сменное расписание',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const ShiftScheduleScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
@@ -489,7 +509,7 @@ class _WasherAppointmentCard extends StatelessWidget {
       color: Colors.white,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: AppStyles.border)),
+          side: const BorderSide(color: AppStyles.border)),
       elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -509,7 +529,7 @@ class _WasherAppointmentCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6)),
                   child: Row(children: [
                     Icon(AppStyles.statusIcon(a.status),
@@ -574,39 +594,4 @@ class _WasherAppointmentCard extends StatelessWidget {
       ),
     );
   }
-}
-
-il(BuildContext context, Appointment a, List<dynamic> services) {
-  final provider = context.read<AppProvider>();
-  final washType = provider.washTypeById(a.washTypeId);
-  showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Запись: ${a.clientName}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              const Text('Статус'),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                children: ['scheduled', 'in_progress', 'completed']
-                    .map((s) => ElevatedButton(
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            await provider.updateAppointment(
-                                a.copyWith(status: s),
-                                context.read<AuthProvider>());
-                          },
-                          child: Text(AppStyles.statusLabel(s)),
-                        ))
-                    .toList(),
-              )
-            ],
-          )));
 }

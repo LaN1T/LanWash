@@ -4,7 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from sqlalchemy import select, update, delete
 from database import get_db
-from models import ConsumableRequest, ConsumableResponse, ServiceConsumableRequest, ServiceConsumableResponse
+from models import (
+    ConsumableRequest, ConsumableResponse, ServiceConsumableRequest,
+    ServiceConsumableResponse, RefillRequest,
+)
 from db_models import Consumable, ServiceConsumable, Service, User
 from services.auth_service import get_current_user, check_roles
 
@@ -63,6 +66,26 @@ async def delete_consumable(request: Request, consumable_id: str, db: AsyncSessi
     if result.rowcount == 0:
         raise HTTPException(404, "Расходник не найден")
     return {"ok": True}
+
+@router.post("/{consumable_id}/refill", response_model=ConsumableResponse)
+@limiter.limit("10/minute")
+async def refill_consumable(request: Request, consumable_id: str, req: RefillRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
+    consumable = result.scalar_one_or_none()
+    if not consumable:
+        raise HTTPException(404, "Расходник не найден")
+    consumable.currentStock += req.amount
+    await db.commit()
+    await db.refresh(consumable)
+    return consumable
+
+@router.get("/alerts/low-stock", response_model=list[ConsumableResponse])
+@limiter.limit("60/minute")
+async def get_low_stock_alerts(request: Request, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Consumable).where(Consumable.currentStock < Consumable.minStock).order_by(Consumable.name.asc())
+    )
+    return result.scalars().all()
 
 @router.post("/service-link", response_model=ServiceConsumableResponse)
 @limiter.limit("10/minute")

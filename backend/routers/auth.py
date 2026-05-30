@@ -1,19 +1,30 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+import os
+import uuid
+import shutil
+from typing import List
+from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from database import get_db
-from models import LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest, FcmTokenRequest, LoginResponse
-from db_models import User, FcmToken
+from models import (
+    LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest,
+    FcmTokenRequest, LoginResponse, UserStatsResponse
+)
+from db_models import User, FcmToken, Appointment
 from datetime import datetime, timedelta
 from services.auth_service import (
-    get_password_hash, 
-    verify_password, 
-    create_access_token, 
+    get_password_hash,
+    verify_password,
+    create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     get_current_user,
     validate_password_strength
 )
 from core.security import encrypt_token
+
+# Директория для загрузки аватарок
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "avatars")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 import structlog
 logger = structlog.get_logger()
@@ -142,6 +153,7 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
     if req.phone is not None: updates["phone"] = req.phone
     if req.carModel is not None: updates["carModel"] = req.carModel
     if req.carNumber is not None: updates["carNumber"] = req.carNumber
+    if req.avatarUrl is not None: updates["avatarUrl"] = req.avatarUrl
     if req.newPassword is not None:
         password_error = validate_password_strength(req.newPassword)
         if password_error:
@@ -152,7 +164,7 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
         await db.execute(update(User).where(User.id == user_id).values(updates))
         await db.commit()
         await db.refresh(user)
-        
+
     return user
 
 @router.post(
@@ -188,3 +200,121 @@ async def save_fcm_token(request: Request, req: FcmTokenRequest, db: AsyncSessio
     await db.commit()
     logger.debug("fcm_token_saved")
     return {"status": "ok"}
+
+
+@router.post("/avatar/{user_id}", response_model=UserResponse)
+@limiter.limit("10/minute")
+async def upload_avatar(
+    request: Request,
+    user_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.id != user_id and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет доступа к этому профилю")
+
+    # Проверяем формат
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed:
+        raise HTTPException(400, "Допустимы только JPEG, PNG, WebP")
+
+    # Сохраняем файл
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    avatar_url = f"/uploads/avatars/{filename}"
+
+    await db.execute(update(User).where(User.id == user_id).values(avatarUrl=avatar_url))
+    await db.commit()
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one()
+    return user
+
+
+@router.get("/stats/{username}", response_model=UserStatsResponse)
+@limiter.limit("60/minute")
+async def get_user_stats(
+    request: Request,
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # IDOR: только себе или админ
+    if current_user.username != username.lower() and current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет доступа к статистике")
+
+    # Считаем завершённые мойки
+    res_count = await db.execute(
+        select(func.count(Appointment.id)).where(
+            Appointment.ownerUsername == username.lower(),
+            Appointment.status == 'completed'
+        )
+    )
+    total_appointments = res_count.scalar() or 0
+
+    # Сумма потраченных денег
+    res_spent = await db.execute(
+        select(func.sum(Appointment.paidPrice)).where(
+            Appointment.ownerUsername == username.lower(),
+            Appointment.status == 'completed'
+        )
+    )
+    total_spent = res_spent.scalar() or 0
+
+    # Любимый тип мойки
+    res_fav = await db.execute(
+        select(Appointment.washTypeId, func.count(Appointment.id))
+        .where(
+            Appointment.ownerUsername == username.lower(),
+            Appointment.status == 'completed'
+        )
+        .group_by(Appointment.washTypeId)
+        .order_by(func.count(Appointment.id).desc())
+        .limit(1)
+    )
+    fav_row = res_fav.first()
+    favorite_wash_type = fav_row[0] if fav_row else '-'
+
+    # Уровень
+    if total_appointments == 0:
+        level = "Новичок"
+        level_progress = 0
+    elif total_appointments <= 2:
+        level = "Постоянный"
+        level_progress = ((total_appointments) * 100) // 3
+    elif total_appointments <= 9:
+        level = "Любимый клиент"
+        level_progress = ((total_appointments - 2) * 100) // 8
+    else:
+        level = "VIP"
+        level_progress = 100
+
+    # Баллы = 10% от потраченного
+    points = int(total_spent * 0.1)
+
+    return UserStatsResponse(
+        totalAppointments=total_appointments,
+        totalSpent=total_spent,
+        favoriteWashType=favorite_wash_type,
+        level=level,
+        levelProgress=level_progress,
+        points=points
+    )
+
+
+@router.get("/washers", response_model=List[UserResponse])
+@limiter.limit("60/minute")
+async def list_washers(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(User).where(User.role == 'washer').order_by(User.displayName))
+    washers = result.scalars().all()
+    return washers

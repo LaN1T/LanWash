@@ -8,7 +8,7 @@ from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User,
+    WashTypeIncludedExtra, User, Consumable,
 )
 from datetime import datetime
 from collections import defaultdict
@@ -16,6 +16,7 @@ from services.fcm_service import fcm_service
 from services.workload_service import workload_service
 from services.auth_service import get_current_user, check_roles
 from core.security import decrypt_token
+from core.metrics import appointments_total
 import structlog
 
 logger = structlog.get_logger()
@@ -183,7 +184,7 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
     # 2. Сбор расходников из промо
     if promo_id:
         res_promo = await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
-        # Здесь мы полагаем, что логика промо тоже требует расходников, 
+        # Здесь мы полагаем, что логика промо тоже требует расходников,
         # но для простоты добавим только расходники самих доп.услуг ниже.
         pass
 
@@ -194,14 +195,25 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
             service_ids = json.loads(additional_services) if isinstance(additional_services, str) else additional_services
         except:
             service_ids = additional_services if isinstance(additional_services, list) else []
-            
+
         if service_ids:
             res_svc = await db.execute(select(ServiceConsumable.consumableId, ServiceConsumable.quantity_per_service).where(ServiceConsumable.serviceId.in_(service_ids)))
             for cid, qty in res_svc.all():
                 usage_map[cid] = usage_map.get(cid, 0.0) + float(qty)
 
-    # 4. Сохранение в лог
+    # 4. Уменьшение остатков + сохранение в лог
     for cid, qty in usage_map.items():
+        res = await db.execute(select(Consumable).where(Consumable.id == cid))
+        consumable = res.scalar_one_or_none()
+        if consumable:
+            consumable.currentStock = max(0.0, consumable.currentStock - qty)
+            if consumable.currentStock < consumable.minStock:
+                logger.warning(
+                    "low_consumable_stock",
+                    consumable=consumable.name,
+                    current=consumable.currentStock,
+                    minimum=consumable.minStock,
+                )
         db.add(ConsumableUsageLog(
             appointmentId=appt_id,
             consumableId=cid,
@@ -286,6 +298,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
                 body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана."
             )
 
+    appointments_total.labels(status=effective_status).inc()
     await db.refresh(appt)
     return appt
 
@@ -370,6 +383,8 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     appt.dateTime = req.dateTime
     appt.washTypeId = req.washTypeId
     appt.additionalServices = req.additionalServices
+    if req.status != original_status:
+        appointments_total.labels(status=req.status).inc()
     appt.status = req.status
     appt.notes = req.notes
     appt.isFavorite = int(req.isFavorite)
@@ -377,7 +392,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     appt.paidPrice = req.paidPrice
     appt.promoId = req.promoId
     appt.box_index = box_idx
-    
+
     if current_user.role == 'admin':
         appt.ownerUsername = req.ownerUsername.lower()
         appt.originalPrice = req.originalPrice

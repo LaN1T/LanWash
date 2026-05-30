@@ -14,6 +14,8 @@ import 'notes_screen.dart';
 import 'admin_schedule_screen.dart';
 import 'reports_shell_screen.dart'; // Импорт для отчетов
 import 'wash_type_settings_screen.dart';
+import '../shared/shift_schedule_screen.dart';
+import 'consumables_stock_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -105,7 +107,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
       floatingActionButton: null,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: AppStyles.border)),
         ),
@@ -137,7 +139,7 @@ class _HomeShellState extends State<HomeShell> {
                 child: const Icon(Icons.star_outline,
                     color: AppStyles.textSecondary),
               ),
-              selectedIcon: Icon(Icons.star, color: AppStyles.primary),
+              selectedIcon: const Icon(Icons.star, color: AppStyles.primary),
               label: 'Избранное',
             ),
           ],
@@ -166,7 +168,7 @@ class _HomeShellState extends State<HomeShell> {
                   gradient: AppStyles.primaryGradient,
                   boxShadow: [
                     BoxShadow(
-                      color: AppStyles.primary.withOpacity(0.3),
+                      color: AppStyles.primary.withValues(alpha: 0.3),
                       blurRadius: 20,
                     )
                   ],
@@ -185,7 +187,7 @@ class _HomeShellState extends State<HomeShell> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppStyles.primary.withOpacity(0.15),
+                  color: AppStyles.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(auth.username,
@@ -205,14 +207,14 @@ class _HomeShellState extends State<HomeShell> {
           _drawerItem(ctx, 2, Icons.star_outline, Icons.star, 'Избранное',
               favCount > 0 ? '$favCount' : null),
           const Divider(color: AppStyles.border, indent: 16, endIndent: 16),
-          // Расписание
+          // Расписание записей
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
               leading: const Icon(Icons.calendar_month_outlined,
                   color: AppStyles.textSecondary, size: 22),
-              title: const Text('Расписание',
+              title: const Text('Расписание записей',
                   style: TextStyle(color: AppStyles.textPrimary)),
               onTap: () {
                 Navigator.pop(ctx);
@@ -220,6 +222,26 @@ class _HomeShellState extends State<HomeShell> {
                     ctx,
                     MaterialPageRoute(
                         builder: (_) => const AdminScheduleScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          // Сменное расписание
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: const Icon(Icons.schedule_outlined,
+                  color: AppStyles.textSecondary, size: 22),
+              title: const Text('Сменное расписание',
+                  style: TextStyle(color: AppStyles.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const ShiftScheduleScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -282,6 +304,27 @@ class _HomeShellState extends State<HomeShell> {
                       ctx,
                       MaterialPageRoute(
                           builder: (_) => const ReportsShellScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          // Управление запасами
+          if (auth.isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: const Icon(Icons.inventory_2_outlined,
+                    color: AppStyles.textSecondary, size: 22),
+                title: const Text('Управление запасами',
+                    style: TextStyle(color: AppStyles.textPrimary)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const ConsumablesStockScreen()));
                 },
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
@@ -377,7 +420,7 @@ class _HomeShellState extends State<HomeShell> {
               )
             : null,
         selected: sel,
-        selectedTileColor: AppStyles.primary.withOpacity(0.08),
+        selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: () {
           setState(() => _index = index);
