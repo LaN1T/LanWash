@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
 from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,7 +56,7 @@ async def get_all(
     request: Request,
     response: Response,
     page: int = 1,
-    date: str | None = None,
+    date: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -96,7 +97,7 @@ async def get_all(
     )
 
     # 2. Determine target date
-    target_date: str | None = None
+    target_date: Optional[str] = None
     if date:
         clean_date = date[:10]
         if clean_date in unique_dates:

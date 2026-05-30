@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/consumable.dart';
@@ -76,6 +77,14 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: AppStyles.success),
+    );
+  }
+
+  void _openDetail(Consumable c) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ConsumableDetailSheet(consumable: c),
     );
   }
 
@@ -170,89 +179,339 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
               : Colors.grey.shade200,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    c.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                if (isLow)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppStyles.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Низкий запас',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppStyles.danger,
+      child: InkWell(
+        onTap: () => _openDetail(c),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      c.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation(
-                isLow ? AppStyles.danger : AppStyles.primary,
+                  if (isLow)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppStyles.danger.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Низкий запас',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppStyles.danger,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              borderRadius: BorderRadius.circular(4),
-              minHeight: 6,
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation(
+                  isLow ? AppStyles.danger : AppStyles.primary,
+                ),
+                borderRadius: BorderRadius.circular(4),
+                minHeight: 6,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isLow ? AppStyles.danger : AppStyles.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'мин. ${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppStyles.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _refill(c),
+                    icon: const Icon(Icons.add, size: 16),
+                    label:
+                        const Text('Пополнить', style: TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.primary,
+                      foregroundColor: Colors.white,
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConsumableDetailSheet extends StatefulWidget {
+  final Consumable consumable;
+
+  const _ConsumableDetailSheet({required this.consumable});
+
+  @override
+  State<_ConsumableDetailSheet> createState() => _ConsumableDetailSheetState();
+}
+
+class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  bool _loadingHistory = true;
+  bool _loadingForecast = true;
+  List<ConsumableRefillLog> _history = [];
+  ConsumableForecast? _forecast;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    final api = context.read<ApiService>();
+    final history = await api.getRefillHistory(widget.consumable.id);
+    final forecast = await api.getConsumableForecast(widget.consumable.id);
+    if (mounted) {
+      setState(() {
+        _history = history;
+        _forecast = forecast;
+        _loadingHistory = false;
+        _loadingForecast = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.consumable;
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (_, scrollController) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            const SizedBox(height: 8),
-            Row(
+            child: Column(
               children: [
-                Text(
-                  '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isLow ? AppStyles.danger : AppStyles.textPrimary,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  'мин. ${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppStyles.textSecondary,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Text(
+                    c.name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () => _refill(c),
-                  icon: const Icon(Icons.add, size: 16),
-                  label:
-                      const Text('Пополнить', style: TextStyle(fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppStyles.primary,
-                    foregroundColor: Colors.white,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                TabBar(
+                  controller: _tabController,
+                  labelColor: AppStyles.primary,
+                  unselectedLabelColor: AppStyles.textSecondary,
+                  indicatorColor: AppStyles.primary,
+                  tabs: const [
+                    Tab(text: 'Обзор'),
+                    Tab(text: 'История'),
+                    Tab(text: 'Прогноз'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOverviewTab(c),
+                      _buildHistoryTab(),
+                      _buildForecastTab(),
+                    ],
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOverviewTab(Consumable c) {
+    final isLow = c.isLowStock;
+    final progress = c.minStock > 0
+        ? (c.currentStock / (c.minStock * 3)).clamp(0.0, 1.0)
+        : 1.0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _kpiCard('Текущий запас',
+              '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
+              isLow ? AppStyles.danger : AppStyles.primary),
+          const SizedBox(height: 10),
+          _kpiCard('Минимальный запас',
+              '${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
+              AppStyles.textSecondary),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey.shade200,
+            valueColor: AlwaysStoppedAnimation(
+              isLow ? AppStyles.danger : AppStyles.primary,
+            ),
+            borderRadius: BorderRadius.circular(4),
+            minHeight: 8,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isLow ? 'Запас ниже нормы' : 'Запас в норме',
+            style: TextStyle(
+              color: isLow ? AppStyles.danger : AppStyles.success,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kpiCard(String label, String value, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 20, color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryTab() {
+    if (_loadingHistory) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_history.isEmpty) {
+      return const Center(child: Text('История пополнений пуста'));
+    }
+    final fmt = DateFormat('dd.MM.yyyy HH:mm');
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: _history.length,
+      itemBuilder: (_, i) {
+        final log = _history[i];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: AppStyles.primary.withValues(alpha: 0.1),
+            child: const Icon(Icons.add, color: AppStyles.primary, size: 18),
+          ),
+          title: Text('+${log.amount.toStringAsFixed(log.amount % 1 == 0 ? 0 : 1)} ${widget.consumable.unit}'),
+          subtitle: Text('${log.refilledBy}  •  ${fmt.format(DateTime.parse(log.timestamp))}'),
+          trailing: Text(
+            '${log.oldStock.toStringAsFixed(1)} → ${log.newStock.toStringAsFixed(1)}',
+            style: const TextStyle(fontSize: 12, color: AppStyles.textSecondary),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildForecastTab() {
+    if (_loadingForecast) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final f = _forecast;
+    if (f == null) {
+      return const Center(child: Text('Не удалось загрузить прогноз'));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _kpiCard('Средний расход в день',
+              '${f.avgDailyUsage.toStringAsFixed(f.avgDailyUsage % 1 == 0 ? 0 : 1)} ${f.unit}',
+              AppStyles.primary),
+          const SizedBox(height: 10),
+          if (f.daysLeft != null)
+            _kpiCard(
+                'Хватит на',
+                '${f.daysLeft!.toStringAsFixed(f.daysLeft! % 1 == 0 ? 0 : 1)} дн.',
+                f.daysLeft! < 7 ? AppStyles.danger : AppStyles.success)
+          else
+            _kpiCard('Хватит на', 'Недостаточно данных', AppStyles.textSecondary),
+          const SizedBox(height: 10),
+          _kpiCard(
+              'Рекомендуемая закупка',
+              '${f.suggestedPurchase.toStringAsFixed(f.suggestedPurchase % 1 == 0 ? 0 : 1)} ${f.unit}',
+              AppStyles.warning),
+          const SizedBox(height: 10),
+          Text(
+            'Целевой запас: ${f.targetStock.toStringAsFixed(f.targetStock % 1 == 0 ? 0 : 1)} ${f.unit}',
+            style: const TextStyle(color: AppStyles.textSecondary, fontSize: 13),
+          ),
+        ],
       ),
     );
   }

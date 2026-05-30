@@ -130,3 +130,41 @@ class TestConsumables:
             headers={"Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_refill_and_history(self, async_client, admin_token):
+        # Пополнение
+        refill_resp = await async_client.post(
+            "/api/consumables/c_shampoo/refill",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"amount": 10.0},
+        )
+        assert refill_resp.status_code == 200
+        data = refill_resp.json()
+        assert data["currentStock"] >= 10.0
+
+        # История
+        history_resp = await async_client.get(
+            "/api/consumables/c_shampoo/refill-history",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert history_resp.status_code == 200
+        history = history_resp.json()
+        assert isinstance(history, list)
+        assert len(history) >= 1
+        assert history[0]["amount"] == 10.0
+        assert history[0]["refilledBy"] == "admin"
+
+    @pytest.mark.asyncio
+    async def test_forecast(self, async_client, admin_token):
+        response = await async_client.get(
+            "/api/consumables/c_shampoo/forecast",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "currentStock" in data
+        assert "avgDailyUsage" in data
+        assert "daysLeft" in data
+        assert "suggestedPurchase" in data
+        assert data["unit"] in ["л", "мл"]

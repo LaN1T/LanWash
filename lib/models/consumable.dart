@@ -25,3 +25,64 @@ class Consumable {
 
   bool get isLowStock => currentStock < minStock;
 }
+
+class ConsumableRefillLog {
+  final int id;
+  final double amount;
+  final double oldStock;
+  final double newStock;
+  final String refilledBy;
+  final String timestamp;
+
+  const ConsumableRefillLog({
+    required this.id,
+    required this.amount,
+    required this.oldStock,
+    required this.newStock,
+    required this.refilledBy,
+    required this.timestamp,
+  });
+
+  factory ConsumableRefillLog.fromMap(Map<String, dynamic> map) {
+    return ConsumableRefillLog(
+      id: map['id'] as int,
+      amount: (map['amount'] as num).toDouble(),
+      oldStock: (map['oldStock'] as num).toDouble(),
+      newStock: (map['newStock'] as num).toDouble(),
+      refilledBy: map['refilledBy'] as String,
+      timestamp: map['timestamp'] as String,
+    );
+  }
+}
+
+class ConsumableForecast {
+  final double currentStock;
+  final double minStock;
+  final double targetStock;
+  final double avgDailyUsage;
+  final double? daysLeft;
+  final double suggestedPurchase;
+  final String unit;
+
+  const ConsumableForecast({
+    required this.currentStock,
+    required this.minStock,
+    required this.targetStock,
+    required this.avgDailyUsage,
+    this.daysLeft,
+    required this.suggestedPurchase,
+    required this.unit,
+  });
+
+  factory ConsumableForecast.fromMap(Map<String, dynamic> map) {
+    return ConsumableForecast(
+      currentStock: (map['currentStock'] as num).toDouble(),
+      minStock: (map['minStock'] as num).toDouble(),
+      targetStock: (map['targetStock'] as num).toDouble(),
+      avgDailyUsage: (map['avgDailyUsage'] as num).toDouble(),
+      daysLeft: map['daysLeft'] != null ? (map['daysLeft'] as num).toDouble() : null,
+      suggestedPurchase: (map['suggestedPurchase'] as num).toDouble(),
+      unit: map['unit'] as String,
+    );
+  }
+}
