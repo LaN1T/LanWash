@@ -213,6 +213,12 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
         title: const Text('Управление запасами'),
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           PopupMenuButton<String>(
@@ -246,7 +252,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
                   if (alerts.isNotEmpty) ...[
                     Container(
