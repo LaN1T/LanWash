@@ -68,6 +68,15 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 # CORS — development allows any localhost port; production uses strict whitelist
+_EXPOSED_HEADERS = [
+    "X-Total-Pages",
+    "X-Current-Page",
+    "X-Current-Date",
+    "X-Unique-Dates",
+    "X-Content-Type-Options",
+    "X-Frame-Options",
+]
+
 if settings.is_production:
     app.add_middleware(
         CORSMiddleware,
@@ -75,6 +84,7 @@ if settings.is_production:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        expose_headers=_EXPOSED_HEADERS,
     )
 else:
     # Development / testing: allow any localhost port (Flutter web random ports)
@@ -84,6 +94,7 @@ else:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        expose_headers=_EXPOSED_HEADERS,
     )
 
 # Security headers middleware
