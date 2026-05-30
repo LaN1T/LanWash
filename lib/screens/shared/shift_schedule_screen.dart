@@ -49,6 +49,16 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         _shifts = shifts;
         _loading = false;
       });
+
+      // Подсказка мойщику, если на текущей неделе нет смен
+      final auth = context.read<AuthProvider>();
+      if (auth.isWasher && auth.user?.id != null) {
+        final myShifts =
+            shifts.where((s) => s.userId == auth.user!.id).toList();
+        if (myShifts.isEmpty && shifts.isNotEmpty) {
+          _showSnack('На этой неделе у вас нет смен');
+        }
+      }
     }
   }
 
@@ -213,10 +223,10 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           child: Table(
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             columnWidths: {
-              0: const FractionColumnWidth(0.17),
+              0: const FractionColumnWidth(0.15),
               for (var i = 0; i < days.length; i++)
-                i + 1: const FractionColumnWidth(0.10),
-              days.length + 1: const FractionColumnWidth(0.07),
+                i + 1: const FractionColumnWidth(0.112),
+              days.length + 1: const FractionColumnWidth(0.066),
             },
             border: TableBorder(
               horizontalInside: BorderSide(color: Colors.grey.shade100),
@@ -266,13 +276,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     Alignment align = Alignment.center,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       alignment: align,
       child: Text(
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: isWeekend ? AppStyles.danger : AppStyles.textPrimary,
           height: 1.3,
@@ -288,11 +298,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _nameCell(User w) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: Text(
         w.displayName,
         style: const TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: AppStyles.textPrimary,
         ),
@@ -328,14 +338,14 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       textColor = Colors.white;
     }
 
-    return GestureDetector(
+    final cell = GestureDetector(
       onTap: () => _openEditor(washer, date, shift),
       child: Container(
-        height: 48,
-        margin: const EdgeInsets.all(2),
+        height: 56,
+        margin: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: shift == null
                 ? (isWeekend
@@ -347,7 +357,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         alignment: Alignment.center,
         child: label.isEmpty
             ? canEdit
-                ? Icon(Icons.add, size: 16, color: Colors.grey.shade300)
+                ? Icon(Icons.add, size: 18, color: Colors.grey.shade300)
                 : const SizedBox.shrink()
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -357,7 +367,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: textColor,
                     ),
@@ -366,7 +376,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                     const Text(
                       'ожид.',
                       style: TextStyle(
-                        fontSize: 8,
+                        fontSize: 9,
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
                       ),
@@ -375,18 +385,40 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
               ),
       ),
     );
+
+    if (shift != null) {
+      return Tooltip(
+        message:
+            '${shift.startTime} – ${shift.endTime} (${_statusLabel(shift.status)})',
+        child: cell,
+      );
+    }
+    return cell;
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'confirmed':
+        return 'подтверждена';
+      case 'pending':
+        return 'на рассмотрении';
+      case 'rejected':
+        return 'отклонена';
+      default:
+        return status;
+    }
   }
 
   Widget _hoursCell(int totalMinutes) {
     final hours = totalMinutes / 60;
     final hasHours = totalMinutes > 0;
     return Container(
-      height: 48,
+      height: 56,
       alignment: Alignment.center,
       child: Text(
         hours.toStringAsFixed(1),
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: hasHours ? FontWeight.w700 : FontWeight.w600,
           color: hasHours ? AppStyles.primary : AppStyles.textSecondary,
         ),
