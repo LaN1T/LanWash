@@ -16,6 +16,7 @@
   <link rel="manifest" href="manifest.json">
   <title>LanWash — Профессиональная автомойка</title>
   <link rel="stylesheet" href="css/style.css">
+
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -26,7 +27,7 @@
     "telephone": "+7-999-999-99-99",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "ул. Примерная, 1",
+      "streetAddress": "ул. Газопровод, 2А",
       "addressLocality": "Москва",
       "addressCountry": "RU"
     },
@@ -59,10 +60,12 @@
   <header class="header">
     <div class="header__inner container">
       <a href="#" class="header__logo" aria-label="LanWash">
-        <svg width="120" height="32" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="120" height="32" rx="8" fill="var(--color-primary)"/>
-          <text x="60" y="22" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="600" font-family="system-ui">LanWash</text>
-        </svg>
+        <span class="header__logo-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+          </svg>
+        </span>
+        <span class="header__logo-text">LanWash</span>
       </a>
       <nav class="header__nav" aria-label="Main navigation">
         <a href="#services" class="header__link" data-i18n="nav.services">Услуги</a>
@@ -72,7 +75,9 @@
       </nav>
       <div class="header__actions">
         <button class="header__btn" id="themeToggle" aria-label="Toggle theme">
-          <span class="theme-icon">🌙</span>
+          <svg class="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
         </button>
         <button class="header__btn" id="langToggle" aria-label="Toggle language">RU</button>
         <button class="header__menu-btn" id="menuToggle" aria-label="Toggle menu" aria-expanded="false">
@@ -92,7 +97,11 @@
 
   <main>
     <section class="hero">
-      <div class="hero__bg" aria-hidden="true"></div>
+      <div class="hero__bg" aria-hidden="true">
+        <div class="hero__orb hero__orb--1"></div>
+        <div class="hero__orb hero__orb--2"></div>
+        <div class="hero__orb hero__orb--3"></div>
+      </div>
       <div class="hero__overlay" aria-hidden="true"></div>
       <div class="hero__content container">
         <h1 class="hero__title" data-i18n="hero.title">LanWash</h1>
@@ -137,7 +146,7 @@
           <div class="contacts__info">
             <p class="contacts__item">
               <strong data-i18n="contacts.addressLabel">Адрес:</strong>
-              <span data-i18n="contacts.address">г. Москва, ул. Примерная, 1</span>
+              <span data-i18n="contacts.address">г. Москва, ул. Газопровод, 2А</span>
             </p>
             <p class="contacts__item">
               <strong data-i18n="contacts.hoursLabel">Режим работы:</strong>
@@ -150,13 +159,12 @@
           </div>
           <div class="contacts__map">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2245.0!2d37.6173!3d55.7558!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNTXCsDQ1JzIwLjkiTiAzN8KwMzcnMDIuMyJF!5e0!3m2!1sru!2sru!4v1"
+              src="https://yandex.ru/map-widget/v1/?um=constructor%3Af0eac4265efef2070114864bf1120327c9e34073e67107441f320ca7503dd275&amp;source=constructor"
               width="100%"
               height="300"
               style="border:0;"
               allowfullscreen=""
               loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
               title="Map"
             ></iframe>
           </div>
@@ -165,9 +173,30 @@
     </section>
   </main>
 
+  <!-- Service Detail Modal -->
+  <div class="modal" id="serviceModal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal__overlay" id="modalOverlay"></div>
+    <div class="modal__content">
+      <button class="modal__close" id="modalClose" aria-label="Close modal">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <div class="modal__header">
+        <div class="modal__icon" id="modalIcon"></div>
+        <h3 class="modal__title" id="modalTitle"></h3>
+      </div>
+      <p class="modal__desc" id="modalDesc"></p>
+      <div class="modal__section">
+        <h4 class="modal__section-title" data-i18n="modal.includes">Включает услуги</h4>
+        <ul class="modal__list" id="modalList"></ul>
+      </div>
+      <div class="modal__price" id="modalPrice"></div>
+      <a href="https://app.lanwash.ru" class="btn btn--primary modal__cta" target="_blank" rel="noopener" data-i18n="hero.cta">Записаться</a>
+    </div>
+  </div>
+
   <footer class="footer">
     <div class="container">
-      <p class="footer__copy" data-i18n="footer.copy">© 2025 LanWash. Все права защищены.</p>
+      <p class="footer__copy" data-i18n="footer.copy">© 2026 LanWash. Все права защищены.</p>
     </div>
   </footer>
 
