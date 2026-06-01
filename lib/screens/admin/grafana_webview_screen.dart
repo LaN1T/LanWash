@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-// Conditional import for web iframe
-import 'grafana_webview_web.dart' if (dart.library.html) 'grafana_webview_web.dart';
+// Conditional import: stub on native, real iframe implementation on web
+import 'grafana_webview_stub.dart' if (dart.library.html) 'grafana_webview_web.dart';
 
 class GrafanaWebViewScreen extends StatefulWidget {
   const GrafanaWebViewScreen({super.key});
