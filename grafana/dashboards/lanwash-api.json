@@ -204,7 +204,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 18 },
       "id": 11,
       "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
-      "targets": [ { "expr": "lanwash_daily_revenue", "refId": "A" } ],
+      "targets": [ { "expr": "max(lanwash_daily_revenue)", "refId": "A" } ],
       "title": "Выручка за день",
       "type": "stat"
     },
@@ -223,7 +223,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 6, "y": 18 },
       "id": 12,
       "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
-      "targets": [ { "expr": "lanwash_weekly_revenue", "refId": "A" } ],
+      "targets": [ { "expr": "max(lanwash_weekly_revenue)", "refId": "A" } ],
       "title": "Выручка за неделю",
       "type": "stat"
     },
@@ -242,7 +242,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 12, "y": 18 },
       "id": 13,
       "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
-      "targets": [ { "expr": "lanwash_monthly_revenue", "refId": "A" } ],
+      "targets": [ { "expr": "max(lanwash_monthly_revenue)", "refId": "A" } ],
       "title": "Выручка за месяц",
       "type": "stat"
     },
@@ -261,7 +261,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 18, "y": 18 },
       "id": 14,
       "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
-      "targets": [ { "expr": "lanwash_avg_check", "refId": "A" } ],
+      "targets": [ { "expr": "max(lanwash_avg_check)", "refId": "A" } ],
       "title": "Средний чек",
       "type": "stat"
     },
@@ -293,7 +293,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "id": 15,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "tooltip": { "mode": "single", "sort": "none" } },
-      "targets": [ { "expr": "lanwash_appointments_total", "legendFormat": "{{status}}", "refId": "A" } ],
+      "targets": [ { "expr": "sum(lanwash_appointments_total)", "legendFormat": "{{status}}", "refId": "A" } ],
       "title": "Записи по статусам",
       "type": "piechart"
     },
@@ -335,7 +335,7 @@
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "single", "sort": "none" }
       },
-      "targets": [ { "expr": "lanwash_box_appointments", "legendFormat": "Бокс {{box}}", "refId": "A" } ],
+      "targets": [ { "expr": "max(lanwash_box_appointments)", "legendFormat": "Бокс {{box}}", "refId": "A" } ],
       "title": "Загрузка боксов (сегодня)",
       "type": "timeseries"
     },
@@ -385,7 +385,7 @@
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "single", "sort": "none" }
       },
-      "targets": [ { "expr": "lanwash_shift_hours", "legendFormat": "{{washer}}", "refId": "A" } ],
+      "targets": [ { "expr": "max(lanwash_shift_hours)", "legendFormat": "{{washer}}", "refId": "A" } ],
       "title": "Часы смен (сегодня)",
       "type": "timeseries"
     }
