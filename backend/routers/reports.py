@@ -5,7 +5,7 @@ from sqlalchemy import select, func, and_, cast, String
 from database import get_db
 from db_models import (
     Appointment, Consumable, ConsumableUsageLog, Service, ServiceConsumable,
-    Promo, WashType, WashTypeConsumable,
+    Promo, WashType, WashTypeConsumable, Shift, User,
 )
 from datetime import datetime
 import json
@@ -216,3 +216,102 @@ async def get_consumables_usage(request: Request, date: str = None, category: st
         for n, v in sums.items()
     ]
     return {"date": date, "data": sorted(data, key=lambda x: x['totalUsed'], reverse=True)}
+
+
+@router.get("/daily/")
+@limiter.limit("60/minute")
+async def daily_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db)):
+    """Daily summary: revenue, appointments, top services, washers on shift, consumables alerts."""
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    # ─── Revenue & appointments ─────────────────────────────────────────────
+    base_filter = cast(Appointment.dateTime, String).like(f"{date}%")
+
+    total_result = await db.execute(
+        select(func.count(Appointment.id)).where(base_filter)
+    )
+    appointments_count = total_result.scalar() or 0
+
+    completed_result = await db.execute(
+        select(func.count(Appointment.id), func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
+        .where(and_(base_filter, Appointment.status == 'completed'))
+    )
+    completed_row = completed_result.first()
+    completed_count = completed_row[0] or 0
+    revenue = completed_row[1] or 0
+    avg_check = completed_row[2] or 0
+
+    # ─── Box occupancy ──────────────────────────────────────────────────────
+    box_result = await db.execute(
+        select(Appointment.box_index, func.count(Appointment.id))
+        .where(and_(base_filter, Appointment.status == 'completed'))
+        .group_by(Appointment.box_index)
+    )
+    box_occupancy = {f"box{r[0] + 1}": r[1] for r in box_result.all()}
+
+    # ─── Top services (wash types + additional services) ────────────────────
+    wash_types_map = {w.id: w.name for w in (await db.execute(select(WashType.id, WashType.name))).all()}
+    services_map = {s.id: s.name for s in (await db.execute(select(Service.id, Service.name))).all()}
+
+    appts_result = await db.execute(
+        select(Appointment.washTypeId, Appointment.additionalServices)
+        .where(and_(base_filter, Appointment.status == 'completed'))
+    )
+    service_counts: dict[str, int] = defaultdict(int)
+    for wt_id, add_json in appts_result.all():
+        wt_name = wash_types_map.get(wt_id, wt_id)
+        service_counts[wt_name] += 1
+        try:
+            add_ids = json.loads(add_json or "[]")
+        except Exception:
+            add_ids = []
+        for s_id in add_ids:
+            s_name = services_map.get(s_id, s_id)
+            service_counts[s_name] += 1
+
+    top_services = [
+        {"name": name, "count": count}
+        for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)[:5]
+    ]
+
+    # ─── Washers on shift ───────────────────────────────────────────────────
+    shifts_result = await db.execute(
+        select(Shift.userId, Shift.startTime, Shift.endTime)
+        .where(Shift.date == date)
+    )
+    shifts = shifts_result.all()
+    washer_ids = [s[0] for s in shifts]
+    washers_map = {}
+    if washer_ids:
+        users_result = await db.execute(
+            select(User.id, User.displayName).where(User.id.in_(washer_ids))
+        )
+        washers_map = {u[0]: u[1] for u in users_result.all()}
+
+    washers_on_shift = [
+        {"name": washers_map.get(s[0], "Unknown"), "start": s[1], "end": s[2]}
+        for s in shifts
+    ]
+
+    # ─── Consumables alerts ─────────────────────────────────────────────────
+    consumables_result = await db.execute(
+        select(Consumable.name, Consumable.currentStock, Consumable.minStock)
+        .where(Consumable.currentStock < Consumable.minStock)
+    )
+    consumables_alert = [
+        {"name": n, "currentStock": round(float(cs), 1), "minStock": round(float(ms), 1)}
+        for n, cs, ms in consumables_result.all()
+    ]
+
+    return {
+        "date": date,
+        "revenue": int(revenue),
+        "appointmentsCount": appointments_count,
+        "completedCount": completed_count,
+        "averageCheck": round(float(avg_check), 2) if avg_check else 0,
+        "boxOccupancy": box_occupancy,
+        "topServices": top_services,
+        "washersOnShift": washers_on_shift,
+        "consumablesAlert": consumables_alert,
+    }
