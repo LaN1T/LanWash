@@ -14,7 +14,7 @@ class GrafanaIframeView extends StatelessWidget {
       viewType,
       (int viewId) => IFrameElement()
         ..src = url
-        ..sandbox = 'allow-scripts allow-same-origin'
+        ..setAttribute('sandbox', 'allow-scripts allow-same-origin')
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%',
