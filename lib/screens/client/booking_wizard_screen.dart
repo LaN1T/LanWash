@@ -34,6 +34,7 @@ class _BWState extends State<BookingWizardScreen> {
   late TextEditingController _carCtrl;
   late TextEditingController _numCtrl;
   final _formKey = GlobalKey<FormState>();
+  bool _isSaving = false;
 
   Promo? get _promo => widget.initialPromo;
   bool get _isPromo => _promo != null;
@@ -286,12 +287,15 @@ class _BWState extends State<BookingWizardScreen> {
     }
   }
 
-  void _confirm() {
+  Future<void> _confirm() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
     final auth = context.read<AuthProvider>();
     final login = auth.userLogin.toLowerCase();
-    context.read<AppProvider>().addAppointment(
+    final ok = await context.read<AppProvider>().addAppointment(
         Appointment(
-          id: 'a_${DateTime.now().millisecondsSinceEpoch}',
+          id: '',
           clientName: _nameCtrl.text.trim(),
           carModel: _carCtrl.text.trim(),
           carNumber: _numCtrl.text.trim().toUpperCase(),
@@ -308,17 +312,27 @@ class _BWState extends State<BookingWizardScreen> {
           promoId: _promo?.id,
         ),
         auth);
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    ClientShell.shellKey.currentState?.switchToBookings();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Row(children: [
-        Icon(Icons.check_circle_rounded, color: Colors.white),
-        SizedBox(width: 10),
-        Text('Запись успешно создана!'),
-      ]),
-      backgroundColor: AppStyles.success,
-      duration: Duration(seconds: 3),
-    ));
+    setState(() => _isSaving = false);
+    if (mounted) {
+      if (ok) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        ClientShell.shellKey.currentState?.switchToBookings();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Row(children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Запись успешно создана!'),
+          ]),
+          backgroundColor: AppStyles.success,
+          duration: Duration(seconds: 3),
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Не удалось создать запись. Попробуйте ещё раз.'),
+          backgroundColor: AppStyles.danger,
+        ));
+      }
+    }
   }
 
   @override
@@ -436,7 +450,7 @@ class _BWState extends State<BookingWizardScreen> {
         ),
         _BottomBar(
           step: _step,
-          onAction: _step < 2 ? _next : _confirm,
+          onAction: _step < 2 ? _next : () => _confirm(),
           selectedTimeLabel: _selectedSlotIndex == -1
               ? null
               : DateFormat("d MMMM, HH:mm", "ru").format(_finalDateTime),
@@ -1451,7 +1465,7 @@ class _ConfirmRow extends StatelessWidget {
 
 class _BottomBar extends StatelessWidget {
   final int step;
-  final VoidCallback onAction;
+  final void Function()? onAction;
   final String? selectedTimeLabel;
   const _BottomBar(
       {required this.step, required this.onAction, this.selectedTimeLabel});

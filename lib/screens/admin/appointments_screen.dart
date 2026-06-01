@@ -160,8 +160,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            onPressed:
-                hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
+            onPressed: currentPage > 1
+                ? () => provider.setPage(currentPage - 1, auth)
+                : null,
             icon: const Icon(Icons.chevron_left, size: 28),
             color: AppStyles.primary,
           ),
@@ -230,9 +231,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ),
           const SizedBox(width: 12),
           IconButton(
-            onPressed: currentPage > 1
-                ? () => provider.setPage(currentPage - 1, auth)
-                : null,
+            onPressed:
+                hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
             icon: const Icon(Icons.chevron_right, size: 28),
             color: AppStyles.primary,
           ),

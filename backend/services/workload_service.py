@@ -1,7 +1,8 @@
 import json
+import hashlib
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, text
 from db_models import Appointment, WashType, Service, Promo, WashTypeIncludedExtra, PromoIncludedExtra
 import structlog
 
@@ -51,12 +52,19 @@ class WorkloadService:
         return total_duration
 
     @staticmethod
+    def _safe_parse_iso(dt_str: str) -> datetime:
+        try:
+            return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            raise ValueError(f"Invalid ISO datetime: {dt_str}")
+
+    @staticmethod
     async def find_available_box(db: AsyncSession, dt_str: str, duration_minutes: int, exclude_appt_id: str = None) -> int:
         """
         Finds the first available box index (0 to NUM_BOXES-1).
         Returns -1 if no box is available.
         """
-        start_dt = datetime.fromisoformat(dt_str)
+        start_dt = WorkloadService._safe_parse_iso(dt_str)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
         
         # Проверяем все записи, которые могут пересекаться.
@@ -65,6 +73,11 @@ class WorkloadService:
         day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         day_end = start_dt.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
         
+        # Advisory lock на уровне дня для предотвращения race condition при бронировании
+        lock_input = day_start.encode()
+        lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
+        await db.execute(text(f"SELECT pg_advisory_xact_lock({lock_id})"))
+
         query = select(Appointment).where(
             and_(
                 Appointment.dateTime >= day_start,
@@ -91,7 +104,7 @@ class WorkloadService:
                 appt_duration = await WorkloadService.get_appointment_duration(
                     db, appt.washTypeId, appt.additionalServices, appt.promoId
                 )
-                appt_start = datetime.fromisoformat(appt.dateTime)
+                appt_start = WorkloadService._safe_parse_iso(appt.dateTime)
                 appt_end = appt_start + timedelta(minutes=appt_duration)
                 
                 # Проверка пересечения
@@ -133,7 +146,7 @@ class WorkloadService:
             duration = await WorkloadService.get_appointment_duration(
                 db, appt.washTypeId, appt.additionalServices, appt.promoId
             )
-            start = datetime.fromisoformat(appt.dateTime)
+            start = WorkloadService._safe_parse_iso(appt.dateTime)
             end = start + timedelta(minutes=duration)
             
             if 0 <= appt.box_index < NUM_BOXES:

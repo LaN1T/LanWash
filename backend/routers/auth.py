@@ -2,6 +2,7 @@ import os
 import uuid
 import shutil
 import json
+import re
 from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
@@ -21,6 +22,8 @@ from services.auth_service import (
     validate_password_strength
 )
 from core.security import encrypt_token
+
+USERNAME_PATTERN = re.compile(r'^[a-z0-9_]{3,30}$')
 
 # Директория для загрузки аватарок
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "avatars")
@@ -81,6 +84,9 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     if not req.username.strip():
         raise HTTPException(400, "Введите логин")
+    
+    if not USERNAME_PATTERN.match(req.username.lower().strip()):
+        raise HTTPException(400, "Логин может содержать только строчные буквы, цифры и подчёркивания (3–30 символов)")
     
     # P2: Валидация сложности пароля
     password_error = validate_password_strength(req.password)
@@ -219,20 +225,33 @@ async def upload_avatar(
     if file.content_type not in allowed:
         raise HTTPException(400, "Допустимы только JPEG, PNG, WebP")
 
+    allowed_exts = {"jpg", "jpeg", "png", "webp"}
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
+    if ext not in allowed_exts:
+        raise HTTPException(400, "Недопустимое расширение файла. Допустимы: JPEG, PNG, WebP")
+
     max_size = 5 * 1024 * 1024  # 5 MB
     content = await file.read()
     if len(content) > max_size:
         raise HTTPException(400, "Файл слишком большой. Максимум 5 МБ")
 
+    # Проверка magic bytes (JPEG, PNG, WebP)
+    if content.startswith(b'\xff\xd8\xff'):
+        detected = {'jpg', 'jpeg'}
+    elif content.startswith(b'\x89PNG\r\n\x1a\n'):
+        detected = {'png'}
+    elif len(content) >= 12 and content.startswith(b'RIFF') and content[8:12] == b'WEBP':
+        detected = {'webp'}
+    else:
+        raise HTTPException(400, "Файл не является валидным изображением")
+    if ext not in detected:
+        raise HTTPException(400, "Содержимое файла не соответствует расширению")
+
     # Восстанавливаем file для дальнейшего использования
     from io import BytesIO
     file.file = BytesIO(content)
 
-    # Сохраняем файл — валидируем расширение и используем безопасное имя
-    allowed_exts = {"jpg", "jpeg", "png", "webp"}
-    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
-    if ext not in allowed_exts:
-        raise HTTPException(400, "Недопустимое расширение файла. Допустимы: JPEG, PNG, WebP")
+    # Сохраняем файл — используем безопасное имя
     filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(UPLOAD_DIR, os.path.basename(filename))
 
@@ -270,9 +289,10 @@ async def get_user_stats(
     if target_user.role == 'washer':
         # ─── Статистика мойщика: количество помытых им машин ─────────────────
         # 1. Явно назначенные завершённые записи
+        safe_username = username.lower().replace('%', r'\%').replace('_', r'\_')
         res_explicit = await db.execute(
             select(Appointment).where(
-                Appointment.assignedWasher.like(f'%"{username.lower()}"%'),
+                Appointment.assignedWasher.like(f'%"{safe_username}"%', escape='\\'),
                 Appointment.status == 'completed'
             )
         )

@@ -244,6 +244,8 @@ async def download_import_template(request: Request):
     )
 
 
+MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
 @router.post("/import-refills")
 @limiter.limit("10/minute")
 async def import_refills(
@@ -256,7 +258,13 @@ async def import_refills(
     if not HAS_OPENPYXL:
         raise HTTPException(500, "openpyxl не установлен")
 
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_IMPORT_FILE_SIZE:
+        raise HTTPException(413, "Файл слишком большой. Максимум 5 МБ")
+
     content = await file.read()
+    if len(content) > MAX_IMPORT_FILE_SIZE:
+        raise HTTPException(413, "Файл слишком большой. Максимум 5 МБ")
     try:
         wb = openpyxl.load_workbook(filename=io.BytesIO(content))
     except Exception as e:
@@ -285,6 +293,10 @@ async def import_refills(
     errors: list[str] = []
     processed = 0
 
+    # Загружаем все расходники один раз для O(n) поиска
+    all_consumables = (await db.execute(select(Consumable))).scalars().all()
+    consumables_by_name = {c.name.lower(): c for c in all_consumables}
+
     for row in ws.iter_rows(min_row=2, values_only=True):
         name = str(row[name_idx]).strip() if row[name_idx] else ""
         amount_raw = row[amount_idx]
@@ -304,9 +316,7 @@ async def import_refills(
             errors.append(f"Строка {processed + 1}: количество должно быть > 0")
             continue
 
-        result = await db.execute(select(Consumable))
-        all_consumables = result.scalars().all()
-        consumable = next((c for c in all_consumables if c.name.lower() == name.lower()), None)
+        consumable = consumables_by_name.get(name.lower())
         if not consumable:
             failed += 1
             errors.append(f"Строка {processed + 1}: расходник '{name}' не найден")

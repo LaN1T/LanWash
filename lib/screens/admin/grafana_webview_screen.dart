@@ -13,7 +13,11 @@ class GrafanaWebViewScreen extends StatefulWidget {
 }
 
 class _GrafanaWebViewScreenState extends State<GrafanaWebViewScreen> {
-  static const String _grafanaUrl = 'http://localhost:3000/d/lanwash-api';
+  static String get _grafanaUrl {
+    const url = String.fromEnvironment('GRAFANA_URL');
+    if (url.isNotEmpty) return url;
+    return 'http://localhost:3000/d/lanwash-api';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,7 @@ class _GrafanaWebViewScreenState extends State<GrafanaWebViewScreen> {
         ),
       ),
       body: kIsWeb
-          ? const GrafanaIframeView(url: _grafanaUrl)
+          ? GrafanaIframeView(url: _grafanaUrl)
           : InAppWebView(
               initialUrlRequest: URLRequest(url: WebUri(_grafanaUrl)),
             ),

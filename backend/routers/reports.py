@@ -12,6 +12,10 @@ import json
 import random
 from collections import defaultdict
 
+
+def _escape_like(s: str) -> str:
+    return s.replace('%', r'\%').replace('_', r'\_')
+
 router = APIRouter(
     prefix="/api/reports",
     tags=["reports"],
@@ -46,13 +50,14 @@ class CarPriceService:
 async def monthly_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db)):
     if not date:
         date = datetime.now().strftime("%Y-%m")
+    safe_date = _escape_like(date)
     result = await db.execute(
         select(
             Appointment.carModel,
             func.avg(Appointment.paidPrice).label("avgCheck"),
             func.count(Appointment.id).label("visitCount")
         )
-        .where(and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{date}%")))
+        .where(and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{safe_date}%", escape='\\')))
         .group_by(Appointment.carModel)
     )
     rows = result.all()
@@ -89,12 +94,13 @@ async def get_popular_additional_services(request: Request, date: str = None, ca
     all_promos = (await db.execute(select(Promo.id, Promo.name))).all()
     promo_id_to_name = {p.id: p.name for p in all_promos}
 
+    safe_date = _escape_like(date)
     query = select(
         Appointment.additionalServices,
         Appointment.promoId,
         Appointment.washTypeId,
     ).where(
-        and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{date}%"))
+        and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{safe_date}%", escape='\\'))
     )
     rows = (await db.execute(query)).all()
 
@@ -179,7 +185,7 @@ async def get_consumables_usage(request: Request, date: str = None, category: st
         .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
         .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id) # соединение с Appointment
         .where(and_(
-            cast(Appointment.dateTime, String).like(f"{date}%"), # фильтр по Appointment.dateTime
+            cast(Appointment.dateTime, String).like(f"{_escape_like(date)}%", escape='\\'), # фильтр по Appointment.dateTime
             Appointment.status == 'completed' # учитываем только завершённые записи
         ))
     )
@@ -225,8 +231,9 @@ async def daily_report(request: Request, date: str = None, db: AsyncSession = De
     if not date:
         date = datetime.now().strftime("%Y-%m-%d")
 
+    safe_date = _escape_like(date)
     # ─── Revenue & appointments ─────────────────────────────────────────────
-    base_filter = cast(Appointment.dateTime, String).like(f"{date}%")
+    base_filter = cast(Appointment.dateTime, String).like(f"{safe_date}%", escape='\\')
 
     total_result = await db.execute(
         select(func.count(Appointment.id)).where(base_filter)

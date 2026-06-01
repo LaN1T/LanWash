@@ -147,9 +147,15 @@ class ApiClient {
       String message = 'Ошибка сервера';
       try {
         final data = jsonDecode(response.body);
-        if (data is Map && data['detail'] != null)
+        if (data is Map && data['detail'] != null) {
           message = data['detail'].toString();
+        }
       } catch (_) {}
+
+      // В release не показываем детали серверных ошибок пользователю
+      if (!kDebugMode && response.statusCode != null && response.statusCode! >= 500) {
+        message = 'Ошибка сервера. Попробуйте позже.';
+      }
 
       return Failure(AppError.server(response.statusCode, message));
     } on SocketException catch (e) {
