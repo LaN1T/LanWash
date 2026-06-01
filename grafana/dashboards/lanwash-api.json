@@ -14,25 +14,56 @@
   },
   "editable": true,
   "gnetId": null,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
   "links": [],
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "🚀 API Health",
+      "type": "row"
+    },
+    {
       "datasource": "Prometheus",
+      "description": "Количество запросов в секунду по endpoint'ам",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
-          "custom": { "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "auto", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 4,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 80 } ] },
           "unit": "reqps"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
       "id": 2,
-      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
         { "expr": "sum(rate(http_requests_total{job=\"lanwash-backend\"}[1m])) by (handler)", "legendFormat": "{{handler}}", "refId": "A" }
       ],
@@ -41,28 +72,53 @@
     },
     {
       "datasource": "Prometheus",
+      "description": "Время отклика API в миллисекундах",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 4,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 200 }, { "color": "red", "value": 500 } ] },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
       "id": 4,
-      "options": { "legend": { "calcs": [ "mean", "max" ], "displayMode": "table", "placement": "right", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
       "targets": [
         { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"lanwash-backend\"}[5m])) by (le, handler)) * 1000", "legendFormat": "p50 {{handler}}", "refId": "A" },
         { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"lanwash-backend\"}[5m])) by (le, handler)) * 1000", "legendFormat": "p95 {{handler}}", "refId": "B" },
         { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"lanwash-backend\"}[5m])) by (le, handler)) * 1000", "legendFormat": "p99 {{handler}}", "refId": "C" }
       ],
-      "title": "Latency (ms) — p50 / p95 / p99",
+      "title": "Latency (ms)",
       "type": "timeseries"
     },
     {
       "datasource": "Prometheus",
+      "description": "Распределение HTTP статусов",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -72,7 +128,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 9 },
       "id": 6,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [
@@ -83,16 +139,17 @@
     },
     {
       "datasource": "Prometheus",
+      "description": "Доля ошибок 5xx за последние 5 минут",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.01 } ] },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.005 }, { "color": "red", "value": 0.01 } ] },
           "unit": "percentunit"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 9 },
       "id": 8,
       "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
       "targets": [
@@ -103,18 +160,21 @@
     },
     {
       "datasource": "Prometheus",
+      "description": "Доля успешных запросов 2xx",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] },
+          "max": 100,
+          "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 80 }, { "color": "green", "value": 95 } ] },
           "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 9 },
       "id": 10,
-      "options": { "minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true, "sizing": "auto" },
+      "options": { "minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": true, "showThresholdMarkers": true, "sizing": "auto" },
       "targets": [
         { "expr": "sum(rate(http_requests_total{job=\"lanwash-backend\",status_code=~\"2..\"}[5m])) / sum(rate(http_requests_total{job=\"lanwash-backend\"}[5m])) * 100", "refId": "A" }
       ],
@@ -122,89 +182,115 @@
       "type": "gauge"
     },
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "id": 101,
+      "panels": [],
+      "title": "💰 Бизнес-метрики",
+      "type": "row"
+    },
+    {
       "datasource": "Prometheus",
+      "description": "Выручка от выполненных записей за сегодня",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "blue", "value": 50000 } ] },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null }, { "color": "green", "value": 10000 }, { "color": "blue", "value": 50000 } ] },
           "unit": "currencyRUB"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 18 },
       "id": 11,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
       "targets": [ { "expr": "lanwash_daily_revenue", "refId": "A" } ],
       "title": "Выручка за день",
       "type": "stat"
     },
     {
       "datasource": "Prometheus",
+      "description": "Выручка от выполненных записей за текущую неделю",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "blue", "value": 200000 } ] },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null }, { "color": "green", "value": 50000 }, { "color": "blue", "value": 200000 } ] },
           "unit": "currencyRUB"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 16 },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 18 },
       "id": 12,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
       "targets": [ { "expr": "lanwash_weekly_revenue", "refId": "A" } ],
       "title": "Выручка за неделю",
       "type": "stat"
     },
     {
       "datasource": "Prometheus",
+      "description": "Выручка от выполненных записей за текущий месяц",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "blue", "value": 800000 } ] },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null }, { "color": "green", "value": 200000 }, { "color": "blue", "value": 800000 } ] },
           "unit": "currencyRUB"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 16 },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 18 },
       "id": 13,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
       "targets": [ { "expr": "lanwash_monthly_revenue", "refId": "A" } ],
       "title": "Выручка за месяц",
       "type": "stat"
     },
     {
       "datasource": "Prometheus",
+      "description": "Средний чек за сегодня",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1500 }, { "color": "red", "value": 3000 } ] },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "green", "value": 2000 } ] },
           "unit": "currencyRUB"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 16 },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 18 },
       "id": 14,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "percentChangeColorMode": "standard", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
       "targets": [ { "expr": "lanwash_avg_check", "refId": "A" } ],
-      "title": "Средний чек (сегодня)",
+      "title": "Средний чек",
       "type": "stat"
     },
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 102,
+      "panels": [],
+      "title": "📊 Записи и боксы",
+      "type": "row"
+    },
+    {
       "datasource": "Prometheus",
+      "description": "Распределение записей по статусам",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
-          "mappings": [],
+          "mappings": [
+            { "options": { "completed": { "color": "green", "index": 0, "text": "Выполнено" } }, "type": "value" },
+            { "options": { "scheduled": { "color": "blue", "index": 1, "text": "Запланировано" } }, "type": "value" },
+            { "options": { "in_progress": { "color": "yellow", "index": 2, "text": "В процессе" } }, "type": "value" },
+            { "options": { "cancelled": { "color": "red", "index": 3, "text": "Отменено" } }, "type": "value" }
+          ],
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "id": 15,
       "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "pieType": "donut", "tooltip": { "mode": "single", "sort": "none" } },
       "targets": [ { "expr": "lanwash_appointments_total", "legendFormat": "{{status}}", "refId": "A" } ],
@@ -213,50 +299,106 @@
     },
     {
       "datasource": "Prometheus",
+      "description": "Количество записей по боксам за сегодня",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "hue",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
           "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
       "id": 16,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
       "targets": [ { "expr": "lanwash_box_appointments", "legendFormat": "Бокс {{box}}", "refId": "A" } ],
-      "title": "Записи по боксам (сегодня)",
-      "type": "stat"
+      "title": "Загрузка боксов (сегодня)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 103,
+      "panels": [],
+      "title": "👥 Команда",
+      "type": "row"
     },
     {
       "datasource": "Prometheus",
+      "description": "Запланированные часы смен по мойщикам",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
-          "custom": { "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "bars", "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" } },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "hue",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
           "unit": "h"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 33 },
       "id": 17,
-      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
       "targets": [ { "expr": "lanwash_shift_hours", "legendFormat": "{{washer}}", "refId": "A" } ],
       "title": "Часы смен (сегодня)",
       "type": "timeseries"
     }
   ],
-  "refresh": "5s",
+  "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["lanwash", "api", "fastapi"],
+  "tags": ["lanwash", "api", "fastapi", "business"],
   "templating": { "list": [] },
-  "time": { "from": "now-1h", "to": "now" },
-  "timepicker": {},
-  "timezone": "",
-  "title": "LanWash API",
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"] },
+  "timezone": "Europe/Moscow",
+  "title": "LanWash API Dashboard",
   "uid": "lanwash-api",
-  "version": 1
+  "version": 2
 }

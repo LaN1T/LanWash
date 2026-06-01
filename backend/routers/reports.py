@@ -245,10 +245,10 @@ async def daily_report(request: Request, date: str = None, db: AsyncSession = De
     # ─── Box occupancy ──────────────────────────────────────────────────────
     box_result = await db.execute(
         select(Appointment.box_index, func.count(Appointment.id))
-        .where(and_(base_filter, Appointment.status == 'completed', Appointment.box_index > 0))
+        .where(and_(base_filter, Appointment.status == 'completed'))
         .group_by(Appointment.box_index)
     )
-    box_occupancy = {f"box{r[0]}": r[1] for r in box_result.all()}
+    box_occupancy = {f"box{r[0] + 1}": r[1] for r in box_result.all()}
 
     # ─── Top services (wash types + additional services) ────────────────────
     wash_types_map = {w.id: w.name for w in (await db.execute(select(WashType.id, WashType.name))).all()}
