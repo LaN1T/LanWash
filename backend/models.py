@@ -280,6 +280,30 @@ class ShiftResponse(BaseModel):
     updatedAt: str
 
 
+# ─── Reviews ─────────────────────────────────────────────────────────────────
+class ReviewCreateRequest(BaseModel):
+    userId: int = Field(..., ge=1)
+    userName: str = Field(..., min_length=1, max_length=100)
+    rating: int = Field(default=5, ge=1, le=5)
+    comment: str = Field(default="", max_length=2000)
+
+
+class ReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    userName: str
+    rating: int
+    comment: str
+    isPublished: bool
+    createdAt: str
+
+
+class ReviewModerateRequest(BaseModel):
+    isPublished: bool
+
+
 # ─── Favorites ───────────────────────────────────────────────────────────────
 class ToggleFavoriteRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)

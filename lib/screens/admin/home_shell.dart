@@ -16,6 +16,7 @@ import 'wash_type_settings_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 import 'consumables_stock_screen.dart';
+import 'reviews_moderation_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -267,6 +268,28 @@ class _HomeShellState extends State<HomeShell> {
                   borderRadius: BorderRadius.circular(10)),
             ),
           ),
+          // Модерация отзывов
+          if (auth.isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: Icon(Icons.reviews_outlined,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Модерация отзывов',
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const ReviewsModerationScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
           // Статистика
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
