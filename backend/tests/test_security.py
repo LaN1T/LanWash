@@ -1,6 +1,6 @@
 import pytest
 from services.auth_service import validate_password_strength, create_access_token, get_current_user
-from jose import jwt
+import jwt
 
 
 class TestPasswordValidation:
