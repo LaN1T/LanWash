@@ -29,6 +29,8 @@ class NotificationService {
 
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
+  String? _lastKnownUsername;
+  StreamSubscription<String>? _tokenRefreshSub;
 
   Future<void> init() async {
     if (_initCompleter != null) return _initCompleter!.future;
@@ -61,7 +63,13 @@ class NotificationService {
         FirebaseMessaging.onBackgroundMessage(
             _firebaseMessagingBackgroundHandler);
 
-        _fcm!.onTokenRefresh.listen((_) {});
+        _tokenRefreshSub = _fcm!.onTokenRefresh.listen((newToken) async {
+          if (_lastKnownUsername != null && newToken.isNotEmpty) {
+            try {
+              await _apiService.saveFcmToken(_lastKnownUsername!, newToken);
+            } catch (e) {}
+          }
+        });
 
         await _fcm!.requestPermission(
           alert: true,
@@ -85,6 +93,11 @@ class NotificationService {
       _initCompleter!.completeError(e, stack);
       _initCompleter = null;
     }
+  }
+
+  void dispose() {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
   }
 
   void _handleMessage(RemoteMessage message) {
@@ -115,7 +128,7 @@ class NotificationService {
         body: notification.body,
         notificationDetails: details,
       );
-    } catch (_) {}
+    } catch (e) {}
   }
 
   Future<String?> getToken() async {
@@ -136,12 +149,17 @@ class NotificationService {
         token = await _fcm!.getToken();
       }
       return token;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
 
+  void setUsername(String? username) {
+    _lastKnownUsername = username;
+  }
+
   Future<void> updateTokenOnServer(String username) async {
+    _lastKnownUsername = username;
     final token = await getToken();
     if (token != null) {
       await _apiService.saveFcmToken(username, token);

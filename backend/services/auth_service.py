@@ -22,7 +22,15 @@ if len(SECRET_KEY) < 32:
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto",
+    argon2__memory_cost=65536,
+    argon2__time_cost=3,
+    argon2__parallelism=4,
+    argon2__hash_len=32,
+    argon2__salt_len=16,
+)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 def validate_password_strength(password: str) -> Optional[str]:

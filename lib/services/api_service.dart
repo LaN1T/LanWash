@@ -125,7 +125,7 @@ class ApiService {
         List<dynamic> list;
         try {
           list = jsonDecode(resp.body) as List;
-        } catch (_) {
+        } catch (e) {
           return PaginatedAppointments(
             appointments: [],
             totalPages: 1,
@@ -139,7 +139,7 @@ class ApiService {
         for (final item in list) {
           try {
             appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
-          } catch (_) {}
+          } catch (e) {}
         }
 
         final totalPagesHeader =
@@ -163,7 +163,7 @@ class ApiService {
         if (uniqueDatesHeader != null && uniqueDatesHeader.isNotEmpty) {
           try {
             uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
-          } catch (_) {}
+          } catch (e) {}
         }
 
         return PaginatedAppointments(
@@ -769,7 +769,7 @@ class ApiService {
       ..headers['Authorization'] = 'Bearer $token'
       ..files
           .add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    final response = await request.send();
+    final response = await request.send().timeout(AppConfig.requestTimeout);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final body = await response.stream.bytesToString();
       final data = jsonDecode(body) as Map<String, dynamic>;

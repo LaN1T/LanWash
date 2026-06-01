@@ -177,10 +177,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  void updateAvatar(String url) {
+  Future<void> updateAvatar(String url) async {
     if (_user == null) return;
     _user = _user!.copyWith(avatarUrl: url);
-    _saveUser(_user!);
+    await _saveUser(_user!);
     notifyListeners();
   }
 

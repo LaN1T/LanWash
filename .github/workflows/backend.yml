@@ -1,5 +1,8 @@
 name: Backend Tests
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, master]
@@ -22,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v5

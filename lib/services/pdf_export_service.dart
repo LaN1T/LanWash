@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io' as io;
 
 class PdfExportService {
   static Future<Uint8List> createPdfBytes(
@@ -114,11 +115,8 @@ class PdfExportService {
                     allowedExtensions: ['pdf'],
                   );
                   if (outputFile != null) {
-                    await FileSaver.instance.saveFile(
-                      name: fileName,
-                      bytes: pdfBytes,
-                      mimeType: MimeType.pdf,
-                    );
+                    final file = io.File(outputFile);
+                    await file.writeAsBytes(pdfBytes);
                   }
                 } else {
                   await Printing.sharePdf(

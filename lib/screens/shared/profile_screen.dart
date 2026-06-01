@@ -96,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _uploadingAvatar = false);
 
     if (url != null) {
-      auth.updateAvatar(url);
+      await auth.updateAvatar(url);
       _showSnack('Аватар обновлён');
     }
   }
@@ -108,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     setState(() => _saving = true);
-    await context.read<AuthProvider>().updateProfile(
+    final error = await context.read<AuthProvider>().updateProfile(
           displayName: _nameCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
           carModel: _carModelCtrl.text.trim(),
@@ -117,7 +117,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
         );
     setState(() => _saving = false);
-    if (mounted) _showSnack('Профиль сохранён');
+    if (mounted) {
+      if (error == null) {
+        _showSnack('Профиль сохранён');
+      } else {
+        _showSnack(error, isError: true);
+      }
+    }
   }
 
   void _showSnack(String msg, {bool isError = false}) {
