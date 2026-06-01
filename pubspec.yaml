@@ -31,6 +31,7 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   get_it: ^8.0.0
   firebase_app_check: ^0.4.4+1
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +57,7 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
+    - assets/logo.svg
     - assets/icon/
     - assets/fonts/
 
