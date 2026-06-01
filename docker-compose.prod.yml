@@ -24,8 +24,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8080:8080"
+      - "5000:5000"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./landing:/usr/share/nginx/landing:ro
+      - ./build/web:/usr/share/nginx/app:ro
     depends_on:
       - backend
