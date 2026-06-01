@@ -51,3 +51,7 @@ def configure_logging() -> None:
         stream=sys.stdout,
         level=logging.DEBUG if not settings.is_production else logging.INFO,
     )
+
+    # Prevent SQL libraries from leaking sensitive data (passwordHash, tokens) in logs
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("aiosqlite").setLevel(logging.WARNING)
