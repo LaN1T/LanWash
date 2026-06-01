@@ -44,7 +44,7 @@ class User {
   factory User.fromMap(Map<String, dynamic> m) => User(
         id: m['id'] as int?,
         username: m['username'] ?? '',
-        passwordHash: m['passwordHash'] ?? '',
+        passwordHash: '', // Never store password hash on client
         role: UserRole.values.firstWhere((r) => r.name == m['role'],
             orElse: () => UserRole.client),
         displayName: m['displayName'] ?? m['username'] ?? '',

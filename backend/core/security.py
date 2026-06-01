@@ -1,17 +1,20 @@
 import os
-import base64
 from cryptography.fernet import Fernet
 from core.config import get_settings
 
 settings = get_settings()
 
-# Получаем ключ из .env с fallback для разработки
+# Получаем ключ из .env — обязателен для production
 _key_str = os.getenv("FCM_ENCRYPTION_KEY")
 if not _key_str:
-    # Генерируем стабильный ключ из JWT_SECRET_KEY если FCM ключ не задан
-    # NOTE: для продакшена обязательно задать FCM_ENCRYPTION_KEY!
-    _fallback = settings.jwt_secret_key
-    _key_str = base64.urlsafe_b64encode(_fallback.ljust(32)[:32].encode()).decode()
+    if settings.is_production:
+        raise RuntimeError(
+            "FCM_ENCRYPTION_KEY must be set in production. "
+            "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+        )
+    # Fallback для dev/testing только — сгенерировать временный ключ
+    from cryptography.fernet import Fernet as _Fernet
+    _key_str = _Fernet.generate_key().decode()
 
 key = _key_str.encode()
 cipher_suite = Fernet(key)
