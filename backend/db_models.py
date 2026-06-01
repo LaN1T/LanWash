@@ -176,3 +176,13 @@ class Shift(Base):
     createdBy = Column(String, nullable=False)
     createdAt = Column(String, nullable=False)
     updatedAt = Column(String, nullable=False)
+
+class Review(Base):
+    __tablename__ = 'reviews'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    userId = Column(Integer, ForeignKey('users.id'), nullable=False)
+    userName = Column(String, nullable=False)
+    rating = Column(Integer, nullable=False, default=5)
+    comment = Column(String, nullable=False, default='')
+    isPublished = Column(Integer, nullable=False, default=0)
+    createdAt = Column(String, nullable=False)
