@@ -50,7 +50,15 @@ class ApiClient {
     if (!AppConfig.enableLogging) return;
     final buf = StringBuffer();
     buf.write('⬆️ $method $url');
-    if (body != null) buf.write(' | body: $body');
+    if (body != null) {
+      final bodyMap = body as Map<String, dynamic>?;
+      if (bodyMap != null) {
+        final keys = bodyMap.keys.join(', ');
+        buf.write(' | body keys: [$keys]');
+      } else {
+        buf.write(' | body: <${(body.toString().length)} chars>');
+      }
+    }
     if (status != null) buf.write(' | status: $status');
     debugPrint(buf.toString());
   }
