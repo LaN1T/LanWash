@@ -14,6 +14,7 @@ import 'notes_screen.dart';
 import 'reports_shell_screen.dart'; // Импорт для отчетов
 import 'wash_type_settings_screen.dart';
 import '../shared/shift_schedule_screen.dart';
+import '../shared/statistics_screen.dart';
 import 'consumables_stock_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -261,6 +262,26 @@ class _HomeShellState extends State<HomeShell> {
                 Navigator.pop(ctx);
                 Navigator.push(
                     ctx, MaterialPageRoute(builder: (_) => const LogsScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          // Статистика
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.bar_chart_rounded,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Статистика',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const StatisticsScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
