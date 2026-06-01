@@ -11,7 +11,9 @@ alembic>=1.13
 firebase-admin
 PyJWT>=2.8.0
 passlib[bcrypt]
+argon2-cffi
 slowapi
+redis
 structlog>=24.0
 prometheus-fastapi-instrumentator<7.0.0
 sentry-sdk[fastapi]>=2.0

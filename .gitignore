@@ -97,3 +97,5 @@ backend/build/
 /windows/
 /web/
 Plan.md
+macos/Runner/GoogleService-Info.plist
+macos/GoogleService-Info.plist
