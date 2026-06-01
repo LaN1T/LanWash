@@ -116,9 +116,9 @@
       "id": 10,
       "options": { "minVizHeight": 75, "minVizWidth": 75, "orientation": "auto", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true, "sizing": "auto" },
       "targets": [
-        { "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "refId": "A" }
+        { "expr": "sum(rate(http_requests_total{job=\"lanwash-backend\",status_code=~\"2..\"}[5m])) / sum(rate(http_requests_total{job=\"lanwash-backend\"}[5m])) * 100", "refId": "A" }
       ],
-      "title": "CPU Usage",
+      "title": "Success Rate (2xx)",
       "type": "gauge"
     },
     {
