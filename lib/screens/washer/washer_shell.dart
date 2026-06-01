@@ -10,6 +10,7 @@ import '../../models/service.dart';
 import '../../services/notification_service.dart';
 import '../shared/profile_screen.dart';
 import '../shared/shift_schedule_screen.dart';
+import '../shared/statistics_screen.dart';
 import '../admin/notes_screen.dart';
 import '../shared/appointment_detail_widget.dart';
 
@@ -389,6 +390,25 @@ class _WasherShellState extends State<WasherShell> {
                     ctx,
                     MaterialPageRoute(
                         builder: (_) => const ShiftScheduleScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.bar_chart_rounded,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Статистика',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const StatisticsScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),

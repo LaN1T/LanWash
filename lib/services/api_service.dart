@@ -13,6 +13,7 @@ import '../models/promo.dart';
 import '../models/wash_type.dart';
 import '../models/shift.dart';
 import '../models/consumable.dart';
+import '../models/daily_report.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -828,5 +829,14 @@ class ApiService {
   Future<bool> deleteShift(int shiftId) async {
     final result = await ApiClient.delete('/shifts/$shiftId');
     return result.isSuccess;
+  }
+
+  // ─── Daily Report ──────────────────────────────────────────────────────────
+  Future<DailyReport?> getDailyReport(String date) async {
+    final result = await ApiClient.get('/reports/daily/?date=$date');
+    return result.when(
+      success: (data) => DailyReport.fromJson(data),
+      failure: (_) => null,
+    );
   }
 }
