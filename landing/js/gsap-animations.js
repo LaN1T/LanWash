@@ -1,5 +1,14 @@
 gsap.registerPlugin(ScrollTrigger);
 
+// ScrollTrigger instances are auto-managed by GSAP for static pages.
+
+function scrollReveal(selector, fromVars, scrollTriggerConfig) {
+  gsap.from(selector, {
+    ...fromVars,
+    scrollTrigger: scrollTriggerConfig,
+  });
+}
+
 // Hero entrance animations (play immediately on page load)
 gsap.from(".hero__title", {
   y: 60,
@@ -26,60 +35,56 @@ gsap.from(".hero .btn--primary", {
 });
 
 // Services cards stagger (scroll trigger)
-gsap.from(".service-card", {
-  scrollTrigger: {
-    trigger: "#services",
-    start: "top 80%",
-  },
+scrollReveal(".service-card", {
   y: 50,
   opacity: 0,
   duration: 0.7,
   stagger: 0.1,
   ease: "power2.out",
+}, {
+  trigger: "#services",
+  start: "top 80%",
 });
 
 // Why Us items (scroll trigger)
-gsap.from(".why-item", {
-  scrollTrigger: {
-    trigger: "#why",
-    start: "top 80%",
-  },
+scrollReveal(".why-item", {
   y: 40,
   opacity: 0,
   duration: 0.6,
   stagger: 0.12,
   ease: "power2.out",
+}, {
+  trigger: "#why",
+  start: "top 80%",
 });
 
 // Reviews carousel (scroll trigger)
-gsap.from(".reviews__carousel", {
-  scrollTrigger: {
-    trigger: "#reviews",
-    start: "top 80%",
-  },
+scrollReveal(".reviews__carousel", {
   y: 30,
   opacity: 0,
   duration: 0.8,
   ease: "power2.out",
+}, {
+  trigger: "#reviews",
+  start: "top 80%",
 });
 
-// Contacts (scroll trigger)
-gsap.from(".contacts__info", {
+// Contacts (scroll trigger) — combined into a single timeline
+const contactsTl = gsap.timeline({
   scrollTrigger: {
     trigger: "#contacts",
     start: "top 80%",
   },
+});
+
+contactsTl.from(".contacts__info", {
   x: -40,
   opacity: 0,
   duration: 0.7,
   ease: "power2.out",
 });
 
-gsap.from(".contacts__map", {
-  scrollTrigger: {
-    trigger: "#contacts",
-    start: "top 80%",
-  },
+contactsTl.from(".contacts__map", {
   x: 40,
   opacity: 0,
   duration: 0.7,
