@@ -57,23 +57,25 @@ async def seed_data():
             await session.execute(stmt)
             await session.commit()
 
-        # Seed мойщиков для dev
-        washers = [
-            ("washer1", "Иван", "+79001234567"),
-            ("washer2", "Петр", "+79007654321"),
-            ("washer3", "Алексей", "+79001112233"),
-        ]
-        for login, name, phone in washers:
-            stmt = insert(User).values(
-                username=login,
-                passwordHash=pwd_context.hash("Washer123!"),
-                role="washer",
-                displayName=name,
-                phone=phone,
-                createdAt=now
-            ).on_conflict_do_nothing(index_elements=['username'])
-            await session.execute(stmt)
-        await session.commit()
+        # Seed мойщиков для dev (только в не-production окружениях)
+        if not settings.is_production:
+            washers = [
+                ("washer1", "Иван", "+79001234567"),
+                ("washer2", "Петр", "+79007654321"),
+                ("washer3", "Алексей", "+79001112233"),
+            ]
+            dev_washer_password = settings.initial_admin_password or "change_me_to_something_secure"
+            for login, name, phone in washers:
+                stmt = insert(User).values(
+                    username=login,
+                    passwordHash=pwd_context.hash(dev_washer_password),
+                    role="washer",
+                    displayName=name,
+                    phone=phone,
+                    createdAt=now
+                ).on_conflict_do_nothing(index_elements=['username'])
+                await session.execute(stmt)
+            await session.commit()
 
         # Wash Types
         res = await session.execute(select(func.count(WashType.id)))

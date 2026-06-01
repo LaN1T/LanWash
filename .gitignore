@@ -73,6 +73,8 @@ android/key.properties
 # Firebase configuration files
 google-services.json
 GoogleService-Info.plist
+lib/firebase_options.dart
+lib/config/firebase_options.dart
 # Web
 web/flutter_service_worker.js
 serviceAccountKey.json

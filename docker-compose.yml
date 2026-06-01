@@ -6,9 +6,9 @@ services:
     container_name: lanwash_postgres
     restart: always
     environment:
-      POSTGRES_USER: lanwash_user
-      POSTGRES_PASSWORD: lanwash_password
-      POSTGRES_DB: lanwash_db
+      POSTGRES_USER: ${POSTGRES_USER:-lanwash_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lanwash_db}
     ports:
       - "5432:5432"
     volumes:
@@ -31,7 +31,7 @@ services:
       - "8000:8000"
     environment:
       ENVIRONMENT: production
-      DATABASE_URL: postgresql+asyncpg://lanwash_user:lanwash_password@db:5432/lanwash_db
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
@@ -66,8 +66,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
