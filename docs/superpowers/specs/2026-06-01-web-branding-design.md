@@ -17,7 +17,7 @@ Split the current single-domain Flutter web app into two independent experiences
 
 ## Non-Goals
 - No CMS (content is static, updated via code deployment).
-- No backend changes for landing (except CORS for reviews API).
+- No major backend changes for landing (except CORS and a small `is_published` flag + admin endpoints for review moderation).
 - No in-app chat or Telegram bot implementation (out of scope for this block).
 
 ---
@@ -88,7 +88,9 @@ Split the current single-domain Flutter web app into two independent experiences
 - Heading: "Отзывы клиентов" / "Customer Reviews"
 - Horizontal carousel (swipeable on mobile, arrows on desktop)
 - Each review: avatar placeholder + name + star rating + text
-- Data fetched dynamically from backend API: `GET /api/reviews?limit=10&public=true`
+- Data fetched dynamically from backend API: `GET /api/reviews?limit=10&published=true`
+- **Moderation:** all reviews are submitted by clients via the app, but only appear on the landing page after admin approval
+- Admin panel screen: list of all reviews with "Publish" / "Hide" / "Delete" buttons
 - If API fails → show static placeholder reviews (graceful degradation)
 - Scroll animation: carousel fades in
 
@@ -240,12 +242,17 @@ server {
 ### Reviews API (landing → backend)
 ```
 Landing page (JS fetch)
-    → GET https://api.lanwash.ru/api/reviews?limit=10&public=true
+    → GET https://api.lanwash.ru/api/reviews?limit=10&published=true
     → Response: [{id, name, rating, comment, created_at}]
     → Render in carousel
 ```
 - Backend endpoint must allow CORS from `lanwash.ru`
-- Endpoint already exists (part of Reviews & Ratings block), but may need `public=true` filter
+- `published=true` returns only reviews approved by admin
+- Admin app screen:
+  - `GET /api/admin/reviews` → list all reviews (pending + published)
+  - `PATCH /api/admin/reviews/{id}` → `{is_published: true/false}`
+  - `DELETE /api/admin/reviews/{id}`
+- New review submitted by client → `is_published: false` by default
 
 ---
 
@@ -305,6 +312,8 @@ Landing page (JS fetch)
 - `macos/Podfile` (if icon generation touches macOS)
 - `pubspec.yaml` (flutter_launcher_icons config)
 - `web/index.html` (favicon, meta tags, PWA manifest link)
+- `backend/routers/reviews.py` (add `is_published` field, admin endpoints)
+- `backend/models/review.py` (add `is_published` column, migration)
 - `lib/main.dart` (splash screen logic)
 - `nginx/nginx.conf` (new server blocks)
 - `.github/workflows/flutter.yml` (add `--web-renderer html`)
