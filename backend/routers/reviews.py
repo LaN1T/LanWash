@@ -1,37 +1,44 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List
 from datetime import datetime, timezone
 
-from backend.database import get_db
-from backend.db_models import Review
-from backend.models import ReviewCreateRequest, ReviewResponse, ReviewModerateRequest
-from backend.core.security import get_current_user
+from database import get_db
+from db_models import Review, User
+from models import ReviewCreateRequest, ReviewResponse, ReviewModerateRequest
+from services.auth_service import get_current_user
+from core.limiter import limiter
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 
 @router.get("/", response_model=List[ReviewResponse])
-def list_reviews(
+@limiter.limit("60/minute")
+async def list_reviews(
+    request: Request,
     published: bool = Query(False, description="Filter only published reviews"),
     limit: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    query = db.query(Review)
+    stmt = select(Review)
     if published:
-        query = query.filter(Review.isPublished == 1)
-    return (
-        query.order_by(Review.createdAt.desc())
-        .limit(limit)
-        .all()
-    )
+        stmt = stmt.where(Review.isPublished == 1)
+    stmt = stmt.order_by(Review.createdAt.desc()).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
 @router.post("/", response_model=ReviewResponse)
-def create_review(
+@limiter.limit("10/minute")
+async def create_review(
+    request: Request,
     data: ReviewCreateRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.id != data.userId and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Можно оставлять отзыв только от своего имени")
     review = Review(
         userId=data.userId,
         userName=data.userName,
@@ -41,52 +48,62 @@ def create_review(
         createdAt=datetime.now(timezone.utc).isoformat(),
     )
     db.add(review)
-    db.commit()
-    db.refresh(review)
+    await db.commit()
+    await db.refresh(review)
     return review
 
 
 # ─── Admin endpoints ─────────────────────────────────────────────────────────
 
 @router.get("/admin/all", response_model=List[ReviewResponse])
-def list_all_reviews(
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+@limiter.limit("60/minute")
+async def list_all_reviews(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    return db.query(Review).order_by(Review.createdAt.desc()).all()
+    stmt = select(Review).order_by(Review.createdAt.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
 @router.patch("/admin/{review_id}", response_model=ReviewResponse)
-def moderate_review(
+@limiter.limit("60/minute")
+async def moderate_review(
+    request: Request,
     review_id: int,
     data: ReviewModerateRequest,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    review = db.query(Review).filter(Review.id == review_id).first()
+    result = await db.execute(select(Review).where(Review.id == review_id))
+    review = result.scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     review.isPublished = 1 if data.isPublished else 0
-    db.commit()
-    db.refresh(review)
+    await db.commit()
+    await db.refresh(review)
     return review
 
 
 @router.delete("/admin/{review_id}")
-def delete_review(
+@limiter.limit("60/minute")
+async def delete_review(
+    request: Request,
     review_id: int,
-    current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    review = db.query(Review).filter(Review.id == review_id).first()
+    result = await db.execute(select(Review).where(Review.id == review_id))
+    review = result.scalar_one_or_none()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    db.delete(review)
-    db.commit()
+    await db.delete(review)
+    await db.commit()
     return {"ok": True}

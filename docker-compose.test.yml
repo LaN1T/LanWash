@@ -1,0 +1,52 @@
+# Test environment: Prometheus + Grafana for load testing
+# Backend and Locust run locally (faster iteration)
+#
+# Usage:
+#   make test-up     → start Prometheus + Grafana
+#   make test-seed   → seed test data into lanwash_test
+#   make test-run    → start Locust + backend locally
+#   make test-down   → stop everything
+
+services:
+  prometheus-test:
+    image: prom/prometheus:v2.53.0
+    container_name: lanwash_prometheus_test
+    ports:
+      - "127.0.0.1:9091:9090"
+    volumes:
+      - ./prometheus.test.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_test_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - lanwash-test
+
+  grafana-test:
+    image: grafana/grafana:11.1.0
+    container_name: lanwash_grafana_test
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    volumes:
+      - grafana_test_data:/var/lib/grafana
+      - ./grafana/provisioning-test:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus-test
+    networks:
+      - lanwash-test
+
+volumes:
+  prometheus_test_data:
+  grafana_test_data:
+
+networks:
+  lanwash-test:
+    driver: bridge

@@ -19,8 +19,12 @@ from services.auth_service import (
     create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     get_current_user,
-    validate_password_strength
+    validate_password_strength,
+    blacklist_token,
+    oauth2_scheme,
 )
+import jwt
+from core.config import get_settings
 from core.security import encrypt_token
 
 USERNAME_PATTERN = re.compile(r'^[a-z0-9_]{3,30}$')
@@ -145,7 +149,7 @@ async def get_washers(request: Request, db: AsyncSession = Depends(get_db), curr
     
 )
 @limiter.limit("10/minute")
-async def update_profile(request: Request, user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_profile(request: Request, user_id: int, req: UpdateProfileRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
     if current_user.id != user_id and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете редактировать чужой профиль")
 
@@ -161,10 +165,22 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
     if req.carNumber is not None: updates["carNumber"] = req.carNumber
     if req.avatarUrl is not None: updates["avatarUrl"] = req.avatarUrl
     if req.newPassword is not None:
+        if not req.currentPassword or not verify_password(req.currentPassword, user.passwordHash):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Неверный текущий пароль")
         password_error = validate_password_strength(req.newPassword)
         if password_error:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=password_error)
         updates["passwordHash"] = get_password_hash(req.newPassword)
+        # Blacklist current token after password change
+        try:
+            payload = jwt.decode(token, get_settings().jwt_secret_key, algorithms=["HS256"])
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti and exp:
+                ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
+                blacklist_token(jti, ttl)
+        except jwt.JWTError:
+            pass
 
     if updates:
         await db.execute(update(User).where(User.id == user_id).values(updates))
@@ -387,5 +403,26 @@ async def get_user_stats(
         points=points
     )
 
+
+@router.post("/logout")
+@limiter.limit("10/minute")
+async def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Invalidate the current JWT token by blacklisting its jti."""
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        try:
+            payload = jwt.decode(token, get_settings().jwt_secret_key, algorithms=["HS256"])
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti and exp:
+                ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
+                blacklist_token(jti, ttl)
+        except jwt.JWTError:
+            pass
+    return {"status": "ok"}
 
 

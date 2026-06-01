@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:printing/printing.dart';
 
 import '../../app_styles.dart';
@@ -88,7 +89,11 @@ class _PopularServicesReportScreenState
         data);
 
     if (kIsWeb) {
-      await Printing.sharePdf(bytes: pdfBytes, filename: '$fileName.pdf');
+      await FileSaver.instance.saveFile(
+        name: '$fileName.pdf',
+        bytes: pdfBytes,
+        mimeType: MimeType.pdf,
+      );
     } else {
       if (!mounted) return;
       await PdfExportService.showExportDialog(

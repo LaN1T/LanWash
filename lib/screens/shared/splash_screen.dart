@@ -1,28 +1,113 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import '../../app_styles.dart';
 
+/// Единый логотип-портрет для splash, drawer, login и т.д.
+class LanWashLogo extends StatelessWidget {
+  final double iconSize;
+  final double circleSize;
+  final double? shadowBlur;
+  final bool showTitle;
+  final bool showSubtitle;
+  final bool showLoader;
+
+  const LanWashLogo({
+    super.key,
+    this.iconSize = 64,
+    this.circleSize = 120,
+    this.shadowBlur = 28,
+    this.showTitle = true,
+    this.showSubtitle = true,
+    this.showLoader = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : AppStyles.textPrimary;
+    final subtitleColor = isDark
+        ? Colors.white.withOpacity(0.6)
+        : AppStyles.textSecondary.withOpacity(0.7);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Иконка на синем градиенте ──
+        Container(
+          width: circleSize,
+          height: circleSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: AppStyles.primaryGradient,
+            boxShadow: shadowBlur != null
+                ? [
+                    BoxShadow(
+                      color: AppStyles.primary.withOpacity(0.3),
+                      blurRadius: shadowBlur!,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            Icons.local_car_wash,
+            color: Colors.white,
+            size: iconSize,
+          ),
+        ),
+        if (showTitle) ...[
+          const SizedBox(height: 32),
+          Text(
+            'LanWash',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+        if (showSubtitle) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'Приложение для записи на автомойку',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+        if (showLoader) ...[
+          const SizedBox(height: 48),
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppStyles.primary),
+            strokeWidth: 3,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Простой splash для экрана инициализации auth
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0a0a0a) : const Color(0xFFFFFFFF),
-      body: Center(
-        child: SvgPicture.asset(
-          'assets/logo.svg',
-          width: 200,
-          height: 200,
-          colorFilter: isDark
-              ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
-              : null,
-        ),
-      ),
+      backgroundColor: isDark ? const Color(0xFF0a0a0a) : Colors.white,
+      body: const Center(child: LanWashLogo()),
     );
   }
 }
 
+/// Анимированный splash для красивого старта
 class AnimatedSplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
   const AnimatedSplashScreen({super.key, required this.onComplete});
@@ -82,12 +167,10 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0a0a0a) : const Color(0xFFFFFFFF);
-    final textColor = isDark ? Colors.white : const Color(0xFF1a1a1a);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: isDark ? const Color(0xFF0a0a0a) : Colors.white,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -103,13 +186,50 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                   ),
                 );
               },
-              child: SvgPicture.asset(
-                'assets/logo.svg',
-                width: 280,
-                height: 280,
-                colorFilter: isDark
-                    ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
-                    : null,
+              child: const LanWashLogo(
+                showTitle: false,
+                showSubtitle: false,
+                showLoader: false,
+              ),
+            ),
+            const SizedBox(height: 32),
+            AnimatedBuilder(
+              animation: _textController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _textOpacity.value,
+                  child: child,
+                );
+              },
+              child: Text(
+                'LanWash',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppStyles.textPrimary,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: _textController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _textOpacity.value,
+                  child: child,
+                );
+              },
+              child: Text(
+                'Приложение для записи на автомойку',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.6)
+                      : AppStyles.textSecondary.withOpacity(0.7),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],

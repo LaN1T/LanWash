@@ -103,7 +103,7 @@ class AppointmentDetailWidget extends StatelessWidget {
                                     .firstWhere((s) => s.id == id,
                                         orElse: () => Service(
                                             id: id,
-                                            name: id,
+                                            name: 'Услуга недоступна',
                                             description: '',
                                             price: 0,
                                             durationMinutes: 0,
@@ -230,7 +230,7 @@ class AppointmentDetailWidget extends StatelessWidget {
                       (s) => s.id == id,
                       orElse: () => Service(
                           id: id,
-                          name: id,
+                          name: 'Услуга недоступна',
                           description: '',
                           price: 0,
                           durationMinutes: 0,

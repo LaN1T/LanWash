@@ -49,6 +49,7 @@ class UpdateProfileRequest(BaseModel):
     carModel: Optional[str] = Field(default=None, max_length=50)
     carNumber: Optional[str] = Field(default=None, max_length=20)
     avatarUrl: Optional[str] = Field(default=None, max_length=5000)
+    currentPassword: Optional[str] = Field(default=None, min_length=8, max_length=128)
     newPassword: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 
