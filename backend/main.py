@@ -2,15 +2,15 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Depends, status
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import os
 
 from database import init_db
 from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts
-from services.auth_service import check_roles
+from services.auth_service import check_roles, get_current_user
 
 from core.limiter import limiter
 from core.config import get_settings
@@ -32,6 +32,31 @@ settings = get_settings()
 
 # Initialize Sentry if DSN is configured
 if settings.sentry_dsn:
+    def _sentry_scrub_sensitive(event, hint):
+        """Remove sensitive data from Sentry events."""
+        from sentry_sdk.utils import AnnotatedValue
+        if event.get("exception"):
+            for value in event.get("exception", {}).get("values", []):
+                if value.get("stacktrace"):
+                    for frame in value["stacktrace"].get("frames", []):
+                        if frame.get("vars"):
+                            for key in list(frame["vars"].keys()):
+                                key_lower = key.lower()
+                                if any(s in key_lower for s in ("password", "token", "secret", "authorization", "api_key", "apikey")):
+                                    frame["vars"][key] = AnnotatedValue("[Filtered]", {"rem": ["scrubbed"]})
+        if event.get("request"):
+            req = event["request"]
+            for key in ("cookies", "data", "headers", "env"):
+                if key not in req:
+                    continue
+                container = req[key]
+                if not isinstance(container, dict):
+                    continue
+                for k in list(container.keys()):
+                    if any(s in k.lower() for s in ("password", "token", "secret", "authorization", "api_key", "apikey", "cookie")):
+                        container[k] = AnnotatedValue("[Filtered]", {"rem": ["scrubbed"]})
+        return event
+
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
         environment=settings.environment,
@@ -40,6 +65,7 @@ if settings.sentry_dsn:
             FastApiIntegration(transaction_style="endpoint"),
         ],
         traces_sample_rate=1.0 if settings.is_production else 0.0,
+        before_send=_sentry_scrub_sensitive,
     )
     logger.info("sentry_initialized", environment=settings.environment)
 
@@ -64,10 +90,18 @@ app = FastAPI(
     redoc_url="/redoc" if not settings.is_production else None,
 )
 
-# Static files for avatars
+# Avatar files served with authentication
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
+@app.get("/uploads/avatars/{filename}")
+async def get_avatar(filename: str, current_user=Depends(get_current_user)):
+    """Serve avatar images with auth check."""
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join(uploads_dir, "avatars", safe_filename)
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(filepath)
 
 # Apply rate limiter
 app.state.limiter = limiter

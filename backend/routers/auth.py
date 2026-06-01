@@ -214,10 +214,19 @@ async def upload_avatar(
     if current_user.id != user_id and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Нет доступа к этому профилю")
 
-    # Проверяем формат
+    # Проверяем формат и размер (макс 5 МБ)
     allowed = {"image/jpeg", "image/png", "image/webp"}
     if file.content_type not in allowed:
         raise HTTPException(400, "Допустимы только JPEG, PNG, WebP")
+
+    max_size = 5 * 1024 * 1024  # 5 MB
+    content = await file.read()
+    if len(content) > max_size:
+        raise HTTPException(400, "Файл слишком большой. Максимум 5 МБ")
+
+    # Восстанавливаем file для дальнейшего использования
+    from io import BytesIO
+    file.file = BytesIO(content)
 
     # Сохраняем файл — валидируем расширение и используем безопасное имя
     allowed_exts = {"jpg", "jpeg", "png", "webp"}
