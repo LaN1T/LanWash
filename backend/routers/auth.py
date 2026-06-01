@@ -219,10 +219,13 @@ async def upload_avatar(
     if file.content_type not in allowed:
         raise HTTPException(400, "Допустимы только JPEG, PNG, WebP")
 
-    # Сохраняем файл
+    # Сохраняем файл — валидируем расширение и используем безопасное имя
+    allowed_exts = {"jpg", "jpeg", "png", "webp"}
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
+    if ext not in allowed_exts:
+        raise HTTPException(400, "Недопустимое расширение файла. Допустимы: JPEG, PNG, WebP")
     filename = f"{uuid.uuid4().hex}.{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
+    filepath = os.path.join(UPLOAD_DIR, os.path.basename(filename))
 
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
