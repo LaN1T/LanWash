@@ -1,21 +1,19 @@
 const servicesData = [
-  { icon: '🚗', keyTitle: 'serviceWashTitle', keyDesc: 'serviceWashDesc' },
-  { icon: '🛋️', keyTitle: 'serviceInteriorTitle', keyDesc: 'serviceInteriorDesc' },
-  { icon: '✨', keyTitle: 'servicePolishTitle', keyDesc: 'servicePolishDesc' },
-  { icon: '🛡️', keyTitle: 'serviceProtectionTitle', keyDesc: 'serviceProtectionDesc' },
+  { icon: '🚗', key: 'wash' },
+  { icon: '🛋️', key: 'interior' },
+  { icon: '✨', key: 'polish' },
+  { icon: '🛡️', key: 'protection' },
 ];
 
 const whyData = [
-  { icon: '⚡', keyTitle: 'whyFastTitle', keyDesc: 'whyFastDesc' },
-  { icon: '🏆', keyTitle: 'whyQualityTitle', keyDesc: 'whyQualityDesc' },
-  { icon: '💰', keyTitle: 'whyPriceTitle', keyDesc: 'whyPriceDesc' },
-  { icon: '📱', keyTitle: 'whyOnlineTitle', keyDesc: 'whyOnlineDesc' },
+  { icon: '⚡', key: 'fast' },
+  { icon: '🏆', key: 'quality' },
+  { icon: '💰', key: 'price' },
+  { icon: '📱', key: 'online' },
 ];
 
 let currentLang = 'ru';
 let currentTheme = 'light';
-let carouselIndex = 0;
-let carouselSlides = 0;
 
 function initTheme() {
   const saved = localStorage.getItem('lanwash-theme');
@@ -33,6 +31,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', currentTheme);
   localStorage.setItem('lanwash-theme', currentTheme);
   updateThemeIcon();
+  trackEvent('theme_toggle');
 }
 
 function updateThemeIcon() {
@@ -57,6 +56,7 @@ function toggleLang() {
   localStorage.setItem('lanwash-lang', currentLang);
   applyLang();
   updateLangButton();
+  trackEvent('lang_switch');
 }
 
 function applyLang() {
@@ -79,26 +79,36 @@ function updateLangButton() {
 function renderServices() {
   const container = document.getElementById('servicesGrid');
   if (!container) return;
-  container.innerHTML = servicesData.map(s => `
-    <div class="service-card">
-      <div class="service-card__icon">${s.icon}</div>
-      <h3 class="service-card__title" data-i18n="${s.keyTitle}">${translations[currentLang][s.keyTitle] || ''}</h3>
-      <p class="service-card__desc" data-i18n="${s.keyDesc}">${translations[currentLang][s.keyDesc] || ''}</p>
-    </div>
-  `).join('');
+  container.innerHTML = servicesData.map(s => {
+    const titleKey = `service.${s.key}.title`;
+    const descKey = `service.${s.key}.desc`;
+    const priceKey = `service.${s.key}.price`;
+    return `
+      <div class="service-card">
+        <div class="service-card__icon">${s.icon}</div>
+        <h3 class="service-card__title" data-i18n="${titleKey}">${translations[currentLang][titleKey] || ''}</h3>
+        <p class="service-card__desc" data-i18n="${descKey}">${translations[currentLang][descKey] || ''}</p>
+        <div class="service-card__price" data-i18n="${priceKey}">${translations[currentLang][priceKey] || ''}</div>
+      </div>
+    `;
+  }).join('');
   applyLang();
 }
 
 function renderWhy() {
   const container = document.getElementById('whyGrid');
   if (!container) return;
-  container.innerHTML = whyData.map(w => `
-    <div class="why-item">
-      <div class="why-item__icon">${w.icon}</div>
-      <h3 class="why-item__title" data-i18n="${w.keyTitle}">${translations[currentLang][w.keyTitle] || ''}</h3>
-      <p class="why-item__desc" data-i18n="${w.keyDesc}">${translations[currentLang][w.keyDesc] || ''}</p>
-    </div>
-  `).join('');
+  container.innerHTML = whyData.map(w => {
+    const titleKey = `why.${w.key}.title`;
+    const descKey = `why.${w.key}.desc`;
+    return `
+      <div class="why-item">
+        <div class="why-item__icon">${w.icon}</div>
+        <h3 class="why-item__title" data-i18n="${titleKey}">${translations[currentLang][titleKey] || ''}</h3>
+        <p class="why-item__desc" data-i18n="${descKey}">${translations[currentLang][descKey] || ''}</p>
+      </div>
+    `;
+  }).join('');
   applyLang();
 }
 
@@ -108,7 +118,7 @@ async function loadReviews() {
 
   let reviews = [];
   try {
-    const res = await fetch('https://api.lanwash.ru/reviews?limit=6');
+    const res = await fetch('https://api.lanwash.ru/api/reviews?limit=10&published=true');
     if (res.ok) {
       const data = await res.json();
       reviews = Array.isArray(data) ? data : (data.items || []);
@@ -132,10 +142,6 @@ async function loadReviews() {
       <p class="review-card__author">${escapeHtml(r.author)}</p>
     </div>
   `).join('');
-
-  carouselSlides = reviews.length;
-  carouselIndex = 0;
-  updateCarousel();
 }
 
 function escapeHtml(text) {
@@ -148,18 +154,19 @@ function escapeHtml(text) {
 function initCarousel() {
   const prev = document.getElementById('reviewsPrev');
   const next = document.getElementById('reviewsNext');
-  if (prev) prev.addEventListener('click', () => { carouselIndex = Math.max(0, carouselIndex - 1); updateCarousel(); });
-  if (next) next.addEventListener('click', () => { carouselIndex = Math.min(carouselSlides - 1, carouselIndex + 1); updateCarousel(); });
-}
-
-function updateCarousel() {
   const track = document.getElementById('reviewsTrack');
-  if (!track || !carouselSlides) return;
-  const slide = track.firstElementChild;
-  if (!slide) return;
-  const gap = 20;
-  const slideWidth = slide.getBoundingClientRect().width + gap;
-  track.style.transform = `translateX(${-carouselIndex * slideWidth}px)`;
+  if (!track) return;
+
+  if (prev) {
+    prev.addEventListener('click', () => {
+      track.scrollBy({ left: -340, behavior: 'smooth' });
+    });
+  }
+  if (next) {
+    next.addEventListener('click', () => {
+      track.scrollBy({ left: 340, behavior: 'smooth' });
+    });
+  }
 }
 
 function trackEvent(eventName, params) {
@@ -200,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
   document.getElementById('langToggle')?.addEventListener('click', toggleLang);
 
-  window.addEventListener('resize', () => {
-    updateCarousel();
+  document.querySelector('.hero__cta')?.addEventListener('click', () => {
+    trackEvent('book_click');
   });
 });

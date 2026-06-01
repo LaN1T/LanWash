@@ -14,7 +14,7 @@
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <link rel="apple-touch-icon" href="logo.svg">
   <link rel="manifest" href="manifest.json">
-  <title>LanWash</title>
+  <title>LanWash — Профессиональная автомойка</title>
   <link rel="stylesheet" href="css/style.css">
   <script type="application/ld+json">
   {
@@ -23,13 +23,17 @@
     "name": "LanWash",
     "description": "Профессиональный уход за вашим авто",
     "url": "https://lanwash.ru",
+    "telephone": "+7-999-999-99-99",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "ул. Примерная, 1",
+      "addressLocality": "Москва",
+      "addressCountry": "RU"
+    },
+    "openingHours": "Mo-Su 08:00-22:00",
     "sameAs": [
       "https://t.me/lanwash_bot"
-    ],
-    "areaServed": {
-      "@type": "City",
-      "name": "Москва"
-    }
+    ]
   }
   </script>
 </head>
@@ -43,10 +47,10 @@
         </svg>
       </a>
       <nav class="header__nav" aria-label="Main navigation">
-        <a href="#services" class="header__link" data-i18n="navServices">Услуги</a>
-        <a href="#why" class="header__link" data-i18n="navWhy">Почему мы</a>
-        <a href="#reviews" class="header__link" data-i18n="navReviews">Отзывы</a>
-        <a href="#contacts" class="header__link" data-i18n="navContacts">Контакты</a>
+        <a href="#services" class="header__link" data-i18n="nav.services">Услуги</a>
+        <a href="#why" class="header__link" data-i18n="nav.why">Почему мы</a>
+        <a href="#reviews" class="header__link" data-i18n="nav.reviews">Отзывы</a>
+        <a href="#contacts" class="header__link" data-i18n="nav.contacts">Контакты</a>
       </nav>
       <div class="header__actions">
         <button class="header__btn" id="themeToggle" aria-label="Toggle theme">
@@ -61,10 +65,10 @@
       </div>
     </div>
     <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
-      <a href="#services" class="mobile-menu__link" data-i18n="navServices">Услуги</a>
-      <a href="#why" class="mobile-menu__link" data-i18n="navWhy">Почему мы</a>
-      <a href="#reviews" class="mobile-menu__link" data-i18n="navReviews">Отзывы</a>
-      <a href="#contacts" class="mobile-menu__link" data-i18n="navContacts">Контакты</a>
+      <a href="#services" class="mobile-menu__link" data-i18n="nav.services">Услуги</a>
+      <a href="#why" class="mobile-menu__link" data-i18n="nav.why">Почему мы</a>
+      <a href="#reviews" class="mobile-menu__link" data-i18n="nav.reviews">Отзывы</a>
+      <a href="#contacts" class="mobile-menu__link" data-i18n="nav.contacts">Контакты</a>
     </div>
   </header>
 
@@ -73,11 +77,11 @@
       <div class="hero__bg" aria-hidden="true"></div>
       <div class="hero__overlay" aria-hidden="true"></div>
       <div class="hero__content container">
-        <h1 class="hero__title" data-i18n="heroTitle">LanWash</h1>
-        <p class="hero__subtitle" data-i18n="heroSubtitle">Профессиональный уход за вашим авто</p>
-        <a href="https://app.lanwash.ru" class="btn btn--primary hero__cta" data-i18n="heroCta" target="_blank" rel="noopener">Записаться</a>
+        <h1 class="hero__title" data-i18n="hero.title">LanWash</h1>
+        <p class="hero__subtitle" data-i18n="hero.subtitle">Профессиональный уход за вашим авто</p>
+        <a href="https://app.lanwash.ru" class="btn btn--primary hero__cta" data-i18n="hero.cta" target="_blank" rel="noopener">Записаться</a>
         <p class="hero__alt">
-          <span data-i18n="heroAlt">Или запишитесь через</span>
+          <span data-i18n="hero.alt">Или запишитесь через</span>
           <a href="https://t.me/lanwash_bot" target="_blank" rel="noopener">Telegram Bot</a>
         </p>
       </div>
@@ -85,21 +89,21 @@
 
     <section id="services" class="section">
       <div class="container">
-        <h2 class="section__title" data-i18n="servicesTitle">Наши услуги</h2>
+        <h2 class="section__title" data-i18n="services.title">Наши услуги</h2>
         <div class="services__grid" id="servicesGrid"></div>
       </div>
     </section>
 
     <section id="why" class="section section--alt">
       <div class="container">
-        <h2 class="section__title" data-i18n="whyTitle">Почему мы</h2>
+        <h2 class="section__title" data-i18n="why.title">Почему мы</h2>
         <div class="why__grid" id="whyGrid"></div>
       </div>
     </section>
 
     <section id="reviews" class="section">
       <div class="container">
-        <h2 class="section__title" data-i18n="reviewsTitle">Отзывы</h2>
+        <h2 class="section__title" data-i18n="reviews.title">Отзывы клиентов</h2>
         <div class="reviews__carousel" id="reviewsCarousel">
           <div class="reviews__track" id="reviewsTrack"></div>
           <button class="reviews__arrow reviews__arrow--prev" id="reviewsPrev" aria-label="Previous review">❮</button>
@@ -110,20 +114,20 @@
 
     <section id="contacts" class="section section--alt">
       <div class="container">
-        <h2 class="section__title" data-i18n="contactsTitle">Контакты</h2>
+        <h2 class="section__title" data-i18n="contacts.title">Контакты</h2>
         <div class="contacts__grid">
           <div class="contacts__info">
             <p class="contacts__item">
-              <strong data-i18n="contactsAddressLabel">Адрес:</strong>
-              <span data-i18n="contactsAddress">г. Москва, ул. Примерная, 1</span>
+              <strong data-i18n="contacts.addressLabel">Адрес:</strong>
+              <span data-i18n="contacts.address">г. Москва, ул. Примерная, 1</span>
             </p>
             <p class="contacts__item">
-              <strong data-i18n="contactsHoursLabel">Режим работы:</strong>
-              <span data-i18n="contactsHours">Ежедневно 08:00 – 22:00</span>
+              <strong data-i18n="contacts.hoursLabel">Режим работы:</strong>
+              <span data-i18n="contacts.hours">Ежедневно 08:00 – 22:00</span>
             </p>
             <div class="contacts__actions">
-              <a href="tel:+74951234567" class="btn btn--primary" data-i18n="contactsPhone">Позвонить</a>
-              <a href="https://t.me/lanwash_bot" class="btn btn--secondary" target="_blank" rel="noopener">Telegram</a>
+              <a href="tel:+74951234567" class="btn btn--primary" data-i18n="contacts.phone">Позвонить</a>
+              <a href="https://t.me/lanwash_bot" class="btn btn--secondary" target="_blank" rel="noopener" data-i18n="contacts.tg">Написать в Telegram</a>
             </div>
           </div>
           <div class="contacts__map">
@@ -145,12 +149,14 @@
 
   <footer class="footer">
     <div class="container">
-      <p class="footer__copy" data-i18n="footerCopy">© 2025 LanWash. Все права защищены.</p>
+      <p class="footer__copy" data-i18n="footer.copy">© 2025 LanWash. Все права защищены.</p>
     </div>
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="js/translations.js"></script>
+  <script src="js/gsap-animations.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
