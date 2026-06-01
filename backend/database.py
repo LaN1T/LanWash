@@ -22,19 +22,10 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 
 async def init_db():
-    """Initialize database.
-    
-    In production, migrations are run separately via Alembic.
-    In development/testing, creates tables automatically.
-    """
-    if settings.is_production:
-        # In production we assume alembic upgrade head was run separately.
-        # We still seed data if tables are empty.
-        await seed_data()
-    else:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        await seed_data()
+    """Initialize database — creates tables and seeds data."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await seed_data()
 
 
 async def seed_data():
