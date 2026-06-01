@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/daily_report.dart';
+import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../admin/grafana_webview_screen.dart';
@@ -100,7 +100,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final isAdmin = auth.user?.role == 'admin';
+    final isAdmin = auth.user?.role == UserRole.admin;
     final dark = AppStyles.isDark(context);
 
     return Scaffold(
@@ -166,7 +166,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildDateSelector(BuildContext context) {
-    final dark = AppStyles.isDark(context);
     final isToday = _isSameDay(_selectedDate, DateTime.now());
 
     return Container(
