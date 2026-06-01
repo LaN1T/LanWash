@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from database import init_db
-from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts
+from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews
 from services.auth_service import check_roles, get_current_user
 
 from core.limiter import limiter
@@ -226,6 +226,7 @@ app.include_router(reports.router, dependencies=[Depends(check_roles(["admin", "
 app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
+app.include_router(reviews.router)
 
 
 if __name__ == "__main__":
