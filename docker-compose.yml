@@ -21,6 +21,13 @@ services:
     networks:
       - lanwash
 
+  redis:
+    image: redis:7-alpine
+    container_name: lanwash_redis
+    restart: always
+    networks:
+      - lanwash
+
   backend:
     build:
       context: ./backend
@@ -35,10 +42,13 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       DEBUG: "false"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     env_file:
       - ./backend/.env
     networks:
