@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
 from core.limiter import limiter
@@ -176,9 +177,10 @@ async def get_by_washer(request: Request, username: str, db: AsyncSession = Depe
         raise HTTPException(404, "Пользователь не найден")
 
     # 1. Явно назначенные записи
+    safe_username = username.lower().replace('%', r'\%').replace('_', r'\_')
     result = await db.execute(
         select(Appointment)
-        .where(Appointment.assignedWasher.like(f'%"{username.lower()}"%'))
+        .where(Appointment.assignedWasher.like(f'%"{safe_username}"%', escape='\\'))
     )
     explicit = list(result.scalars().all())
     explicit_ids = {a.id for a in explicit}
@@ -203,6 +205,15 @@ async def get_by_washer(request: Request, username: str, db: AsyncSession = Depe
     return all_appts
 
 async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
+    # 0. Восстановить остатки из предыдущих списаний и удалить старые логи
+    old_logs_res = await db.execute(select(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
+    for old_log in old_logs_res.scalars().all():
+        res = await db.execute(select(Consumable).where(Consumable.id == old_log.consumableId))
+        c = res.scalar_one_or_none()
+        if c:
+            c.currentStock += old_log.quantityUsed
+        await db.delete(old_log)
+
     # 1. Сбор расходников из типа мойки
     res_wt = await db.execute(select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service).where(WashTypeConsumable.washTypeId == wash_type_id))
     usage_map = {row[0]: float(row[1]) for row in res_wt.all()}
@@ -227,9 +238,9 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
             for cid, qty in res_svc.all():
                 usage_map[cid] = usage_map.get(cid, 0.0) + float(qty)
 
-    # 4. Уменьшение остатков + сохранение в лог
+    # 4. Уменьшение остатков + сохранение в лог (с блокировкой строки)
     for cid, qty in usage_map.items():
-        res = await db.execute(select(Consumable).where(Consumable.id == cid))
+        res = await db.execute(select(Consumable).where(Consumable.id == cid).with_for_update())
         consumable = res.scalar_one_or_none()
         if consumable:
             consumable.currentStock = max(0.0, consumable.currentStock - qty)
@@ -271,7 +282,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
 
     appt_data = {
-        "id": req.id,
+        "id": req.id if req.id else str(uuid.uuid4()),
         "clientName": req.clientName,
         "carModel": req.carModel,
         "carNumber": req.carNumber,
@@ -317,12 +328,18 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
         encrypted_tokens = res.scalars().all()
         if encrypted_tokens:
-            tokens = [decrypt_token(t) for t in encrypted_tokens]
-            await fcm_service.send_notification_to_tokens(
-                tokens,
-                title="Новая запись создана!",
-                body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана."
-            )
+            tokens = []
+            for t in encrypted_tokens:
+                try:
+                    tokens.append(decrypt_token(t))
+                except Exception:
+                    pass
+            if tokens:
+                await fcm_service.send_notification_to_tokens(
+                    tokens,
+                    title="Новая запись создана!",
+                    body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана."
+                )
 
     appointments_total.labels(status=effective_status).inc()
     await db.refresh(appt)
@@ -480,7 +497,6 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     await db.commit()
 
     if req.status == "completed":
-        await db.execute(delete(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
         await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
         await db.commit()
 
@@ -489,7 +505,12 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         encrypted_tokens = tokens_res.scalars().all()
         
         if encrypted_tokens:
-            client_tokens = [decrypt_token(t) for t in encrypted_tokens]
+            client_tokens = []
+            for t in encrypted_tokens:
+                try:
+                    client_tokens.append(decrypt_token(t))
+                except Exception:
+                    pass
             
             # Всегда уведомляем, если что-то изменилось, чтобы клиент обновил данные
             title, body = "Обновление записи", "Ваша запись была обновлена."
@@ -627,6 +648,32 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             
         if len(current) >= 3:
             raise HTTPException(400, "Максимум 3 мойщика")
+        
+        # Проверка на пересечение времени с другими назначенными записями
+        safe_username = username.replace('%', r'\%').replace('_', r'\_')
+        conflict_res = await db.execute(
+            select(Appointment).where(
+                Appointment.assignedWasher.like(f'%{safe_username}%', escape='\\'),
+                Appointment.status != 'cancelled',
+                Appointment.id != appt_id
+            )
+        )
+        try:
+            appt_start = workload_service._safe_parse_iso(appt.dateTime)
+        except ValueError:
+            raise HTTPException(400, "Некорректная дата записи")
+        appt_duration = await workload_service.get_appointment_duration(db, appt.washTypeId, appt.additionalServices, appt.promoId)
+        appt_end = appt_start + timedelta(minutes=appt_duration)
+        for other in conflict_res.scalars().all():
+            try:
+                other_start = workload_service._safe_parse_iso(other.dateTime)
+            except ValueError:
+                continue
+            other_duration = await workload_service.get_appointment_duration(db, other.washTypeId, other.additionalServices, other.promoId)
+            other_end = other_start + timedelta(minutes=other_duration)
+            if appt_start < other_end and appt_end > other_start:
+                raise HTTPException(400, f"Мойщик {username} уже назначен на пересекающееся время")
+        
         current.append(username)
 
     appt.assignedWasher = json.dumps(current)

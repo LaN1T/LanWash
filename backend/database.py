@@ -17,7 +17,14 @@ logger = structlog.get_logger()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 settings = get_settings()
 
-engine = create_async_engine(settings.database_url, echo=False)
+engine = create_async_engine(
+    settings.database_url,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=3600,
+)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -56,6 +63,8 @@ async def seed_data():
                 ("washer3", "Алексей", "+79001112233"),
             ]
             dev_washer_password = settings.initial_admin_password or "change_me_to_something_secure"
+            if dev_washer_password == "change_me_to_something_secure":
+                logger.warning("dev_washer_default_password_used")
             for login, name, phone in washers:
                 stmt = insert(User).values(
                     username=login,

@@ -75,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthProvider>();
     final err = await auth.register(
       username: _loginCtrl.text.trim(),
-      password: _passCtrl.text.trim(),
+      password: _passCtrl.text,
       displayName: _nameCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
     );
@@ -187,7 +187,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Введите пароль';
-                        if (v.length < 4) return 'Минимум 4 символа';
+                        if (v.length < 8) return 'Минимум 8 символов';
+                        if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Хотя бы одна заглавная буква';
+                        if (!RegExp(r'[a-z]').hasMatch(v)) return 'Хотя бы одна строчная буква';
+                        if (!RegExp(r'\d').hasMatch(v)) return 'Хотя бы одна цифра';
+                        if (!RegExp(r'[@$!%*?&_]').hasMatch(v)) return 'Хотя бы один спецсимвол (@\$!%*?&_)';
                         return null;
                       },
                     ),

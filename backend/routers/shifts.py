@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete
 from database import get_db
@@ -6,6 +6,7 @@ from db_models import Shift, User
 from models import ShiftRequest, ShiftResponse
 from datetime import datetime
 from services.auth_service import get_current_user
+from core.limiter import limiter
 from typing import List, Optional
 
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
@@ -28,7 +29,9 @@ def _parse_time(time_str: str) -> bool:
 
 
 @router.get("/", response_model=List[ShiftResponse])
+@limiter.limit("60/minute")
 async def list_shifts(
+    request: Request,
     start_date: str,
     end_date: str,
     db: AsyncSession = Depends(get_db),
@@ -44,7 +47,9 @@ async def list_shifts(
 
 
 @router.get("/my", response_model=List[ShiftResponse])
+@limiter.limit("60/minute")
 async def list_my_shifts(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -54,7 +59,9 @@ async def list_my_shifts(
 
 
 @router.post("/", response_model=ShiftResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_shift(
+    request: Request,
     req: ShiftRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -118,7 +125,9 @@ async def create_shift(
 
 
 @router.put("/{shift_id}/approve", response_model=ShiftResponse)
+@limiter.limit("10/minute")
 async def approve_shift(
+    request: Request,
     shift_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -139,7 +148,9 @@ async def approve_shift(
 
 
 @router.put("/{shift_id}/reject", response_model=ShiftResponse)
+@limiter.limit("10/minute")
 async def reject_shift(
+    request: Request,
     shift_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -160,7 +171,9 @@ async def reject_shift(
 
 
 @router.delete("/{shift_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
 async def delete_shift(
+    request: Request,
     shift_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

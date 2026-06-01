@@ -11,17 +11,15 @@ class AppConfig {
 
   static String get baseUrl {
     if (_apiBaseUrl.isNotEmpty) {
-      assert(
-        !kReleaseMode || _apiBaseUrl.startsWith('https://'),
-        'API_BASE_URL must use HTTPS in release mode',
-      );
+      if (kReleaseMode && !_apiBaseUrl.startsWith('https://')) {
+        throw StateError('API_BASE_URL must use HTTPS in release mode');
+      }
       return _apiBaseUrl;
     }
     // Fallback только для development
-    assert(
-      !kReleaseMode,
-      'API_BASE_URL must be provided via --dart-define in release mode',
-    );
+    if (kReleaseMode) {
+      throw StateError('API_BASE_URL must be provided via --dart-define in release mode');
+    }
     if (kIsWeb) {
       return 'http://localhost:8000/api';
     }

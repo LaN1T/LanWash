@@ -199,6 +199,7 @@ class _State extends State<AddEditAppointmentScreen> {
   late String _status;
   String? _selectedPromoId;
   String? _plateError;
+  bool _isSaving = false;
 
   bool get _isEditing => widget.appointment != null;
 
@@ -521,7 +522,7 @@ class _State extends State<AddEditAppointmentScreen> {
     return p;
   }
 
-  void _save() {
+  Future<void> _save() async {
     final v = _numberCtrl.text.toUpperCase();
     if (v.length < 8 ||
         !RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$')
@@ -553,6 +554,10 @@ class _State extends State<AddEditAppointmentScreen> {
       finalNotes = 'Акция: ${promo.name}\n$finalNotes'.trim();
     }
 
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    bool success;
     if (_isEditing) {
       final oldAppt = widget.appointment!;
       final origPrice = oldAppt.originalPrice > 0
@@ -571,7 +576,7 @@ class _State extends State<AddEditAppointmentScreen> {
           _selectedPromoId != oldAppt.promoId;
 
       final auth = context.read<AuthProvider>();
-      provider.updateAppointment(
+      success = await provider.updateAppointment(
           oldAppt.copyWith(
             clientName: _nameCtrl.text.trim(),
             carModel: _modelCtrl.text.trim(),
@@ -592,7 +597,7 @@ class _State extends State<AddEditAppointmentScreen> {
     } else {
       final auth = context.read<AuthProvider>();
       final newAppt = Appointment(
-        id: 'a_${DateTime.now().millisecondsSinceEpoch}',
+        id: '',
         clientName: _nameCtrl.text.trim(),
         carModel: _modelCtrl.text.trim(),
         carNumber: _numberCtrl.text.trim().toUpperCase(),
@@ -607,13 +612,23 @@ class _State extends State<AddEditAppointmentScreen> {
         originalPrice: newPrice,
         promoId: _selectedPromoId,
       );
-      provider.addAppointment(newAppt, auth);
+      success = await provider.addAppointment(newAppt, auth);
     }
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(_isEditing ? 'Запись обновлена' : 'Запись создана'),
-      backgroundColor: AppStyles.success,
-    ));
+    setState(() => _isSaving = false);
+    if (mounted) {
+      if (success) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_isEditing ? 'Запись обновлена' : 'Запись создана'),
+          backgroundColor: AppStyles.success,
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(provider.errorMessage ?? 'Ошибка сохранения записи'),
+          backgroundColor: AppStyles.danger,
+        ));
+      }
+    }
   }
 }
 

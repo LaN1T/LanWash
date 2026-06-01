@@ -7,7 +7,9 @@ import os
 import sys
 
 async def main(sql_file: str):
-    url = os.environ.get("DATABASE_URL", "postgresql://lanwash_user:lanwash_password@localhost:5432/lanwash_db")
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL environment variable is not set")
     # asyncpg не понимает +asyncpg драйвер
     url = url.replace("postgresql+asyncpg://", "postgresql://")
     

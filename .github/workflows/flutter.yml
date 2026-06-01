@@ -1,5 +1,8 @@
 name: Flutter CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, master]
@@ -28,6 +31,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -71,6 +76,7 @@ jobs:
         with:
           name: android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
 
   build-web:
     runs-on: ubuntu-latest
@@ -96,3 +102,4 @@ jobs:
         with:
           name: web-release
           path: build/web/
+          retention-days: 7
