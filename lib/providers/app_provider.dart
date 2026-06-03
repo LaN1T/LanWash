@@ -113,10 +113,11 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<List<Appointment>> _fetchAppointments(AuthProvider auth,
-      {String? targetDate}) async {
+      {String? targetDate, int? page}) async {
     if (auth.isAdmin) {
+      final targetPage = page ?? _currentPage;
       final res =
-          await _api.getAppointments(page: _currentPage, date: targetDate);
+          await _api.getAppointments(page: targetPage, date: targetDate);
       _totalPages = res.totalPages;
       _currentPage = res.currentPage;
       _currentDate = res.currentDate;
@@ -140,23 +141,25 @@ class AppProvider extends ChangeNotifier {
     final next = current + 1;
     final prev = current - 1;
 
+    final futures = <Future<void>>[];
+
     if (next <= _totalPages && !_cacheAppointments.containsKey(next)) {
-      try {
-        final res = await _api.getAppointments(page: next);
+      futures.add(_api.getAppointments(page: next).then((res) {
         _cacheAppointments[next] = res.appointments;
         _cacheDates[next] = res.currentDate;
         _cacheTotalPages[next] = res.totalPages;
-      } catch (e) {}
+      }).catchError((_) {}));
     }
 
     if (prev >= 1 && !_cacheAppointments.containsKey(prev)) {
-      try {
-        final res = await _api.getAppointments(page: prev);
+      futures.add(_api.getAppointments(page: prev).then((res) {
         _cacheAppointments[prev] = res.appointments;
         _cacheDates[prev] = res.currentDate;
         _cacheTotalPages[prev] = res.totalPages;
-      } catch (e) {}
+      }).catchError((_) {}));
     }
+
+    if (futures.isNotEmpty) await Future.wait(futures);
   }
 
   Future<void> setPage(int page, AuthProvider auth) async {
@@ -208,10 +211,25 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     clearCache();
     try {
-      _serviceList = await _api.getServices();
-      _promoList = await _api.getPromos();
-      _washTypeList = await _api.getWashTypes();
-      _appointmentList = await _fetchAppointments(auth);
+      // Parallel loading of reference data + first page of appointments
+      final results = await Future.wait([
+        _api.getServices(),
+        _api.getPromos(),
+        _api.getWashTypes(),
+        _fetchAppointments(auth, page: 1),
+      ]);
+      _serviceList = results[0] as List<Service>;
+      _promoList = results[1] as List<Promo>;
+      _washTypeList = results[2] as List<WashType>;
+
+      // With asc() sort in backend, last page = most recent records.
+      // Jump to last page so user sees newest appointments first.
+      if (auth.isAdmin && _totalPages > 1) {
+        _currentPage = _totalPages;
+        _appointmentList = await _fetchAppointments(auth);
+      } else {
+        _appointmentList = results[3] as List<Appointment>;
+      }
     } catch (e) {
       _errorMessage = 'Ошибка загрузки данных. Проверьте подключение.';
     }

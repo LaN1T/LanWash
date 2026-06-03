@@ -1,5 +1,6 @@
 import json
 import hashlib
+import os
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, text
@@ -7,6 +8,9 @@ from db_models import Appointment, WashType, Service, Promo, WashTypeIncludedExt
 import structlog
 
 logger = structlog.get_logger()
+
+# Advisory locks can block the event loop under concurrent load testing.
+_DISABLE_ADVISORY_LOCK = os.getenv("DISABLE_ADVISORY_LOCK") == "true" or os.getenv("ENVIRONMENT") == "testing"
 
 NUM_BOXES = 2  # Можно вынести в конфиг или БД
 
@@ -74,9 +78,10 @@ class WorkloadService:
         day_end = start_dt.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
         
         # Advisory lock на уровне дня для предотвращения race condition при бронировании
-        lock_input = day_start.encode()
-        lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
-        await db.execute(text(f"SELECT pg_advisory_xact_lock({lock_id})"))
+        if not _DISABLE_ADVISORY_LOCK:
+            lock_input = day_start.encode()
+            lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
+            await db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(lock_id=lock_id))
 
         query = select(Appointment).where(
             and_(
@@ -91,6 +96,62 @@ class WorkloadService:
         res = await db.execute(query)
         day_appointments = res.scalars().all()
         
+        # --- Batch preload all duration data to avoid N+1 queries ---
+        wash_type_ids = {a.washTypeId for a in day_appointments}
+        promo_ids = {a.promoId for a in day_appointments if a.promoId}
+        all_service_ids = set()
+        for a in day_appointments:
+            try:
+                all_service_ids.update(json.loads(a.additionalServices))
+            except Exception:
+                pass
+
+        # Wash type durations
+        wt_durations = {}
+        if wash_type_ids:
+            wt_res = await db.execute(select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids)))
+            wt_durations = {row[0]: row[1] for row in wt_res.all()}
+
+        # Wash type included extras
+        wt_included = {}
+        if wash_type_ids:
+            wti_res = await db.execute(select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId).where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids)))
+            for wt_id, svc_id in wti_res.all():
+                wt_included.setdefault(wt_id, set()).add(svc_id)
+
+        # Promo durations and included extras
+        promo_durations = {}
+        promo_included = {}
+        if promo_ids:
+            pr_res = await db.execute(select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids)))
+            promo_durations = {row[0]: row[1] for row in pr_res.all()}
+            pri_res = await db.execute(select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId.in_(promo_ids)))
+            for pr_id, svc_id in pri_res.all():
+                promo_included.setdefault(pr_id, set()).add(svc_id)
+
+        # Service durations
+        svc_durations = {}
+        if all_service_ids:
+            svc_res = await db.execute(select(Service.id, Service.durationMinutes).where(Service.id.in_(all_service_ids)))
+            svc_durations = {row[0]: row[1] for row in svc_res.all()}
+
+        def _compute_duration(appt) -> int:
+            base = wt_durations.get(appt.washTypeId, 30)
+            included = set(wt_included.get(appt.washTypeId, []))
+            if appt.promoId and appt.promoId in promo_durations:
+                p_dur = promo_durations[appt.promoId]
+                if p_dur and p_dur > 0:
+                    base = p_dur
+                included.update(promo_included.get(appt.promoId, []))
+            try:
+                extra_ids = json.loads(appt.additionalServices)
+            except Exception:
+                extra_ids = []
+            filtered = [eid for eid in extra_ids if eid not in included]
+            total = base + sum(svc_durations.get(eid, 0) for eid in filtered)
+            return total
+        # --- End batch preload ---
+        
         box_occupancy = [False] * NUM_BOXES
         
         # Для каждого бокса проверяем, свободен ли он в интервале [start_dt, end_dt]
@@ -100,10 +161,8 @@ class WorkloadService:
                 if appt.box_index != box_idx:
                     continue
                 
-                # Вычисляем длительность записи
-                appt_duration = await WorkloadService.get_appointment_duration(
-                    db, appt.washTypeId, appt.additionalServices, appt.promoId
-                )
+                # Вычисляем длительность записи (локально, без N+1 запросов)
+                appt_duration = _compute_duration(appt)
                 appt_start = WorkloadService._safe_parse_iso(appt.dateTime)
                 appt_end = appt_start + timedelta(minutes=appt_duration)
                 

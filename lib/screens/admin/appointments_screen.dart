@@ -413,7 +413,7 @@ class _AppointmentCard extends StatelessWidget {
                     final service = services.firstWhere((s) => s.id == id,
                         orElse: () => Service(
                             id: id,
-                            name: id,
+                            name: 'Услуга недоступна',
                             description: '',
                             price: 0,
                             durationMinutes: 0,
