@@ -34,8 +34,11 @@ async def list_reviews(
 async def create_review(
     request: Request,
     data: ReviewCreateRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.id != data.userId and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Можно оставлять отзыв только от своего имени")
     review = Review(
         userId=data.userId,
         userName=data.userName,

@@ -139,7 +139,10 @@ class ApiService {
         for (final item in list) {
           try {
             appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
-          } catch (e) {}
+          } catch (e, st) {
+            debugPrint('getAppointments parse error: $e | item: $item');
+            debugPrint('Stack: $st');
+          }
         }
 
         final totalPagesHeader =
@@ -175,6 +178,7 @@ class ApiService {
         );
       },
       failure: (err) {
+        debugPrint('getAppointments failure: ${err.message} (code: ${err.statusCode})');
         return PaginatedAppointments(
             appointments: [],
             totalPages: 1,

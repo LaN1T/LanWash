@@ -62,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (err == null) {
       // Инициализацию перекладываем на _AppRouter (через listenable),
       // чтобы избежать конфликтов и дублирования.
-      // Navigator.pushReplacementNamed(context, '/home'); // УДАЛЕНО: ломает дерево виджетов _AppRouter
+      // Сбрасываем _loading чтобы кнопка не оставалась заблокированной.
+      setState(() => _loading = false);
     } else {
       setState(() {
         _loading = false;

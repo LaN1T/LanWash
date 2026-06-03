@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'service.dart';
 import 'wash_type.dart';
 
@@ -96,7 +97,9 @@ class Appointment {
         promoId: m['promoId']?.toString(),
         box_index: (m['box_index'] as num?)?.toInt() ?? 0,
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Appointment.fromMap error: $e | map: $m');
+      debugPrint('Stack: $st');
       rethrow;
     }
   }

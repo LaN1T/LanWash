@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -24,18 +23,30 @@ class ApiClient {
   static set token(String? token) => _cachedToken = token;
 
   static Future<String?> getToken() async {
-    _cachedToken ??= await _storage.read(key: 'jwt_token');
+    try {
+      _cachedToken ??= await _storage.read(key: 'jwt_token');
+    } catch (e) {
+      debugPrint('getToken error: $e');
+    }
     return _cachedToken;
   }
 
   static Future<void> setToken(String token) async {
     _cachedToken = token;
-    await _storage.write(key: 'jwt_token', value: token);
+    try {
+      await _storage.write(key: 'jwt_token', value: token);
+    } catch (e) {
+      debugPrint('setToken error: $e');
+    }
   }
 
   static Future<void> deleteToken() async {
     _cachedToken = null;
-    await _storage.delete(key: 'jwt_token');
+    try {
+      await _storage.delete(key: 'jwt_token');
+    } catch (e) {
+      debugPrint('deleteToken error: $e');
+    }
   }
 
   static Future<Map<String, String>> _headers() async {
@@ -158,12 +169,12 @@ class ApiClient {
       }
 
       return Failure(AppError.server(response.statusCode, message));
-    } on SocketException catch (e) {
+    } on http.ClientException catch (e) {
       return Failure(AppError.network(e));
     } on FormatException catch (e) {
       return Failure(AppError.unknown(e));
     } on Exception catch (e) {
-      return Failure(AppError.unknown(e));
+      return Failure(AppError.network(e));
     }
   }
 
@@ -195,6 +206,7 @@ class ApiClient {
       if (resp.statusCode == 401) return Failure(AppError.unauthorized());
       return Failure(AppError.server(resp.statusCode));
     } catch (e) {
+      debugPrint('rawGet error: $e | url: $url');
       return Failure(AppError.network(e));
     }
   }

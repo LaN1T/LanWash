@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:printing/printing.dart';
 
 import '../../app_styles.dart';
@@ -82,8 +83,11 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
         'Отчет: Средний чек за $_selectedDate', headers, data);
 
     if (kIsWeb) {
-      await Printing.sharePdf(
-          bytes: pdfBytes, filename: 'Средний чек_${_selectedDate}.pdf');
+      await FileSaver.instance.saveFile(
+        name: 'Средний чек_${_selectedDate}.pdf',
+        bytes: pdfBytes,
+        mimeType: MimeType.pdf,
+      );
     } else {
       if (!mounted) return;
       await PdfExportService.showExportDialog(
