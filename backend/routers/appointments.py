@@ -12,7 +12,7 @@ from db_models import (
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
     WashTypeIncludedExtra, User, Consumable, Shift,
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 from services.fcm_service import fcm_service
 from services.workload_service import workload_service
