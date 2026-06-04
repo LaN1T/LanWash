@@ -1,3 +1,4 @@
+import asyncio
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -9,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from database import init_db
-from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts
+from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews
 from services.auth_service import check_roles, get_current_user
 
 from core.limiter import limiter
@@ -72,12 +73,30 @@ if settings.sentry_dsn:
 _start_time = datetime.now(timezone.utc)
 
 
+async def _metrics_background_task():
+    """Update business metrics every 30 seconds."""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            await update_business_metrics()
+        except Exception as e:
+            logger.warning("background_metrics_update_failed", error=str(e))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", environment=settings.environment)
     await init_db()
     logger.info("app_ready", environment=settings.environment)
+
+    metrics_task = asyncio.create_task(_metrics_background_task())
     yield
+
+    metrics_task.cancel()
+    try:
+        await metrics_task
+    except asyncio.CancelledError:
+        pass
     logger.info("app_shutting_down")
 
 
@@ -178,7 +197,18 @@ async def business_metrics_middleware(request, call_next):
 @app.middleware("http")
 async def log_requests(request, call_next):
     start = time.time()
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        duration_ms = (time.time() - start) * 1000
+        logger.warning(
+            "request_error",
+            method=request.method,
+            path=request.url.path,
+            duration_ms=round(duration_ms, 2),
+            error=str(exc),
+        )
+        raise
     duration_ms = (time.time() - start) * 1000
     logger.info(
         "request",
@@ -226,6 +256,7 @@ app.include_router(reports.router, dependencies=[Depends(check_roles(["admin", "
 app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
+app.include_router(reviews.router)
 
 
 if __name__ == "__main__":

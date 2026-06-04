@@ -70,7 +70,7 @@ async def get_all(
             select(date_extract)
             .where(Appointment.dateTime != None, Appointment.dateTime != '')
             .distinct()
-            .order_by(date_extract.desc())
+            .order_by(date_extract.asc())
         )
     else:
         dates_query = (
@@ -81,7 +81,7 @@ async def get_all(
                 or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
             )
             .distinct()
-            .order_by(date_extract.desc())
+            .order_by(date_extract.asc())
         )
 
     dates_res = await db.execute(dates_query)
@@ -319,6 +319,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     appt = Appointment(**appt_data)
     db.add(appt)
     await db.commit()
+    appointments_total.labels(status=appt.status).inc()
 
     if effective_status == "completed":
         await _track_consumables_usage(db, req.id, req.washTypeId, req.additionalServices, req.promoId)
