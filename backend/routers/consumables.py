@@ -24,25 +24,23 @@ except ImportError:
 router = APIRouter(
     prefix="/api/consumables",
     tags=["consumables"],
-    dependencies=[Depends(check_roles(['admin', 'washer']))],
-    
 )
 
 @router.get("/", response_model=list[ConsumableResponse])
 @limiter.limit("60/minute")
-async def get_all_consumables(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_all_consumables(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin', 'washer']))):
     result = await db.execute(select(Consumable).order_by(Consumable.name.asc()))
     return result.scalars().all()
 
 @router.get("/by-service/{service_id}", response_model=list[ServiceConsumableResponse])
 @limiter.limit("60/minute")
-async def get_consumables_by_service(request: Request, service_id: str, db: AsyncSession = Depends(get_db)):
+async def get_consumables_by_service(request: Request, service_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin', 'washer']))):
     result = await db.execute(select(ServiceConsumable).where(ServiceConsumable.serviceId == service_id).order_by(ServiceConsumable.consumableId.asc()))
     return result.scalars().all()
 
 @router.post("/", response_model=ConsumableResponse)
 @limiter.limit("10/minute")
-async def create_consumable(request: Request, req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
+async def create_consumable(request: Request, req: ConsumableRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
     new_consumable = Consumable(id=str(uuid.uuid4()), name=req.name, unit=req.unit)
     db.add(new_consumable)
     await db.commit()
@@ -51,7 +49,7 @@ async def create_consumable(request: Request, req: ConsumableRequest, db: AsyncS
 
 @router.get("/alerts/low-stock", response_model=list[ConsumableResponse])
 @limiter.limit("60/minute")
-async def get_low_stock_alerts(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_low_stock_alerts(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin', 'washer']))):
     result = await db.execute(
         select(Consumable).where(Consumable.currentStock < Consumable.minStock).order_by(Consumable.name.asc())
     )
@@ -86,6 +84,13 @@ def _auto_width(worksheet):
         worksheet.column_dimensions[column_letter].width = adjusted_width
 
 
+def _sanitize_excel(val):
+    """Prevent Excel formula injection by prefixing dangerous characters."""
+    if isinstance(val, str) and val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + val
+    return val
+
+
 @router.get("/export")
 @limiter.limit("10/minute")
 async def export_consumables(
@@ -93,7 +98,7 @@ async def export_consumables(
     date_from: str = None,
     date_to: str = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_roles(['admin', 'washer'])),
 ):
     """Экспорт отчёта по расходникам в Excel."""
     if not HAS_OPENPYXL:
@@ -112,7 +117,7 @@ async def export_consumables(
     result = await db.execute(select(Consumable).order_by(Consumable.name.asc()))
     for c in result.scalars().all():
         status = "Низкий" if c.currentStock < c.minStock else "В норме"
-        ws_stock.append([c.id, c.name, c.unit, c.currentStock, c.minStock, status])
+        ws_stock.append([_sanitize_excel(c.id), _sanitize_excel(c.name), _sanitize_excel(c.unit), c.currentStock, c.minStock, _sanitize_excel(status)])
     _auto_width(ws_stock)
 
     # 2. Лист "Пополнения"
@@ -136,12 +141,12 @@ async def export_consumables(
             name = c_res.scalar_one_or_none() or log.consumableId
             cons_names[log.consumableId] = name
         ws_refill.append([
-            cons_names[log.consumableId],
+            _sanitize_excel(cons_names[log.consumableId]),
             log.amount,
             log.oldStock,
             log.newStock,
-            log.refilledBy,
-            log.timestamp,
+            _sanitize_excel(log.refilledBy),
+            _sanitize_excel(log.timestamp),
         ])
     _auto_width(ws_refill)
 
@@ -172,7 +177,7 @@ async def export_consumables(
     for cid, total in sorted(usage_sums.items(), key=lambda x: x[1], reverse=True):
         c_res = await db.execute(select(Consumable).where(Consumable.id == cid))
         c = c_res.scalar_one_or_none()
-        ws_usage.append([c.name if c else cid, usage_units.get(cid, ""), round(total, 2), period_label])
+        ws_usage.append([_sanitize_excel(c.name if c else cid), _sanitize_excel(usage_units.get(cid, "")), round(total, 2), _sanitize_excel(period_label)])
     _auto_width(ws_usage)
 
     # 4. Лист "Прогноз"
@@ -198,8 +203,8 @@ async def export_consumables(
         target = c.minStock * 3
         to_buy = max(0.0, target - c.currentStock)
         ws_forecast.append([
-            c.name, c.unit, c.currentStock,
-            round(avg_daily, 2), days_left, round(to_buy, 1)
+            _sanitize_excel(c.name), _sanitize_excel(c.unit), c.currentStock,
+            round(avg_daily, 2), _sanitize_excel(str(days_left)), round(to_buy, 1)
         ])
     _auto_width(ws_forecast)
 
@@ -252,7 +257,7 @@ async def import_refills(
     request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_roles(['admin'])),
 ):
     """Массовый импорт пополнений из Excel. Ожидаются колонки: name, amount"""
     if not HAS_OPENPYXL:
@@ -348,7 +353,7 @@ async def import_refills(
 
 @router.get("/{consumable_id}", response_model=ConsumableResponse)
 @limiter.limit("60/minute")
-async def get_consumable(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
+async def get_consumable(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin", "washer"]))):
     result = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
     consumable = result.scalar_one_or_none()
     if not consumable:
@@ -357,7 +362,7 @@ async def get_consumable(request: Request, consumable_id: str, db: AsyncSession 
 
 @router.put("/{consumable_id}", response_model=ConsumableResponse)
 @limiter.limit("10/minute")
-async def update_consumable(request: Request, consumable_id: str, req: ConsumableRequest, db: AsyncSession = Depends(get_db)):
+async def update_consumable(request: Request, consumable_id: str, req: ConsumableRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin"]))):
     result = await db.execute(update(Consumable).where(Consumable.id == consumable_id).values(name=req.name, unit=req.unit))
     await db.commit()
     if result.rowcount == 0:
@@ -366,7 +371,7 @@ async def update_consumable(request: Request, consumable_id: str, req: Consumabl
 
 @router.delete("/{consumable_id}")
 @limiter.limit("10/minute")
-async def delete_consumable(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_consumable(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin"]))):
     await db.execute(delete(ServiceConsumable).where(ServiceConsumable.consumableId == consumable_id))
     result = await db.execute(delete(Consumable).where(Consumable.id == consumable_id))
     await db.commit()
@@ -376,7 +381,7 @@ async def delete_consumable(request: Request, consumable_id: str, db: AsyncSessi
 
 @router.post("/{consumable_id}/refill", response_model=ConsumableResponse)
 @limiter.limit("10/minute")
-async def refill_consumable(request: Request, consumable_id: str, req: RefillRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def refill_consumable(request: Request, consumable_id: str, req: RefillRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin", "washer"]))):
     result = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
     consumable = result.scalar_one_or_none()
     if not consumable:
@@ -397,7 +402,7 @@ async def refill_consumable(request: Request, consumable_id: str, req: RefillReq
 
 @router.get("/{consumable_id}/refill-history")
 @limiter.limit("60/minute")
-async def get_refill_history(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
+async def get_refill_history(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin", "washer"]))):
     result = await db.execute(
         select(ConsumableRefillLog)
         .where(ConsumableRefillLog.consumableId == consumable_id)
@@ -418,7 +423,7 @@ async def get_refill_history(request: Request, consumable_id: str, db: AsyncSess
 
 @router.get("/{consumable_id}/forecast")
 @limiter.limit("60/minute")
-async def get_consumable_forecast(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db)):
+async def get_consumable_forecast(request: Request, consumable_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin", "washer"]))):
     res = await db.execute(select(Consumable).where(Consumable.id == consumable_id))
     consumable = res.scalar_one_or_none()
     if not consumable:
@@ -454,7 +459,7 @@ async def get_consumable_forecast(request: Request, consumable_id: str, db: Asyn
 
 @router.post("/service-link", response_model=ServiceConsumableResponse)
 @limiter.limit("10/minute")
-async def link_consumable_to_service(request: Request, req: ServiceConsumableRequest, db: AsyncSession = Depends(get_db)):
+async def link_consumable_to_service(request: Request, req: ServiceConsumableRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin"]))):
     res_s = await db.execute(select(Service).where(Service.id == req.serviceId))
     if not res_s.scalar_one_or_none():
         raise HTTPException(404, f"Услуга с id={req.serviceId} не найдена")
@@ -475,7 +480,7 @@ async def link_consumable_to_service(request: Request, req: ServiceConsumableReq
 
 @router.delete("/service-link/{service_id}/{consumable_id}")
 @limiter.limit("10/minute")
-async def unlink_consumable_from_service(request: Request, service_id: str, consumable_id: str, db: AsyncSession = Depends(get_db)):
+async def unlink_consumable_from_service(request: Request, service_id: str, consumable_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(["admin"]))):
     result = await db.execute(delete(ServiceConsumable).where(ServiceConsumable.serviceId == service_id, ServiceConsumable.consumableId == consumable_id))
     await db.commit()
     if result.rowcount == 0:

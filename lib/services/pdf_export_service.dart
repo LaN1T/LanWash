@@ -13,8 +13,8 @@ class PdfExportService {
   static Future<Uint8List> createPdfBytes(
       String title, List<String> headers, List<List<String>> data) async {
     final pdf = pw.Document();
-    final fontRegular = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
+    final fontRegular = pw.Font.helvetica();
+    final fontBold = pw.Font.helveticaBold();
 
     final logoImage = pw.MemoryImage(
       (await rootBundle.load('assets/icon/icon.png')).buffer.asUint8List(),
@@ -118,6 +118,12 @@ class PdfExportService {
                     final file = io.File(outputFile);
                     await file.writeAsBytes(pdfBytes);
                   }
+                } else if (kIsWeb) {
+                  await FileSaver.instance.saveFile(
+                    name: '$fileName.pdf',
+                    bytes: pdfBytes,
+                    mimeType: MimeType.pdf,
+                  );
                 } else {
                   await Printing.sharePdf(
                       bytes: pdfBytes, filename: '$fileName.pdf');

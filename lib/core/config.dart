@@ -27,7 +27,7 @@ class AppConfig {
     return 'http://127.0.0.1:8000/api';
   }
 
-  static const Duration requestTimeout = Duration(seconds: 10);
+  static const Duration requestTimeout = Duration(seconds: 30);
 
   // Фича-флаги
   static const bool enableLogging = kDebugMode;

@@ -49,6 +49,7 @@ class UpdateProfileRequest(BaseModel):
     carModel: Optional[str] = Field(default=None, max_length=50)
     carNumber: Optional[str] = Field(default=None, max_length=20)
     avatarUrl: Optional[str] = Field(default=None, max_length=5000)
+    currentPassword: Optional[str] = Field(default=None, min_length=8, max_length=128)
     newPassword: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
 
@@ -278,6 +279,30 @@ class ShiftResponse(BaseModel):
     createdBy: str
     createdAt: str
     updatedAt: str
+
+
+# ─── Reviews ─────────────────────────────────────────────────────────────────
+class ReviewCreateRequest(BaseModel):
+    userId: int = Field(..., ge=1)
+    userName: str = Field(..., min_length=1, max_length=100)
+    rating: int = Field(default=5, ge=1, le=5)
+    comment: str = Field(default="", max_length=2000)
+
+
+class ReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    userName: str
+    rating: int
+    comment: str
+    isPublished: bool
+    createdAt: str
+
+
+class ReviewModerateRequest(BaseModel):
+    isPublished: bool
 
 
 # ─── Favorites ───────────────────────────────────────────────────────────────
