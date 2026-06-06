@@ -58,7 +58,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
         title: const Text('Детали записи', style: TextStyle(fontSize: 18)),
         elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
+        foregroundColor: AppStyles.adaptiveTextPrimary(context),
       ),
       body: Container(
         constraints: BoxConstraints(
@@ -71,7 +71,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(children: [
@@ -222,8 +222,8 @@ class _InfoTile extends StatelessWidget {
           Icon(icon, size: 22, color: AppStyles.primary),
           const SizedBox(width: 16),
           Text(label,
-              style: const TextStyle(
-                  color: AppStyles.textSecondary, fontSize: 15)),
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
           const Spacer(),
           Text(value,
               style:

@@ -77,6 +77,9 @@ class AppStyles {
   static Color adaptivePrimaryBg(BuildContext context) =>
       isDark(context) ? const Color(0xFF1E3A5F) : primaryBg;
 
+  static Color adaptiveBgPage(BuildContext context) =>
+      isDark(context) ? bgDark : bgPage;
+
   // ─── Текст ───────────────────────────────────────────────────────────────
   static const TextStyle headingLarge = TextStyle(
     fontSize: 24,

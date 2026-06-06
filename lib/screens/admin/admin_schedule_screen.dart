@@ -85,7 +85,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isToday
-                        ? AppStyles.primary.withOpacity(0.1)
+                        ? AppStyles.primary.withValues(alpha:0.1)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
@@ -94,7 +94,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha:0.04),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -265,7 +265,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppStyles.primary.withOpacity(0.08),
+                            color: AppStyles.primary.withValues(alpha:0.08),
                             border: const Border(
                                 bottom: BorderSide(color: AppStyles.border)),
                           ),
@@ -307,12 +307,12 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                         decoration: BoxDecoration(
                                           color: selected
                                               ? AppStyles.primary
-                                                  .withOpacity(0.12)
+                                                  .withValues(alpha:0.12)
                                               : Colors.transparent,
                                           border: Border(
                                             bottom: BorderSide(
                                                 color: AppStyles.border
-                                                    .withOpacity(0.5)),
+                                                    .withValues(alpha:0.5)),
                                           ),
                                         ),
                                         child: Row(children: [
@@ -324,7 +324,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                               color: selected
                                                   ? AppStyles.primary
                                                   : AppStyles.warning
-                                                      .withOpacity(0.15),
+                                                      .withValues(alpha:0.15),
                                             ),
                                             child: Icon(Icons.person,
                                                 size: 16,
@@ -370,7 +370,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppStyles.primary.withOpacity(0.08),
+                          color: AppStyles.primary.withValues(alpha:0.08),
                           border: const Border(
                               bottom: BorderSide(color: AppStyles.border)),
                         ),
@@ -600,7 +600,7 @@ class _AppointmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(AppStyles.statusLabel(a.status),
@@ -686,7 +686,7 @@ class _AppointmentCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppStyles.primary.withOpacity(0.08),
+                      color: AppStyles.primary.withValues(alpha:0.08),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(service.name,
@@ -704,10 +704,10 @@ class _AppointmentCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppStyles.success.withOpacity(0.08),
+                  color: AppStyles.success.withValues(alpha:0.08),
                   borderRadius: BorderRadius.circular(8),
                   border:
-                      Border.all(color: AppStyles.success.withOpacity(0.25)),
+                      Border.all(color: AppStyles.success.withValues(alpha:0.25)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,7 +740,7 @@ class _AppointmentCard extends StatelessWidget {
                               child: Container(
                                 padding: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(
-                                  color: AppStyles.danger.withOpacity(0.1),
+                                  color: AppStyles.danger.withValues(alpha:0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: const Icon(Icons.close,

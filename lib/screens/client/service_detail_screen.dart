@@ -17,15 +17,15 @@ class ServiceDetailScreen extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
+        foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: AppStyles.border)),
+            child: Container(height: 1, color: AppStyles.adaptiveBorder(context))),
         title: const Text('Услуга'),
         actions: [
           IconButton(
@@ -35,7 +35,7 @@ class ServiceDetailScreen extends StatelessWidget {
                     : Icons.star_outline_rounded,
                 color: provider.isServiceFavorite(s.id)
                     ? AppStyles.favorite
-                    : AppStyles.textSecondary),
+                    : AppStyles.adaptiveTextSecondary(context)),
             onPressed: () => provider.toggleServiceFavorite(s.id),
           ),
         ],
@@ -50,14 +50,14 @@ class ServiceDetailScreen extends StatelessWidget {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(s.name,
-                  style: const TextStyle(
-                      color: AppStyles.textPrimary,
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextPrimary(context),
                       fontSize: 22,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               Text(s.category,
-                  style: const TextStyle(
-                      color: AppStyles.textSecondary, fontSize: 14)),
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextSecondary(context), fontSize: 14)),
               const SizedBox(height: 16),
               Row(children: [
                 _Stat(Icons.payments_outlined, 'Стоимость', '${s.price} ₽'),
@@ -108,8 +108,8 @@ class _Stat extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  color: AppStyles.textSecondary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextSecondary(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5)),

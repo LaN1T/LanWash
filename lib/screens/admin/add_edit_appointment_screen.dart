@@ -207,7 +207,7 @@ class _State extends State<AddEditAppointmentScreen> {
             TextFormField(
               controller: _nameCtrl,
               decoration:
-                  AppStyles.inputDecoration('Имя клиента', icon: Icons.person),
+                  AppStyles.inputDecorationFor(context, 'Имя клиента', icon: Icons.person),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
               textCapitalization: TextCapitalization.words,
@@ -385,7 +385,7 @@ class _State extends State<AddEditAppointmentScreen> {
             _sectionLabel('Заметки (необязательно)'),
             TextFormField(
               controller: _notesCtrl,
-              decoration: AppStyles.inputDecoration('Примечания для мойщика',
+              decoration: AppStyles.inputDecorationFor(context, 'Примечания для мойщика',
                   icon: Icons.notes),
               maxLines: 3,
             ),

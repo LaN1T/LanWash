@@ -68,7 +68,7 @@ class _State extends State<AddEditServiceScreen> {
           TextFormField(
             controller: _nameCtrl,
             decoration:
-                AppStyles.inputDecoration('Название услуги', icon: Icons.label),
+                AppStyles.inputDecorationFor(context, 'Название услуги', icon: Icons.label),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите название' : null,
           ),
@@ -76,7 +76,7 @@ class _State extends State<AddEditServiceScreen> {
           TextFormField(
             controller: _descCtrl,
             decoration:
-                AppStyles.inputDecoration('Описание', icon: Icons.description),
+                AppStyles.inputDecorationFor(context, 'Описание', icon: Icons.description),
             maxLines: 4,
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите описание' : null,
@@ -88,7 +88,7 @@ class _State extends State<AddEditServiceScreen> {
                 child: TextFormField(
               controller: _priceCtrl,
               decoration:
-                  AppStyles.inputDecoration('Цена (₽)', icon: Icons.payments),
+                  AppStyles.inputDecorationFor(context, 'Цена (₽)', icon: Icons.payments),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (v) =>
@@ -98,7 +98,7 @@ class _State extends State<AddEditServiceScreen> {
             Expanded(
                 child: TextFormField(
               controller: _durCtrl,
-              decoration: AppStyles.inputDecoration('Время (мин)',
+              decoration: AppStyles.inputDecorationFor(context, 'Время (мин)',
                   icon: Icons.access_time),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
