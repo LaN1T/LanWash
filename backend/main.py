@@ -259,6 +259,18 @@ app.include_router(shifts.router)
 app.include_router(reviews.router)
 
 
+# Telegram Bot Webhook endpoint
+@app.post("/webhook")
+async def telegram_webhook(update: dict):
+    from bot.webhook import process_update
+    return await process_update(update)
+
+
+@app.on_event("startup")
+async def startup_event():
+    pass
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, proxy_headers=True)
