@@ -135,7 +135,7 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+              ? Center(child: Text(_error!, style: TextStyle(color: Colors.red)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
@@ -154,13 +154,13 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                                   CircleAvatar(
                                     child: Text(r.userName.isNotEmpty ? r.userName[0] : '?'),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(r.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        Text('${'★' * r.rating}${'☆' * (5 - r.rating)}', style: const TextStyle(color: Colors.amber)),
+                                        Text(r.userName, style: TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('${'★' * r.rating}${'☆' * (5 - r.rating)}', style: TextStyle(color: Colors.amber)),
                                       ],
                                     ),
                                   ),
@@ -170,13 +170,13 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Text(r.comment),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Row(
                                 children: [
                                   const Text('Опубликован:'),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Switch(
                                     value: r.isPublished,
                                     onChanged: (v) => _togglePublish(r, v),

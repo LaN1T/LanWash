@@ -96,7 +96,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     size: 56,
                     color: AppStyles.adaptiveTextSecondary(context)
                         .withValues(alpha: 0.3)),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text('Услуги не найдены',
                     style: AppStyles.bodyLarge.copyWith(
                         color: AppStyles.adaptiveTextSecondary(context))),
@@ -159,7 +159,7 @@ class _ServiceCard extends StatelessWidget {
               child:
                   Icon(_categoryIcon(s.category), color: _catColor, size: 24),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +172,7 @@ class _ServiceCard extends StatelessWidget {
                                 color: AppStyles.adaptiveTextPrimary(context)),
                             overflow: TextOverflow.ellipsis)),
                     if (showHelp) ...[
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Tooltip(
                         message: s.description,
                         child: Icon(Icons.help_outline,
@@ -191,16 +191,16 @@ class _ServiceCard extends StatelessWidget {
                       constraints: const BoxConstraints(),
                     ),
                   ]),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(s.description,
                       style: AppStyles.bodySmall.copyWith(
                           color: AppStyles.adaptiveTextSecondary(context)),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(children: [
                     _chip(context, Icons.access_time, s.durationLabel),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     if (s.isFromApi)
                       _chip(context, Icons.local_offer, 'Акция',
                           color: AppStyles.apiTag),
@@ -226,7 +226,7 @@ class _ServiceCard extends StatelessWidget {
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 12, color: effectiveColor),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Text(text,
             style: TextStyle(
                 fontSize: 11,

@@ -96,11 +96,11 @@ class _FavAppointmentTile extends StatelessWidget {
                   fontSize: 15, color: AppStyles.adaptiveTextPrimary(context))),
           subtitle:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text('${a.carModel} · ${a.carNumber}',
                 style: AppStyles.bodySmall
                     .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -114,7 +114,7 @@ class _FavAppointmentTile extends StatelessWidget {
                         color: statusColor,
                         fontWeight: FontWeight.w600)),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(DateFormat('d MMM, HH:mm', 'ru').format(a.dateTime),
                   style: AppStyles.bodySmall.copyWith(
                       color: AppStyles.adaptiveTextSecondary(context))),
@@ -189,16 +189,16 @@ class _FavServiceTile extends StatelessWidget {
                   fontSize: 15, color: AppStyles.adaptiveTextPrimary(context))),
           subtitle:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text(s.category,
                 style: AppStyles.bodySmall
                     .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Row(children: [
               Text(s.durationLabel,
                   style: AppStyles.bodySmall.copyWith(
                       color: AppStyles.adaptiveTextSecondary(context))),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text('${s.price} ₽',
                   style: AppStyles.price.copyWith(fontSize: 14)),
             ]),
@@ -221,11 +221,11 @@ Widget _empty(BuildContext context, String text, IconData icon) => Center(
             size: 64,
             color: AppStyles.adaptiveTextSecondary(context)
                 .withValues(alpha: 0.3)),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text(text,
             style: AppStyles.bodyLarge
                 .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text('Нажмите ★ на любой записи или услуге',
             style: AppStyles.bodyMedium
                 .copyWith(color: AppStyles.adaptiveTextSecondary(context))),

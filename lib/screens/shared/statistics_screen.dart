@@ -314,7 +314,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _LegendDot(color: AppStyles.success, label: 'Выполнено: $completed'),
-              _LegendDot(color: AppStyles.textMuted, label: 'Всего: $total'),
+              _LegendDot(color: AppStyles.adaptiveTextMuted(context), label: 'Всего: $total'),
             ],
           ),
         ],
@@ -764,12 +764,12 @@ class _KpiCard extends StatelessWidget {
           color: dark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: dark ? const Color(0xFF334155) : AppStyles.border,
+            color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
           ),
           boxShadow: [
             if (!dark)
               BoxShadow(
-                color: Colors.black.withValues(alpha:0.04),
+                color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -844,12 +844,12 @@ class _SectionCard extends StatelessWidget {
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: dark ? const Color(0xFF334155) : AppStyles.border,
+          color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
         ),
         boxShadow: [
           if (!dark)
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.04),
+              color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

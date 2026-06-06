@@ -190,10 +190,10 @@ class _State extends State<AddEditAppointmentScreen> {
       appBar: AppBar(
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.white),
         title: Text(
           _isEditing ? 'Редактировать запись' : 'Новая запись',
-          style: const TextStyle(
+          style: TextStyle(
               color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
@@ -213,7 +213,7 @@ class _State extends State<AddEditAppointmentScreen> {
               textCapitalization: TextCapitalization.words,
               onChanged: (v) => _applyTranslitRu(_nameCtrl, v),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             CarAutocompleteField(
               label: 'Марка авто',
               icon: Icons.directions_car,
@@ -226,7 +226,7 @@ class _State extends State<AddEditAppointmentScreen> {
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите марку' : null,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             CarAutocompleteField(
               label: 'Модель авто',
               hint: _selectedBrand == null ? 'Сначала выберите марку' : null,
@@ -240,11 +240,11 @@ class _State extends State<AddEditAppointmentScreen> {
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _numberCtrl,
-              style: const TextStyle(
-                  color: AppStyles.textPrimary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextPrimary(context),
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600),
               decoration: _plateDecoration().copyWith(errorText: _plateError),
@@ -254,13 +254,13 @@ class _State extends State<AddEditAppointmentScreen> {
                 if (_plateError != null) setState(() => _plateError = null);
               },
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _sectionLabel('Дата и время визита'),
             _DateTimeRow(
               dateTime: _dateTime,
               onChanged: (dt) => setState(() => _dateTime = dt),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _sectionLabel('Тип мойки'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -295,7 +295,7 @@ class _State extends State<AddEditAppointmentScreen> {
                     .toList(),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _sectionLabel('Акция (необязательно)'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -331,7 +331,7 @@ class _State extends State<AddEditAppointmentScreen> {
                 }),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _sectionLabel('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -362,7 +362,7 @@ class _State extends State<AddEditAppointmentScreen> {
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _sectionLabel('Статус записи'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -381,7 +381,7 @@ class _State extends State<AddEditAppointmentScreen> {
                     .toList(),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _sectionLabel('Заметки (необязательно)'),
             TextFormField(
               controller: _notesCtrl,
@@ -389,7 +389,7 @@ class _State extends State<AddEditAppointmentScreen> {
                   icon: Icons.notes),
               maxLines: 3,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
               label:
@@ -397,7 +397,7 @@ class _State extends State<AddEditAppointmentScreen> {
               style: AppStyles.primaryButton,
               onPressed: _save,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -596,7 +596,7 @@ class _DateTimeRow extends StatelessWidget {
                 d.year, d.month, d.day, dateTime.hour, dateTime.minute));
         },
       )),
-      const SizedBox(width: 12),
+      SizedBox(width: 12),
       Expanded(
           child: _Picker(
         icon: Icons.access_time,
@@ -634,7 +634,7 @@ class _Picker extends StatelessWidget {
           ),
           child: Row(children: [
             Icon(icon, size: 18, color: AppStyles.primary),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
                 child: Text(label,
                     style: AppStyles.bodyLarge,

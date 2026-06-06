@@ -587,7 +587,7 @@ class _ShiftDialogState extends State<_ShiftDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: AppStyles.bgPage,
+          color: AppStyles.adaptiveBgPage(context),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppStyles.adaptiveBorder(context)),
         ),
