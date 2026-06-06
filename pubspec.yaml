@@ -67,6 +67,7 @@ flutter:
     - assets/logo.svg
     - assets/icon/
     - assets/fonts/
+    - assets/data/car_catalog.json
 
   fonts:
     - family: Roboto
