@@ -16,6 +16,7 @@ class User(Base):
     avatarUrl = Column(String, nullable=True, default='')
     createdAt = Column(String, nullable=False)
     isFavoriteAdmin = Column(Integer, nullable=False, default=0)
+    telegramId = Column(String, nullable=True, unique=True)
 
 class WashType(Base):
     __tablename__ = 'wash_types'
@@ -176,6 +177,14 @@ class Shift(Base):
     createdBy = Column(String, nullable=False)
     createdAt = Column(String, nullable=False)
     updatedAt = Column(String, nullable=False)
+
+class NotificationQueue(Base):
+    __tablename__ = 'notification_queue'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    telegramId = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    createdAt = Column(String, nullable=False)
+    sentAt = Column(String, nullable=True)
 
 class Review(Base):
     __tablename__ = 'reviews'
