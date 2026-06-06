@@ -113,6 +113,8 @@ app = FastAPI(
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
 
+
+
 @app.get("/uploads/avatars/{filename}")
 async def get_avatar(filename: str, current_user=Depends(get_current_user)):
     """Serve avatar images with auth check."""
@@ -240,12 +242,6 @@ if settings.debug:
         return [{"path": route.path} for route in app.routes]
 
 
-# Root endpoint
-@app.get("/")
-async def root():
-    return {"status": "ok", "service": "LanWash API"}
-
-
 # Routers
 app.include_router(auth.router)
 app.include_router(appointments.router)
@@ -257,6 +253,26 @@ app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
 app.include_router(reviews.router)
+
+
+# Telegram Bot Webhook endpoint
+@app.post("/webhook")
+async def telegram_webhook(update: dict):
+    from bot.webhook import process_update
+    return await process_update(update)
+
+
+# Telegram Mini App static files (must be after ALL API routes)
+miniapp_dir = os.path.join(os.path.dirname(__file__), "..", "telegram-miniapp", "dist")
+if os.path.exists(miniapp_dir):
+    app.mount("/", StaticFiles(directory=miniapp_dir, html=True), name="miniapp")
+else:
+    logger.warning("miniapp_static_dir_not_found", path=miniapp_dir)
+
+
+@app.on_event("startup")
+async def startup_event():
+    pass
 
 
 if __name__ == "__main__":
