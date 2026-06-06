@@ -34,7 +34,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w600)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: Icon(a.isFavorite ? Icons.star : Icons.star_border,
@@ -47,7 +47,7 @@ class AppointmentDetailScreen extends StatelessWidget {
         padding: AppStyles.pagePadding,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _StatusBanner(status: a.status),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (auth.isWasher &&
               (a.status == 'scheduled' || a.status == 'in_progress')) ...[
             _SectionTitle('Управление статусом'),
@@ -63,14 +63,14 @@ class AppointmentDetailScreen extends StatelessWidget {
                 }
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
           _Section(title: 'Клиент и автомобиль', children: [
             _Row(Icons.person, 'Клиент', a.clientName),
             _Row(Icons.directions_car, 'Автомобиль', a.carModel),
             _Row(Icons.pin, 'Номер', a.carNumber),
           ]),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _Section(title: 'Дата и время', children: [
             _Row(Icons.calendar_today, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
@@ -116,7 +116,7 @@ class AppointmentDetailScreen extends StatelessWidget {
               return _Row(Icons.access_time, 'Время', timeStr);
             }),
           ]),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _Section(title: 'Тип мойки', children: [
             _Row(Icons.local_car_wash, 'Пакет',
                 provider.washTypeName(a.washTypeId)),
@@ -126,7 +126,7 @@ class AppointmentDetailScreen extends StatelessWidget {
               _PriceChangedRow(
                   newPrice: a.paidPrice, oldPrice: a.originalPrice),
           ]),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (a.additionalServices.isNotEmpty) ...[
             _SectionTitle('Дополнительные услуги'),
             Container(
@@ -149,14 +149,14 @@ class AppointmentDetailScreen extends StatelessWidget {
                               category: ''));
                   return Chip(
                     label: Text(service.name,
-                        style: const TextStyle(fontSize: 13)),
+                        style: TextStyle(fontSize: 13)),
                     backgroundColor: AppStyles.primary.withValues(alpha:0.1),
                     side: BorderSide(color: AppStyles.primary.withValues(alpha:0.3)),
                   );
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
           if (a.notes.isNotEmpty) ...[
             _SectionTitle('Заметки'),
@@ -166,7 +166,7 @@ class AppointmentDetailScreen extends StatelessWidget {
               padding: AppStyles.cardPadding,
               child: Text(a.notes, style: AppStyles.bodyLarge),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
           if (canEdit) ...[
             SizedBox(
@@ -182,7 +182,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                             AddEditAppointmentScreen(appointment: a))),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -190,7 +190,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                 label: const Text('Удалить запись',
                     style: TextStyle(color: AppStyles.danger)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppStyles.danger),
+                  side: BorderSide(color: AppStyles.danger),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -199,7 +199,7 @@ class AppointmentDetailScreen extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ]),
       ),
     );
@@ -209,7 +209,7 @@ class AppointmentDetailScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppStyles.adaptiveCard(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Удалить запись?'),
         content: const Text('Это действие нельзя отменить.'),
@@ -256,7 +256,7 @@ class _StatusBanner extends StatelessWidget {
       ),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 28),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Статус записи', style: AppStyles.label),
           Text(AppStyles.statusLabel(status),
@@ -317,7 +317,7 @@ class _PriceChangedRow extends StatelessWidget {
         child: Row(children: [
           const Icon(Icons.edit_note_rounded,
               size: 18, color: AppStyles.primary),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           SizedBox(
               width: 100, child: Text('Изменено', style: AppStyles.bodyMedium)),
           Expanded(
@@ -327,11 +327,11 @@ class _PriceChangedRow extends StatelessWidget {
                 style: AppStyles.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600, color: AppStyles.primary)),
             Text('$oldPrice ₽',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AppStyles.textSecondary,
+                  color: AppStyles.adaptiveTextSecondary(context),
                   decoration: TextDecoration.lineThrough,
-                  decorationColor: AppStyles.textSecondary,
+                  decorationColor: AppStyles.adaptiveTextSecondary(context),
                 )),
           ])),
         ]),
@@ -349,7 +349,7 @@ class _Row extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(children: [
           Icon(icon, size: 18, color: AppStyles.primary),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           // Фиксированная ширина лейбла — выровниваем все значения
           SizedBox(
             width: 100,
@@ -400,7 +400,7 @@ class _StatusSelector extends StatelessWidget {
                       children: [
                         Icon(AppStyles.statusIcon(s),
                             color: AppStyles.statusColor(s), size: 20),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Text(AppStyles.statusLabel(s),
                             style: AppStyles.bodyLarge.copyWith(
                               color: AppStyles.statusColor(s),

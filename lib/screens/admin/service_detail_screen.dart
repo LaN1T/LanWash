@@ -23,7 +23,7 @@ class ServiceDetailScreen extends StatelessWidget {
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: Colors.white),
         title: const Text('Детали услуги',
             style: TextStyle(
                 color: Colors.white,
@@ -79,15 +79,15 @@ class ServiceDetailScreen extends StatelessWidget {
                   ]),
                 ),
               Text(s.name, style: AppStyles.headingLarge),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(s.category, style: AppStyles.bodyMedium),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Row(children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Стоимость', style: AppStyles.label),
                   Text('${s.price} ₽', style: AppStyles.price),
                 ]),
-                const SizedBox(width: 32),
+                SizedBox(width: 32),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Время', style: AppStyles.label),
                   Text(s.durationLabel,
@@ -97,7 +97,7 @@ class ServiceDetailScreen extends StatelessWidget {
               ]),
             ]),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _label('Описание услуги'),
           Container(
             width: double.infinity,
@@ -106,7 +106,7 @@ class ServiceDetailScreen extends StatelessWidget {
             child: Text(s.description,
                 style: AppStyles.bodyLarge.copyWith(height: 1.5)),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           if (!s.isFromApi) ...[
             SizedBox(
               width: double.infinity,
@@ -120,7 +120,7 @@ class ServiceDetailScreen extends StatelessWidget {
                         builder: (_) => AddEditServiceScreen(service: s))),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
           SizedBox(
             width: double.infinity,

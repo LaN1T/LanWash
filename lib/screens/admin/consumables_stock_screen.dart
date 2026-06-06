@@ -187,7 +187,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                 itemBuilder: (_, i) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text('• ${errors[i]}',
-                      style: const TextStyle(fontSize: 13)),
+                      style: TextStyle(fontSize: 13)),
                 ),
               ),
             ),
@@ -268,10 +268,10 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                             children: [
                               const Icon(Icons.warning_amber_rounded,
                                   color: AppStyles.danger, size: 18),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Text(
                                 'Требуется пополнение (${alerts.length})',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: AppStyles.danger,
                                   fontSize: 14,
@@ -279,13 +279,13 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           Wrap(
                             spacing: 8,
                             children: alerts
                                 .map((c) => Chip(
                                       label: Text(c.name,
-                                          style: const TextStyle(fontSize: 12)),
+                                          style: TextStyle(fontSize: 12)),
                                       backgroundColor: AppStyles.danger
                                           .withValues(alpha: 0.1),
                                       side: BorderSide.none,
@@ -295,7 +295,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                   ],
                   ..._consumables.map((c) => _buildCard(c)),
                 ],
@@ -335,7 +335,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                   Expanded(
                     child: Text(
                       c.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -360,7 +360,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               LinearProgressIndicator(
                 value: progress,
                 backgroundColor: AppStyles.adaptiveBorder(context),
@@ -370,7 +370,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                 borderRadius: BorderRadius.circular(4),
                 minHeight: 6,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Text(
@@ -391,7 +391,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                       color: AppStyles.adaptiveTextSecondary(context),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () => _refill(c),
                     icon: const Icon(Icons.add, size: 16),
@@ -493,7 +493,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: Text(
                     c.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -544,12 +544,12 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
               'Текущий запас',
               '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
               isLow ? AppStyles.danger : AppStyles.primary),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _kpiCard(
               'Минимальный запас',
               '${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
               AppStyles.adaptiveTextSecondary(context)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           LinearProgressIndicator(
             value: progress,
             backgroundColor: AppStyles.adaptiveBorder(context),
@@ -559,7 +559,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
             borderRadius: BorderRadius.circular(4),
             minHeight: 8,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             isLow ? 'Запас ниже нормы' : 'Запас в норме',
             style: TextStyle(
@@ -587,7 +587,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
           Text(label,
               style: TextStyle(
                   fontSize: 12, color: color, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(value,
               style: TextStyle(
                   fontSize: 20, color: color, fontWeight: FontWeight.bold)),
@@ -646,7 +646,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
               'Средний расход в день',
               '${f.avgDailyUsage.toStringAsFixed(f.avgDailyUsage % 1 == 0 ? 0 : 1)} ${f.unit}',
               AppStyles.primary),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           if (f.daysLeft != null)
             _kpiCard(
                 'Хватит на',
@@ -655,12 +655,12 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
           else
             _kpiCard('Хватит на', 'Недостаточно данных',
                 AppStyles.adaptiveTextSecondary(context)),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _kpiCard(
               'Рекомендуемая закупка',
               '${f.suggestedPurchase.toStringAsFixed(f.suggestedPurchase % 1 == 0 ? 0 : 1)} ${f.unit}',
               AppStyles.warning),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             'Целевой запас: ${f.targetStock.toStringAsFixed(f.targetStock % 1 == 0 ? 0 : 1)} ${f.unit}',
             style: TextStyle(

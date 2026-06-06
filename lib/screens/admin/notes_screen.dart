@@ -84,7 +84,7 @@ class _NotesScreenState extends State<NotesScreen> {
                       minLines: 1,
                       maxLines: 3, // Теперь заголовок может быть до 3 строк
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextField(
                       controller: msgCtrl,
                       decoration: AppStyles.inputDecorationFor(
@@ -96,7 +96,7 @@ class _NotesScreenState extends State<NotesScreen> {
                       minLines: 3,
                       maxLines: 5,
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: category,
                       decoration: AppStyles.inputDecorationFor(
@@ -171,7 +171,7 @@ class _NotesScreenState extends State<NotesScreen> {
               title: Text(
                 auth.isAdmin ? 'Заметки мойщиков' : 'Мои заметки',
                 style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                    TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
               actions: [
                 IconButton(
@@ -210,7 +210,7 @@ class _NotesScreenState extends State<NotesScreen> {
                         size: 56,
                         color: AppStyles.adaptiveTextSecondary(context),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Text(
                         auth.isWasher
                             ? 'Нет заметок. Нажмите + чтобы добавить'
@@ -313,7 +313,7 @@ class _NoteCard extends StatelessWidget {
                 ),
                 child: Icon(_categoryIcon, color: color, size: 18),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,14 +329,14 @@ class _NoteCard extends StatelessWidget {
                           ),
                           child: Text(
                             displayName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppStyles.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -354,11 +354,11 @@ class _NoteCard extends StatelessWidget {
                           ),
                         ),
                         if (!note.isRead) ...[
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppStyles.primary,
                               shape: BoxShape.circle,
                             ),
@@ -372,7 +372,7 @@ class _NoteCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+                    SizedBox(height: 5),
                     Text(
                       note.title,
                       style: TextStyle(
@@ -382,7 +382,7 @@ class _NoteCard extends StatelessWidget {
                       ),
                     ),
                     if (note.message.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         note.message,
                         style: AppStyles.bodySmall,

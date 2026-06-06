@@ -39,13 +39,13 @@ class _HomeShellState extends State<HomeShell> {
         body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.local_car_wash, color: AppStyles.primary, size: 72),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Text('LanWash',
               style: TextStyle(
                   color: AppStyles.adaptiveTextPrimary(context),
                   fontSize: 28,
                   fontWeight: FontWeight.bold)),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           const CircularProgressIndicator(color: AppStyles.primary),
         ])),
       );
@@ -62,19 +62,19 @@ class _HomeShellState extends State<HomeShell> {
           Container(
             width: 32,
             height: 32,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
             ),
             child:
                 const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(_titles[_index],
                 overflow: TextOverflow.ellipsis,
                 style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                    TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           ),
         ]),
         // Кнопка выхода убрана из appBar — только в drawer
@@ -117,15 +117,15 @@ class _HomeShellState extends State<HomeShell> {
           elevation: 0,
           indicatorColor: AppStyles.adaptivePrimaryBg(context),
           destinations: [
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.calendar_today_outlined,
-                  color: AppStyles.textSecondary),
+                  color: AppStyles.adaptiveTextSecondary(context)),
               selectedIcon:
                   Icon(Icons.calendar_today, color: AppStyles.primary),
               label: 'Записи',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.local_car_wash, color: AppStyles.textSecondary),
+            NavigationDestination(
+              icon: Icon(Icons.local_car_wash, color: AppStyles.adaptiveTextSecondary(context)),
               selectedIcon:
                   Icon(Icons.local_car_wash, color: AppStyles.primary),
               label: 'Услуги',
@@ -135,8 +135,8 @@ class _HomeShellState extends State<HomeShell> {
                 isLabelVisible: favCount > 0,
                 label: Text('$favCount'),
                 backgroundColor: AppStyles.primary,
-                child: const Icon(Icons.star_outline,
-                    color: AppStyles.textSecondary),
+                child: Icon(Icons.star_outline,
+                    color: AppStyles.adaptiveTextSecondary(context)),
               ),
               selectedIcon: const Icon(Icons.star, color: AppStyles.primary),
               label: 'Избранное',
@@ -175,13 +175,13 @@ class _HomeShellState extends State<HomeShell> {
                 child: const Icon(Icons.local_car_wash,
                     color: Colors.white, size: 32),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Text('LanWash',
                   style: TextStyle(
                       color: AppStyles.adaptiveTextPrimary(ctx),
                       fontSize: 20,
                       fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -190,7 +190,7 @@ class _HomeShellState extends State<HomeShell> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(auth.username,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppStyles.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600)),
@@ -198,7 +198,7 @@ class _HomeShellState extends State<HomeShell> {
             ]),
           ),
           Divider(color: AppStyles.adaptiveBorder(ctx), height: 1),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _drawerItem(ctx, 0, Icons.calendar_today_outlined,
               Icons.calendar_today, 'Записи на мойку', null),
           _drawerItem(ctx, 1, Icons.local_car_wash, Icons.local_car_wash,
@@ -411,7 +411,7 @@ class _HomeShellState extends State<HomeShell> {
                   borderRadius: BorderRadius.circular(10)),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ]),
       ),
     );
@@ -442,7 +442,7 @@ class _HomeShellState extends State<HomeShell> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(badge,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold)),

@@ -23,10 +23,10 @@ class LanWashLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : AppStyles.textPrimary;
+    final textColor = isDark ? Colors.white : AppStyles.adaptiveTextPrimary(context);
     final subtitleColor = isDark
         ? Colors.white.withValues(alpha:0.6)
-        : AppStyles.textSecondary.withValues(alpha:0.7);
+        : AppStyles.adaptiveTextSecondary(context).withValues(alpha:0.7);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -204,7 +204,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               child: Text(
                 'LanWash',
                 style: TextStyle(
-                  color: isDark ? Colors.white : AppStyles.textPrimary,
+                  color: isDark ? Colors.white : AppStyles.adaptiveTextPrimary(context),
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
@@ -226,7 +226,7 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                 style: TextStyle(
                   color: isDark
                       ? Colors.white.withValues(alpha:0.6)
-                      : AppStyles.textSecondary.withValues(alpha:0.7),
+                      : AppStyles.adaptiveTextSecondary(context).withValues(alpha:0.7),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
