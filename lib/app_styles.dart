@@ -120,11 +120,11 @@ class AppStyles {
     border: Border.all(color: border),
     boxShadow: [
       BoxShadow(
-          color: const Color(0xFF1A56DB).withOpacity(0.06),
+          color: const Color(0xFF1A56DB).withValues(alpha: 0.06),
           blurRadius: 16,
           offset: const Offset(0, 4)),
       BoxShadow(
-          color: Colors.black.withOpacity(0.03),
+          color: Colors.black.withValues(alpha: 0.03),
           blurRadius: 4,
           offset: const Offset(0, 1)),
     ],
@@ -139,7 +139,7 @@ class AppStyles {
     borderRadius: BorderRadius.circular(20),
     boxShadow: [
       BoxShadow(
-          color: const Color(0xFF1A56DB).withOpacity(0.35),
+          color: const Color(0xFF1A56DB).withValues(alpha: 0.35),
           blurRadius: 24,
           offset: const Offset(0, 8)),
     ],
@@ -254,14 +254,17 @@ class AppStyles {
     textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
   );
 
-  static final ButtonStyle goldButton = ElevatedButton.styleFrom(
-    backgroundColor: primary,
-    foregroundColor: Colors.white,
-    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    elevation: 0,
-    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-  );
+  static BoxDecoration get goldButton => BoxDecoration(
+        color: gold,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: gold.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
 
   static final ButtonStyle outlineButton = OutlinedButton.styleFrom(
     foregroundColor: primary,
