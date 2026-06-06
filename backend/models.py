@@ -314,3 +314,19 @@ class ToggleFavoriteRequest(BaseModel):
 class ToggleExtraFavoriteRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     serviceId: str = Field(..., max_length=36)
+
+
+# ─── Telegram Auth ───────────────────────────────────────────────────────────
+class TelegramAuthRequest(BaseModel):
+    initData: str = Field(..., min_length=10, description="Telegram WebApp initData string")
+
+
+class TelegramLinkRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class TelegramAuthResponse(BaseModel):
+    user: UserResponse
+    access_token: str
+    token_type: str

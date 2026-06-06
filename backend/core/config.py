@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Error tracking (optional)
     sentry_dsn: str = ""
 
+    # Telegram Bot (optional)
+    telegram_bot_token: str = ""
+
     @property
     def cors_origins(self) -> List[str]:
         raw = self.allowed_origins

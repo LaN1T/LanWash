@@ -9,9 +9,13 @@ from sqlalchemy import select, update, func, and_
 from database import get_db
 from models import (
     LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest,
-    FcmTokenRequest, LoginResponse, UserStatsResponse
+    FcmTokenRequest, LoginResponse, UserStatsResponse,
+    TelegramAuthRequest, TelegramLinkRequest, TelegramAuthResponse
 )
 from db_models import User, FcmToken, Appointment, WashType, Shift
+from services.telegram_auth_service import verify_telegram_init_data
+import secrets
+import string
 from datetime import datetime, timedelta
 from services.auth_service import (
     get_password_hash,
@@ -129,6 +133,104 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         "user": new_user,
         "access_token": access_token,
         "token_type": "bearer"
+    }
+
+@router.post(
+    "/telegram",
+    response_model=TelegramAuthResponse,
+    summary="Авторизация через Telegram Mini App",
+)
+@limiter.limit("10/minute")
+async def telegram_auth(
+    req: TelegramAuthRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    user_data = verify_telegram_init_data(req.initData)
+    if not user_data:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверные данные Telegram")
+
+    telegram_id = str(user_data.get("id"))
+    username = user_data.get("username") or f"tg_{telegram_id}"
+    display_name = user_data.get("first_name") or username
+    photo_url = user_data.get("photo_url", "")
+
+    # Try to find by telegram_id
+    result = await db.execute(select(User).where(User.telegramId == telegram_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # Try to find by username
+        result = await db.execute(select(User).where(User.username == username.lower().strip()))
+        user = result.scalar_one_or_none()
+        if user:
+            user.telegramId = telegram_id
+            await db.commit()
+            await db.refresh(user)
+        else:
+            # Create new user
+            random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
+            new_user = User(
+                username=username.lower().strip(),
+                passwordHash=get_password_hash(random_password),
+                role="client",
+                displayName=display_name,
+                phone="",
+                carModel="",
+                carNumber="",
+                avatarUrl=photo_url,
+                createdAt=datetime.now().isoformat(),
+                isFavoriteAdmin=0,
+                telegramId=telegram_id,
+            )
+            db.add(new_user)
+            await db.commit()
+            await db.refresh(new_user)
+            user = new_user
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "user": user,
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post(
+    "/link-telegram",
+    response_model=TelegramAuthResponse,
+    summary="Привязка Telegram к существующему аккаунту",
+)
+@limiter.limit("5/minute")
+async def link_telegram(
+    req: TelegramLinkRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
+
+    if not verify_password(req.password, user.passwordHash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "user": user,
+        "access_token": access_token,
+        "token_type": "bearer",
     }
 
 @router.get(
