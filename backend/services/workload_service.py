@@ -58,7 +58,8 @@ class WorkloadService:
     @staticmethod
     def _safe_parse_iso(dt_str: str) -> datetime:
         try:
-            return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+            return dt.replace(tzinfo=None)
         except (ValueError, TypeError):
             raise ValueError(f"Invalid ISO datetime: {dt_str}")
 
@@ -183,11 +184,13 @@ class WorkloadService:
     async def get_busy_slots(db: AsyncSession, date_str: str) -> dict:
         """
         Returns busy periods for each box for a given date.
+        Optimized: loads all data in bulk to avoid N+1 queries.
         date_str: 'YYYY-MM-DD'
         """
         day_start = f"{date_str}T00:00:00"
         day_end = f"{date_str}T23:59:59"
         
+        # Load appointments for the date
         res = await db.execute(
             select(Appointment).where(
                 and_(
@@ -199,14 +202,69 @@ class WorkloadService:
         )
         appts = res.scalars().all()
         
+        if not appts:
+            return {"num_boxes": NUM_BOXES, "busy_slots": [[] for _ in range(NUM_BOXES)]}
+        
+        # Collect all IDs needed
+        wash_type_ids = {a.washTypeId for a in appts}
+        promo_ids = {a.promoId for a in appts if a.promoId}
+        
+        # Bulk load wash types
+        wt_res = await db.execute(select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids)))
+        wt_durations = {row[0]: row[1] for row in wt_res.all()}
+        
+        # Bulk load wash type included extras
+        wtie_res = await db.execute(
+            select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
+            .where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
+        )
+        wt_included = {}
+        for wtid, esid in wtie_res.all():
+            wt_included.setdefault(wtid, set()).add(esid)
+        
+        # Bulk load promo durations
+        promo_durations = {}
+        promo_included = {}
+        if promo_ids:
+            pr_res = await db.execute(select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids)))
+            promo_durations = {row[0]: row[1] for row in pr_res.all()}
+            
+            pie_res = await db.execute(
+                select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
+                .where(PromoIncludedExtra.promoId.in_(promo_ids))
+            )
+            for pid, esid in pie_res.all():
+                promo_included.setdefault(pid, set()).add(esid)
+        
+        # Bulk load all services durations (small table, just load all)
+        svc_res = await db.execute(select(Service.id, Service.durationMinutes))
+        svc_durations = {row[0]: row[1] for row in svc_res.all()}
+        
         busy_by_box = [[] for _ in range(NUM_BOXES)]
         
         for appt in appts:
-            duration = await WorkloadService.get_appointment_duration(
-                db, appt.washTypeId, appt.additionalServices, appt.promoId
-            )
+            # Compute duration without DB calls
+            base_duration = wt_durations.get(appt.washTypeId, 30)
+            included = set(wt_included.get(appt.washTypeId, []))
+            
+            if appt.promoId and appt.promoId in promo_durations:
+                p_dur = promo_durations[appt.promoId]
+                if p_dur and p_dur > 0:
+                    base_duration = p_dur
+                included.update(promo_included.get(appt.promoId, []))
+            
+            total_duration = base_duration
+            try:
+                extra_ids = json.loads(appt.additionalServices) if appt.additionalServices else []
+            except:
+                extra_ids = []
+            
+            for eid in extra_ids:
+                if eid not in included:
+                    total_duration += svc_durations.get(eid, 0)
+            
             start = WorkloadService._safe_parse_iso(appt.dateTime)
-            end = start + timedelta(minutes=duration)
+            end = start + timedelta(minutes=total_duration)
             
             if 0 <= appt.box_index < NUM_BOXES:
                 busy_by_box[appt.box_index].append({
