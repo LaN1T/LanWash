@@ -16,7 +16,7 @@ class PromosScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppStyles.adaptiveCard(context),
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -68,7 +68,7 @@ class _PromoCard extends StatelessWidget {
               builder: (_) => BookingWizardScreen(initialPromo: promo))),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        decoration: AppStyles.cardDecoration,
+        decoration: AppStyles.cardDecorationFor(context),
         child: Row(children: [
           Container(
             width: 5,
@@ -114,7 +114,7 @@ class _PromoCard extends StatelessWidget {
                             fontWeight: FontWeight.w600)),
                     SizedBox(height: 4),
                     Text(promo.description,
-                        style: AppStyles.bodySmall,
+                        style: AppStyles.adaptiveBodySmall(context),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis),
                     SizedBox(height: 10),
@@ -128,7 +128,7 @@ class _PromoCard extends StatelessWidget {
                       Icon(Icons.access_time_rounded,
                           size: 13, color: AppStyles.adaptiveTextSecondary(context)),
                       SizedBox(width: 3),
-                      Text('${promo.duration} мин', style: AppStyles.bodySmall),
+                      Text('${promo.duration} мин', style: AppStyles.adaptiveBodySmall(context)),
                     ]),
                   ]),
             ),
