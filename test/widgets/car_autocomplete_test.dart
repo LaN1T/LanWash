@@ -20,8 +20,8 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextFormField), 'To');
-    await tester.pump();
+    await tester.enterText(find.byType(TextFormField), 'T');
+    await tester.pumpAndSettle();
 
     expect(find.text('Toyota'), findsOneWidget);
     expect(find.text('Tesla'), findsOneWidget);

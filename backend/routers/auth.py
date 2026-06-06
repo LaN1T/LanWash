@@ -33,6 +33,9 @@ from core.security import encrypt_token
 
 USERNAME_PATTERN = re.compile(r'^[a-z0-9_]{3,30}$')
 
+# Dummy hash for constant-time login (prevents user enumeration via timing)
+_DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"
+
 # Директория для загрузки аватарок
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "avatars")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -61,8 +64,9 @@ router = APIRouter(
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
-    
     if not user:
+        # Constant-time dummy verification to prevent user enumeration
+        verify_password(req.password, _DUMMY_ARGON2_HASH)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
 
     is_valid = verify_password(req.password, user.passwordHash)
@@ -72,7 +76,7 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role}, 
+        data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion}, 
         expires_delta=access_token_expires
     )
     
@@ -90,23 +94,25 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
 )
 @limiter.limit("2/minute")
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    generic_error = HTTPException(status.HTTP_400_BAD_REQUEST, "Регистрация не удалась. Проверьте введённые данные.")
+
     if not req.username.strip():
-        raise HTTPException(400, "Введите логин")
+        raise generic_error
     
     if not USERNAME_PATTERN.match(req.username.lower().strip()):
-        raise HTTPException(400, "Логин может содержать только строчные буквы, цифры и подчёркивания (3–30 символов)")
+        raise generic_error
     
     # P2: Валидация сложности пароля
     password_error = validate_password_strength(req.password)
     if password_error:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=password_error)
+        raise generic_error
 
     if not req.displayName.strip():
-        raise HTTPException(400, "Введите имя")
+        raise generic_error
 
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     if result.scalar_one_or_none():
-        raise HTTPException(400, "Пользователь уже существует")
+        raise generic_error
 
     new_user = User(
         username=req.username.lower().strip(),
@@ -125,7 +131,7 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": new_user.username, "role": new_user.role}, 
+        data={"sub": new_user.username, "role": new_user.role, "pwd_ver": new_user.passwordVersion}, 
         expires_delta=access_token_expires
     )
     
@@ -190,7 +196,7 @@ async def telegram_auth(
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role},
+        data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
         expires_delta=access_token_expires,
     )
 
@@ -223,7 +229,7 @@ async def link_telegram(
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role},
+        data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
         expires_delta=access_token_expires,
     )
 
@@ -273,6 +279,7 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
         if password_error:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=password_error)
         updates["passwordHash"] = get_password_hash(req.newPassword)
+        updates["passwordVersion"] = (user.passwordVersion or 1) + 1
         # Blacklist current token after password change
         try:
             payload = jwt.decode(token, get_settings().jwt_secret_key, algorithms=["HS256"])

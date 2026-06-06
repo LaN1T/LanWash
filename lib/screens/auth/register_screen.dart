@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
+import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/language_provider.dart';
 
 // ─── Маска телефона: +7 (999) 000-00-00 ──────────────────────────────────────
 class _PhoneInputFormatter extends TextInputFormatter {
@@ -13,9 +16,9 @@ class _PhoneInputFormatter extends TextInputFormatter {
     var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
     // Нормализуем: всегда 7 в начале
     if (digits.startsWith('8') || digits.startsWith('7')) {
-      digits = '7' + digits.substring(1);
+      digits = '7${digits.substring(1)}';
     } else if (digits.isNotEmpty) {
-      digits = '7' + digits;
+      digits = '7$digits';
     } else {
       return newValue.copyWith(
           text: '+7', selection: const TextSelection.collapsed(offset: 2));
@@ -26,12 +29,15 @@ class _PhoneInputFormatter extends TextInputFormatter {
       buf.write(' ($area');
       if (digits.length >= 4) buf.write(') ');
     }
-    if (digits.length > 4)
+    if (digits.length > 4) {
       buf.write(digits.substring(4, digits.length.clamp(4, 7)));
-    if (digits.length > 7)
+    }
+    if (digits.length > 7) {
       buf.write('-${digits.substring(7, digits.length.clamp(7, 9))}');
-    if (digits.length > 9)
+    }
+    if (digits.length > 9) {
       buf.write('-${digits.substring(9, digits.length.clamp(9, 11))}');
+    }
     final result = buf.toString();
     return newValue.copyWith(
       text: result,
@@ -90,16 +96,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Успешная регистрация — загружаем данные и уходим на корень (_AppRouter покажет ClientShell)
-    await context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
+    await context
+        .read<AppointmentProvider>()
+        .reloadForUser(auth.userLogin, auth);
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
+  Widget _buildThemeButton() {
+    final themeProvider = context.watch<ThemeProvider>();
+    final lang = context.read<LanguageProvider>();
+    final isDark = themeProvider.themeMode == ThemeMode.dark ||
+        (themeProvider.themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    return IconButton(
+      icon: Icon(
+        isDark ? Icons.dark_mode_outlined : Icons.wb_sunny_outlined,
+        color: AppStyles.adaptiveTextPrimary(context),
+      ),
+      tooltip: lang.tr('theme'),
+      onPressed: () {
+        themeProvider.setMode(isDark ? AppThemeMode.light : AppThemeMode.dark);
+      },
+    );
+  }
+
+  Widget _buildLanguageButton() {
+    final lang = context.watch<LanguageProvider>();
+    return IconButton(
+      icon: Text(
+        lang.language == AppLanguage.ru ? 'RU' : 'EN',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppStyles.adaptiveTextPrimary(context),
+        ),
+      ),
+      tooltip: lang.tr('language'),
+      onPressed: lang.toggle,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppStyles.adaptiveBgPage(context),
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -107,7 +150,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: Text('Регистрация'),
+        title: Text('Регистрация',
+            style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
+        actions: [_buildLanguageButton(), _buildThemeButton()],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -125,54 +170,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     gradient: AppStyles.primaryGradient,
                     boxShadow: [
                       BoxShadow(
-                        color: AppStyles.primary.withValues(alpha:0.25),
+                        color: AppStyles.primary.withValues(alpha: 0.25),
                         blurRadius: 20,
                       )
                     ],
                   ),
-                  child: Icon(Icons.person_add_rounded,
+                  child: const Icon(Icons.person_add_rounded,
                       color: Colors.white, size: 36),
                 ),
-                SizedBox(height: 20),
-                Text('Создать аккаунт', style: AppStyles.headingLarge),
-                SizedBox(height: 6),
-                Text('Заполните данные для регистрации',
-                    style: AppStyles.bodyMedium),
-                SizedBox(height: 28),
+                const SizedBox(height: 20),
+                Text(lang.tr('register_title'),
+                    style: AppStyles.adaptiveHeadingLarge(context)),
+                const SizedBox(height: 6),
+                Text(lang.tr('register_subtitle'),
+                    style: AppStyles.adaptiveBodyMedium(context)),
+                const SizedBox(height: 28),
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: AppStyles.cardDecoration,
+                  decoration: AppStyles.cardDecorationFor(context),
                   child: Column(children: [
                     TextFormField(
                       controller: _nameCtrl,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Ваше имя',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_name'),
                           icon: Icons.person_outline_rounded),
                       textCapitalization: TextCapitalization.words,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Введите имя'
+                          ? lang.tr('validation_required')
                           : null,
                     ),
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _loginCtrl,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Логин',
-                          hint: 'только латиница и цифры',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_login'),
+                          hint: lang.tr('register_field_login_hint'),
                           icon: Icons.alternate_email_rounded),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty)
-                          return 'Введите логин';
-                        if (v.trim().length < 3) return 'Минимум 3 символа';
+                        if (v == null || v.trim().isEmpty) {
+                          return lang.tr('validation_required');
+                        }
+                        if (v.trim().length < 3)
+                          return lang.tr('validation_login_short');
                         return null;
                       },
                     ),
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: _obscure,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Пароль',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                              context, lang.tr('register_field_password'),
                               icon: Icons.lock_outline_rounded)
                           .copyWith(
                         suffixIcon: IconButton(
@@ -185,77 +239,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Введите пароль';
-                        if (v.length < 8) return 'Минимум 8 символов';
-                        if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Хотя бы одна заглавная буква';
-                        if (!RegExp(r'[a-z]').hasMatch(v)) return 'Хотя бы одна строчная буква';
-                        if (!RegExp(r'\d').hasMatch(v)) return 'Хотя бы одна цифра';
-                        if (!RegExp(r'[@$!%*?&_]').hasMatch(v)) return 'Хотя бы один спецсимвол (@\$!%*?&_)';
-                        return null;
-                      },
+                      validator: AppValidators.password,
                     ),
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _phoneCtrl,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Телефон',
-                          hint: '+7 (999) 000-00-00',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_phone'),
+                          hint: lang.tr('register_field_phone_hint'),
                           icon: Icons.phone_outlined),
                       keyboardType: TextInputType.phone,
                       inputFormatters: [_PhoneInputFormatter()],
                       validator: (v) {
-                        if (v == null || v.trim().length <= 2)
-                          return 'Введите телефон';
+                        if (v == null || v.trim().length <= 2) {
+                          return lang.tr('validation_required');
+                        }
                         final digits = v.replaceAll(RegExp(r'\D'), '');
-                        if (digits.length < 11)
-                          return 'Введите полный номер (+7 и 10 цифр)';
+                        if (digits.length < 11) {
+                          return lang.tr('validation_phone_short');
+                        }
                         return null;
                       },
                     ),
                     if (_error != null) ...[
-                      SizedBox(height: 14),
+                      const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: AppStyles.dangerBg,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                              color: AppStyles.danger.withValues(alpha:0.3)),
+                              color: AppStyles.danger.withValues(alpha: 0.3)),
                         ),
                         child: Row(children: [
-                          Icon(Icons.error_outline,
+                          const Icon(Icons.error_outline,
                               color: AppStyles.danger, size: 18),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
                               child: Text(_error!,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       color: AppStyles.danger, fontSize: 13))),
                         ]),
                       ),
                     ],
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: AppStyles.primaryButton,
                         onPressed: _loading ? null : _submit,
                         child: _loading
-                            ? SizedBox(
+                            ? const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     color: Colors.white, strokeWidth: 2))
-                            : Text('Зарегистрироваться'),
+                            : Text(lang.tr('register_button')),
                       ),
                     ),
                   ]),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Уже есть аккаунт? Войти',
-                      style: TextStyle(color: AppStyles.primary, fontSize: 14)),
+                  child: Text(lang.tr('register_has_account'),
+                      style: const TextStyle(
+                          color: AppStyles.primary, fontSize: 14)),
                 ),
               ]),
             ),

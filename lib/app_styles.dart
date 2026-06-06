@@ -104,6 +104,30 @@ class AppStyles {
     fontSize: 12,
     color: textSecondary,
   );
+
+  static TextStyle adaptiveHeadingLarge(BuildContext context) => TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: adaptiveTextPrimary(context),
+        letterSpacing: -0.5,
+      );
+  static TextStyle adaptiveHeadingMedium(BuildContext context) => TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: adaptiveTextPrimary(context),
+      );
+  static TextStyle adaptiveBodyLarge(BuildContext context) => TextStyle(
+        fontSize: 16,
+        color: adaptiveTextPrimary(context),
+      );
+  static TextStyle adaptiveBodyMedium(BuildContext context) => TextStyle(
+        fontSize: 14,
+        color: adaptiveTextSecondary(context),
+      );
+  static TextStyle adaptiveBodySmall(BuildContext context) => TextStyle(
+        fontSize: 12,
+        color: adaptiveTextSecondary(context),
+      );
   static const TextStyle price = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
@@ -116,41 +140,17 @@ class AppStyles {
     color: textSecondary,
   );
 
-  // ─── Адаптивные текстовые стили ────────────────────────────────────────────
-  static TextStyle adaptiveHeadingLarge(BuildContext context) => TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.bold,
-    color: adaptiveTextPrimary(context),
-    letterSpacing: -0.5,
-  );
-  static TextStyle adaptiveHeadingMedium(BuildContext context) => TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.w600,
-    color: adaptiveTextPrimary(context),
-  );
-  static TextStyle adaptiveBodyLarge(BuildContext context) => TextStyle(
-    fontSize: 16,
-    color: adaptiveTextPrimary(context),
-  );
-  static TextStyle adaptiveBodyMedium(BuildContext context) => TextStyle(
-    fontSize: 14,
-    color: adaptiveTextSecondary(context),
-  );
-  static TextStyle adaptiveBodySmall(BuildContext context) => TextStyle(
-    fontSize: 12,
-    color: adaptiveTextSecondary(context),
-  );
-  static TextStyle adaptivePrice(BuildContext context) => TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    color: primary,
-  );
+  static TextStyle adaptivePrice(BuildContext context) => const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: primary,
+      );
   static TextStyle adaptiveLabel(BuildContext context) => TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.8,
-    color: adaptiveTextSecondary(context),
-  );
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.8,
+        color: adaptiveTextSecondary(context),
+      );
 
   // ─── Карточки ────────────────────────────────────────────────────────────
   static BoxDecoration cardDecoration = BoxDecoration(
@@ -195,6 +195,16 @@ class AppStyles {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  static LinearGradient adaptiveBgGradient(BuildContext context) {
+    return isDark(context)
+        ? const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          )
+        : bgGradient;
+  }
 
   // Для совместимости
   static const LinearGradient goldGradient = LinearGradient(

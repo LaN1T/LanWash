@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone
 
 from database import get_db
@@ -12,6 +13,19 @@ from core.limiter import limiter
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
+_optional_oauth2 = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+
+async def get_current_user_optional(
+    token: Optional[str] = Depends(_optional_oauth2),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        return await get_current_user(token=token, db=db)
+    except HTTPException:
+        return None
+
 
 @router.get("/", response_model=List[ReviewResponse])
 @limiter.limit("60/minute")
@@ -19,10 +33,11 @@ async def list_reviews(
     request: Request,
     published: bool = Query(False, description="Filter only published reviews"),
     limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     stmt = select(Review)
-    if published:
+    if published or (current_user is None or current_user.role != 'admin'):
         stmt = stmt.where(Review.isPublished == 1)
     stmt = stmt.order_by(Review.createdAt.desc()).limit(limit)
     result = await db.execute(stmt)

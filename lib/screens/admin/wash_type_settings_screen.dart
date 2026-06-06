@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/wash_type.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
 
 class WashTypeSettingsScreen extends StatelessWidget {
   const WashTypeSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final provider = context.watch<CatalogProvider>();
     final washTypes = [...provider.washTypes]
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
@@ -26,13 +26,13 @@ class WashTypeSettingsScreen extends StatelessWidget {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
             ),
             child: const Icon(Icons.settings, color: Colors.white, size: 18),
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           const Text('Настройки мойки',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
         ]),
@@ -55,7 +55,7 @@ class _WashTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final provider = context.watch<CatalogProvider>();
     final includedNames = washType.includedExtraIds
         .map((id) => provider.services
             .firstWhere((s) => s.id == id, orElse: () => _stubService(id))
@@ -77,7 +77,7 @@ class _WashTypeCard extends StatelessWidget {
             child: const Icon(Icons.local_car_wash,
                 color: AppStyles.primary, size: 20),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
               child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,7 +87,7 @@ class _WashTypeCard extends StatelessWidget {
                       color: AppStyles.adaptiveTextPrimary(context),
                       fontSize: 16,
                       fontWeight: FontWeight.w600)),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text('ID: ${washType.id} · ${washType.code}',
                   style: AppStyles.bodySmall),
             ],
@@ -97,18 +97,18 @@ class _WashTypeCard extends StatelessWidget {
             onPressed: () => _openEditor(context, washType),
           ),
         ]),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Row(children: [
           _Stat(Icons.payments_outlined, 'Цена', '${washType.basePrice} ₽'),
-          SizedBox(width: 24),
+          const SizedBox(width: 24),
           _Stat(Icons.access_time_rounded, 'Время', washType.durationLabel),
         ]),
         if (washType.description.isNotEmpty) ...[
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(washType.description,
               style: AppStyles.bodyMedium.copyWith(height: 1.4)),
         ],
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(10),
@@ -123,7 +123,7 @@ class _WashTypeCard extends StatelessWidget {
                     color: AppStyles.adaptiveTextSecondary(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600)),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             if (includedNames.isEmpty)
               Text('—',
                   style: AppStyles.bodyMedium.copyWith(
@@ -188,12 +188,12 @@ class _Stat extends StatelessWidget {
                   color: AppStyles.adaptiveTextSecondary(context),
                   fontSize: 11,
                   fontWeight: FontWeight.w600)),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Row(children: [
             Icon(icon, size: 14, color: AppStyles.primary),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             Text(value,
-                style: TextStyle(
+                style: const TextStyle(
                     color: AppStyles.primary,
                     fontSize: 15,
                     fontWeight: FontWeight.bold)),
@@ -241,7 +241,7 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final provider = context.watch<CatalogProvider>();
     final extras = provider.services
         .where((s) => s.category != 'Акции')
         .toList()
@@ -258,7 +258,7 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(children: [
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Container(
             width: 40,
             height: 4,
@@ -267,13 +267,13 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(children: [
               Expanded(
                   child: Text('Изменить: ${widget.washType.name}',
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w600))),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -292,38 +292,40 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                   decoration: AppStyles.inputDecorationFor(context, 'Название',
                       icon: Icons.label_outline),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _descCtrl,
                   maxLines: 3,
-                  decoration:
-                      AppStyles.inputDecorationFor(context, 'Описание', icon: Icons.notes),
+                  decoration: AppStyles.inputDecorationFor(context, 'Описание',
+                      icon: Icons.notes),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Row(children: [
                   Expanded(
                       child: TextField(
                     controller: _priceCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: AppStyles.inputDecorationFor(context, 'Цена (₽)',
+                    decoration: AppStyles.inputDecorationFor(
+                        context, 'Цена (₽)',
                         icon: Icons.payments_outlined),
                   )),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                       child: TextField(
                     controller: _durationCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: AppStyles.inputDecorationFor(context, 'Время (мин)',
+                    decoration: AppStyles.inputDecorationFor(
+                        context, 'Время (мин)',
                         icon: Icons.access_time_rounded),
                   )),
                 ]),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Text('Включённые доп. услуги',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppStyles.adaptiveTextPrimary(context))),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Container(
                   decoration: AppStyles.cardDecorationFor(context),
                   child: Column(
@@ -353,12 +355,12 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                         .toList(),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: _saving
-                        ? SizedBox(
+                        ? const SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
@@ -369,7 +371,7 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                     onPressed: _saving ? null : _save,
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -397,7 +399,7 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
       durationMinutes: duration,
       includedExtraIds: _includedIds.toList(),
     );
-    final ok = await context.read<AppProvider>().updateWashType(updated);
+    final ok = await context.read<CatalogProvider>().updateWashType(updated);
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {

@@ -5,8 +5,9 @@ import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../models/service.dart';
 import '../../models/user.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 
 class AdminScheduleScreen extends StatefulWidget {
   const AdminScheduleScreen({super.key});
@@ -27,9 +28,8 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final appointments = provider.appointments;
-    DateTime? selectedDay;
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final appointments = appointmentProvider.appointments;
 
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
@@ -46,14 +46,14 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
           Container(
             width: 32,
             height: 32,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
             ),
             child:
                 const Icon(Icons.calendar_month, color: Colors.white, size: 18),
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Text('Расписание',
               style: TextStyle(
                   fontSize: 17,
@@ -63,8 +63,8 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
       ),
       body: RefreshIndicator(
         color: AppStyles.primary,
-        onRefresh: () =>
-            provider.reloadAppointments(context.read<AuthProvider>()),
+        onRefresh: () => appointmentProvider
+            .reloadAppointments(context.read<AuthProvider>()),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: GridView.builder(
@@ -85,16 +85,21 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isToday
-                        ? AppStyles.primary.withValues(alpha:0.1)
+                        ? AppStyles.primary.withValues(alpha: 0.1)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isToday ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+                      color: isToday
+                          ? AppStyles.primary
+                          : AppStyles.adaptiveBorder(context),
                       width: isToday ? 2 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .shadow
+                            .withValues(alpha: 0.04),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -110,11 +115,11 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                             width: 20,
                             height: 20,
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                                 color: AppStyles.primary,
                                 shape: BoxShape.circle),
                             child: Text('$count',
-                                style: TextStyle(
+                                style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold)),
@@ -133,14 +138,16 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                                     fontWeight: FontWeight.w600,
                                     color: isToday
                                         ? AppStyles.primary
-                                        : AppStyles.adaptiveTextSecondary(context))),
+                                        : AppStyles.adaptiveTextSecondary(
+                                            context))),
                             Text('${day.day}',
                                 style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: isToday
                                         ? AppStyles.primary
-                                        : AppStyles.adaptiveTextPrimary(context))),
+                                        : AppStyles.adaptiveTextPrimary(
+                                            context))),
                           ],
                         ),
                       ),
@@ -199,7 +206,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
   }
 
   Future<void> _loadWashers() async {
-    final provider = context.read<AppProvider>();
+    final provider = context.read<AppointmentProvider>();
     final washers = await provider.getWashers();
     if (mounted) {
       setState(() {
@@ -209,7 +216,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
     }
   }
 
-  List<Appointment> _dayAppointments(AppProvider provider) {
+  List<Appointment> _dayAppointments(AppointmentProvider provider) {
     return provider.appointments
         .where((a) =>
             a.dateTime.year == widget.day.year &&
@@ -231,8 +238,9 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final dayAppts = _dayAppointments(provider);
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
+    final dayAppts = _dayAppointments(appointmentProvider);
     final dateStr = DateFormat('d MMMM yyyy, EEEE', 'ru').format(widget.day);
 
     return Scaffold(
@@ -242,11 +250,11 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(dateStr,
-            style: TextStyle(
+            style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _loading
           ? const Center(
@@ -265,29 +273,33 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppStyles.primary.withValues(alpha:0.08),
+                            color: AppStyles.primary.withValues(alpha: 0.08),
                             border: Border(
-                                bottom: BorderSide(color: AppStyles.adaptiveBorder(context))),
+                                bottom: BorderSide(
+                                    color: AppStyles.adaptiveBorder(context))),
                           ),
                           child: Row(children: [
-                            Icon(Icons.people,
+                            const Icon(Icons.people,
                                 size: 18, color: AppStyles.primary),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text('Мойщики',
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppStyles.adaptiveTextPrimary(context))),
+                                    color: AppStyles.adaptiveTextPrimary(
+                                        context))),
                           ]),
                         ),
                         Expanded(
                           child: _washers.isEmpty
                               ? Center(
                                   child: Padding(
-                                  padding: EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(16),
                                   child: Text('Нет мойщиков',
                                       style: TextStyle(
-                                          color: AppStyles.adaptiveTextSecondary(context),
+                                          color:
+                                              AppStyles.adaptiveTextSecondary(
+                                                  context),
                                           fontSize: 13)),
                                 ))
                               : ListView.builder(
@@ -307,12 +319,13 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                         decoration: BoxDecoration(
                                           color: selected
                                               ? AppStyles.primary
-                                                  .withValues(alpha:0.12)
+                                                  .withValues(alpha: 0.12)
                                               : Colors.transparent,
                                           border: Border(
                                             bottom: BorderSide(
-                                                color: AppStyles.adaptiveBorder(context)
-                                                    .withValues(alpha:0.5)),
+                                                color: AppStyles.adaptiveBorder(
+                                                        context)
+                                                    .withValues(alpha: 0.5)),
                                           ),
                                         ),
                                         child: Row(children: [
@@ -324,7 +337,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                               color: selected
                                                   ? AppStyles.primary
                                                   : AppStyles.warning
-                                                      .withValues(alpha:0.15),
+                                                      .withValues(alpha: 0.15),
                                             ),
                                             child: Icon(Icons.person,
                                                 size: 16,
@@ -332,7 +345,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                                     ? Colors.white
                                                     : AppStyles.warning),
                                           ),
-                                          SizedBox(width: 8),
+                                          const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
                                               w.displayName.isNotEmpty
@@ -345,7 +358,9 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                                     : FontWeight.normal,
                                                 color: selected
                                                     ? AppStyles.primary
-                                                    : AppStyles.adaptiveTextPrimary(context),
+                                                    : AppStyles
+                                                        .adaptiveTextPrimary(
+                                                            context),
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -370,19 +385,21 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppStyles.primary.withValues(alpha:0.08),
+                          color: AppStyles.primary.withValues(alpha: 0.08),
                           border: Border(
-                              bottom: BorderSide(color: AppStyles.adaptiveBorder(context))),
+                              bottom: BorderSide(
+                                  color: AppStyles.adaptiveBorder(context))),
                         ),
                         child: Row(children: [
                           const Icon(Icons.list_alt,
                               size: 18, color: AppStyles.primary),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text('Записи (${dayAppts.length})',
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: AppStyles.adaptiveTextPrimary(context))),
+                                  color:
+                                      AppStyles.adaptiveTextPrimary(context))),
                         ]),
                       ),
                       Expanded(
@@ -392,11 +409,15 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.event_busy,
-                                      size: 48, color: AppStyles.adaptiveTextMuted(context)),
-                                  SizedBox(height: 8),
+                                      size: 48,
+                                      color:
+                                          AppStyles.adaptiveTextMuted(context)),
+                                  const SizedBox(height: 8),
                                   Text('Нет записей',
                                       style: TextStyle(
-                                          color: AppStyles.adaptiveTextSecondary(context),
+                                          color:
+                                              AppStyles.adaptiveTextSecondary(
+                                                  context),
                                           fontSize: 14)),
                                 ],
                               ))
@@ -407,7 +428,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                   final a = dayAppts[index];
                                   return _AppointmentCard(
                                     appointment: a,
-                                    services: provider.services,
+                                    services: catalogProvider.services,
                                     selectedWasher: _selectedWasher,
                                     washerDisplayName: _washerDisplayName,
                                     onAssign: () => _assignWasher(a),
@@ -487,7 +508,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
     );
 
     if (confirm == true && mounted) {
-      final provider = context.read<AppProvider>();
+      final provider = context.read<AppointmentProvider>();
       final ok = await provider.assignWasher(appt.id, _selectedWasher!);
       if (ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -531,7 +552,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
     );
 
     if (confirm == true && mounted) {
-      final provider = context.read<AppProvider>();
+      final provider = context.read<AppointmentProvider>();
       // assignWasher toggles — if already in list, removes
       final ok = await provider.assignWasher(appt.id, username);
       if (ok && mounted) {
@@ -590,7 +611,7 @@ class _AppointmentCard extends StatelessWidget {
             // Время + статус
             Row(children: [
               const Icon(Icons.access_time, size: 16, color: AppStyles.primary),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Text(time,
                   style: TextStyle(
                       fontSize: 15,
@@ -600,7 +621,7 @@ class _AppointmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha:0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(AppStyles.statusLabel(a.status),
@@ -610,28 +631,30 @@ class _AppointmentCard extends StatelessWidget {
                         color: statusColor)),
               ),
             ]),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             // Клиент
             Row(children: [
               Icon(Icons.person,
                   size: 15, color: AppStyles.adaptiveTextSecondary(context)),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Expanded(
                   child: Text(a.clientName,
                       style: TextStyle(
-                          fontSize: 13, color: AppStyles.adaptiveTextPrimary(context)),
+                          fontSize: 13,
+                          color: AppStyles.adaptiveTextPrimary(context)),
                       overflow: TextOverflow.ellipsis)),
             ]),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             // Авто
             Row(children: [
               Icon(Icons.directions_car,
                   size: 15, color: AppStyles.adaptiveTextSecondary(context)),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Expanded(
                   child: Text('${a.carModel}  ${a.carNumber}',
                       style: TextStyle(
-                          fontSize: 12, color: AppStyles.adaptiveTextSecondary(context)),
+                          fontSize: 12,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       overflow: TextOverflow.ellipsis)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -640,39 +663,40 @@ class _AppointmentCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text('Бокс №${a.box_index + 1}',
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: AppStyles.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600)),
               ),
             ]),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             // Тип мойки + цена
             Row(children: [
               Icon(Icons.local_car_wash,
                   size: 15, color: AppStyles.adaptiveTextSecondary(context)),
-              SizedBox(width: 4),
-              Text(context.watch<AppProvider>().washTypeName(a.washTypeId),
+              const SizedBox(width: 4),
+              Text(context.watch<CatalogProvider>().washTypeName(a.washTypeId),
                   style: TextStyle(
-                      fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+                      fontSize: 12,
+                      color: AppStyles.adaptiveTextSecondary(context))),
               const Spacer(),
               Text(
-                  '${a.calculateTotalPrice(services.cast(), context.watch<AppProvider>().washTypeById(a.washTypeId))} \u20BD',
-                  style: TextStyle(
+                  '${a.calculateTotalPrice(services.cast(), context.watch<CatalogProvider>().washTypeById(a.washTypeId))} \u20BD',
+                  style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppStyles.primary)),
             ]),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
 
             if (a.additionalServices.isNotEmpty) ...[
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
                 children: a.additionalServices.map((id) {
                   final service = context
-                      .watch<AppProvider>()
+                      .watch<CatalogProvider>()
                       .services
                       .firstWhere((s) => s.id == id,
                           orElse: () => Service(
@@ -686,16 +710,16 @@ class _AppointmentCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppStyles.primary.withValues(alpha:0.08),
+                      color: AppStyles.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(service.name,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 10, color: AppStyles.primaryDark)),
                   );
                 }).toList(),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
             ],
 
             // Назначенные мойщики
@@ -704,10 +728,10 @@ class _AppointmentCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppStyles.success.withValues(alpha:0.08),
+                  color: AppStyles.success.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: AppStyles.success.withValues(alpha:0.25)),
+                  border: Border.all(
+                      color: AppStyles.success.withValues(alpha: 0.25)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,32 +739,34 @@ class _AppointmentCard extends StatelessWidget {
                     Row(children: [
                       const Icon(Icons.people,
                           size: 14, color: AppStyles.success),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text('Мойщики (${a.assignedWashers.length}/3)',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: AppStyles.success)),
                     ]),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     ...a.assignedWashers.map((username) => Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: Row(children: [
                             const Icon(Icons.check_circle,
                                 size: 14, color: AppStyles.success),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Expanded(
                                 child: Text(washerDisplayName(username),
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: AppStyles.adaptiveTextPrimary(context)))),
+                                        color: AppStyles.adaptiveTextPrimary(
+                                            context)))),
                             GestureDetector(
                               onTap: () => onRemoveWasher(username),
                               child: Container(
                                 padding: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(
-                                  color: AppStyles.danger.withValues(alpha:0.1),
+                                  color:
+                                      AppStyles.danger.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: const Icon(Icons.close,
@@ -752,7 +778,7 @@ class _AppointmentCard extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 6),
+              const SizedBox(height: 6),
             ],
 
             // Кнопка добавить мойщика
@@ -767,7 +793,7 @@ class _AppointmentCard extends StatelessWidget {
                         : hasWashers
                             ? 'Выберите мойщика для добавления'
                             : 'Выберите мойщика',
-                    style: TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor:

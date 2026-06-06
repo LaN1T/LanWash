@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../models/service.dart';
 
 class ClientAppointmentDetailScreen extends StatelessWidget {
@@ -13,14 +14,15 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
     final auth = context.read<AuthProvider>();
-    final services = provider.services;
-    final a = provider.appointments.firstWhere(
+    final services = catalogProvider.services;
+    final a = appointmentProvider.appointments.firstWhere(
       (x) => x.id == appointment.id,
       orElse: () => appointment,
     );
-    final washType = provider.washTypeById(a.washTypeId);
+    final washType = catalogProvider.washTypeById(a.washTypeId);
 
     // Расчет длительности
     final duration =
@@ -33,7 +35,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                         0,
                         (sum, id) =>
                             sum +
-                            (provider.services
+                            (catalogProvider.services
                                 .firstWhere((s) => s.id == id,
                                     orElse: () => Service(
                                         id: id,
@@ -52,12 +54,13 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
 
     final color = AppStyles.statusColor(a.status);
 
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Детали записи', style: TextStyle(fontSize: 18)),
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
       ),
       body: Container(
@@ -71,7 +74,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha:0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(children: [
@@ -81,7 +84,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                     Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Статус', style: AppStyles.bodySmall),
+                          const Text('Статус', style: AppStyles.bodySmall),
                           Text(AppStyles.statusLabel(a.status),
                               style: TextStyle(
                                   fontSize: 20,
@@ -98,7 +101,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
             _InfoTile(Icons.directions_car_rounded, 'Автомобиль',
                 '${a.carModel} · ${a.carNumber}'),
             _InfoTile(Icons.local_car_wash_rounded, 'Услуга',
-                provider.washTypeName(a.washTypeId)),
+                catalogProvider.washTypeName(a.washTypeId)),
             _InfoTile(Icons.layers_rounded, 'Бокс', 'Бокс №${a.box_index + 1}'),
             _InfoTile(Icons.payments_rounded, 'Итого',
                 '${a.calculateTotalPrice(services, washType)} ₽'),
@@ -155,8 +158,8 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        _confirmCancel(context, provider, auth, a.id),
+                    onPressed: () => _confirmCancel(
+                        context, appointmentProvider, auth, a.id),
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Отменить запись',
                         style: TextStyle(fontWeight: FontWeight.bold)),
@@ -177,7 +180,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
     );
   }
 
-  void _confirmCancel(BuildContext context, AppProvider provider,
+  void _confirmCancel(BuildContext context, AppointmentProvider provider,
       AuthProvider auth, String id) {
     showDialog(
       context: context,
@@ -223,7 +226,8 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(width: 16),
           Text(label,
               style: TextStyle(
-                  color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
+                  color: AppStyles.adaptiveTextSecondary(context),
+                  fontSize: 15)),
           const Spacer(),
           Text(value,
               style:

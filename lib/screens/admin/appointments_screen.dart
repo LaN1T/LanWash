@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../models/appointment.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import 'appointment_detail_screen.dart';
 import '../../models/service.dart';
 
@@ -18,6 +21,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   Set<String> _selectedFilters = {'all'};
   final _search = TextEditingController();
   String _searchText = '';
+  Timer? _searchDebounce;
 
   static const _filters = [
     ('all', 'Все'),
@@ -28,6 +32,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -74,11 +79,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    if (provider.loading)
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
+    if (appointmentProvider.loading) {
       return const Center(child: CircularProgressIndicator());
+    }
 
-    final list = _filtered(provider.appointments);
+    final list = _filtered(appointmentProvider.appointments);
 
     return Column(children: [
       _buildSearchBar(),
@@ -86,8 +93,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       Expanded(
         child: RefreshIndicator(
           color: AppStyles.primary,
-          onRefresh: () =>
-              provider.reloadAppointments(context.read<AuthProvider>()),
+          onRefresh: () => appointmentProvider
+              .reloadAppointments(context.read<AuthProvider>()),
           child: list.isEmpty
               ? _emptyState(context)
               : ListView.builder(
@@ -95,9 +102,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   itemCount: list.length,
                   itemBuilder: (ctx, i) => _AppointmentCard(
                     appointment: list[i],
-                    services: provider.services,
-                    onFavorite: () =>
-                        provider.toggleAppointmentFavorite(list[i].id),
+                    services: catalogProvider.services,
+                    onFavorite: () => appointmentProvider
+                        .toggleAppointmentFavorite(list[i].id),
                     onTap: () => Navigator.push(
                         ctx,
                         MaterialPageRoute(
@@ -107,7 +114,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 ),
         ),
       ),
-      _buildPagination(provider),
+      _buildPagination(appointmentProvider),
     ]);
   }
 
@@ -142,7 +149,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
   }
 
-  Widget _buildPagination(AppProvider provider) {
+  Widget _buildPagination(AppointmentProvider provider) {
     if (provider.totalPages <= 1) return const SizedBox.shrink();
 
     final auth = context.read<AuthProvider>();
@@ -166,7 +173,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             icon: const Icon(Icons.chevron_left, size: 28),
             color: AppStyles.primary,
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           InkWell(
             onTap: () async {
               final initialDateStr = provider.currentDate;
@@ -179,7 +186,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 }
               }
 
-              final picked = await showDatePicker(
+              final picked = await showAppDatePicker(
                 context: context,
                 initialDate: initialDate,
                 firstDate: DateTime(2025),
@@ -188,18 +195,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 selectableDayPredicate: (day) {
                   final formattedDay = DateFormat('yyyy-MM-dd').format(day);
                   return provider.uniqueDates.contains(formattedDay);
-                },
-                builder: (context, child) {
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: ColorScheme.light(
-                        primary: AppStyles.primary,
-                        onPrimary: Colors.white,
-                        onSurface: AppStyles.adaptiveTextPrimary(context),
-                      ),
-                    ),
-                    child: child!,
-                  );
                 },
               );
 
@@ -217,7 +212,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 children: [
                   const Icon(Icons.calendar_today_outlined,
                       size: 16, color: AppStyles.primary),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
                     _formatDate(provider.currentDate),
                     style: AppStyles.bodyMedium.copyWith(
@@ -229,7 +224,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           IconButton(
             onPressed:
                 hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
@@ -245,7 +240,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: TextField(
           controller: _search,
-          onChanged: (v) => setState(() => _searchText = v),
+          onChanged: (v) {
+            _searchDebounce?.cancel();
+            _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+              setState(() => _searchText = v);
+            });
+          },
           decoration: AppStyles.inputDecorationFor(
               context, 'Поиск по клиенту, авто, номеру',
               icon: Icons.search),
@@ -285,11 +285,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               size: 64,
               color: AppStyles.adaptiveTextSecondary(context)
                   .withValues(alpha: 0.4)),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text('Нет записей',
               style: AppStyles.headingMedium
                   .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text('Нажмите + чтобы добавить запись',
               style: AppStyles.bodyMedium
                   .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
@@ -336,7 +336,7 @@ class _AppointmentCard extends StatelessWidget {
                 child: Icon(AppStyles.statusIcon(a.status),
                     color: statusColor, size: 20),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,12 +359,12 @@ class _AppointmentCard extends StatelessWidget {
                 constraints: const BoxConstraints(),
               ),
             ]),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Divider(height: 1, color: AppStyles.adaptiveBorder(context)),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Row(children: [
               _info(context, Icons.calendar_today, dateStr),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               _info(context, Icons.pin, a.carNumber),
               const Spacer(),
               Container(
@@ -381,10 +381,10 @@ class _AppointmentCard extends StatelessWidget {
                         fontWeight: FontWeight.w600)),
               ),
             ]),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Row(children: [
               _info(context, Icons.local_car_wash,
-                  context.watch<AppProvider>().washTypeName(a.washTypeId)),
+                  context.watch<CatalogProvider>().washTypeName(a.washTypeId)),
               const Spacer(),
               if (a.priceChanged)
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -401,11 +401,11 @@ class _AppointmentCard extends StatelessWidget {
                 ])
               else
                 Text(
-                    '${a.calculateTotalPrice(services.cast<Service>(), context.watch<AppProvider>().washTypeById(a.washTypeId))} ₽',
+                    '${a.calculateTotalPrice(services.cast<Service>(), context.watch<CatalogProvider>().washTypeById(a.washTypeId))} ₽',
                     style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[
-              SizedBox(height: 6),
+              const SizedBox(height: 6),
               Wrap(
                   spacing: 6,
                   runSpacing: 4,
@@ -441,7 +441,7 @@ class _AppointmentCard extends StatelessWidget {
   Widget _info(BuildContext context, IconData icon, String text) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 14, color: AppStyles.adaptiveTextSecondary(context)),
-        SizedBox(width: 4),
+        const SizedBox(width: 4),
         Text(text,
             style: AppStyles.bodySmall
                 .copyWith(color: AppStyles.adaptiveTextSecondary(context))),

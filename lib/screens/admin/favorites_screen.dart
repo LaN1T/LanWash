@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../models/service.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/favorite_provider.dart';
 import 'appointment_detail_screen.dart';
 import 'service_detail_screen.dart';
 
@@ -42,19 +44,21 @@ class _FavAppointmentsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final favs = provider.favoriteAppointments;
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final favs = appointmentProvider.favoriteAppointments;
 
-    if (favs.isEmpty)
+    if (favs.isEmpty) {
       return _empty(
           context, 'Нет избранных записей', Icons.calendar_today_outlined);
+    }
 
     return ListView.builder(
       padding: AppStyles.pagePadding,
       itemCount: favs.length,
       itemBuilder: (ctx, i) => _FavAppointmentTile(
         appointment: favs[i],
-        onRemove: () => provider.toggleAppointmentFavorite(favs[i].id),
+        onRemove: () =>
+            appointmentProvider.toggleAppointmentFavorite(favs[i].id),
         onTap: () => Navigator.push(
             ctx,
             MaterialPageRoute(
@@ -96,11 +100,11 @@ class _FavAppointmentTile extends StatelessWidget {
                   fontSize: 15, color: AppStyles.adaptiveTextPrimary(context))),
           subtitle:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text('${a.carModel} · ${a.carNumber}',
                 style: AppStyles.bodySmall
                     .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -114,7 +118,7 @@ class _FavAppointmentTile extends StatelessWidget {
                         color: statusColor,
                         fontWeight: FontWeight.w600)),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(DateFormat('d MMM, HH:mm', 'ru').format(a.dateTime),
                   style: AppStyles.bodySmall.copyWith(
                       color: AppStyles.adaptiveTextSecondary(context))),
@@ -137,18 +141,22 @@ class _FavServicesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final favs = provider.favoriteServices;
+    final catalogProvider = context.watch<CatalogProvider>();
+    final favoriteProvider = context.watch<FavoriteProvider>();
+    final favs = catalogProvider.services
+        .where((s) => favoriteProvider.isServiceFavorite(s.id))
+        .toList();
 
-    if (favs.isEmpty)
+    if (favs.isEmpty) {
       return _empty(context, 'Нет избранных услуг', Icons.local_car_wash);
+    }
 
     return ListView.builder(
       padding: AppStyles.pagePadding,
       itemCount: favs.length,
       itemBuilder: (ctx, i) => _FavServiceTile(
         service: favs[i],
-        onRemove: () => provider.toggleServiceFavorite(favs[i].id),
+        onRemove: () => favoriteProvider.toggleServiceFavorite(favs[i].id),
         onTap: () => Navigator.push(
             ctx,
             MaterialPageRoute(
@@ -189,16 +197,16 @@ class _FavServiceTile extends StatelessWidget {
                   fontSize: 15, color: AppStyles.adaptiveTextPrimary(context))),
           subtitle:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(s.category,
                 style: AppStyles.bodySmall
                     .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Row(children: [
               Text(s.durationLabel,
                   style: AppStyles.bodySmall.copyWith(
                       color: AppStyles.adaptiveTextSecondary(context))),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Text('${s.price} ₽',
                   style: AppStyles.price.copyWith(fontSize: 14)),
             ]),
@@ -221,11 +229,11 @@ Widget _empty(BuildContext context, String text, IconData icon) => Center(
             size: 64,
             color: AppStyles.adaptiveTextSecondary(context)
                 .withValues(alpha: 0.3)),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Text(text,
             style: AppStyles.bodyLarge
                 .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-        SizedBox(height: 6),
+        const SizedBox(height: 6),
         Text('Нажмите ★ на любой записи или услуге',
             style: AppStyles.bodyMedium
                 .copyWith(color: AppStyles.adaptiveTextSecondary(context))),

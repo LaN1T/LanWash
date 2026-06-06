@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/note_provider.dart';
 import '../../models/service.dart';
 import '../../services/notification_service.dart';
 import '../shared/profile_screen.dart';
@@ -30,14 +32,14 @@ class _WasherShellState extends State<WasherShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
-      context.read<AppProvider>().loadNotes(username: auth.userLogin);
-      context.read<AppProvider>().reloadAppointments(auth);
+      context.read<NoteProvider>().loadNotes(username: auth.userLogin);
+      context.read<AppointmentProvider>().reloadAppointments(auth);
+    });
 
-      _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
-        if (mounted) {
-          context.read<AppProvider>().reloadAppointments(auth);
-        }
-      });
+    _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      context.read<AppointmentProvider>().reloadAppointments(auth);
     });
   }
 
@@ -91,7 +93,7 @@ class _WasherShellState extends State<WasherShell> {
   }
 
   Widget _buildAppointmentsTab() {
-    final provider = context.watch<AppProvider>();
+    final provider = context.watch<AppointmentProvider>();
     final auth = context.read<AuthProvider>();
     final appts = provider.appointments;
 
@@ -494,8 +496,8 @@ class _WasherAppointmentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = appointment;
     final statusColor = AppStyles.statusColor(a.status);
-    final provider = context.watch<AppProvider>();
-    final washType = provider.washTypeById(a.washTypeId);
+    final catalogProvider = context.watch<CatalogProvider>();
+    final washType = catalogProvider.washTypeById(a.washTypeId);
     final extras = a.additionalServices
         .where((id) => !(washType?.includedExtraIds.contains(id) ?? false));
     final duration = (washType?.durationMinutes ?? 30) +
@@ -503,7 +505,7 @@ class _WasherAppointmentCard extends StatelessWidget {
             0,
             (sum, id) =>
                 sum +
-                (provider.services
+                (catalogProvider.services
                     .firstWhere((s) => s.id == id,
                         orElse: () => Service(
                             id: id,

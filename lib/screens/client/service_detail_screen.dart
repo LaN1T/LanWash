@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/service.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/favorite_provider.dart';
 
 class ServiceDetailScreen extends StatelessWidget {
   final Service service;
@@ -10,33 +11,36 @@ class ServiceDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final s = provider.services.firstWhere(
+    final catalogProvider = context.watch<CatalogProvider>();
+    final favoriteProvider = context.watch<FavoriteProvider>();
+    final s = catalogProvider.services.firstWhere(
       (x) => x.id == service.id,
       orElse: () => service,
     );
 
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: AppStyles.adaptiveBorder(context))),
+            child:
+                Container(height: 1, color: AppStyles.adaptiveBorder(context))),
         title: const Text('Услуга'),
         actions: [
           IconButton(
             icon: Icon(
-                provider.isServiceFavorite(s.id)
+                favoriteProvider.isServiceFavorite(s.id)
                     ? Icons.star_rounded
                     : Icons.star_outline_rounded,
-                color: provider.isServiceFavorite(s.id)
+                color: favoriteProvider.isServiceFavorite(s.id)
                     ? AppStyles.favorite
                     : AppStyles.adaptiveTextSecondary(context)),
-            onPressed: () => provider.toggleServiceFavorite(s.id),
+            onPressed: () => favoriteProvider.toggleServiceFavorite(s.id),
           ),
         ],
       ),
@@ -57,7 +61,8 @@ class ServiceDetailScreen extends StatelessWidget {
               const SizedBox(height: 6),
               Text(s.category,
                   style: TextStyle(
-                      color: AppStyles.adaptiveTextSecondary(context), fontSize: 14)),
+                      color: AppStyles.adaptiveTextSecondary(context),
+                      fontSize: 14)),
               const SizedBox(height: 16),
               Row(children: [
                 _Stat(Icons.payments_outlined, 'Стоимость', '${s.price} ₽'),
@@ -83,14 +88,14 @@ class ServiceDetailScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              icon: Icon(provider.isServiceFavorite(s.id)
+              icon: Icon(favoriteProvider.isServiceFavorite(s.id)
                   ? Icons.star_rounded
                   : Icons.star_outline_rounded),
-              label: Text(provider.isServiceFavorite(s.id)
+              label: Text(favoriteProvider.isServiceFavorite(s.id)
                   ? 'Убрать из избранного'
                   : 'Добавить в избранное'),
               style: AppStyles.outlineButton,
-              onPressed: () => provider.toggleServiceFavorite(s.id),
+              onPressed: () => favoriteProvider.toggleServiceFavorite(s.id),
             ),
           ),
         ]),

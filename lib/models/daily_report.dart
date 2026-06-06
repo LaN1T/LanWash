@@ -39,7 +39,8 @@ class DailyReport {
                 .toList() ??
             [],
         consumablesAlert: (json['consumablesAlert'] as List<dynamic>?)
-                ?.map((e) => ConsumableAlert.fromJson(e as Map<String, dynamic>))
+                ?.map(
+                    (e) => ConsumableAlert.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
       );
@@ -62,7 +63,8 @@ class WasherShift {
   final String start;
   final String end;
 
-  const WasherShift({required this.name, required this.start, required this.end});
+  const WasherShift(
+      {required this.name, required this.start, required this.end});
 
   factory WasherShift.fromJson(Map<String, dynamic> json) => WasherShift(
         name: json['name'] ?? '',
@@ -82,7 +84,8 @@ class ConsumableAlert {
     required this.minStock,
   });
 
-  factory ConsumableAlert.fromJson(Map<String, dynamic> json) => ConsumableAlert(
+  factory ConsumableAlert.fromJson(Map<String, dynamic> json) =>
+      ConsumableAlert(
         name: json['name'] ?? '',
         currentStock: (json['currentStock'] ?? 0).toDouble(),
         minStock: (json['minStock'] ?? 0).toDouble(),

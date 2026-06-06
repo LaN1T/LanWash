@@ -14,6 +14,10 @@ from database import get_db
 from db_models import User
 from core.config import get_settings
 from core.redis_client import get_redis
+import redis
+import structlog
+
+logger = structlog.get_logger()
 
 settings = get_settings()
 
@@ -61,8 +65,9 @@ def is_token_blacklisted(jti: str) -> bool:
     if r:
         try:
             return r.exists(f"{BLACKLIST_PREFIX}{jti}") == 1
-        except Exception:
-            return False
+        except redis.RedisError as e:
+            logger.critical("redis_blacklist_unavailable", error=str(e))
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Service temporarily unavailable")
     return False
 
 
@@ -121,6 +126,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exception
+    token_pwd_ver = payload.get("pwd_ver")
+    user_pwd_ver = user.passwordVersion if user.passwordVersion is not None else 1
+    if token_pwd_ver != user_pwd_ver:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Password changed. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 

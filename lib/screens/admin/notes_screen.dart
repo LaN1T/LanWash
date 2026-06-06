@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/note.dart';
 import '../../models/user.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/note_provider.dart';
 
 class NotesScreen extends StatefulWidget {
   final bool isEmbedded;
@@ -37,12 +38,13 @@ class _NotesScreenState extends State<NotesScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final auth = context.read<AuthProvider>();
-    final provider = context.read<AppProvider>();
+    final noteProvider = context.read<NoteProvider>();
+    final appointmentProvider = context.read<AppointmentProvider>();
     if (auth.isAdmin) {
-      await provider.loadNotes();
-      _washers = await provider.getWashers();
+      await noteProvider.loadNotes();
+      _washers = await appointmentProvider.getWashers();
     } else {
-      await provider.loadNotes(username: auth.userLogin);
+      await noteProvider.loadNotes(username: auth.userLogin);
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -84,7 +86,7 @@ class _NotesScreenState extends State<NotesScreen> {
                       minLines: 1,
                       maxLines: 3, // Теперь заголовок может быть до 3 строк
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: msgCtrl,
                       decoration: AppStyles.inputDecorationFor(
@@ -96,9 +98,9 @@ class _NotesScreenState extends State<NotesScreen> {
                       minLines: 3,
                       maxLines: 5,
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       decoration: AppStyles.inputDecorationFor(
                         context,
                         'Категория',
@@ -133,7 +135,7 @@ class _NotesScreenState extends State<NotesScreen> {
                 onPressed: () async {
                   if (titleCtrl.text.trim().isEmpty) return;
                   final auth = context.read<AuthProvider>();
-                  await context.read<AppProvider>().addNote(
+                  await context.read<NoteProvider>().addNote(
                         auth.userLogin,
                         titleCtrl.text.trim(),
                         msgCtrl.text.trim(),
@@ -152,9 +154,9 @@ class _NotesScreenState extends State<NotesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final noteProvider = context.watch<NoteProvider>();
     final auth = context.watch<AuthProvider>();
-    final notes = provider.notes;
+    final notes = noteProvider.notes;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -171,7 +173,7 @@ class _NotesScreenState extends State<NotesScreen> {
               title: Text(
                 auth.isAdmin ? 'Заметки мойщиков' : 'Мои заметки',
                 style:
-                    TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
               actions: [
                 IconButton(
@@ -183,7 +185,7 @@ class _NotesScreenState extends State<NotesScreen> {
                   IconButton(
                     icon: const Icon(Icons.done_all_rounded,
                         color: AppStyles.primary),
-                    onPressed: () => provider.markAllNotesRead(),
+                    onPressed: () => noteProvider.markAllNotesRead(),
                     tooltip: 'Прочитать все',
                   ),
               ],
@@ -210,7 +212,7 @@ class _NotesScreenState extends State<NotesScreen> {
                         size: 56,
                         color: AppStyles.adaptiveTextSecondary(context),
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(
                         auth.isWasher
                             ? 'Нет заметок. Нажмите + чтобы добавить'
@@ -231,9 +233,9 @@ class _NotesScreenState extends State<NotesScreen> {
                     note: notes[i],
                     isAdmin: auth.isAdmin,
                     displayName: _displayName(notes[i].username),
-                    onRead: () => provider.markNoteRead(notes[i].id!),
+                    onRead: () => noteProvider.markNoteRead(notes[i].id!),
                     onDelete: auth.isAdmin
-                        ? () => provider.deleteNote(notes[i].id!)
+                        ? () => noteProvider.deleteNote(notes[i].id!)
                         : null,
                   ),
                 ),
@@ -313,7 +315,7 @@ class _NoteCard extends StatelessWidget {
                 ),
                 child: Icon(_categoryIcon, color: color, size: 18),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,14 +331,14 @@ class _NoteCard extends StatelessWidget {
                           ),
                           child: Text(
                             displayName,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: AppStyles.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -354,11 +356,11 @@ class _NoteCard extends StatelessWidget {
                           ),
                         ),
                         if (!note.isRead) ...[
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: AppStyles.primary,
                               shape: BoxShape.circle,
                             ),
@@ -372,7 +374,7 @@ class _NoteCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 5),
+                    const SizedBox(height: 5),
                     Text(
                       note.title,
                       style: TextStyle(
@@ -382,7 +384,7 @@ class _NoteCard extends StatelessWidget {
                       ),
                     ),
                     if (note.message.isNotEmpty) ...[
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
                         note.message,
                         style: AppStyles.bodySmall,

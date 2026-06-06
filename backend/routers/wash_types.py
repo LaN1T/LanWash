@@ -14,7 +14,40 @@ router = APIRouter(
 )
 
 
-async def _to_response(db: AsyncSession, wt: WashType) -> dict:
+def _to_response(wt: WashType, extras_map: dict[str, list[str]]) -> dict:
+    return {
+        "id": wt.id,
+        "code": wt.code,
+        "name": wt.name,
+        "description": wt.description,
+        "basePrice": wt.basePrice,
+        "durationMinutes": wt.durationMinutes,
+        "sortOrder": wt.sortOrder,
+        "includedExtraIds": extras_map.get(wt.id, []),
+    }
+
+
+@router.get("/", response_model=list[WashTypeResponse])
+@limiter.limit("60/minute")
+async def get_all(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(WashType).order_by(WashType.sortOrder.asc()))
+    wash_types = result.scalars().all()
+    if not wash_types:
+        return []
+
+    wt_ids = [wt.id for wt in wash_types]
+    extras_res = await db.execute(
+        select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
+        .where(WashTypeIncludedExtra.washTypeId.in_(wt_ids))
+    )
+    extras_map: dict[str, list[str]] = {}
+    for wt_id, extra_id in extras_res.all():
+        extras_map.setdefault(wt_id, []).append(extra_id)
+
+    return [_to_response(wt, extras_map) for wt in wash_types]
+
+
+async def _to_response_single(db: AsyncSession, wt: WashType) -> dict:
     res = await db.execute(
         select(WashTypeIncludedExtra.extraServiceId)
         .where(WashTypeIncludedExtra.washTypeId == wt.id)
@@ -31,14 +64,6 @@ async def _to_response(db: AsyncSession, wt: WashType) -> dict:
     }
 
 
-@router.get("/", response_model=list[WashTypeResponse])
-@limiter.limit("60/minute")
-async def get_all(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    result = await db.execute(select(WashType).order_by(WashType.sortOrder.asc()))
-    wash_types = result.scalars().all()
-    return [await _to_response(db, wt) for wt in wash_types]
-
-
 @router.get("/{wash_type_id}", response_model=WashTypeResponse)
 @limiter.limit("60/minute")
 async def get_one(request: Request, wash_type_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -46,7 +71,7 @@ async def get_one(request: Request, wash_type_id: str, db: AsyncSession = Depend
     wt = result.scalar_one_or_none()
     if not wt:
         raise HTTPException(404, "Тип мойки не найден")
-    return await _to_response(db, wt)
+    return await _to_response_single(db, wt)
 
 
 @router.put("/{wash_type_id}", response_model=WashTypeResponse)
@@ -71,4 +96,4 @@ async def update(request: Request, wash_type_id: str, req: WashTypeRequest, db: 
 
     await db.commit()
     await db.refresh(wt)
-    return await _to_response(db, wt)
+    return await _to_response_single(db, wt)

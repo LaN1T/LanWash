@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/service.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/favorite_provider.dart';
 import 'service_detail_screen.dart';
-import 'add_edit_service_screen.dart';
 
 class ServicesScreen extends StatefulWidget {
   final bool showHelp;
@@ -17,6 +18,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   String _searchText = '';
   String _selectedCategory = 'Все';
   final _search = TextEditingController();
+  Timer? _searchDebounce;
 
   List<String> _categories(List<Service> services) {
     final cats = services.map((s) => s.category).toSet().toList()..sort();
@@ -35,18 +37,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _search.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    if (provider.loading)
-      return const Center(child: CircularProgressIndicator());
+    final catalogProvider = context.watch<CatalogProvider>();
+    final favoriteProvider = context.watch<FavoriteProvider>();
 
-    final cats = _categories(provider.services);
-    final list = _filtered(provider.services);
+    final cats = _categories(catalogProvider.services);
+    final list = _filtered(catalogProvider.services);
 
     return Column(children: [
       // Поиск
@@ -54,7 +56,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: TextField(
           controller: _search,
-          onChanged: (v) => setState(() => _searchText = v),
+          onChanged: (v) {
+            _searchDebounce?.cancel();
+            _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+              setState(() => _searchText = v);
+            });
+          },
           decoration: AppStyles.inputDecorationFor(context, 'Поиск по услугам',
               icon: Icons.search),
         ),
@@ -96,7 +103,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     size: 56,
                     color: AppStyles.adaptiveTextSecondary(context)
                         .withValues(alpha: 0.3)),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text('Услуги не найдены',
                     style: AppStyles.bodyLarge.copyWith(
                         color: AppStyles.adaptiveTextSecondary(context))),
@@ -107,8 +114,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 itemBuilder: (ctx, i) => _ServiceCard(
                   service: list[i],
                   showHelp: widget.showHelp,
-                  isFavorite: provider.isServiceFavorite(list[i].id),
-                  onFavorite: () => provider.toggleServiceFavorite(list[i].id),
+                  isFavorite: favoriteProvider.isServiceFavorite(list[i].id),
+                  onFavorite: () =>
+                      favoriteProvider.toggleServiceFavorite(list[i].id),
                   onTap: () => Navigator.push(
                       ctx,
                       MaterialPageRoute(
@@ -159,7 +167,7 @@ class _ServiceCard extends StatelessWidget {
               child:
                   Icon(_categoryIcon(s.category), color: _catColor, size: 24),
             ),
-            SizedBox(width: 14),
+            const SizedBox(width: 14),
             Expanded(
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +180,7 @@ class _ServiceCard extends StatelessWidget {
                                 color: AppStyles.adaptiveTextPrimary(context)),
                             overflow: TextOverflow.ellipsis)),
                     if (showHelp) ...[
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Tooltip(
                         message: s.description,
                         child: Icon(Icons.help_outline,
@@ -191,16 +199,16 @@ class _ServiceCard extends StatelessWidget {
                       constraints: const BoxConstraints(),
                     ),
                   ]),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(s.description,
                       style: AppStyles.bodySmall.copyWith(
                           color: AppStyles.adaptiveTextSecondary(context)),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Row(children: [
                     _chip(context, Icons.access_time, s.durationLabel),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     if (s.isFromApi)
                       _chip(context, Icons.local_offer, 'Акция',
                           color: AppStyles.apiTag),
@@ -226,7 +234,7 @@ class _ServiceCard extends StatelessWidget {
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 12, color: effectiveColor),
-        SizedBox(width: 4),
+        const SizedBox(width: 4),
         Text(text,
             style: TextStyle(
                 fontSize: 11,

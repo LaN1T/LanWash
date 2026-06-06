@@ -2,14 +2,16 @@ import 'dart:async'; // Add this
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/favorite_provider.dart';
 import '../../services/notification_service.dart'; // Add this
 import '../shared/profile_screen.dart';
+import 'settings_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
-import '../admin/services_screen.dart';
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
@@ -29,14 +31,13 @@ class _ClientShellState extends State<ClientShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
-      context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
+      context.read<AppointmentProvider>().reloadForUser(auth.userLogin, auth);
+    });
 
-      // Listen for updates
-      _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
-        if (mounted) {
-          context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
-        }
-      });
+    _appointmentSub = NotificationService().onAppointmentUpdated.listen((id) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      context.read<AppointmentProvider>().reloadForUser(auth.userLogin, auth);
     });
   }
 
@@ -50,14 +51,18 @@ class _ClientShellState extends State<ClientShell> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
+    final favoriteProvider = context.watch<FavoriteProvider>();
     final auth = context.watch<AuthProvider>();
     // Считаем только избранные каталожные услуги (не extra), чтобы не путать с admin
-    final favCount = provider.favoriteServices.length;
-    final hasUnseenChanges = provider.appointments.any((a) =>
+    final favCount = catalogProvider.services
+        .where((s) => favoriteProvider.isServiceFavorite(s.id))
+        .length;
+    final hasUnseenChanges = appointmentProvider.appointments.any((a) =>
             (a.isModifiedByAdmin || a.isModifiedByWasher) &&
             !a.isSeenByClient) ||
-        provider.hasDeletedByAdmin;
+        appointmentProvider.hasDeletedByAdmin;
 
     final theme = Theme.of(context);
     return Scaffold(
@@ -73,7 +78,7 @@ class _ClientShellState extends State<ClientShell> {
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppStyles.primaryGradient,
             ),
@@ -112,7 +117,7 @@ class _ClientShellState extends State<ClientShell> {
 
             // 2. Сбрасываем только флаг удаления при переходе на "Записи"
             if (i == 1) {
-              context.read<AppProvider>().clearDeletedByAdminFlag();
+              context.read<AppointmentProvider>().clearDeletedByAdminFlag();
             }
           },
           backgroundColor: Colors.transparent,
@@ -148,7 +153,8 @@ class _ClientShellState extends State<ClientShell> {
                 backgroundColor: AppStyles.primary,
                 child: const Icon(Icons.star_outline),
               ),
-              selectedIcon: Icon(Icons.star_rounded, color: AppStyles.primary),
+              selectedIcon:
+                  const Icon(Icons.star_rounded, color: AppStyles.primary),
               label: 'Избранное',
             ),
           ],
@@ -231,6 +237,24 @@ class _ClientShellState extends State<ClientShell> {
                 Navigator.pop(ctx);
                 Navigator.push(ctx,
                     MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          // Настройки
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.settings_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Настройки',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),

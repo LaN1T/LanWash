@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_saver/file_saver.dart';
-import 'package:printing/printing.dart';
 
 import '../../app_styles.dart';
-import '../../providers/app_provider.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
 import '../../services/pdf_export_service.dart';
@@ -84,7 +82,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
 
     if (kIsWeb) {
       await FileSaver.instance.saveFile(
-        name: 'Средний чек_${_selectedDate}.pdf',
+        name: 'Средний чек_$_selectedDate.pdf',
         bytes: pdfBytes,
         mimeType: MimeType.pdf,
       );
@@ -93,14 +91,14 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
       await PdfExportService.showExportDialog(
         context,
         title: 'Отчет: Средний чек за $_selectedDate',
-        fileName: 'Средний чек_${_selectedDate}',
+        fileName: 'Средний чек_$_selectedDate',
         pdfBytes: pdfBytes,
       );
     }
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+    final DateTime? picked = await showAppDatePicker(
       context: context,
       initialDate: DateTime.tryParse(_selectedDate.length == 7
               ? '$_selectedDate-01'
@@ -139,7 +137,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
           : _error != null
               ? Center(
                   child: Text(_error!,
-                      style: TextStyle(
+                      style: const TextStyle(
                           color: AppStyles.danger, fontSize: 16)))
               : Column(
                   children: [
@@ -154,7 +152,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                               _selectedDate.length == 7
                                   ? 'Отчет: ${_monthNames[DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
                                   : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -192,13 +190,13 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
                                       horizontal: 16, vertical: 8),
                                   child: ListTile(
                                     title: Text(entry.carModel,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                             fontWeight: FontWeight.bold)),
                                     subtitle:
                                         Text('Чеков: ${entry.visitCount}'),
                                     trailing: Text(
                                         '${entry.avgCheck.toStringAsFixed(0)} ₽',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                             color: AppStyles.primary,
                                             fontWeight: FontWeight.bold)),
                                   ),

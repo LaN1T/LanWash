@@ -1,9 +1,10 @@
 import asyncio
+import re
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 import os
@@ -117,8 +118,9 @@ os.makedirs(uploads_dir, exist_ok=True)
 @app.get("/uploads/avatars/{filename}")
 async def get_avatar(filename: str, current_user=Depends(get_current_user)):
     """Serve avatar images with auth check."""
-    safe_filename = os.path.basename(filename)
-    filepath = os.path.join(uploads_dir, "avatars", safe_filename)
+    if not filename or re.search(r'[/\\]', filename) or filename.startswith('.'):
+        raise HTTPException(400, "Invalid filename")
+    filepath = os.path.join(uploads_dir, "avatars", os.path.basename(filename))
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(filepath)
@@ -255,8 +257,12 @@ app.include_router(reviews.router)
 
 
 # Telegram Bot Webhook endpoint
+TELEGRAM_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+
 @app.post("/webhook")
-async def telegram_webhook(update: dict):
+async def telegram_webhook(update: dict, x_telegram_bot_api_secret_token: str = Header(None)):
+    if TELEGRAM_SECRET and x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
+        raise HTTPException(403, "Invalid secret token")
     from bot.webhook import process_update
     return await process_update(update)
 

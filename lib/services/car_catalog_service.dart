@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class CarBrand {
@@ -15,6 +16,11 @@ class CarBrand {
   }
 }
 
+List<CarBrand> _parseCatalog(String raw) {
+  final list = jsonDecode(raw) as List<dynamic>;
+  return list.map((e) => CarBrand.fromJson(e as Map<String, dynamic>)).toList();
+}
+
 class CarCatalogService {
   List<CarBrand>? _brands;
   List<String>? _allBrandNames;
@@ -23,10 +29,10 @@ class CarCatalogService {
   Future<void> load() async {
     if (_brands != null) return;
     final raw = await rootBundle.loadString('assets/data/car_catalog.json');
-    final list = jsonDecode(raw) as List<dynamic>;
-    _brands = list.map((e) => CarBrand.fromJson(e as Map<String, dynamic>)).toList();
-    _allBrandNames = _brands!.map((b) => b.name).toList();
-    for (final brand in _brands!) {
+    final brands = await compute(_parseCatalog, raw);
+    _brands = brands;
+    _allBrandNames = brands.map((b) => b.name).toList();
+    for (final brand in brands) {
       _modelsByBrand[brand.name] = brand.models;
     }
   }

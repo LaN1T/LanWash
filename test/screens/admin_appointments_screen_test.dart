@@ -4,7 +4,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 import 'package:lanwash/providers/auth_provider.dart';
-import 'package:lanwash/providers/app_provider.dart';
+import 'package:lanwash/providers/appointment_provider.dart';
+import 'package:lanwash/providers/catalog_provider.dart';
 import 'package:lanwash/models/appointment.dart';
 import 'package:lanwash/models/service.dart';
 import 'package:lanwash/models/wash_type.dart';
@@ -13,7 +14,8 @@ import '../mocks.dart';
 
 void main() {
   late MockAuthProvider mockAuth;
-  late MockAppProvider mockApp;
+  late MockAppointmentProvider mockAppointment;
+  late MockCatalogProvider mockCatalog;
 
   final testWashType = WashType(
     id: 'w1',
@@ -60,7 +62,8 @@ void main() {
 
   setUp(() {
     mockAuth = MockAuthProvider();
-    mockApp = MockAppProvider();
+    mockAppointment = MockAppointmentProvider();
+    mockCatalog = MockCatalogProvider();
   });
 
   Widget buildTestWidget() {
@@ -68,7 +71,8 @@ void main() {
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
-          ChangeNotifierProvider<AppProvider>.value(value: mockApp),
+          ChangeNotifierProvider<AppointmentProvider>.value(value: mockAppointment),
+          ChangeNotifierProvider<CatalogProvider>.value(value: mockCatalog),
         ],
         child: const Scaffold(
           body: AppointmentsScreen(),
@@ -79,7 +83,7 @@ void main() {
 
   group('AppointmentsScreen', () {
     testWidgets('shows loading indicator', (tester) async {
-      when(() => mockApp.loading).thenReturn(true);
+      when(() => mockAppointment.loading).thenReturn(true);
 
       await tester.pumpWidget(buildTestWidget());
 
@@ -87,13 +91,13 @@ void main() {
     });
 
     testWidgets('shows empty state when no appointments', (tester) async {
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn([]);
-      when(() => mockApp.services).thenReturn([]);
-      when(() => mockApp.totalPages).thenReturn(1);
-      when(() => mockApp.currentPage).thenReturn(1);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn([]);
+      when(() => mockCatalog.services).thenReturn([]);
+      when(() => mockAppointment.totalPages).thenReturn(1);
+      when(() => mockAppointment.currentPage).thenReturn(1);
+      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.uniqueDates).thenReturn(['2026-05-30']);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -108,15 +112,15 @@ void main() {
         createAppointment(id: 'a2', clientName: 'Мария', status: 'completed'),
       ];
 
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
-      when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
-      when(() => mockApp.totalPages).thenReturn(1);
-      when(() => mockApp.currentPage).thenReturn(1);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn(appointments);
+      when(() => mockCatalog.services).thenReturn([testService]);
+      when(() => mockCatalog.washTypeById(any())).thenReturn(testWashType);
+      when(() => mockCatalog.washTypeName(any())).thenReturn('Базовая');
+      when(() => mockAppointment.totalPages).thenReturn(1);
+      when(() => mockAppointment.currentPage).thenReturn(1);
+      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.uniqueDates).thenReturn(['2026-05-30']);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -132,15 +136,15 @@ void main() {
         createAppointment(id: 'a2', clientName: 'Мария', status: 'completed'),
       ];
 
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
-      when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
-      when(() => mockApp.totalPages).thenReturn(1);
-      when(() => mockApp.currentPage).thenReturn(1);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn(appointments);
+      when(() => mockCatalog.services).thenReturn([testService]);
+      when(() => mockCatalog.washTypeById(any())).thenReturn(testWashType);
+      when(() => mockCatalog.washTypeName(any())).thenReturn('Базовая');
+      when(() => mockAppointment.totalPages).thenReturn(1);
+      when(() => mockAppointment.currentPage).thenReturn(1);
+      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.uniqueDates).thenReturn(['2026-05-30']);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -170,15 +174,15 @@ void main() {
         createAppointment(id: 'a2', clientName: 'Мария Сидорова', status: 'scheduled'),
       ];
 
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
-      when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
-      when(() => mockApp.totalPages).thenReturn(1);
-      when(() => mockApp.currentPage).thenReturn(1);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn(appointments);
+      when(() => mockCatalog.services).thenReturn([testService]);
+      when(() => mockCatalog.washTypeById(any())).thenReturn(testWashType);
+      when(() => mockCatalog.washTypeName(any())).thenReturn('Базовая');
+      when(() => mockAppointment.totalPages).thenReturn(1);
+      when(() => mockAppointment.currentPage).thenReturn(1);
+      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.uniqueDates).thenReturn(['2026-05-30']);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -194,14 +198,15 @@ void main() {
     });
 
     testWidgets('shows pagination when multiple pages', (tester) async {
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn([]);
-      when(() => mockApp.services).thenReturn([]);
-      when(() => mockApp.totalPages).thenReturn(3);
-      when(() => mockApp.currentPage).thenReturn(2);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn([
-        '2026-05-30',
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn([]);
+      when(() => mockCatalog.services).thenReturn([]);
+      when(() => mockAppointment.totalPages).thenReturn(3);
+      when(() => mockAppointment.currentPage).thenReturn(2);
+      when(() => mockAppointment.currentDate).thenReturn(today);
+      when(() => mockAppointment.uniqueDates).thenReturn([
+        today,
         '2026-05-29',
         '2026-05-28',
       ]);
@@ -215,13 +220,13 @@ void main() {
     });
 
     testWidgets('hides pagination when single page', (tester) async {
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn([]);
-      when(() => mockApp.services).thenReturn([]);
-      when(() => mockApp.totalPages).thenReturn(1);
-      when(() => mockApp.currentPage).thenReturn(1);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn([]);
+      when(() => mockCatalog.services).thenReturn([]);
+      when(() => mockAppointment.totalPages).thenReturn(1);
+      when(() => mockAppointment.currentPage).thenReturn(1);
+      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.uniqueDates).thenReturn(['2026-05-30']);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -235,16 +240,16 @@ void main() {
         createAppointment(id: 'a1', clientName: 'Иван', status: 'scheduled'),
       ];
 
-      when(() => mockApp.loading).thenReturn(false);
-      when(() => mockApp.appointments).thenReturn(appointments);
-      when(() => mockApp.services).thenReturn([testService]);
-      when(() => mockApp.washTypeById(any())).thenReturn(testWashType);
-      when(() => mockApp.washTypeName(any())).thenReturn('Базовая');
-      when(() => mockApp.totalPages).thenReturn(1);
-      when(() => mockApp.currentPage).thenReturn(1);
-      when(() => mockApp.currentDate).thenReturn('2026-05-30');
-      when(() => mockApp.uniqueDates).thenReturn(['2026-05-30']);
-      when(() => mockApp.reloadAppointments(any()))
+      when(() => mockAppointment.loading).thenReturn(false);
+      when(() => mockAppointment.appointments).thenReturn(appointments);
+      when(() => mockCatalog.services).thenReturn([testService]);
+      when(() => mockCatalog.washTypeById(any())).thenReturn(testWashType);
+      when(() => mockCatalog.washTypeName(any())).thenReturn('Базовая');
+      when(() => mockAppointment.totalPages).thenReturn(1);
+      when(() => mockAppointment.currentPage).thenReturn(1);
+      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.uniqueDates).thenReturn(['2026-05-30']);
+      when(() => mockAppointment.reloadAppointments(any()))
           .thenAnswer((_) => Future.value());
 
       await tester.pumpWidget(buildTestWidget());
@@ -260,7 +265,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      verify(() => mockApp.reloadAppointments(mockAuth)).called(1);
+      verify(() => mockAppointment.reloadAppointments(mockAuth)).called(1);
     });
   });
 }

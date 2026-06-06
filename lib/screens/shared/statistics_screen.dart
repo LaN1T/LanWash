@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app_styles.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../models/daily_report.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../admin/grafana_webview_screen.dart';
+import '../admin/detailed_analytics_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -62,22 +64,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2024),
       lastDate: DateTime.now().add(const Duration(days: 1)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: AppStyles.primary,
-            onPrimary: Colors.white,
-            surface: AppStyles.adaptiveCard(ctx),
-            onSurface: AppStyles.adaptiveTextPrimary(ctx),
-          ),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() => _selectedDate = picked);
@@ -86,13 +77,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   void _previousDay() {
-    setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
+    setState(
+        () => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
     _loadReport();
   }
 
   void _nextDay() {
     if (_selectedDate.isBefore(DateTime.now())) {
-      setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
+      setState(
+          () => _selectedDate = _selectedDate.add(const Duration(days: 1)));
       _loadReport();
     }
   }
@@ -113,9 +106,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         actions: [
           if (isAdmin)
             IconButton(
-              icon: const Icon(Icons.analytics_outlined),
-              tooltip: 'Grafana',
-              onPressed: () => _openGrafana(context),
+              icon: const Icon(Icons.open_in_new_rounded),
+              tooltip: 'Grafana (внешняя)',
+              onPressed: () => _openExternalGrafana(),
             ),
         ],
       ),
@@ -192,7 +185,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   children: [
                     Text(
                       isToday ? 'Сегодня' : _weekdayName(_selectedDate),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppStyles.primary,
@@ -214,7 +207,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            onPressed: _isSameDay(_selectedDate, DateTime.now()) ? null : _nextDay,
+            onPressed:
+                _isSameDay(_selectedDate, DateTime.now()) ? null : _nextDay,
             visualDensity: VisualDensity.compact,
           ),
           IconButton(
@@ -234,9 +228,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: crossCount,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.1,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 2.4,
       children: [
         _KpiCard(
           icon: Icons.payments_rounded,
@@ -313,8 +307,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _LegendDot(color: AppStyles.success, label: 'Выполнено: $completed'),
-              _LegendDot(color: AppStyles.adaptiveTextMuted(context), label: 'Всего: $total'),
+              _LegendDot(
+                  color: AppStyles.success, label: 'Выполнено: $completed'),
+              _LegendDot(
+                  color: AppStyles.adaptiveTextMuted(context),
+                  label: 'Всего: $total'),
             ],
           ),
         ],
@@ -324,17 +321,18 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   Widget _buildTopServicesChart(BuildContext context, DailyReport report) {
     if (report.topServices.isEmpty) {
-      return _SectionCard(
+      return const _SectionCard(
         title: 'Топ услуг',
         icon: Icons.star_rounded,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: Center(child: Text('Нет данных за выбранный день')),
         ),
       );
     }
 
-    final maxCount = report.topServices.map((s) => s.count).reduce((a, b) => a > b ? a : b);
+    final maxCount =
+        report.topServices.map((s) => s.count).reduce((a, b) => a > b ? a : b);
     final barGroups = report.topServices.asMap().entries.map((e) {
       return BarChartGroupData(
         x: e.key,
@@ -369,20 +367,26 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= report.topServices.length) return const SizedBox.shrink();
+                        if (idx < 0 || idx >= report.topServices.length)
+                          return const SizedBox.shrink();
                         final name = report.topServices[idx].name;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            name.length > 8 ? '${name.substring(0, 8)}...' : name,
+                            name.length > 8
+                                ? '${name.substring(0, 8)}...'
+                                : name,
                             style: TextStyle(
                               fontSize: 10,
                               color: AppStyles.adaptiveTextSecondary(context),
@@ -396,7 +400,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (group) => AppStyles.adaptiveCard(context),
-                    tooltipBorder: BorderSide(color: AppStyles.adaptiveBorder(context)),
+                    tooltipBorder:
+                        BorderSide(color: AppStyles.adaptiveBorder(context)),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final s = report.topServices[groupIndex];
                       return BarTooltipItem(
@@ -425,7 +430,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: _chartColors[i % _chartColors.length].withValues(alpha:0.15),
+                  color: _chartColors[i % _chartColors.length]
+                      .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -441,13 +447,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
               title: Text(s.name, style: const TextStyle(fontSize: 13)),
               trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppStyles.adaptiveInnerCard(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text('${s.count} шт',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 12)),
               ),
             );
           }),
@@ -483,7 +491,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Бокс $boxNum',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500)),
                       Text('$count моек',
                           style: TextStyle(
                             fontSize: 12,
@@ -535,15 +544,20 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
               child: const Icon(Icons.person, color: Colors.white, size: 18),
             ),
-            title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            title: Text(w.name,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             subtitle: Text('${w.start} – ${w.end}',
-                style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: AppStyles.adaptiveTextSecondary(context))),
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppStyles.successBg,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppStyles.success.withValues(alpha:0.3)),
+                border:
+                    Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
               ),
               child: const Text('На смене',
                   style: TextStyle(
@@ -575,28 +589,34 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             decoration: BoxDecoration(
               color: AppStyles.dangerBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppStyles.danger.withValues(alpha:0.2)),
+              border:
+                  Border.all(color: AppStyles.danger.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
-                Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
+                const Icon(Icons.inventory_2_outlined,
+                    color: AppStyles.danger, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(a.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 2),
-                      Text('Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
-                          style: TextStyle(fontSize: 12, color: AppStyles.danger)),
+                      Text(
+                          'Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppStyles.danger)),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppStyles.danger.withValues(alpha:0.1),
+                    color: AppStyles.danger.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -617,39 +637,76 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildGrafanaButton(BuildContext context) {
+    final dark = AppStyles.isDark(context);
     return Container(
       width: double.infinity,
-      height: 52,
       decoration: BoxDecoration(
-        gradient: AppStyles.primaryGradient,
-        borderRadius: BorderRadius.circular(14),
+        color: dark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: dark
+              ? const Color(0xFF334155)
+              : AppStyles.adaptiveBorder(context),
+        ),
         boxShadow: [
-          BoxShadow(
-            color: AppStyles.primary.withValues(alpha:0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
+          if (!dark)
+            BoxShadow(
+              color:
+                  Theme.of(context).colorScheme.shadow.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openGrafana(context),
-          borderRadius: BorderRadius.circular(14),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.analytics_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text(
-                'Открыть Grafana',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: AppStyles.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.analytics_rounded,
+                      color: Colors.white, size: 22),
                 ),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Детальная аналитика',
+                        style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Открыть Grafana в приложении',
+                        style: TextStyle(
+                          color: AppStyles.adaptiveTextSecondary(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppStyles.adaptiveTextMuted(context),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -661,7 +718,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 56, color: AppStyles.danger.withValues(alpha:0.5)),
+          Icon(Icons.error_outline,
+              size: 56, color: AppStyles.danger.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text('Ошибка загрузки',
               style: TextStyle(
@@ -671,7 +729,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               )),
           const SizedBox(height: 8),
           Text(_error!,
-              style: TextStyle(color: AppStyles.adaptiveTextSecondary(context))),
+              style:
+                  TextStyle(color: AppStyles.adaptiveTextSecondary(context))),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: _loadReport,
@@ -680,7 +739,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppStyles.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -691,8 +751,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   void _openGrafana(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const GrafanaWebViewScreen()),
+      MaterialPageRoute(
+          builder: (_) => DetailedAnalyticsScreen(initialDate: _selectedDate)),
     );
+  }
+
+  Future<void> _openExternalGrafana() async {
+    const url = 'http://localhost:3000/d/lanwash-api';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -717,7 +786,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   ];
 
   static Color _boxColor(int index) {
-    final colors = [AppStyles.primary, AppStyles.success, AppStyles.warning, AppStyles.inProgress];
+    final colors = [
+      AppStyles.primary,
+      AppStyles.success,
+      AppStyles.warning,
+      AppStyles.inProgress
+    ];
     return colors[(index - 1) % colors.length];
   }
 }
@@ -759,57 +833,64 @@ class _KpiCard extends StatelessWidget {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: dark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+            color: dark
+                ? const Color(0xFF334155)
+                : AppStyles.adaptiveBorder(context),
           ),
           boxShadow: [
             if (!dark)
               BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Theme.of(context)
+                    .colorScheme
+                    .shadow
+                    .withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 18),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.adaptiveTextPrimary(context),
-                    )),
-                if (subtitle != null)
-                  Text(subtitle!,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(value,
                       style: TextStyle(
-                        fontSize: 11,
-                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.adaptiveTextPrimary(context),
                       )),
-                Text(label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppStyles.adaptiveTextMuted(context),
-                      fontWeight: FontWeight.w500,
-                    )),
-              ],
+                  if (subtitle != null)
+                    Text(subtitle!,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppStyles.adaptiveTextSecondary(context),
+                        )),
+                  Text(label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppStyles.adaptiveTextMuted(context),
+                        fontWeight: FontWeight.w500,
+                      )),
+                ],
+              ),
             ),
           ],
         ),
@@ -844,12 +925,15 @@ class _SectionCard extends StatelessWidget {
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+          color: dark
+              ? const Color(0xFF334155)
+              : AppStyles.adaptiveBorder(context),
         ),
         boxShadow: [
           if (!dark)
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+              color:
+                  Theme.of(context).colorScheme.shadow.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -864,7 +948,7 @@ class _SectionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha:0.1),
+                  color: accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: accent, size: 18),
@@ -894,9 +978,10 @@ class _SkeletonView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = AppStyles.isDark(context);
-    final shimmerColor = dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final shimmerColor =
+        dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-    Widget _box({double? height, double? width, BorderRadius? radius}) {
+    Widget box({double? height, double? width, BorderRadius? radius}) {
       return Container(
         height: height,
         width: width,
@@ -911,7 +996,7 @@ class _SkeletonView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
         children: [
-          _box(height: 60, radius: BorderRadius.circular(14)),
+          box(height: 60, radius: BorderRadius.circular(14)),
           const SizedBox(height: 16),
           GridView.count(
             shrinkWrap: true,
@@ -919,13 +1004,14 @@ class _SkeletonView extends StatelessWidget {
             crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.1,
-            children: List.generate(4, (_) => _box(radius: BorderRadius.circular(16))),
+            childAspectRatio: 2.4,
+            children:
+                List.generate(4, (_) => box(radius: BorderRadius.circular(14))),
           ),
           const SizedBox(height: 16),
-          _box(height: 120, radius: BorderRadius.circular(16)),
+          box(height: 120, radius: BorderRadius.circular(16)),
           const SizedBox(height: 16),
-          _box(height: 280, radius: BorderRadius.circular(16)),
+          box(height: 280, radius: BorderRadius.circular(16)),
         ],
       ),
     );
@@ -948,11 +1034,13 @@ class _LegendDot extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+          decoration: BoxDecoration(
+              color: color, borderRadius: BorderRadius.circular(4)),
         ),
         const SizedBox(width: 6),
         Text(label,
-            style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+            style: TextStyle(
+                fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
       ],
     );
   }

@@ -12,6 +12,7 @@ import 'api_result.dart';
 class ApiClient {
   static const _storage = FlutterSecureStorage();
   static String? _cachedToken;
+  static bool _isRefreshing = false;
   static http.Client _httpClient = http.Client();
 
   /// Для тестов: позволяет подменить HTTP-клиент.
@@ -26,7 +27,7 @@ class ApiClient {
     try {
       _cachedToken ??= await _storage.read(key: 'jwt_token');
     } catch (e) {
-      debugPrint('getToken error: $e');
+      if (kDebugMode) debugPrint('getToken error: $e');
     }
     return _cachedToken;
   }
@@ -36,7 +37,7 @@ class ApiClient {
     try {
       await _storage.write(key: 'jwt_token', value: token);
     } catch (e) {
-      debugPrint('setToken error: $e');
+      if (kDebugMode) debugPrint('setToken error: $e');
     }
   }
 
@@ -45,7 +46,7 @@ class ApiClient {
     try {
       await _storage.delete(key: 'jwt_token');
     } catch (e) {
-      debugPrint('deleteToken error: $e');
+      if (kDebugMode) debugPrint('deleteToken error: $e');
     }
   }
 
@@ -124,6 +125,22 @@ class ApiClient {
     );
   }
 
+  static Future<ApiResult<Map<String, dynamic>>> patch(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    return _request(
+      method: 'PATCH',
+      path: path,
+      body: body,
+      requestFn: (url, headers) => _httpClient.patch(
+        url,
+        headers: headers,
+        body: body != null ? jsonEncode(body) : null,
+      ),
+    );
+  }
+
   // ─── Core request handler ──────────────────────────────────────────────────
 
   static Future<ApiResult<Map<String, dynamic>>> _request({
@@ -152,6 +169,30 @@ class ApiClient {
       }
 
       if (response.statusCode == 401) {
+        if (_cachedToken != null && !_isRefreshing) {
+          _isRefreshing = true;
+          try {
+            final refreshResponse = await _httpClient.post(
+              Uri.parse('${AppConfig.baseUrl}/auth/refresh'),
+              headers: {'Authorization': 'Bearer $_cachedToken'},
+            );
+            if (refreshResponse.statusCode == 200) {
+              final data = jsonDecode(refreshResponse.body);
+              if (data is Map && data['access_token'] != null) {
+                await setToken(data['access_token'] as String);
+                _isRefreshing = false;
+                return _request(
+                  method: method,
+                  path: path,
+                  requestFn: requestFn,
+                  body: body,
+                );
+              }
+            }
+          } catch (_) {}
+          _isRefreshing = false;
+          await deleteToken();
+        }
         return Failure(AppError.unauthorized());
       }
 
@@ -164,7 +205,7 @@ class ApiClient {
       } catch (_) {}
 
       // В release не показываем детали серверных ошибок пользователю
-      if (!kDebugMode && response.statusCode != null && response.statusCode! >= 500) {
+      if (!kDebugMode && response.statusCode >= 500) {
         message = 'Ошибка сервера. Попробуйте позже.';
       }
 
@@ -206,7 +247,7 @@ class ApiClient {
       if (resp.statusCode == 401) return Failure(AppError.unauthorized());
       return Failure(AppError.server(resp.statusCode));
     } catch (e) {
-      debugPrint('rawGet error: $e | url: $url');
+      if (kDebugMode) debugPrint('rawGet error: $e | url: $url');
       return Failure(AppError.network(e));
     }
   }

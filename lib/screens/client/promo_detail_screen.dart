@@ -22,10 +22,9 @@ class PromoDetailScreen extends StatelessWidget {
           Container(
             height: 200,
             width: double.infinity,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: AppStyles.primaryGradient,
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(32)),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
             ),
             child: SafeArea(
               child: Padding(
@@ -39,7 +38,7 @@ class PromoDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha:0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text('СПЕЦПРЕДЛОЖЕНИЕ',
@@ -72,7 +71,8 @@ class PromoDetailScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(promo.description,
                       style: AppStyles.bodyLarge.copyWith(
-                          height: 1.6, color: AppStyles.adaptiveTextSecondary(context))),
+                          height: 1.6,
+                          color: AppStyles.adaptiveTextSecondary(context))),
                   const SizedBox(height: 32),
                   Row(children: [
                     _InfoCard(
@@ -92,7 +92,7 @@ class PromoDetailScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha:0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5))
           ],

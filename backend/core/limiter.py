@@ -1,6 +1,20 @@
 import os
+from fastapi import Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+
+
+def get_proxy_aware_remote_address(request: Request) -> str:
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        # Take the first (closest to client) IP
+        return x_forwarded_for.split(",")[0].strip()
+    x_real_ip = request.headers.get("X-Real-IP")
+    if x_real_ip:
+        return x_real_ip
+    if request.client and request.client.host:
+        return request.client.host
+    return "127.0.0.1"
+
 
 # Use Redis for rate limiting in production (multi-worker safe).
 # Fallback to in-memory storage if REDIS_URL is not set.
@@ -22,6 +36,6 @@ if os.getenv("DISABLE_RATE_LIMIT") == "true":
     limiter = DummyLimiter()
 else:
     limiter = Limiter(
-        key_func=get_remote_address,
+        key_func=get_proxy_aware_remote_address,
         storage_uri=_storage_uri,
     )

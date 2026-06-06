@@ -98,8 +98,8 @@ class Appointment {
         box_index: (m['box_index'] as num?)?.toInt() ?? 0,
       );
     } catch (e, st) {
-      debugPrint('Appointment.fromMap error: $e | map: $m');
-      debugPrint('Stack: $st');
+      if (kDebugMode) debugPrint('Appointment.fromMap error: $e | map: $m');
+      if (kDebugMode) debugPrint('Stack: $st');
       rethrow;
     }
   }
