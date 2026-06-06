@@ -81,12 +81,17 @@ class WorkloadService:
         # Advisory lock на уровне дня для предотвращения race condition при бронировании
         # Работает только на PostgreSQL; на SQLite пропускаем
         if not _DISABLE_ADVISORY_LOCK:
-            try:
+            # Проверяем движок БД — advisory lock есть только в PostgreSQL
+            dialect_name = getattr(getattr(db, 'bind', None), 'dialect', None)
+            if dialect_name is None:
+                # AsyncSession — достаём sync_session.bind
+                sync_bind = getattr(getattr(db, 'sync_session', None), 'bind', None)
+                dialect_name = getattr(sync_bind, 'dialect', None)
+            is_postgres = getattr(dialect_name, 'name', '') == 'postgresql'
+            if is_postgres:
                 lock_input = day_start.encode()
                 lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
                 await db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(lock_id=lock_id))
-            except Exception:
-                pass
 
         query = select(Appointment).where(
             and_(
