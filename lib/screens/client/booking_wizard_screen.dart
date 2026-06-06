@@ -8,9 +8,12 @@ import '../../models/service.dart';
 import '../../models/wash_type.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
 import '../../utils/translit.dart';
+import '../../widgets/car_autocomplete_field.dart';
 import 'client_shell.dart';
+import '../../core/service_locator.dart';
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
@@ -31,7 +34,9 @@ class _BWState extends State<BookingWizardScreen> {
   String _washTypeId = '';
   late Set<String> _extras;
   late TextEditingController _nameCtrl;
-  late TextEditingController _carCtrl;
+  late TextEditingController _brandCtrl;
+  late TextEditingController _modelCtrl;
+  String? _selectedBrand;
   late TextEditingController _numCtrl;
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
@@ -216,7 +221,11 @@ class _BWState extends State<BookingWizardScreen> {
     super.initState();
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
-    _carCtrl = TextEditingController(text: user?.carModel ?? '');
+    final existingCar = user?.carModel ?? '';
+    final parts = existingCar.split(' ');
+    _brandCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
     _numCtrl = TextEditingController(text: user?.carNumber ?? '');
     _extras = {};
     _selectedDate = _nextValidDate();
@@ -251,7 +260,8 @@ class _BWState extends State<BookingWizardScreen> {
     _pageCtrl.dispose();
     _serviceScrollCtrl.dispose();
     _nameCtrl.dispose();
-    _carCtrl.dispose();
+    _brandCtrl.dispose();
+    _modelCtrl.dispose();
     _numCtrl.dispose();
     super.dispose();
   }
@@ -297,7 +307,7 @@ class _BWState extends State<BookingWizardScreen> {
         Appointment(
           id: '',
           clientName: _nameCtrl.text.trim(),
-          carModel: _carCtrl.text.trim(),
+          carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
           carNumber: _numCtrl.text.trim().toUpperCase(),
           dateTime: _finalDateTime,
           washTypeId: _washTypeId,
@@ -399,7 +409,10 @@ class _BWState extends State<BookingWizardScreen> {
                 extras: _extras,
                 lockedExtras: _lockedExtras(),
                 nameCtrl: _nameCtrl,
-                carCtrl: _carCtrl,
+                brandCtrl: _brandCtrl,
+                modelCtrl: _modelCtrl,
+                selectedBrand: _selectedBrand,
+                onBrandSelected: (brand) => setState(() => _selectedBrand = brand),
                 numCtrl: _numCtrl,
                 isPromo: _isPromo,
                 onWashTypeChanged: (wt) => setState(() {
@@ -437,7 +450,7 @@ class _BWState extends State<BookingWizardScreen> {
                 extras: _extras.toList(),
                 services: provider.services,
                 name: _nameCtrl.text,
-                car: _carCtrl.text,
+                car: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
                 number: _numCtrl.text,
                 finalPrice: _finalPrice,
                 regularPrice: _regularPrice,
@@ -766,7 +779,9 @@ class _ServiceStep extends StatelessWidget {
   final String washTypeId;
   final Set<String> extras;
   final Set<String> lockedExtras;
-  final TextEditingController nameCtrl, carCtrl, numCtrl;
+  final TextEditingController nameCtrl, brandCtrl, modelCtrl, numCtrl;
+  final String? selectedBrand;
+  final ValueChanged<String> onBrandSelected;
   final bool isPromo;
   final ValueChanged<WashType> onWashTypeChanged;
   final void Function(String id, bool value) onExtrasChanged;
@@ -779,7 +794,10 @@ class _ServiceStep extends StatelessWidget {
       required this.extras,
       required this.lockedExtras,
       required this.nameCtrl,
-      required this.carCtrl,
+      required this.brandCtrl,
+      required this.modelCtrl,
+      required this.selectedBrand,
+      required this.onBrandSelected,
       required this.numCtrl,
       required this.isPromo,
       required this.onWashTypeChanged,
@@ -814,14 +832,29 @@ class _ServiceStep extends StatelessWidget {
                 (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
           ),
           const SizedBox(height: 12),
-          TextFormField(
-            controller: carCtrl,
-            style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-            decoration: AppStyles.inputDecorationFor(
-                context, 'Марка и модель авто',
-                icon: Icons.directions_car_outlined),
-            textCapitalization: TextCapitalization.words,
-            onChanged: (v) => applyTranslitEn(carCtrl, v),
+          CarAutocompleteField(
+            label: 'Марка авто',
+            icon: Icons.directions_car_outlined,
+            controller: brandCtrl,
+            optionsBuilder: (q) => sl<CarCatalogService>().searchBrands(q),
+            onSelected: (brand) {
+              onBrandSelected(brand);
+              modelCtrl.clear();
+            },
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Введите марку' : null,
+          ),
+          const SizedBox(height: 12),
+          CarAutocompleteField(
+            label: 'Модель авто',
+            hint: selectedBrand == null ? 'Сначала выберите марку' : null,
+            icon: Icons.settings_outlined,
+            controller: modelCtrl,
+            enabled: selectedBrand != null,
+            optionsBuilder: (q) {
+              if (selectedBrand == null) return [];
+              return sl<CarCatalogService>().searchModels(selectedBrand!, q);
+            },
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
           ),
