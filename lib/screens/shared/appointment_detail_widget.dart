@@ -43,7 +43,7 @@ class AppointmentDetailWidget extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: AppStyles.border,
+                color: AppStyles.adaptiveBorder(context),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -64,7 +64,7 @@ class AppointmentDetailWidget extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: AppStyles.textSecondary)),
+                    color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 8),
             _StatusSelector(
               currentStatus: a.status,
@@ -137,9 +137,9 @@ class AppointmentDetailWidget extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppStyles.primary.withOpacity(0.05),
+                  color: AppStyles.primary.withValues(alpha:0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
+                  border: Border.all(color: AppStyles.primary.withValues(alpha:0.2)),
                 ),
                 child: Row(
                   children: [
@@ -164,13 +164,13 @@ class AppointmentDetailWidget extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: AppStyles.textSecondary)),
+                    color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 4),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppStyles.bgMuted,
+                color: AppStyles.adaptiveBgMuted(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(a.notes, style: AppStyles.bodyMedium),
@@ -310,14 +310,14 @@ class _StatusBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha:0.1),
           borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 24),
         const SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Статус',
-              style: TextStyle(fontSize: 12, color: AppStyles.textSecondary)),
+              style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
           Text(AppStyles.statusLabel(status),
               style: TextStyle(
                   fontSize: 16, fontWeight: FontWeight.bold, color: color)),
@@ -336,11 +336,11 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(children: [
-          Icon(icon, size: 18, color: AppStyles.textSecondary),
+          Icon(icon, size: 18, color: AppStyles.adaptiveTextSecondary(context)),
           const SizedBox(width: 12),
           Text(label,
-              style: const TextStyle(
-                  color: AppStyles.textSecondary, fontSize: 14)),
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextSecondary(context), fontSize: 14)),
           const Spacer(),
           Text(value,
               style:
@@ -370,7 +370,7 @@ class _StatusSelector extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppStyles.border),
+        border: Border.all(color: AppStyles.adaptiveBorder(context)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: DropdownButtonHideUnderline(

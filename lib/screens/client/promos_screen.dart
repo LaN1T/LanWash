@@ -14,17 +14,17 @@ class PromosScreen extends StatelessWidget {
     final promos = provider.promos;
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
+        foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text('Акции и спецпредложения',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: AppStyles.textPrimary)),
+                color: AppStyles.adaptiveTextPrimary(context))),
       ),
       body: provider.loading && promos.isEmpty
           ? const Center(
@@ -38,7 +38,7 @@ class PromosScreen extends StatelessWidget {
                     SizedBox(height: 16),
                     Text('Нет активных акций',
                         style: TextStyle(
-                            color: AppStyles.textSecondary, fontSize: 16)),
+                            color: AppStyles.adaptiveTextSecondary(context), fontSize: 16)),
                   ]),
                 )
               : ListView.builder(
@@ -104,12 +104,12 @@ class _PromoCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       const Icon(Icons.chevron_right_rounded,
-                          size: 20, color: AppStyles.textSecondary),
+                          size: 20, color: AppStyles.adaptiveTextSecondary(context)),
                     ]),
                     const SizedBox(height: 8),
                     Text(promo.name,
-                        style: const TextStyle(
-                            color: AppStyles.textPrimary,
+                        style: TextStyle(
+                            color: AppStyles.adaptiveTextPrimary(context),
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
@@ -126,7 +126,7 @@ class _PromoCard extends StatelessWidget {
                               fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
                       const Icon(Icons.access_time_rounded,
-                          size: 13, color: AppStyles.textSecondary),
+                          size: 13, color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(width: 3),
                       Text('${promo.duration} мин', style: AppStyles.bodySmall),
                     ]),

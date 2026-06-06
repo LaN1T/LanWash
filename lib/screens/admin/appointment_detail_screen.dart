@@ -150,8 +150,8 @@ class AppointmentDetailScreen extends StatelessWidget {
                   return Chip(
                     label: Text(service.name,
                         style: const TextStyle(fontSize: 13)),
-                    backgroundColor: AppStyles.primary.withOpacity(0.1),
-                    side: BorderSide(color: AppStyles.primary.withOpacity(0.3)),
+                    backgroundColor: AppStyles.primary.withValues(alpha:0.1),
+                    side: BorderSide(color: AppStyles.primary.withValues(alpha:0.3)),
                   );
                 }).toList(),
               ),
@@ -250,9 +250,9 @@ class _StatusBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha:0.3)),
       ),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 28),

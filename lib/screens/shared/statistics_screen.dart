@@ -425,7 +425,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: _chartColors[i % _chartColors.length].withOpacity(0.15),
+                  color: _chartColors[i % _chartColors.length].withValues(alpha:0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -543,7 +543,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               decoration: BoxDecoration(
                 color: AppStyles.successBg,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppStyles.success.withOpacity(0.3)),
+                border: Border.all(color: AppStyles.success.withValues(alpha:0.3)),
               ),
               child: const Text('На смене',
                   style: TextStyle(
@@ -575,7 +575,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             decoration: BoxDecoration(
               color: AppStyles.dangerBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppStyles.danger.withOpacity(0.2)),
+              border: Border.all(color: AppStyles.danger.withValues(alpha:0.2)),
             ),
             child: Row(
               children: [
@@ -596,7 +596,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppStyles.danger.withOpacity(0.1),
+                    color: AppStyles.danger.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -625,7 +625,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: AppStyles.primary.withOpacity(0.3),
+            color: AppStyles.primary.withValues(alpha:0.3),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -661,7 +661,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 56, color: AppStyles.danger.withOpacity(0.5)),
+          Icon(Icons.error_outline, size: 56, color: AppStyles.danger.withValues(alpha:0.5)),
           const SizedBox(height: 16),
           Text('Ошибка загрузки',
               style: TextStyle(
@@ -769,7 +769,7 @@ class _KpiCard extends StatelessWidget {
           boxShadow: [
             if (!dark)
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha:0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -849,7 +849,7 @@ class _SectionCard extends StatelessWidget {
         boxShadow: [
           if (!dark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha:0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -864,7 +864,7 @@ class _SectionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.1),
+                  color: accent.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: accent, size: 18),

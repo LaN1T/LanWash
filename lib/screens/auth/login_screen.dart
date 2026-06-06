@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       body: Container(
         decoration: const BoxDecoration(gradient: AppStyles.bgGradient),
         child: SafeArea(
@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen>
                           gradient: AppStyles.primaryGradient,
                           boxShadow: [
                             BoxShadow(
-                              color: AppStyles.primary.withOpacity(0.3),
+                              color: AppStyles.primary.withValues(alpha:0.3),
                               blurRadius: 28,
                               spreadRadius: 2,
                             )
@@ -110,14 +110,14 @@ class _LoginScreenState extends State<LoginScreen>
                       const SizedBox(height: 24),
                       const Text('LanWash',
                           style: TextStyle(
-                              color: AppStyles.textPrimary,
+                              color: AppStyles.adaptiveTextPrimary(context),
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.5)),
                       const SizedBox(height: 6),
                       const Text('Автомобильный Premium сервис',
                           style: TextStyle(
-                              color: AppStyles.textSecondary, fontSize: 15)),
+                              color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
                       const SizedBox(height: 36),
 
                       // ── Карточка формы ───────────────────────────────────
@@ -181,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     child: const Text(
                                         'Войти под другим пользователем',
                                         style: TextStyle(
-                                            color: AppStyles.textSecondary)),
+                                            color: AppStyles.adaptiveTextSecondary(context))),
                                   ),
                                 ],
                               ),
@@ -194,20 +194,20 @@ class _LoginScreenState extends State<LoginScreen>
                                   children: [
                                     const Text('Вход в систему',
                                         style: TextStyle(
-                                            color: AppStyles.textPrimary,
+                                            color: AppStyles.adaptiveTextPrimary(context),
                                             fontSize: 18,
                                             fontWeight: FontWeight.w700)),
                                     const SizedBox(height: 6),
                                     const Text('Введите ваши данные для входа',
                                         style: TextStyle(
-                                            color: AppStyles.textSecondary,
+                                            color: AppStyles.adaptiveTextSecondary(context),
                                             fontSize: 13)),
                                     const SizedBox(height: 20),
                                     TextFormField(
                                       controller: _loginCtrl,
-                                      style: const TextStyle(
-                                          color: AppStyles.textPrimary),
-                                      decoration: AppStyles.inputDecoration(
+                                      style: TextStyle(
+                                          color: AppStyles.adaptiveTextPrimary(context)),
+                                      decoration: AppStyles.inputDecorationFor(context, 
                                           'Логин',
                                           hint: 'Введите логин',
                                           icon: Icons.person_outline),
@@ -220,9 +220,9 @@ class _LoginScreenState extends State<LoginScreen>
                                     TextFormField(
                                       controller: _passCtrl,
                                       obscureText: _obscure,
-                                      style: const TextStyle(
-                                          color: AppStyles.textPrimary),
-                                      decoration: AppStyles.inputDecoration(
+                                      style: TextStyle(
+                                          color: AppStyles.adaptiveTextPrimary(context)),
+                                      decoration: AppStyles.inputDecorationFor(context, 
                                               'Пароль',
                                               hint: 'Введите пароль',
                                               icon: Icons.lock_outline)
@@ -233,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   ? Icons
                                                       .visibility_off_outlined
                                                   : Icons.visibility_outlined,
-                                              color: AppStyles.textSecondary,
+                                              color: AppStyles.adaptiveTextSecondary(context),
                                               size: 20),
                                           onPressed: () => setState(
                                               () => _obscure = !_obscure),
@@ -255,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               BorderRadius.circular(10),
                                           border: Border.all(
                                               color: AppStyles.danger
-                                                  .withOpacity(0.3)),
+                                                  .withValues(alpha:0.3)),
                                         ),
                                         child: Row(children: [
                                           const Icon(Icons.error_outline,
@@ -321,31 +321,31 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
         Text('$role: ',
             style:
-                const TextStyle(color: AppStyles.textSecondary, fontSize: 12)),
+                TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
+            color: AppStyles.adaptiveBgMuted(context),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(login,
-              style: const TextStyle(
-                  color: AppStyles.textPrimary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextPrimary(context),
                   fontSize: 11,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w600)),
         ),
         const Text(' / ',
-            style: TextStyle(color: AppStyles.textMuted, fontSize: 12)),
+            style: TextStyle(color: AppStyles.adaptiveTextMuted(context), fontSize: 12)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
+            color: AppStyles.adaptiveBgMuted(context),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(pass,
-              style: const TextStyle(
-                  color: AppStyles.textPrimary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextPrimary(context),
                   fontSize: 11,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w600)),

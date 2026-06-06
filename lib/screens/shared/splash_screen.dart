@@ -25,8 +25,8 @@ class LanWashLogo extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : AppStyles.textPrimary;
     final subtitleColor = isDark
-        ? Colors.white.withOpacity(0.6)
-        : AppStyles.textSecondary.withOpacity(0.7);
+        ? Colors.white.withValues(alpha:0.6)
+        : AppStyles.textSecondary.withValues(alpha:0.7);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -41,7 +41,7 @@ class LanWashLogo extends StatelessWidget {
             boxShadow: shadowBlur != null
                 ? [
                     BoxShadow(
-                      color: AppStyles.primary.withOpacity(0.3),
+                      color: AppStyles.primary.withValues(alpha:0.3),
                       blurRadius: shadowBlur!,
                       spreadRadius: 2,
                     ),
@@ -225,8 +225,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isDark
-                      ? Colors.white.withOpacity(0.6)
-                      : AppStyles.textSecondary.withOpacity(0.7),
+                      ? Colors.white.withValues(alpha:0.6)
+                      : AppStyles.textSecondary.withValues(alpha:0.7),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
