@@ -6,7 +6,10 @@ import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../models/service.dart';
 import '../../providers/app_provider.dart';
+import '../../core/service_locator.dart';
+import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
+import '../../widgets/car_autocomplete_field.dart';
 
 const List<String> statusOptions = [
   'scheduled',
@@ -76,65 +79,8 @@ const _enToRu = {
   'N': 'Т',
   'M': 'Ь',
 };
-const _ruToEn = {
-  'й': 'q',
-  'ц': 'w',
-  'у': 'e',
-  'к': 'r',
-  'е': 't',
-  'н': 'y',
-  'г': 'u',
-  'ш': 'i',
-  'щ': 'o',
-  'з': 'p',
-  'ф': 'a',
-  'ы': 's',
-  'в': 'd',
-  'а': 'f',
-  'п': 'g',
-  'р': 'h',
-  'о': 'j',
-  'л': 'k',
-  'д': 'l',
-  'я': 'z',
-  'ч': 'x',
-  'с': 'c',
-  'м': 'v',
-  'и': 'b',
-  'т': 'n',
-  'ь': 'm',
-  'Й': 'Q',
-  'Ц': 'W',
-  'У': 'E',
-  'К': 'R',
-  'Е': 'T',
-  'Н': 'Y',
-  'Г': 'U',
-  'Ш': 'I',
-  'Щ': 'O',
-  'З': 'P',
-  'Ф': 'A',
-  'Ы': 'S',
-  'В': 'D',
-  'А': 'F',
-  'П': 'G',
-  'Р': 'H',
-  'О': 'J',
-  'Л': 'K',
-  'Д': 'L',
-  'Я': 'Z',
-  'Ч': 'X',
-  'С': 'C',
-  'М': 'V',
-  'И': 'B',
-  'Т': 'N',
-  'Ь': 'M',
-};
-
 String _translitToRu(String input) =>
     input.split('').map((c) => _enToRu[c] ?? c).join();
-String _translitToEn(String input) =>
-    input.split('').map((c) => _ruToEn[c] ?? c).join();
 
 void _applyTranslitRu(TextEditingController ctrl, String v) {
   final converted = _translitToRu(v);
@@ -145,38 +91,6 @@ void _applyTranslitRu(TextEditingController ctrl, String v) {
   }
 }
 
-void _applyTranslitEn(TextEditingController ctrl, String v) {
-  final converted = _translitToEn(v);
-  if (converted != v) {
-    ctrl.value = TextEditingValue(
-        text: converted,
-        selection: TextSelection.collapsed(offset: converted.length));
-  }
-}
-
-void _applyTranslitPlate(TextEditingController ctrl, String v) {
-  final enToRu = {
-    'A': 'А',
-    'B': 'В',
-    'E': 'Е',
-    'K': 'К',
-    'M': 'М',
-    'H': 'Н',
-    'O': 'О',
-    'P': 'Р',
-    'C': 'С',
-    'T': 'Т',
-    'Y': 'У',
-    'X': 'Х',
-  };
-  String converted =
-      v.toUpperCase().split('').map((c) => enToRu[c] ?? c).join();
-  if (converted != v) {
-    ctrl.value = TextEditingValue(
-        text: converted,
-        selection: TextSelection.collapsed(offset: converted.length));
-  }
-}
 
 class AddEditAppointmentScreen extends StatefulWidget {
   final Appointment? appointment;
@@ -189,7 +103,9 @@ class _State extends State<AddEditAppointmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _scrollCtrl = ScrollController();
   late final TextEditingController _nameCtrl;
+  late final TextEditingController _brandCtrl;
   late final TextEditingController _modelCtrl;
+  String? _selectedBrand;
   late final TextEditingController _numberCtrl;
   late final TextEditingController _notesCtrl;
 
@@ -208,7 +124,11 @@ class _State extends State<AddEditAppointmentScreen> {
     super.initState();
     final a = widget.appointment;
     _nameCtrl = TextEditingController(text: a?.clientName ?? '');
-    _modelCtrl = TextEditingController(text: a?.carModel ?? '');
+    final existingCar = a?.carModel ?? '';
+    final parts = existingCar.split(' ');
+    _brandCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
     _numberCtrl = TextEditingController(text: a?.carNumber ?? '');
     _notesCtrl = TextEditingController(text: a?.notes ?? '');
     _washTypeId = a?.washTypeId ?? '';
@@ -233,6 +153,7 @@ class _State extends State<AddEditAppointmentScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _brandCtrl.dispose();
     _modelCtrl.dispose();
     _numberCtrl.dispose();
     _notesCtrl.dispose();
@@ -293,13 +214,31 @@ class _State extends State<AddEditAppointmentScreen> {
               onChanged: (v) => _applyTranslitRu(_nameCtrl, v),
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            CarAutocompleteField(
+              label: 'Марка авто',
+              icon: Icons.directions_car,
+              controller: _brandCtrl,
+              optionsBuilder: (q) => sl<CarCatalogService>().searchBrands(q),
+              onSelected: (brand) {
+                setState(() => _selectedBrand = brand);
+                _modelCtrl.clear();
+              },
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Введите марку' : null,
+            ),
+            const SizedBox(height: 12),
+            CarAutocompleteField(
+              label: 'Модель авто',
+              hint: _selectedBrand == null ? 'Сначала выберите марку' : null,
+              icon: Icons.settings_outlined,
               controller: _modelCtrl,
-              decoration: AppStyles.inputDecoration('Марка и модель авто',
-                  icon: Icons.directions_car),
+              enabled: _selectedBrand != null,
+              optionsBuilder: (q) {
+                if (_selectedBrand == null) return [];
+                return sl<CarCatalogService>().searchModels(_selectedBrand!, q);
+              },
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
-              onChanged: (v) => _applyTranslitEn(_modelCtrl, v),
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -565,8 +504,9 @@ class _State extends State<AddEditAppointmentScreen> {
           : (oldAppt.paidPrice > 0 ? oldAppt.paidPrice : newPrice);
 
       // Проверка, были ли изменения (игнорируем изменения в notes, если они не существенны)
+      final carModel = '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}';
       final wasModified = _nameCtrl.text.trim() != oldAppt.clientName ||
-          _modelCtrl.text.trim() != oldAppt.carModel ||
+          carModel != oldAppt.carModel ||
           _numberCtrl.text.trim().toUpperCase() != oldAppt.carNumber ||
           !_dateTime.isAtSameMomentAs(oldAppt.dateTime) ||
           _washTypeId != oldAppt.washTypeId ||
@@ -579,7 +519,7 @@ class _State extends State<AddEditAppointmentScreen> {
       success = await provider.updateAppointment(
           oldAppt.copyWith(
             clientName: _nameCtrl.text.trim(),
-            carModel: _modelCtrl.text.trim(),
+            carModel: carModel,
             carNumber: _numberCtrl.text.trim().toUpperCase(),
             dateTime: _dateTime,
             washTypeId: _washTypeId,
@@ -599,7 +539,7 @@ class _State extends State<AddEditAppointmentScreen> {
       final newAppt = Appointment(
         id: '',
         clientName: _nameCtrl.text.trim(),
-        carModel: _modelCtrl.text.trim(),
+        carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
         carNumber: _numberCtrl.text.trim().toUpperCase(),
         dateTime: _dateTime,
         washTypeId: _washTypeId,

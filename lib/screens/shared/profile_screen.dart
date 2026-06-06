@@ -8,7 +8,10 @@ import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/appointment.dart';
 import '../../models/user_stats.dart';
+import '../../core/service_locator.dart';
+import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
+import '../../widgets/car_autocomplete_field.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,7 +23,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
-  late TextEditingController _carModelCtrl;
+  late TextEditingController _brandCtrl;
+  late TextEditingController _modelCtrl;
+  String? _selectedBrand;
   late TextEditingController _carNumberCtrl;
   late TextEditingController _usernameCtrl;
   late TextEditingController _passCtrl;
@@ -42,7 +47,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
-    _carModelCtrl = TextEditingController(text: user?.carModel ?? '');
+    final existingCar = user?.carModel ?? '';
+    final parts = existingCar.split(' ');
+    _brandCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
     _carNumberCtrl = TextEditingController(text: user?.carNumber ?? '');
     _usernameCtrl = TextEditingController(text: user?.username ?? '');
     _passCtrl = TextEditingController();
@@ -111,7 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final error = await context.read<AuthProvider>().updateProfile(
           displayName: _nameCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
-          carModel: _carModelCtrl.text.trim(),
+          carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
           carNumber: _carNumberCtrl.text.trim().toUpperCase(),
           newPassword:
               _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
@@ -138,7 +147,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     for (final c in [
       _nameCtrl,
       _phoneCtrl,
-      _carModelCtrl,
+      _brandCtrl,
+      _modelCtrl,
       _carNumberCtrl,
       _usernameCtrl,
       _passCtrl,
@@ -320,12 +330,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppStyles.adaptiveTextSecondary(context),
                         fontSize: 12)),
               ),
-              TextFormField(
-                controller: _carModelCtrl,
-                style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                decoration: AppStyles.inputDecorationFor(
-                    context, 'Марка и модель авто',
-                    hint: 'Toyota Camry', icon: Icons.directions_car_outlined),
+              CarAutocompleteField(
+                label: 'Марка авто',
+                icon: Icons.directions_car_outlined,
+                controller: _brandCtrl,
+                optionsBuilder: (q) => sl<CarCatalogService>().searchBrands(q),
+                onSelected: (brand) {
+                  setState(() => _selectedBrand = brand);
+                  _modelCtrl.clear();
+                },
+              ),
+              const SizedBox(height: 12),
+              CarAutocompleteField(
+                label: 'Модель авто',
+                hint: _selectedBrand == null ? 'Сначала выберите марку' : null,
+                icon: Icons.settings_outlined,
+                controller: _modelCtrl,
+                enabled: _selectedBrand != null,
+                optionsBuilder: (q) {
+                  if (_selectedBrand == null) return [];
+                  return sl<CarCatalogService>().searchModels(_selectedBrand!, q);
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(
