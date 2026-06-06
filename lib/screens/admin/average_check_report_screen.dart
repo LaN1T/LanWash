@@ -6,6 +6,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:printing/printing.dart';
 
 import '../../app_styles.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../providers/app_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
@@ -100,7 +101,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+    final DateTime? picked = await showAppDatePicker(
       context: context,
       initialDate: DateTime.tryParse(_selectedDate.length == 7
               ? '$_selectedDate-01'

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../models/appointment.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -179,7 +180,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 }
               }
 
-              final picked = await showDatePicker(
+              final picked = await showAppDatePicker(
                 context: context,
                 initialDate: initialDate,
                 firstDate: DateTime(2025),
@@ -188,18 +189,6 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 selectableDayPredicate: (day) {
                   final formattedDay = DateFormat('yyyy-MM-dd').format(day);
                   return provider.uniqueDates.contains(formattedDay);
-                },
-                builder: (context, child) {
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: ColorScheme.light(
-                        primary: AppStyles.primary,
-                        onPrimary: Colors.white,
-                        onSurface: AppStyles.adaptiveTextPrimary(context),
-                      ),
-                    ),
-                    child: child!,
-                  );
                 },
               );
 

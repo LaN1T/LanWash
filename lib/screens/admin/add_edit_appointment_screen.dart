@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../app_styles.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../models/appointment.dart';
 import '../../models/service.dart';
 import '../../providers/app_provider.dart';
@@ -585,7 +586,7 @@ class _DateTimeRow extends StatelessWidget {
         icon: Icons.calendar_today,
         label: DateFormat('d MMMM yyyy', 'ru').format(dateTime),
         onTap: () async {
-          final d = await showDatePicker(
+          final d = await showAppDatePicker(
             context: context,
             initialDate: dateTime,
             firstDate: DateTime.now().subtract(const Duration(days: 365)),
@@ -602,7 +603,7 @@ class _DateTimeRow extends StatelessWidget {
         icon: Icons.access_time,
         label: DateFormat('HH:mm').format(dateTime),
         onTap: () async {
-          final t = await showTimePicker(
+          final t = await showAppTimePicker(
             context: context,
             initialTime: TimeOfDay.fromDateTime(dateTime),
             initialEntryMode: TimePickerEntryMode.inputOnly,

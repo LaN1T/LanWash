@@ -6,10 +6,11 @@ import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/notification_service.dart'; // Add this
 import '../shared/profile_screen.dart';
+import 'settings_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
-import '../admin/services_screen.dart';
+
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
@@ -231,6 +232,24 @@ class _ClientShellState extends State<ClientShell> {
                 Navigator.pop(ctx);
                 Navigator.push(ctx,
                     MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          // Настройки
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.settings_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Настройки',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),

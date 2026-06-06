@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/language_provider.dart';
 
 // ─── Маска телефона: +7 (999) 000-00-00 ──────────────────────────────────────
 class _PhoneInputFormatter extends TextInputFormatter {
@@ -94,12 +96,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
+  Widget _buildThemeButton() {
+    final themeProvider = context.watch<ThemeProvider>();
+    final lang = context.read<LanguageProvider>();
+    final isDark = themeProvider.themeMode == ThemeMode.dark ||
+        (themeProvider.themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    return IconButton(
+      icon: Icon(
+        isDark ? Icons.dark_mode_outlined : Icons.wb_sunny_outlined,
+        color: AppStyles.adaptiveTextPrimary(context),
+      ),
+      tooltip: lang.tr('theme'),
+      onPressed: () {
+        themeProvider.setMode(isDark ? AppThemeMode.light : AppThemeMode.dark);
+      },
+    );
+  }
+
+  Widget _buildLanguageButton() {
+    final lang = context.watch<LanguageProvider>();
+    return IconButton(
+      icon: Text(
+        lang.language == AppLanguage.ru ? 'RU' : 'EN',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppStyles.adaptiveTextPrimary(context),
+        ),
+      ),
+      tooltip: lang.tr('language'),
+      onPressed: lang.toggle,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppStyles.adaptiveBgPage(context),
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -107,7 +144,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: Text('Регистрация'),
+        title: Text('Регистрация', style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
+        actions: [_buildLanguageButton(), _buildThemeButton()],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -134,36 +172,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: Colors.white, size: 36),
                 ),
                 SizedBox(height: 20),
-                Text('Создать аккаунт', style: AppStyles.headingLarge),
+                Text(lang.tr('register_title'), style: AppStyles.adaptiveHeadingLarge(context)),
                 SizedBox(height: 6),
-                Text('Заполните данные для регистрации',
-                    style: AppStyles.bodyMedium),
+                Text(lang.tr('register_subtitle'),
+                    style: AppStyles.adaptiveBodyMedium(context)),
                 SizedBox(height: 28),
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: AppStyles.cardDecoration,
+                  decoration: AppStyles.cardDecorationFor(context),
                   child: Column(children: [
                     TextFormField(
                       controller: _nameCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Ваше имя',
+                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_name'),
                           icon: Icons.person_outline_rounded),
                       textCapitalization: TextCapitalization.words,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Введите имя'
+                          ? lang.tr('validation_required')
                           : null,
                     ),
                     SizedBox(height: 14),
                     TextFormField(
                       controller: _loginCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Логин',
-                          hint: 'только латиница и цифры',
+                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_login'),
+                          hint: lang.tr('register_field_login_hint'),
                           icon: Icons.alternate_email_rounded),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty)
-                          return 'Введите логин';
-                        if (v.trim().length < 3) return 'Минимум 3 символа';
+                          return lang.tr('validation_required');
+                        if (v.trim().length < 3) return lang.tr('validation_login_short');
                         return null;
                       },
                     ),
@@ -172,7 +210,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _passCtrl,
                       obscureText: _obscure,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Пароль',
+                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_password'),
                               icon: Icons.lock_outline_rounded)
                           .copyWith(
                         suffixIcon: IconButton(
@@ -186,12 +224,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Введите пароль';
-                        if (v.length < 8) return 'Минимум 8 символов';
-                        if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Хотя бы одна заглавная буква';
-                        if (!RegExp(r'[a-z]').hasMatch(v)) return 'Хотя бы одна строчная буква';
-                        if (!RegExp(r'\d').hasMatch(v)) return 'Хотя бы одна цифра';
-                        if (!RegExp(r'[@$!%*?&_]').hasMatch(v)) return 'Хотя бы один спецсимвол (@\$!%*?&_)';
+                        if (v == null || v.isEmpty) return lang.tr('validation_required');
+                        if (v.length < 8) return lang.tr('validation_password_short');
+                        if (!RegExp(r'[A-Z]').hasMatch(v)) return lang.tr('validation_password_upper');
+                        if (!RegExp(r'[a-z]').hasMatch(v)) return lang.tr('validation_password_lower');
+                        if (!RegExp(r'\d').hasMatch(v)) return lang.tr('validation_password_digit');
+                        if (!RegExp(r'[@$!%*?&_]').hasMatch(v)) return lang.tr('validation_password_special');
                         return null;
                       },
                     ),
@@ -199,17 +237,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _phoneCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, 'Телефон',
-                          hint: '+7 (999) 000-00-00',
+                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_phone'),
+                          hint: lang.tr('register_field_phone_hint'),
                           icon: Icons.phone_outlined),
                       keyboardType: TextInputType.phone,
                       inputFormatters: [_PhoneInputFormatter()],
                       validator: (v) {
                         if (v == null || v.trim().length <= 2)
-                          return 'Введите телефон';
+                          return lang.tr('validation_required');
                         final digits = v.replaceAll(RegExp(r'\D'), '');
                         if (digits.length < 11)
-                          return 'Введите полный номер (+7 и 10 цифр)';
+                          return lang.tr('validation_phone_short');
                         return null;
                       },
                     ),
@@ -246,7 +284,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     color: Colors.white, strokeWidth: 2))
-                            : Text('Зарегистрироваться'),
+                            : Text(lang.tr('register_button')),
                       ),
                     ),
                   ]),
@@ -254,7 +292,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Уже есть аккаунт? Войти',
+                  child: Text(lang.tr('register_has_account'),
                       style: TextStyle(color: AppStyles.primary, fontSize: 14)),
                 ),
               ]),

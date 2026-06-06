@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app_styles.dart';
+import '../../widgets/app_date_picker.dart';
 import '../../models/daily_report.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../admin/grafana_webview_screen.dart';
+import '../admin/detailed_analytics_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -62,22 +65,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2024),
       lastDate: DateTime.now().add(const Duration(days: 1)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: AppStyles.primary,
-            onPrimary: Colors.white,
-            surface: AppStyles.adaptiveCard(ctx),
-            onSurface: AppStyles.adaptiveTextPrimary(ctx),
-          ),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() => _selectedDate = picked);
@@ -113,9 +105,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         actions: [
           if (isAdmin)
             IconButton(
-              icon: const Icon(Icons.analytics_outlined),
-              tooltip: 'Grafana',
-              onPressed: () => _openGrafana(context),
+              icon: const Icon(Icons.open_in_new_rounded),
+              tooltip: 'Grafana (внешняя)',
+              onPressed: () => _openExternalGrafana(),
             ),
         ],
       ),
@@ -234,9 +226,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: crossCount,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.1,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 2.4,
       children: [
         _KpiCard(
           icon: Icons.payments_rounded,
@@ -617,39 +609,72 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   Widget _buildGrafanaButton(BuildContext context) {
+    final dark = AppStyles.isDark(context);
     return Container(
       width: double.infinity,
-      height: 52,
       decoration: BoxDecoration(
-        gradient: AppStyles.primaryGradient,
-        borderRadius: BorderRadius.circular(14),
+        color: dark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+        ),
         boxShadow: [
-          BoxShadow(
-            color: AppStyles.primary.withValues(alpha:0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
+          if (!dark)
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openGrafana(context),
-          borderRadius: BorderRadius.circular(14),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.analytics_rounded, color: Colors.white),
-              SizedBox(width: 10),
-              Text(
-                'Открыть Grafana',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: AppStyles.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.analytics_rounded, color: Colors.white, size: 22),
                 ),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Детальная аналитика',
+                        style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Открыть Grafana в приложении',
+                        style: TextStyle(
+                          color: AppStyles.adaptiveTextSecondary(context),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppStyles.adaptiveTextMuted(context),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -691,8 +716,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   void _openGrafana(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const GrafanaWebViewScreen()),
+      MaterialPageRoute(builder: (_) => DetailedAnalyticsScreen(initialDate: _selectedDate)),
     );
+  }
+
+  Future<void> _openExternalGrafana() async {
+    const url = 'http://localhost:3000/d/lanwash-api';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -759,10 +792,10 @@ class _KpiCard extends StatelessWidget {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: dark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
           ),
@@ -770,46 +803,48 @@ class _KpiCard extends StatelessWidget {
             if (!dark)
               BoxShadow(
                 color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 18),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.adaptiveTextPrimary(context),
-                    )),
-                if (subtitle != null)
-                  Text(subtitle!,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(value,
                       style: TextStyle(
-                        fontSize: 11,
-                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppStyles.adaptiveTextPrimary(context),
                       )),
-                Text(label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppStyles.adaptiveTextMuted(context),
-                      fontWeight: FontWeight.w500,
-                    )),
-              ],
+                  if (subtitle != null)
+                    Text(subtitle!,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppStyles.adaptiveTextSecondary(context),
+                        )),
+                  Text(label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppStyles.adaptiveTextMuted(context),
+                        fontWeight: FontWeight.w500,
+                      )),
+                ],
+              ),
             ),
           ],
         ),
@@ -919,8 +954,8 @@ class _SkeletonView extends StatelessWidget {
             crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.1,
-            children: List.generate(4, (_) => _box(radius: BorderRadius.circular(16))),
+            childAspectRatio: 2.4,
+            children: List.generate(4, (_) => _box(radius: BorderRadius.circular(14))),
           ),
           const SizedBox(height: 16),
           _box(height: 120, radius: BorderRadius.circular(16)),

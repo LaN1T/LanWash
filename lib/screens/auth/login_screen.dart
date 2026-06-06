@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/language_provider.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -72,17 +74,54 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Widget _buildThemeButton() {
+    final themeProvider = context.watch<ThemeProvider>();
+    final lang = context.read<LanguageProvider>();
+    final isDark = themeProvider.themeMode == ThemeMode.dark ||
+        (themeProvider.themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    return IconButton(
+      icon: Icon(
+        isDark ? Icons.dark_mode_outlined : Icons.wb_sunny_outlined,
+        color: AppStyles.adaptiveTextPrimary(context),
+      ),
+      tooltip: lang.tr('theme'),
+      onPressed: () {
+        themeProvider.setMode(isDark ? AppThemeMode.light : AppThemeMode.dark);
+      },
+    );
+  }
+
+  Widget _buildLanguageButton() {
+    final lang = context.watch<LanguageProvider>();
+    return IconButton(
+      icon: Text(
+        lang.language == AppLanguage.ru ? 'RU' : 'EN',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppStyles.adaptiveTextPrimary(context),
+        ),
+      ),
+      tooltip: lang.tr('language'),
+      onPressed: lang.toggle,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
-      body: Container(
-        decoration: BoxDecoration(gradient: AppStyles.bgGradient),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: FadeTransition(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(gradient: AppStyles.adaptiveBgGradient(context)),
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: FadeTransition(
                 opacity: _fade,
                 child: SlideTransition(
                   position: _slide,
@@ -108,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen>
                             color: Colors.white, size: 44),
                       ),
                       SizedBox(height: 24),
-                      Text('LanWash',
+                      Text(lang.tr('app_name'),
                           style: TextStyle(
                               color: AppStyles.adaptiveTextPrimary(context),
                               fontSize: 30,
@@ -124,11 +163,11 @@ class _LoginScreenState extends State<LoginScreen>
                       widget.isResume
                           ? Container(
                               padding: const EdgeInsets.all(24),
-                              decoration: AppStyles.cardDecoration,
+                              decoration: AppStyles.cardDecorationFor(context),
                               child: Column(
                                 children: [
                                   Text(
-                                      'С возвращением, ${context.read<AuthProvider>().userLogin}!',
+                                      '${lang.tr('login_resume_title')}, ${context.read<AuthProvider>().userLogin}!',
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600)),
@@ -138,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     child: ElevatedButton(
                                       style: AppStyles.primaryButton,
                                       onPressed: widget.onSessionResumed,
-                                      child: Text('Продолжить'),
+                                      child: Text(lang.tr('login_resume_button')),
                                     ),
                                   ),
                                   SizedBox(height: 12),
@@ -147,14 +186,14 @@ class _LoginScreenState extends State<LoginScreen>
                                       showDialog(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
-                                          title: Text('Сменить аккаунт'),
+                                          title: Text(lang.tr('login_switch_dialog_title')),
                                           content: Text(
-                                              'Вы уверены, что хотите выйти из текущего аккаунта?'),
+                                              lang.tr('login_switch_dialog_body')),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(ctx),
-                                              child: Text('Отмена'),
+                                              child: Text(lang.tr('cancel')),
                                             ),
                                             ElevatedButton(
                                               style: ElevatedButton.styleFrom(
@@ -172,14 +211,14 @@ class _LoginScreenState extends State<LoginScreen>
                                                     .read<AuthProvider>()
                                                     .logout();
                                               },
-                                              child: Text('Выйти'),
+                                              child: Text(lang.tr('logout')),
                                             ),
                                           ],
                                         ),
                                       );
                                     },
                                     child: Text(
-                                        'Войти под другим пользователем',
+                                        lang.tr('login_switch_account'),
                                         style: TextStyle(
                                             color: AppStyles.adaptiveTextSecondary(context))),
                                   ),
@@ -188,17 +227,17 @@ class _LoginScreenState extends State<LoginScreen>
                             )
                           : Container(
                               padding: const EdgeInsets.all(24),
-                              decoration: AppStyles.cardDecoration,
+                              decoration: AppStyles.cardDecorationFor(context),
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Вход в систему',
+                                    Text(lang.tr('login_title'),
                                         style: TextStyle(
                                             color: AppStyles.adaptiveTextPrimary(context),
                                             fontSize: 18,
                                             fontWeight: FontWeight.w700)),
                                     SizedBox(height: 6),
-                                    Text('Введите ваши данные для входа',
+                                    Text(lang.tr('login_subtitle'),
                                         style: TextStyle(
                                             color: AppStyles.adaptiveTextSecondary(context),
                                             fontSize: 13)),
@@ -207,13 +246,13 @@ class _LoginScreenState extends State<LoginScreen>
                                       controller: _loginCtrl,
                                       style: TextStyle(
                                           color: AppStyles.adaptiveTextPrimary(context)),
-                                      decoration: AppStyles.inputDecorationFor(context, 
-                                          'Логин',
-                                          hint: 'Введите логин',
+                                      decoration: AppStyles.inputDecorationFor(context,
+                                          lang.tr('login_field_login'),
+                                          hint: lang.tr('login_field_login_hint'),
                                           icon: Icons.person_outline),
                                       validator: (v) =>
                                           (v == null || v.trim().isEmpty)
-                                              ? 'Введите логин'
+                                              ? lang.tr('validation_required')
                                               : null,
                                     ),
                                     SizedBox(height: 14),
@@ -222,9 +261,9 @@ class _LoginScreenState extends State<LoginScreen>
                                       obscureText: _obscure,
                                       style: TextStyle(
                                           color: AppStyles.adaptiveTextPrimary(context)),
-                                      decoration: AppStyles.inputDecorationFor(context, 
-                                              'Пароль',
-                                              hint: 'Введите пароль',
+                                      decoration: AppStyles.inputDecorationFor(context,
+                                              lang.tr('login_field_password'),
+                                              hint: lang.tr('login_field_password_hint'),
                                               icon: Icons.lock_outline)
                                           .copyWith(
                                         suffixIcon: IconButton(
@@ -241,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                       validator: (v) =>
                                           (v == null || v.trim().isEmpty)
-                                              ? 'Введите пароль'
+                                              ? lang.tr('validation_required')
                                               : null,
                                       onFieldSubmitted: (_) => _submit(),
                                     ),
@@ -283,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                     CircularProgressIndicator(
                                                         color: Colors.white,
                                                         strokeWidth: 2))
-                                            : Text('Войти'),
+                                            : Text(lang.tr('login_button')),
                                       ),
                                     ),
                                   ]),
@@ -296,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen>
                             MaterialPageRoute(
                                 builder: (_) => const RegisterScreen())),
                         child: Text(
-                          'Нет аккаунта? Зарегистрироваться',
+                          lang.tr('login_no_account'),
                           style:
                               TextStyle(color: AppStyles.primary, fontSize: 14),
                         ),
@@ -308,8 +347,22 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-      ),
-    );
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: SafeArea(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildLanguageButton(),
+                _buildThemeButton(),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ));
   }
 }
 

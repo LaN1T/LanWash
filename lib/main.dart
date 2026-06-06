@@ -12,6 +12,7 @@ import 'core/service_locator.dart';
 import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/language_provider.dart';
 import 'services/api_service.dart';
 import 'services/car_catalog_service.dart';
 import 'services/notification_service.dart';
@@ -56,6 +57,7 @@ void main() async {
           create: (_) => sl<ApiService>(),
         ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(
             api: sl<ApiService>(),
@@ -85,6 +87,8 @@ class LanWashApp extends StatelessWidget {
         (themeProvider.themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
+    final langProvider = context.watch<LanguageProvider>();
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -97,8 +101,8 @@ class LanWashApp extends StatelessWidget {
       child: MaterialApp(
         title: 'LanWash',
         debugShowCheckedModeBanner: false,
-        locale: const Locale('ru', 'RU'),
-        supportedLocales: const [Locale('ru', 'RU')],
+        locale: langProvider.locale,
+        supportedLocales: const [Locale('ru', 'RU'), Locale('en', 'US')],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
