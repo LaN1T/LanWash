@@ -28,7 +28,7 @@ class AppointmentDetailWidget extends StatelessWidget {
     );
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -54,18 +54,18 @@ class AppointmentDetailWidget extends StatelessWidget {
               Text('Детали записи', style: AppStyles.headingMedium),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _StatusBanner(status: a.status),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (isWasher &&
               a.status != 'cancelled' &&
               a.status != 'completed') ...[
-            const Text('Изменить статус',
+            Text('Изменить статус',
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: AppStyles.adaptiveTextSecondary(context))),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _StatusSelector(
               currentStatus: a.status,
               onChanged: (newStatus) async {
@@ -82,7 +82,7 @@ class AppointmentDetailWidget extends StatelessWidget {
                 }
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
           _Row(Icons.calendar_today, 'Дата',
               DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
@@ -129,7 +129,7 @@ class AppointmentDetailWidget extends StatelessWidget {
           _Row(Icons.payments, 'Итого',
               '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
           if (a.additionalServices.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             InkWell(
               onTap: () => _showAdditionalServices(
                   context, provider, a.additionalServices),
@@ -143,29 +143,29 @@ class AppointmentDetailWidget extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.list_alt,
+                    Icon(Icons.list_alt,
                         size: 20, color: AppStyles.primary),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                         child: Text(
                             'Доп. услуги (${a.additionalServices.length})',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: AppStyles.primary))),
-                    const Icon(Icons.chevron_right, color: AppStyles.primary),
+                    Icon(Icons.chevron_right, color: AppStyles.primary),
                   ],
                 ),
               ),
             ),
           ],
           if (a.notes.isNotEmpty && isWasher) ...[
-            const SizedBox(height: 12),
-            const Text('Заметки',
+            SizedBox(height: 12),
+            Text('Заметки',
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: AppStyles.adaptiveTextSecondary(context))),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -176,16 +176,16 @@ class AppointmentDetailWidget extends StatelessWidget {
               child: Text(a.notes, style: AppStyles.bodyMedium),
             ),
           ],
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           if (auth.isClient && a.status == 'scheduled')
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.delete_outline, color: AppStyles.danger),
-                label: const Text('Отменить запись',
+                icon: Icon(Icons.delete_outline, color: AppStyles.danger),
+                label: Text('Отменить запись',
                     style: TextStyle(color: AppStyles.danger)),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppStyles.danger),
+                  side: BorderSide(color: AppStyles.danger),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -217,9 +217,9 @@ class AppointmentDetailWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Дополнительные услуги',
+            Text('Дополнительные услуги',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Expanded(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -239,19 +239,19 @@ class AppointmentDetailWidget extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle,
+                        Icon(Icons.check_circle,
                             color: AppStyles.primary, size: 20),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                             child: Text(service.name,
-                                style: const TextStyle(fontSize: 16))),
+                                style: TextStyle(fontSize: 16))),
                       ],
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -262,7 +262,7 @@ class AppointmentDetailWidget extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12))),
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Закрыть'),
+                child: Text('Закрыть'),
               ),
             ),
           ],
@@ -277,12 +277,12 @@ class AppointmentDetailWidget extends StatelessWidget {
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Отменить запись?'),
-        content: const Text('Это действие нельзя отменить.'),
+        title: Text('Отменить запись?'),
+        content: Text('Это действие нельзя отменить.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена')),
+              child: Text('Отмена')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppStyles.danger,
@@ -292,7 +292,7 @@ class AppointmentDetailWidget extends StatelessWidget {
               final auth = context.read<AuthProvider>();
               provider.deleteAppointment(id, auth);
             },
-            child: const Text('Удалить'),
+            child: Text('Удалить'),
           ),
         ],
       ),
@@ -314,9 +314,9 @@ class _StatusBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 24),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Статус',
+          Text('Статус',
               style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
           Text(AppStyles.statusLabel(status),
               style: TextStyle(
@@ -337,14 +337,14 @@ class _Row extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(children: [
           Icon(icon, size: 18, color: AppStyles.adaptiveTextSecondary(context)),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Text(label,
               style: TextStyle(
                   color: AppStyles.adaptiveTextSecondary(context), fontSize: 14)),
           const Spacer(),
           Text(value,
               style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
         ]),
       );
 }
@@ -378,7 +378,7 @@ class _StatusSelector extends StatelessWidget {
           value: currentStatus,
           isExpanded: true,
           borderRadius: BorderRadius.circular(12),
-          icon: const Icon(Icons.arrow_drop_down_circle_outlined,
+          icon: Icon(Icons.arrow_drop_down_circle_outlined,
               color: AppStyles.primary),
           items: availableOptions
               .map((s) => DropdownMenuItem(
@@ -387,7 +387,7 @@ class _StatusSelector extends StatelessWidget {
                       children: [
                         Icon(AppStyles.statusIcon(s),
                             color: AppStyles.statusColor(s), size: 20),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Text(AppStyles.statusLabel(s),
                             style: TextStyle(
                               color: AppStyles.statusColor(s),
@@ -402,13 +402,13 @@ class _StatusSelector extends StatelessWidget {
               showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('Смена статуса'),
+                  title: Text('Смена статуса'),
                   content: Text(
                       'Вы действительно хотите изменить статус на "${AppStyles.statusLabel(v)}"?'),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Отмена')),
+                        child: Text('Отмена')),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                           backgroundColor: AppStyles.primary,
@@ -417,7 +417,7 @@ class _StatusSelector extends StatelessWidget {
                         Navigator.pop(ctx);
                         onChanged(v);
                       },
-                      child: const Text('Да'),
+                      child: Text('Да'),
                     ),
                   ],
                 ),

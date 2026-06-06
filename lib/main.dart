@@ -13,6 +13,7 @@ import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/api_service.dart';
+import 'services/car_catalog_service.dart';
 import 'services/notification_service.dart';
 import 'screens/shared/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
