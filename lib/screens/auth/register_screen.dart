@@ -107,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: const Text('Регистрация'),
+        title: Text('Регистрация'),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -130,15 +130,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       )
                     ],
                   ),
-                  child: const Icon(Icons.person_add_rounded,
+                  child: Icon(Icons.person_add_rounded,
                       color: Colors.white, size: 36),
                 ),
-                const SizedBox(height: 20),
-                const Text('Создать аккаунт', style: AppStyles.headingLarge),
-                const SizedBox(height: 6),
-                const Text('Заполните данные для регистрации',
+                SizedBox(height: 20),
+                Text('Создать аккаунт', style: AppStyles.headingLarge),
+                SizedBox(height: 6),
+                Text('Заполните данные для регистрации',
                     style: AppStyles.bodyMedium),
-                const SizedBox(height: 28),
+                SizedBox(height: 28),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: AppStyles.cardDecoration,
@@ -153,7 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ? 'Введите имя'
                           : null,
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextFormField(
                       controller: _loginCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
@@ -167,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: _obscure,
@@ -195,7 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextFormField(
                       controller: _phoneCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
@@ -214,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     if (_error != null) ...[
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -224,37 +224,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: AppStyles.danger.withValues(alpha:0.3)),
                         ),
                         child: Row(children: [
-                          const Icon(Icons.error_outline,
+                          Icon(Icons.error_outline,
                               color: AppStyles.danger, size: 18),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Expanded(
                               child: Text(_error!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AppStyles.danger, fontSize: 13))),
                         ]),
                       ),
                     ],
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: AppStyles.primaryButton,
                         onPressed: _loading ? null : _submit,
                         child: _loading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     color: Colors.white, strokeWidth: 2))
-                            : const Text('Зарегистрироваться'),
+                            : Text('Зарегистрироваться'),
                       ),
                     ),
                   ]),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Уже есть аккаунт? Войти',
+                  child: Text('Уже есть аккаунт? Войти',
                       style: TextStyle(color: AppStyles.primary, fontSize: 14)),
                 ),
               ]),
