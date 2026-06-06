@@ -255,19 +255,19 @@ app.include_router(shifts.router)
 app.include_router(reviews.router)
 
 
-# Telegram Mini App static files (must be after API routers)
-miniapp_dir = os.path.join(os.path.dirname(__file__), "..", "telegram-miniapp", "dist")
-if os.path.exists(miniapp_dir):
-    app.mount("/", StaticFiles(directory=miniapp_dir, html=True), name="miniapp")
-else:
-    logger.warning("miniapp_static_dir_not_found", path=miniapp_dir)
-
-
 # Telegram Bot Webhook endpoint
 @app.post("/webhook")
 async def telegram_webhook(update: dict):
     from bot.webhook import process_update
     return await process_update(update)
+
+
+# Telegram Mini App static files (must be after ALL API routes)
+miniapp_dir = os.path.join(os.path.dirname(__file__), "..", "telegram-miniapp", "dist")
+if os.path.exists(miniapp_dir):
+    app.mount("/", StaticFiles(directory=miniapp_dir, html=True), name="miniapp")
+else:
+    logger.warning("miniapp_static_dir_not_found", path=miniapp_dir)
 
 
 @app.on_event("startup")
