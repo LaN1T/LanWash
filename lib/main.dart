@@ -25,6 +25,7 @@ void main() async {
 
   // Инициализация DI
   setupServiceLocator();
+  await sl<CarCatalogService>().load();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
