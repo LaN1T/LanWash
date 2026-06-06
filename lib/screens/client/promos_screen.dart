@@ -14,31 +14,31 @@ class PromosScreen extends StatelessWidget {
     final promos = provider.promos;
 
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
+        backgroundColor: AppStyles.adaptiveCard(context),
+        foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Акции и спецпредложения',
+        title: Text('Акции и спецпредложения',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: AppStyles.textPrimary)),
+                color: AppStyles.adaptiveTextPrimary(context))),
       ),
       body: provider.loading && promos.isEmpty
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppStyles.primary))
           : promos.isEmpty
               ? Center(
                   child:
-                      Column(mainAxisSize: MainAxisSize.min, children: const [
+                      Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.local_offer_outlined,
                         size: 44, color: AppStyles.primary),
                     SizedBox(height: 16),
                     Text('Нет активных акций',
                         style: TextStyle(
-                            color: AppStyles.textSecondary, fontSize: 16)),
+                            color: AppStyles.adaptiveTextSecondary(context), fontSize: 16)),
                   ]),
                 )
               : ListView.builder(
@@ -68,7 +68,7 @@ class _PromoCard extends StatelessWidget {
               builder: (_) => BookingWizardScreen(initialPromo: promo))),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        decoration: AppStyles.cardDecoration,
+        decoration: AppStyles.cardDecorationFor(context),
         child: Row(children: [
           Container(
             width: 5,
@@ -81,7 +81,7 @@ class _PromoCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -96,44 +96,44 @@ class _PromoCard extends StatelessWidget {
                           gradient: AppStyles.primaryGradient,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text('АКЦИЯ',
+                        child: Text('АКЦИЯ',
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold)),
                       ),
                       const Spacer(),
-                      const Icon(Icons.chevron_right_rounded,
-                          size: 20, color: AppStyles.textSecondary),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 20, color: AppStyles.adaptiveTextSecondary(context)),
                     ]),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(promo.name,
-                        style: const TextStyle(
-                            color: AppStyles.textPrimary,
+                        style: TextStyle(
+                            color: AppStyles.adaptiveTextPrimary(context),
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(promo.description,
-                        style: AppStyles.bodySmall,
+                        style: AppStyles.adaptiveBodySmall(context),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Row(children: [
                       Text('$displayPrice ₽',
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppStyles.primary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.access_time_rounded,
-                          size: 13, color: AppStyles.textSecondary),
-                      const SizedBox(width: 3),
-                      Text('${promo.duration} мин', style: AppStyles.bodySmall),
+                      SizedBox(width: 8),
+                      Icon(Icons.access_time_rounded,
+                          size: 13, color: AppStyles.adaptiveTextSecondary(context)),
+                      SizedBox(width: 3),
+                      Text('${promo.duration} мин', style: AppStyles.adaptiveBodySmall(context)),
                     ]),
                   ]),
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
         ]),
       ),
     );

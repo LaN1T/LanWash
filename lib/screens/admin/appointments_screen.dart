@@ -166,7 +166,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
             icon: const Icon(Icons.chevron_left, size: 28),
             color: AppStyles.primary,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           InkWell(
             onTap: () async {
               final initialDateStr = provider.currentDate;
@@ -192,10 +192,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 builder: (context, child) {
                   return Theme(
                     data: Theme.of(context).copyWith(
-                      colorScheme: const ColorScheme.light(
+                      colorScheme: ColorScheme.light(
                         primary: AppStyles.primary,
                         onPrimary: Colors.white,
-                        onSurface: AppStyles.textPrimary,
+                        onSurface: AppStyles.adaptiveTextPrimary(context),
                       ),
                     ),
                     child: child!,
@@ -217,7 +217,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 children: [
                   const Icon(Icons.calendar_today_outlined,
                       size: 16, color: AppStyles.primary),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
                     _formatDate(provider.currentDate),
                     style: AppStyles.bodyMedium.copyWith(
@@ -229,7 +229,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           IconButton(
             onPressed:
                 hasNext ? () => provider.setPage(currentPage + 1, auth) : null,
@@ -285,11 +285,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
               size: 64,
               color: AppStyles.adaptiveTextSecondary(context)
                   .withValues(alpha: 0.4)),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('Нет записей',
               style: AppStyles.headingMedium
                   .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text('Нажмите + чтобы добавить запись',
               style: AppStyles.bodyMedium
                   .copyWith(color: AppStyles.adaptiveTextSecondary(context))),
@@ -336,7 +336,7 @@ class _AppointmentCard extends StatelessWidget {
                 child: Icon(AppStyles.statusIcon(a.status),
                     color: statusColor, size: 20),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,12 +359,12 @@ class _AppointmentCard extends StatelessWidget {
                 constraints: const BoxConstraints(),
               ),
             ]),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Divider(height: 1, color: AppStyles.adaptiveBorder(context)),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Row(children: [
               _info(context, Icons.calendar_today, dateStr),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               _info(context, Icons.pin, a.carNumber),
               const Spacer(),
               Container(
@@ -381,7 +381,7 @@ class _AppointmentCard extends StatelessWidget {
                         fontWeight: FontWeight.w600)),
               ),
             ]),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(children: [
               _info(context, Icons.local_car_wash,
                   context.watch<AppProvider>().washTypeName(a.washTypeId)),
@@ -405,7 +405,7 @@ class _AppointmentCard extends StatelessWidget {
                     style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Wrap(
                   spacing: 6,
                   runSpacing: 4,
@@ -441,7 +441,7 @@ class _AppointmentCard extends StatelessWidget {
   Widget _info(BuildContext context, IconData icon, String text) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 14, color: AppStyles.adaptiveTextSecondary(context)),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Text(text,
             style: AppStyles.bodySmall
                 .copyWith(color: AppStyles.adaptiveTextSecondary(context))),

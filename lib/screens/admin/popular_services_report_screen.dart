@@ -147,7 +147,7 @@ class _PopularServicesReportScreenState
           : _error != null
               ? Center(
                   child: Text(_error!,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppStyles.danger, fontSize: 16)))
               : Column(
                   children: [
@@ -188,7 +188,7 @@ class _PopularServicesReportScreenState
                                       'Ноябрь',
                                       'Декабрь'
                                     ][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),

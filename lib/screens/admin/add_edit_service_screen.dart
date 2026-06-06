@@ -68,37 +68,37 @@ class _State extends State<AddEditServiceScreen> {
           TextFormField(
             controller: _nameCtrl,
             decoration:
-                AppStyles.inputDecoration('Название услуги', icon: Icons.label),
+                AppStyles.inputDecorationFor(context, 'Название услуги', icon: Icons.label),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите название' : null,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _descCtrl,
             decoration:
-                AppStyles.inputDecoration('Описание', icon: Icons.description),
+                AppStyles.inputDecorationFor(context, 'Описание', icon: Icons.description),
             maxLines: 4,
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите описание' : null,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _label('Стоимость и длительность'),
           Row(children: [
             Expanded(
                 child: TextFormField(
               controller: _priceCtrl,
               decoration:
-                  AppStyles.inputDecoration('Цена (₽)', icon: Icons.payments),
+                  AppStyles.inputDecorationFor(context, 'Цена (₽)', icon: Icons.payments),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Введите цену' : null,
             )),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
                 child: TextFormField(
               controller: _durCtrl,
-              decoration: AppStyles.inputDecoration('Время (мин)',
+              decoration: AppStyles.inputDecorationFor(context, 'Время (мин)',
                   icon: Icons.access_time),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -106,7 +106,7 @@ class _State extends State<AddEditServiceScreen> {
                   (v == null || v.isEmpty) ? 'Введите время' : null,
             )),
           ]),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _label('Категория'),
           Container(
             decoration: AppStyles.cardDecoration,
@@ -125,14 +125,14 @@ class _State extends State<AddEditServiceScreen> {
                   .toList(),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           ElevatedButton.icon(
             icon: const Icon(Icons.save),
             label: Text(_isEditing ? 'Сохранить изменения' : 'Добавить услугу'),
             style: AppStyles.primaryButton,
             onPressed: _save,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
         ]),
       ),
     );

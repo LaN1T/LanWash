@@ -75,9 +75,9 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       body: Container(
-        decoration: const BoxDecoration(gradient: AppStyles.bgGradient),
+        decoration: BoxDecoration(gradient: AppStyles.bgGradient),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -98,27 +98,27 @@ class _LoginScreenState extends State<LoginScreen>
                           gradient: AppStyles.primaryGradient,
                           boxShadow: [
                             BoxShadow(
-                              color: AppStyles.primary.withOpacity(0.3),
+                              color: AppStyles.primary.withValues(alpha:0.3),
                               blurRadius: 28,
                               spreadRadius: 2,
                             )
                           ],
                         ),
-                        child: const Icon(Icons.local_car_wash,
+                        child: Icon(Icons.local_car_wash,
                             color: Colors.white, size: 44),
                       ),
-                      const SizedBox(height: 24),
-                      const Text('LanWash',
+                      SizedBox(height: 24),
+                      Text('LanWash',
                           style: TextStyle(
-                              color: AppStyles.textPrimary,
+                              color: AppStyles.adaptiveTextPrimary(context),
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.5)),
-                      const SizedBox(height: 6),
-                      const Text('Автомобильный Premium сервис',
+                      SizedBox(height: 6),
+                      Text('Автомобильный Premium сервис',
                           style: TextStyle(
-                              color: AppStyles.textSecondary, fontSize: 15)),
-                      const SizedBox(height: 36),
+                              color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
+                      SizedBox(height: 36),
 
                       // ── Карточка формы ───────────────────────────────────
                       widget.isResume
@@ -129,32 +129,32 @@ class _LoginScreenState extends State<LoginScreen>
                                 children: [
                                   Text(
                                       'С возвращением, ${context.read<AuthProvider>().userLogin}!',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 20),
+                                  SizedBox(height: 20),
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton(
                                       style: AppStyles.primaryButton,
                                       onPressed: widget.onSessionResumed,
-                                      child: const Text('Продолжить'),
+                                      child: Text('Продолжить'),
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  SizedBox(height: 12),
                                   TextButton(
                                     onPressed: () {
                                       showDialog(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
-                                          title: const Text('Сменить аккаунт'),
-                                          content: const Text(
+                                          title: Text('Сменить аккаунт'),
+                                          content: Text(
                                               'Вы уверены, что хотите выйти из текущего аккаунта?'),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(ctx),
-                                              child: const Text('Отмена'),
+                                              child: Text('Отмена'),
                                             ),
                                             ElevatedButton(
                                               style: ElevatedButton.styleFrom(
@@ -172,16 +172,16 @@ class _LoginScreenState extends State<LoginScreen>
                                                     .read<AuthProvider>()
                                                     .logout();
                                               },
-                                              child: const Text('Выйти'),
+                                              child: Text('Выйти'),
                                             ),
                                           ],
                                         ),
                                       );
                                     },
-                                    child: const Text(
+                                    child: Text(
                                         'Войти под другим пользователем',
                                         style: TextStyle(
-                                            color: AppStyles.textSecondary)),
+                                            color: AppStyles.adaptiveTextSecondary(context))),
                                   ),
                                 ],
                               ),
@@ -192,22 +192,22 @@ class _LoginScreenState extends State<LoginScreen>
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Вход в систему',
+                                    Text('Вход в систему',
                                         style: TextStyle(
-                                            color: AppStyles.textPrimary,
+                                            color: AppStyles.adaptiveTextPrimary(context),
                                             fontSize: 18,
                                             fontWeight: FontWeight.w700)),
-                                    const SizedBox(height: 6),
-                                    const Text('Введите ваши данные для входа',
+                                    SizedBox(height: 6),
+                                    Text('Введите ваши данные для входа',
                                         style: TextStyle(
-                                            color: AppStyles.textSecondary,
+                                            color: AppStyles.adaptiveTextSecondary(context),
                                             fontSize: 13)),
-                                    const SizedBox(height: 20),
+                                    SizedBox(height: 20),
                                     TextFormField(
                                       controller: _loginCtrl,
-                                      style: const TextStyle(
-                                          color: AppStyles.textPrimary),
-                                      decoration: AppStyles.inputDecoration(
+                                      style: TextStyle(
+                                          color: AppStyles.adaptiveTextPrimary(context)),
+                                      decoration: AppStyles.inputDecorationFor(context, 
                                           'Логин',
                                           hint: 'Введите логин',
                                           icon: Icons.person_outline),
@@ -216,13 +216,13 @@ class _LoginScreenState extends State<LoginScreen>
                                               ? 'Введите логин'
                                               : null,
                                     ),
-                                    const SizedBox(height: 14),
+                                    SizedBox(height: 14),
                                     TextFormField(
                                       controller: _passCtrl,
                                       obscureText: _obscure,
-                                      style: const TextStyle(
-                                          color: AppStyles.textPrimary),
-                                      decoration: AppStyles.inputDecoration(
+                                      style: TextStyle(
+                                          color: AppStyles.adaptiveTextPrimary(context)),
+                                      decoration: AppStyles.inputDecorationFor(context, 
                                               'Пароль',
                                               hint: 'Введите пароль',
                                               icon: Icons.lock_outline)
@@ -233,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                   ? Icons
                                                       .visibility_off_outlined
                                                   : Icons.visibility_outlined,
-                                              color: AppStyles.textSecondary,
+                                              color: AppStyles.adaptiveTextSecondary(context),
                                               size: 20),
                                           onPressed: () => setState(
                                               () => _obscure = !_obscure),
@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       onFieldSubmitted: (_) => _submit(),
                                     ),
                                     if (_error != null) ...[
-                                      const SizedBox(height: 12),
+                                      SizedBox(height: 12),
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
@@ -255,47 +255,47 @@ class _LoginScreenState extends State<LoginScreen>
                                               BorderRadius.circular(10),
                                           border: Border.all(
                                               color: AppStyles.danger
-                                                  .withOpacity(0.3)),
+                                                  .withValues(alpha:0.3)),
                                         ),
                                         child: Row(children: [
-                                          const Icon(Icons.error_outline,
+                                          Icon(Icons.error_outline,
                                               color: AppStyles.danger,
                                               size: 18),
-                                          const SizedBox(width: 8),
+                                          SizedBox(width: 8),
                                           Text(_error!,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                   color: AppStyles.danger,
                                                   fontSize: 13)),
                                         ]),
                                       ),
                                     ],
-                                    const SizedBox(height: 20),
+                                    SizedBox(height: 20),
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
                                         style: AppStyles.primaryButton,
                                         onPressed: _loading ? null : _submit,
                                         child: _loading
-                                            ? const SizedBox(
+                                            ? SizedBox(
                                                 width: 20,
                                                 height: 20,
                                                 child:
                                                     CircularProgressIndicator(
                                                         color: Colors.white,
                                                         strokeWidth: 2))
-                                            : const Text('Войти'),
+                                            : Text('Войти'),
                                       ),
                                     ),
                                   ]),
                             ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
 
                       TextButton(
                         onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                                 builder: (_) => const RegisterScreen())),
-                        child: const Text(
+                        child: Text(
                           'Нет аккаунта? Зарегистрироваться',
                           style:
                               TextStyle(color: AppStyles.primary, fontSize: 14),
@@ -321,31 +321,31 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
         Text('$role: ',
             style:
-                const TextStyle(color: AppStyles.textSecondary, fontSize: 12)),
+                TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
+            color: AppStyles.adaptiveBgMuted(context),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(login,
-              style: const TextStyle(
-                  color: AppStyles.textPrimary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextPrimary(context),
                   fontSize: 11,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w600)),
         ),
-        const Text(' / ',
-            style: TextStyle(color: AppStyles.textMuted, fontSize: 12)),
+        Text(' / ',
+            style: TextStyle(color: AppStyles.adaptiveTextMuted(context), fontSize: 12)),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
+            color: AppStyles.adaptiveBgMuted(context),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(pass,
-              style: const TextStyle(
-                  color: AppStyles.textPrimary,
+              style: TextStyle(
+                  color: AppStyles.adaptiveTextPrimary(context),
                   fontSize: 11,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w600)),

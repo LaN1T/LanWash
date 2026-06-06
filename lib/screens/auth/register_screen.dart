@@ -97,17 +97,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
+        foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppStyles.border),
+          child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: const Text('Регистрация'),
+        title: Text('Регистрация'),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -125,39 +125,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     gradient: AppStyles.primaryGradient,
                     boxShadow: [
                       BoxShadow(
-                        color: AppStyles.primary.withOpacity(0.25),
+                        color: AppStyles.primary.withValues(alpha:0.25),
                         blurRadius: 20,
                       )
                     ],
                   ),
-                  child: const Icon(Icons.person_add_rounded,
+                  child: Icon(Icons.person_add_rounded,
                       color: Colors.white, size: 36),
                 ),
-                const SizedBox(height: 20),
-                const Text('Создать аккаунт', style: AppStyles.headingLarge),
-                const SizedBox(height: 6),
-                const Text('Заполните данные для регистрации',
+                SizedBox(height: 20),
+                Text('Создать аккаунт', style: AppStyles.headingLarge),
+                SizedBox(height: 6),
+                Text('Заполните данные для регистрации',
                     style: AppStyles.bodyMedium),
-                const SizedBox(height: 28),
+                SizedBox(height: 28),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: AppStyles.cardDecoration,
                   child: Column(children: [
                     TextFormField(
                       controller: _nameCtrl,
-                      style: const TextStyle(color: AppStyles.textPrimary),
-                      decoration: AppStyles.inputDecoration('Ваше имя',
+                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(context, 'Ваше имя',
                           icon: Icons.person_outline_rounded),
                       textCapitalization: TextCapitalization.words,
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Введите имя'
                           : null,
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextFormField(
                       controller: _loginCtrl,
-                      style: const TextStyle(color: AppStyles.textPrimary),
-                      decoration: AppStyles.inputDecoration('Логин',
+                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(context, 'Логин',
                           hint: 'только латиница и цифры',
                           icon: Icons.alternate_email_rounded),
                       validator: (v) {
@@ -167,12 +167,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: _obscure,
-                      style: const TextStyle(color: AppStyles.textPrimary),
-                      decoration: AppStyles.inputDecoration('Пароль',
+                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(context, 'Пароль',
                               icon: Icons.lock_outline_rounded)
                           .copyWith(
                         suffixIcon: IconButton(
@@ -180,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               _obscure
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: AppStyles.textSecondary,
+                              color: AppStyles.adaptiveTextSecondary(context),
                               size: 20),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
@@ -195,11 +195,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: 14),
                     TextFormField(
                       controller: _phoneCtrl,
-                      style: const TextStyle(color: AppStyles.textPrimary),
-                      decoration: AppStyles.inputDecoration('Телефон',
+                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(context, 'Телефон',
                           hint: '+7 (999) 000-00-00',
                           icon: Icons.phone_outlined),
                       keyboardType: TextInputType.phone,
@@ -214,47 +214,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     if (_error != null) ...[
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: AppStyles.dangerBg,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                              color: AppStyles.danger.withOpacity(0.3)),
+                              color: AppStyles.danger.withValues(alpha:0.3)),
                         ),
                         child: Row(children: [
-                          const Icon(Icons.error_outline,
+                          Icon(Icons.error_outline,
                               color: AppStyles.danger, size: 18),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Expanded(
                               child: Text(_error!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AppStyles.danger, fontSize: 13))),
                         ]),
                       ),
                     ],
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: AppStyles.primaryButton,
                         onPressed: _loading ? null : _submit,
                         child: _loading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     color: Colors.white, strokeWidth: 2))
-                            : const Text('Зарегистрироваться'),
+                            : Text('Зарегистрироваться'),
                       ),
                     ),
                   ]),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Уже есть аккаунт? Войти',
+                  child: Text('Уже есть аккаунт? Войти',
                       style: TextStyle(color: AppStyles.primary, fontSize: 14)),
                 ),
               ]),

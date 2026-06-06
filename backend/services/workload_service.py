@@ -79,10 +79,14 @@ class WorkloadService:
         day_end = start_dt.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
         
         # Advisory lock на уровне дня для предотвращения race condition при бронировании
+        # Работает только на PostgreSQL; на SQLite пропускаем
         if not _DISABLE_ADVISORY_LOCK:
-            lock_input = day_start.encode()
-            lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
-            await db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(lock_id=lock_id))
+            try:
+                lock_input = day_start.encode()
+                lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
+                await db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(lock_id=lock_id))
+            except Exception:
+                pass
 
         query = select(Appointment).where(
             and_(

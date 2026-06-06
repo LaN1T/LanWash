@@ -10,7 +10,7 @@ class PromoDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: AppStyles.adaptiveBgPage(context),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -39,7 +39,7 @@ class PromoDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha:0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text('СПЕЦПРЕДЛОЖЕНИЕ',
@@ -72,7 +72,7 @@ class PromoDetailScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(promo.description,
                       style: AppStyles.bodyLarge.copyWith(
-                          height: 1.6, color: AppStyles.textSecondary)),
+                          height: 1.6, color: AppStyles.adaptiveTextSecondary(context))),
                   const SizedBox(height: 32),
                   Row(children: [
                     _InfoCard(
@@ -92,7 +92,7 @@ class PromoDetailScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha:0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -5))
           ],
@@ -132,7 +132,7 @@ class _InfoCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppStyles.border),
+            border: Border.all(color: AppStyles.adaptiveBorder(context)),
           ),
           child: Column(children: [
             Icon(icon, color: AppStyles.primary),
