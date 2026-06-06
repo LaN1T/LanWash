@@ -29,7 +29,7 @@ class AppointmentDetailWidget extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppStyles.adaptiveCard(context),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -206,7 +206,7 @@ class AppointmentDetailWidget extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppStyles.adaptiveCard(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
@@ -275,7 +275,7 @@ class AppointmentDetailWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppStyles.adaptiveCard(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Отменить запись?'),
         content: Text('Это действие нельзя отменить.'),
@@ -368,7 +368,7 @@ class _StatusSelector extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppStyles.adaptiveCard(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppStyles.adaptiveBorder(context)),
       ),

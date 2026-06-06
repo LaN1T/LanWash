@@ -104,19 +104,7 @@ class AppStyles {
     fontSize: 12,
     color: textSecondary,
   );
-  static const TextStyle price = TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    color: primary,
-  );
-  static const TextStyle label = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.8,
-    color: textSecondary,
-  );
 
-  // ─── Адаптивные текстовые стили ────────────────────────────────────────────
   static TextStyle adaptiveHeadingLarge(BuildContext context) => TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
@@ -140,6 +128,18 @@ class AppStyles {
     fontSize: 12,
     color: adaptiveTextSecondary(context),
   );
+  static const TextStyle price = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: primary,
+  );
+  static const TextStyle label = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.8,
+    color: textSecondary,
+  );
+
   static TextStyle adaptivePrice(BuildContext context) => TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
@@ -195,6 +195,16 @@ class AppStyles {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  static LinearGradient adaptiveBgGradient(BuildContext context) {
+    return isDark(context)
+        ? const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          )
+        : bgGradient;
+  }
 
   // Для совместимости
   static const LinearGradient goldGradient = LinearGradient(

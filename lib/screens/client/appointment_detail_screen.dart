@@ -52,12 +52,13 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
 
     final color = AppStyles.statusColor(a.status);
 
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Детали записи', style: TextStyle(fontSize: 18)),
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
       ),
       body: Container(

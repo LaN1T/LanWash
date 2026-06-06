@@ -16,10 +16,11 @@ class ServiceDetailScreen extends StatelessWidget {
       orElse: () => service,
     );
 
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: AppStyles.adaptiveTextPrimary(context),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
