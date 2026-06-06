@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse, Response
 import os
 
 from database import init_db
@@ -265,7 +264,17 @@ async def telegram_webhook(update: dict):
 # Telegram Mini App static files (must be after ALL API routes)
 miniapp_dir = os.path.join(os.path.dirname(__file__), "..", "telegram-miniapp", "dist")
 if os.path.exists(miniapp_dir):
-    app.mount("/", StaticFiles(directory=miniapp_dir, html=True), name="miniapp")
+    @app.get("/{path:path}")
+    async def serve_miniapp(path: str):
+        headers = {
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+        file_path = os.path.join(miniapp_dir, path)
+        if path and os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path, headers=headers)
+        return FileResponse(os.path.join(miniapp_dir, "index.html"), headers=headers)
 else:
     logger.warning("miniapp_static_dir_not_found", path=miniapp_dir)
 
