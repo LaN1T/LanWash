@@ -6,7 +6,7 @@ router = Router()
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Send welcome message with WebApp button."""
-    web_app_url = "https://t.me/lanwash_bot/LanWash"  # Will be configured properly later
+    web_app_url = "https://uncleavable-september-unattainably.ngrok-free.app"  # ngrok dev URL
     await message.answer(
         "🚗 Добро пожаловать в LanWash!\n\n"
         "Запишитесь на мойку прямо здесь:",
