@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from services.fcm_service import fcm_service
 from services.workload_service import workload_service
+from services.notification_service import add_notification
 from services.auth_service import get_current_user, check_roles
 from core.security import decrypt_token
 from core.metrics import appointments_total
@@ -496,6 +497,21 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
             appt.isSeenByClient = 0
     
     await db.commit()
+
+    # Send Telegram notification if status changed to in_progress or completed
+    if old_status != req.status and req.status in ("in_progress", "completed"):
+        client_result = await db.execute(
+            select(User.telegramId).where(User.username == appt.ownerUsername)
+        )
+        client_tg = client_result.scalar_one_or_none()
+        if client_tg:
+            status_text = "началась" if req.status == "in_progress" else "завершена"
+            message = (
+                f"{'🚗' if req.status == 'in_progress' else '✅'} "
+                f"Ваша мойка {status_text}!\n"
+                f"{appt.carModel}, бокс {appt.box_index + 1}"
+            )
+            await add_notification(db, client_tg, message)
 
     if req.status == "completed":
         await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
