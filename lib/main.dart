@@ -47,11 +47,6 @@ void main() async {
   // Инициализация push-уведомлений
   sl<NotificationService>().init().catchError((_) {});
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-  ));
-
   runApp(
     MultiProvider(
       providers: [
@@ -84,20 +79,34 @@ class LanWashApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
 
-    return MaterialApp(
-      title: 'LanWash',
-      debugShowCheckedModeBanner: false,
-      locale: const Locale('ru', 'RU'),
-      supportedLocales: const [Locale('ru', 'RU')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      themeMode: themeProvider.themeMode,
-      theme: _buildLightTheme(),
-      darkTheme: _buildDarkTheme(),
-      home: const _AppRouter(),
+    final isDark = themeProvider.themeMode == ThemeMode.dark ||
+        (themeProvider.themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor:
+            isDark ? AppStyles.bgDark : Colors.white,
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
+      ),
+      child: MaterialApp(
+        title: 'LanWash',
+        debugShowCheckedModeBanner: false,
+        locale: const Locale('ru', 'RU'),
+        supportedLocales: const [Locale('ru', 'RU')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        themeMode: themeProvider.themeMode,
+        theme: _buildLightTheme(),
+        darkTheme: _buildDarkTheme(),
+        home: const _AppRouter(),
+      ),
     );
   }
 
