@@ -254,17 +254,14 @@ class AppStyles {
     textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
   );
 
-  static BoxDecoration get goldButton => BoxDecoration(
-        color: gold,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: gold.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      );
+  static final ButtonStyle goldButton = ElevatedButton.styleFrom(
+    backgroundColor: gold,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    elevation: 0,
+    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+  );
 
   static final ButtonStyle outlineButton = OutlinedButton.styleFrom(
     foregroundColor: primary,

@@ -88,7 +88,7 @@ class LanWashApp extends StatelessWidget {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor:
-            isDark ? const Color(0xFF0F172A) : Colors.white,
+            isDark ? AppStyles.bgDark : Colors.white,
         systemNavigationBarIconBrightness:
             isDark ? Brightness.light : Brightness.dark,
       ),
