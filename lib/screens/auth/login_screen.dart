@@ -111,256 +111,297 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
     return Scaffold(
-      backgroundColor: AppStyles.adaptiveBgPage(context),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(gradient: AppStyles.adaptiveBgGradient(context)),
-            child: SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: FadeTransition(
-                opacity: _fade,
-                child: SlideTransition(
-                  position: _slide,
-                  child: Form(
-                    key: _formKey,
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      // ── Логотип ──────────────────────────────────────────
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: AppStyles.primaryGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppStyles.primary.withValues(alpha:0.3),
-                              blurRadius: 28,
-                              spreadRadius: 2,
-                            )
-                          ],
-                        ),
-                        child: const Icon(Icons.local_car_wash,
-                            color: Colors.white, size: 44),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(lang.tr('app_name'),
-                          style: TextStyle(
-                              color: AppStyles.adaptiveTextPrimary(context),
-                              fontSize: 30,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5)),
-                      const SizedBox(height: 6),
-                      Text('Автомобильный Premium сервис',
-                          style: TextStyle(
-                              color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
-                      const SizedBox(height: 36),
-
-                      // ── Карточка формы ───────────────────────────────────
-                      widget.isResume
-                          ? Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: AppStyles.cardDecorationFor(context),
-                              child: Column(
-                                children: [
-                                  Text(
-                                      '${lang.tr('login_resume_title')}, ${context.read<AuthProvider>().userLogin}!',
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 20),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      style: AppStyles.primaryButton,
-                                      onPressed: widget.onSessionResumed,
-                                      child: Text(lang.tr('login_resume_button')),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextButton(
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: Text(lang.tr('login_switch_dialog_title')),
-                                          content: Text(
-                                              lang.tr('login_switch_dialog_body')),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx),
-                                              child: Text(lang.tr('cancel')),
-                                            ),
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppStyles.danger,
-                                                foregroundColor: Colors.white,
-                                                shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8)),
-                                              ),
-                                              onPressed: () {
-                                                Navigator.pop(ctx);
-                                                context
-                                                    .read<AuthProvider>()
-                                                    .logout();
-                                              },
-                                              child: Text(lang.tr('logout')),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                    child: Text(
-                                        lang.tr('login_switch_account'),
-                                        style: TextStyle(
-                                            color: AppStyles.adaptiveTextSecondary(context))),
-                                  ),
+        backgroundColor: AppStyles.adaptiveBgPage(context),
+        body: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                  gradient: AppStyles.adaptiveBgGradient(context)),
+              child: SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: FadeTransition(
+                      opacity: _fade,
+                      child: SlideTransition(
+                        position: _slide,
+                        child: Form(
+                          key: _formKey,
+                          child:
+                              Column(mainAxisSize: MainAxisSize.min, children: [
+                            // ── Логотип ──────────────────────────────────────────
+                            Container(
+                              width: 88,
+                              height: 88,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: AppStyles.primaryGradient,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppStyles.primary
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 28,
+                                    spreadRadius: 2,
+                                  )
                                 ],
                               ),
-                            )
-                          : Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: AppStyles.cardDecorationFor(context),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(lang.tr('login_title'),
-                                        style: TextStyle(
-                                            color: AppStyles.adaptiveTextPrimary(context),
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w700)),
-                                    const SizedBox(height: 6),
-                                    Text(lang.tr('login_subtitle'),
-                                        style: TextStyle(
-                                            color: AppStyles.adaptiveTextSecondary(context),
-                                            fontSize: 13)),
-                                    const SizedBox(height: 20),
-                                    TextFormField(
-                                      controller: _loginCtrl,
-                                      style: TextStyle(
-                                          color: AppStyles.adaptiveTextPrimary(context)),
-                                      decoration: AppStyles.inputDecorationFor(context,
-                                          lang.tr('login_field_login'),
-                                          hint: lang.tr('login_field_login_hint'),
-                                          icon: Icons.person_outline),
-                                      validator: (v) =>
-                                          (v == null || v.trim().isEmpty)
-                                              ? lang.tr('validation_required')
-                                              : null,
-                                    ),
-                                    const SizedBox(height: 14),
-                                    TextFormField(
-                                      controller: _passCtrl,
-                                      obscureText: _obscure,
-                                      style: TextStyle(
-                                          color: AppStyles.adaptiveTextPrimary(context)),
-                                      decoration: AppStyles.inputDecorationFor(context,
-                                              lang.tr('login_field_password'),
-                                              hint: lang.tr('login_field_password_hint'),
-                                              icon: Icons.lock_outline)
-                                          .copyWith(
-                                        suffixIcon: IconButton(
-                                          icon: Icon(
-                                              _obscure
-                                                  ? Icons
-                                                      .visibility_off_outlined
-                                                  : Icons.visibility_outlined,
-                                              color: AppStyles.adaptiveTextSecondary(context),
-                                              size: 20),
-                                          onPressed: () => setState(
-                                              () => _obscure = !_obscure),
-                                        ),
-                                      ),
-                                      validator: (v) =>
-                                          (v == null || v.trim().isEmpty)
-                                              ? lang.tr('validation_required')
-                                              : null,
-                                      onFieldSubmitted: (_) => _submit(),
-                                    ),
-                                    if (_error != null) ...[
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: AppStyles.dangerBg,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          border: Border.all(
-                                              color: AppStyles.danger
-                                                  .withValues(alpha:0.3)),
-                                        ),
-                                        child: Row(children: [
-                                          const Icon(Icons.error_outline,
-                                              color: AppStyles.danger,
-                                              size: 18),
-                                          const SizedBox(width: 8),
-                                          Text(_error!,
-                                              style: const TextStyle(
-                                                  color: AppStyles.danger,
-                                                  fontSize: 13)),
-                                        ]),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 20),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        style: AppStyles.primaryButton,
-                                        onPressed: _loading ? null : _submit,
-                                        child: _loading
-                                            ? const SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        color: Colors.white,
-                                                        strokeWidth: 2))
-                                            : Text(lang.tr('login_button')),
-                                      ),
-                                    ),
-                                  ]),
+                              child: const Icon(Icons.local_car_wash,
+                                  color: Colors.white, size: 44),
                             ),
-                      const SizedBox(height: 24),
+                            const SizedBox(height: 24),
+                            Text(lang.tr('app_name'),
+                                style: TextStyle(
+                                    color:
+                                        AppStyles.adaptiveTextPrimary(context),
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.5)),
+                            const SizedBox(height: 6),
+                            Text('Автомобильный Premium сервис',
+                                style: TextStyle(
+                                    color: AppStyles.adaptiveTextSecondary(
+                                        context),
+                                    fontSize: 15)),
+                            const SizedBox(height: 36),
 
-                      TextButton(
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const RegisterScreen())),
-                        child: Text(
-                          lang.tr('login_no_account'),
-                          style:
-                              const TextStyle(color: AppStyles.primary, fontSize: 14),
+                            // ── Карточка формы ───────────────────────────────────
+                            widget.isResume
+                                ? Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration:
+                                        AppStyles.cardDecorationFor(context),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                            '${lang.tr('login_resume_title')}, ${context.read<AuthProvider>().userLogin}!',
+                                            style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 20),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            style: AppStyles.primaryButton,
+                                            onPressed: widget.onSessionResumed,
+                                            child: Text(
+                                                lang.tr('login_resume_button')),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextButton(
+                                          onPressed: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                title: Text(lang.tr(
+                                                    'login_switch_dialog_title')),
+                                                content: Text(lang.tr(
+                                                    'login_switch_dialog_body')),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(ctx),
+                                                    child:
+                                                        Text(lang.tr('cancel')),
+                                                  ),
+                                                  ElevatedButton(
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      backgroundColor:
+                                                          AppStyles.danger,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8)),
+                                                    ),
+                                                    onPressed: () {
+                                                      Navigator.pop(ctx);
+                                                      context
+                                                          .read<AuthProvider>()
+                                                          .logout();
+                                                    },
+                                                    child:
+                                                        Text(lang.tr('logout')),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                          child: Text(
+                                              lang.tr('login_switch_account'),
+                                              style: TextStyle(
+                                                  color: AppStyles
+                                                      .adaptiveTextSecondary(
+                                                          context))),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration:
+                                        AppStyles.cardDecorationFor(context),
+                                    child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(lang.tr('login_title'),
+                                              style: TextStyle(
+                                                  color: AppStyles
+                                                      .adaptiveTextPrimary(
+                                                          context),
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w700)),
+                                          const SizedBox(height: 6),
+                                          Text(lang.tr('login_subtitle'),
+                                              style: TextStyle(
+                                                  color: AppStyles
+                                                      .adaptiveTextSecondary(
+                                                          context),
+                                                  fontSize: 13)),
+                                          const SizedBox(height: 20),
+                                          TextFormField(
+                                            controller: _loginCtrl,
+                                            style: TextStyle(
+                                                color: AppStyles
+                                                    .adaptiveTextPrimary(
+                                                        context)),
+                                            decoration:
+                                                AppStyles.inputDecorationFor(
+                                                    context,
+                                                    lang.tr(
+                                                        'login_field_login'),
+                                                    hint: lang.tr(
+                                                        'login_field_login_hint'),
+                                                    icon: Icons.person_outline),
+                                            validator: (v) => (v == null ||
+                                                    v.trim().isEmpty)
+                                                ? lang.tr('validation_required')
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          TextFormField(
+                                            controller: _passCtrl,
+                                            obscureText: _obscure,
+                                            style: TextStyle(
+                                                color: AppStyles
+                                                    .adaptiveTextPrimary(
+                                                        context)),
+                                            decoration: AppStyles.inputDecorationFor(
+                                                    context,
+                                                    lang.tr(
+                                                        'login_field_password'),
+                                                    hint: lang.tr(
+                                                        'login_field_password_hint'),
+                                                    icon: Icons.lock_outline)
+                                                .copyWith(
+                                              suffixIcon: IconButton(
+                                                icon: Icon(
+                                                    _obscure
+                                                        ? Icons
+                                                            .visibility_off_outlined
+                                                        : Icons
+                                                            .visibility_outlined,
+                                                    color: AppStyles
+                                                        .adaptiveTextSecondary(
+                                                            context),
+                                                    size: 20),
+                                                onPressed: () => setState(
+                                                    () => _obscure = !_obscure),
+                                              ),
+                                            ),
+                                            validator: (v) => (v == null ||
+                                                    v.trim().isEmpty)
+                                                ? lang.tr('validation_required')
+                                                : null,
+                                            onFieldSubmitted: (_) => _submit(),
+                                          ),
+                                          if (_error != null) ...[
+                                            const SizedBox(height: 12),
+                                            Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: AppStyles.dangerBg,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                    color: AppStyles.danger
+                                                        .withValues(
+                                                            alpha: 0.3)),
+                                              ),
+                                              child: Row(children: [
+                                                const Icon(Icons.error_outline,
+                                                    color: AppStyles.danger,
+                                                    size: 18),
+                                                const SizedBox(width: 8),
+                                                Text(_error!,
+                                                    style: const TextStyle(
+                                                        color: AppStyles.danger,
+                                                        fontSize: 13)),
+                                              ]),
+                                            ),
+                                          ],
+                                          const SizedBox(height: 20),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton(
+                                              style: AppStyles.primaryButton,
+                                              onPressed:
+                                                  _loading ? null : _submit,
+                                              child: _loading
+                                                  ? const SizedBox(
+                                                      width: 20,
+                                                      height: 20,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                              color:
+                                                                  Colors.white,
+                                                              strokeWidth: 2))
+                                                  : Text(
+                                                      lang.tr('login_button')),
+                                            ),
+                                          ),
+                                        ]),
+                                  ),
+                            const SizedBox(height: 24),
+
+                            TextButton(
+                              onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const RegisterScreen())),
+                              child: Text(
+                                lang.tr('login_no_account'),
+                                style: const TextStyle(
+                                    color: AppStyles.primary, fontSize: 14),
+                              ),
+                            ),
+                          ]),
                         ),
                       ),
-                    ]),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-        ),
-        Positioned(
-          top: 8,
-          right: 8,
-          child: SafeArea(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildLanguageButton(),
-                _buildThemeButton(),
-              ],
+            Positioned(
+              top: 8,
+              right: 8,
+              child: SafeArea(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLanguageButton(),
+                    _buildThemeButton(),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
-    ));
+          ],
+        ));
   }
 }

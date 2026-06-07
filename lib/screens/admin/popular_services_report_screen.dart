@@ -36,7 +36,8 @@ class _PopularServicesReportScreenState
 
   Future<void> _fetchCategoriesAndReport() async {
     try {
-      final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
+      final catalogProvider =
+          Provider.of<CatalogProvider>(context, listen: false);
       _categories = ['Все', ...await catalogProvider.getServiceCategories()];
       _categories.sort();
       await _fetchReport();

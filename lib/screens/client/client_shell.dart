@@ -13,7 +13,6 @@ import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
 
-
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
   static final shellKey = GlobalKey<_ClientShellState>();
@@ -154,7 +153,8 @@ class _ClientShellState extends State<ClientShell> {
                 backgroundColor: AppStyles.primary,
                 child: const Icon(Icons.star_outline),
               ),
-              selectedIcon: const Icon(Icons.star_rounded, color: AppStyles.primary),
+              selectedIcon:
+                  const Icon(Icons.star_rounded, color: AppStyles.primary),
               label: 'Избранное',
             ),
           ],

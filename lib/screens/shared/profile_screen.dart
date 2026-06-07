@@ -66,7 +66,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final bytes = result.files.single.bytes!;
     const maxAvatarSizeBytes = 5 * 1024 * 1024; // 5 MB
-    final fileSize = result.files.single.size > 0 ? result.files.single.size : bytes.length;
+    final fileSize =
+        result.files.single.size > 0 ? result.files.single.size : bytes.length;
     if (fileSize > maxAvatarSizeBytes) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -147,7 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : AppStyles.primaryGradient,
                         image: user?.avatarUrl.isNotEmpty == true
                             ? DecorationImage(
-                                image: CachedNetworkImageProvider(user!.avatarUrl),
+                                image:
+                                    CachedNetworkImageProvider(user!.avatarUrl),
                                 fit: BoxFit.cover,
                               )
                             : null,
@@ -218,16 +220,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // ─── Данные профиля (только просмотр) ────────────────────────────
           _sectionLabel('Основные данные'),
           const SizedBox(height: 10),
-          _infoTile(Icons.person_outline_rounded, 'Имя', user?.displayName ?? '—'),
-          _infoTile(Icons.alternate_email_rounded, 'Логин', user?.username ?? '—'),
-          _infoTile(Icons.phone_outlined, 'Телефон', (user?.phone ?? '').isEmpty ? '—' : user!.phone),
+          _infoTile(
+              Icons.person_outline_rounded, 'Имя', user?.displayName ?? '—'),
+          _infoTile(
+              Icons.alternate_email_rounded, 'Логин', user?.username ?? '—'),
+          _infoTile(Icons.phone_outlined, 'Телефон',
+              (user?.phone ?? '').isEmpty ? '—' : user!.phone),
           const SizedBox(height: 24),
 
           if (!isAdmin) ...[
             _sectionLabel('Данные автомобиля'),
             const SizedBox(height: 10),
-            _infoTile(Icons.directions_car_outlined, 'Марка и модель', (user?.carModel ?? '').isEmpty ? '—' : user!.carModel),
-            _infoTile(Icons.pin_outlined, 'Гос. номер', (user?.carNumber ?? '').isEmpty ? '—' : user!.carNumber),
+            _infoTile(Icons.directions_car_outlined, 'Марка и модель',
+                (user?.carModel ?? '').isEmpty ? '—' : user!.carModel),
+            _infoTile(Icons.pin_outlined, 'Гос. номер',
+                (user?.carNumber ?? '').isEmpty ? '—' : user!.carNumber),
             const SizedBox(height: 24),
           ],
         ],

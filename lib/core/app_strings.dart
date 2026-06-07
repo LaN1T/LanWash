@@ -15,7 +15,8 @@ class AppStrings {
     'login_resume_button': 'Продолжить',
     'login_switch_account': 'Войти под другим пользователем',
     'login_switch_dialog_title': 'Сменить аккаунт',
-    'login_switch_dialog_body': 'Вы уверены, что хотите выйти из текущего аккаунта?',
+    'login_switch_dialog_body':
+        'Вы уверены, что хотите выйти из текущего аккаунта?',
     'cancel': 'Отмена',
     'logout': 'Выйти',
     'register_title': 'Регистрация',

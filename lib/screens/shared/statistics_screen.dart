@@ -77,13 +77,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   void _previousDay() {
-    setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
+    setState(
+        () => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
     _loadReport();
   }
 
   void _nextDay() {
     if (_selectedDate.isBefore(DateTime.now())) {
-      setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
+      setState(
+          () => _selectedDate = _selectedDate.add(const Duration(days: 1)));
       _loadReport();
     }
   }
@@ -205,7 +207,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            onPressed: _isSameDay(_selectedDate, DateTime.now()) ? null : _nextDay,
+            onPressed:
+                _isSameDay(_selectedDate, DateTime.now()) ? null : _nextDay,
             visualDensity: VisualDensity.compact,
           ),
           IconButton(
@@ -304,8 +307,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _LegendDot(color: AppStyles.success, label: 'Выполнено: $completed'),
-              _LegendDot(color: AppStyles.adaptiveTextMuted(context), label: 'Всего: $total'),
+              _LegendDot(
+                  color: AppStyles.success, label: 'Выполнено: $completed'),
+              _LegendDot(
+                  color: AppStyles.adaptiveTextMuted(context),
+                  label: 'Всего: $total'),
             ],
           ),
         ],
@@ -325,7 +331,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       );
     }
 
-    final maxCount = report.topServices.map((s) => s.count).reduce((a, b) => a > b ? a : b);
+    final maxCount =
+        report.topServices.map((s) => s.count).reduce((a, b) => a > b ? a : b);
     final barGroups = report.topServices.asMap().entries.map((e) {
       return BarChartGroupData(
         x: e.key,
@@ -360,20 +367,26 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= report.topServices.length) return const SizedBox.shrink();
+                        if (idx < 0 || idx >= report.topServices.length)
+                          return const SizedBox.shrink();
                         final name = report.topServices[idx].name;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            name.length > 8 ? '${name.substring(0, 8)}...' : name,
+                            name.length > 8
+                                ? '${name.substring(0, 8)}...'
+                                : name,
                             style: TextStyle(
                               fontSize: 10,
                               color: AppStyles.adaptiveTextSecondary(context),
@@ -387,7 +400,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (group) => AppStyles.adaptiveCard(context),
-                    tooltipBorder: BorderSide(color: AppStyles.adaptiveBorder(context)),
+                    tooltipBorder:
+                        BorderSide(color: AppStyles.adaptiveBorder(context)),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final s = report.topServices[groupIndex];
                       return BarTooltipItem(
@@ -416,7 +430,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: _chartColors[i % _chartColors.length].withValues(alpha:0.15),
+                  color: _chartColors[i % _chartColors.length]
+                      .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -432,13 +447,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
               title: Text(s.name, style: const TextStyle(fontSize: 13)),
               trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppStyles.adaptiveInnerCard(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text('${s.count} шт',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 12)),
               ),
             );
           }),
@@ -474,7 +491,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Бокс $boxNum',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500)),
                       Text('$count моек',
                           style: TextStyle(
                             fontSize: 12,
@@ -526,15 +544,20 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               ),
               child: const Icon(Icons.person, color: Colors.white, size: 18),
             ),
-            title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            title: Text(w.name,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             subtitle: Text('${w.start} – ${w.end}',
-                style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: AppStyles.adaptiveTextSecondary(context))),
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppStyles.successBg,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppStyles.success.withValues(alpha:0.3)),
+                border:
+                    Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
               ),
               child: const Text('На смене',
                   style: TextStyle(
@@ -566,28 +589,34 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             decoration: BoxDecoration(
               color: AppStyles.dangerBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppStyles.danger.withValues(alpha:0.2)),
+              border:
+                  Border.all(color: AppStyles.danger.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
+                const Icon(Icons.inventory_2_outlined,
+                    color: AppStyles.danger, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(a.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 2),
-                      Text('Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
-                          style: const TextStyle(fontSize: 12, color: AppStyles.danger)),
+                      Text(
+                          'Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppStyles.danger)),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppStyles.danger.withValues(alpha:0.1),
+                    color: AppStyles.danger.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -615,12 +644,15 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+          color: dark
+              ? const Color(0xFF334155)
+              : AppStyles.adaptiveBorder(context),
         ),
         boxShadow: [
           if (!dark)
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+              color:
+                  Theme.of(context).colorScheme.shadow.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -642,7 +674,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     gradient: AppStyles.primaryGradient,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.analytics_rounded, color: Colors.white, size: 22),
+                  child: const Icon(Icons.analytics_rounded,
+                      color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -685,7 +718,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 56, color: AppStyles.danger.withValues(alpha:0.5)),
+          Icon(Icons.error_outline,
+              size: 56, color: AppStyles.danger.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text('Ошибка загрузки',
               style: TextStyle(
@@ -695,7 +729,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               )),
           const SizedBox(height: 8),
           Text(_error!,
-              style: TextStyle(color: AppStyles.adaptiveTextSecondary(context))),
+              style:
+                  TextStyle(color: AppStyles.adaptiveTextSecondary(context))),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: _loadReport,
@@ -704,7 +739,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppStyles.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -715,7 +751,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   void _openGrafana(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => DetailedAnalyticsScreen(initialDate: _selectedDate)),
+      MaterialPageRoute(
+          builder: (_) => DetailedAnalyticsScreen(initialDate: _selectedDate)),
     );
   }
 
@@ -749,7 +786,12 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   ];
 
   static Color _boxColor(int index) {
-    final colors = [AppStyles.primary, AppStyles.success, AppStyles.warning, AppStyles.inProgress];
+    final colors = [
+      AppStyles.primary,
+      AppStyles.success,
+      AppStyles.warning,
+      AppStyles.inProgress
+    ];
     return colors[(index - 1) % colors.length];
   }
 }
@@ -796,12 +838,17 @@ class _KpiCard extends StatelessWidget {
           color: dark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+            color: dark
+                ? const Color(0xFF334155)
+                : AppStyles.adaptiveBorder(context),
           ),
           boxShadow: [
             if (!dark)
               BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+                color: Theme.of(context)
+                    .colorScheme
+                    .shadow
+                    .withValues(alpha: 0.04),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -878,12 +925,15 @@ class _SectionCard extends StatelessWidget {
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+          color: dark
+              ? const Color(0xFF334155)
+              : AppStyles.adaptiveBorder(context),
         ),
         boxShadow: [
           if (!dark)
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+              color:
+                  Theme.of(context).colorScheme.shadow.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -898,7 +948,7 @@ class _SectionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha:0.1),
+                  color: accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: accent, size: 18),
@@ -928,7 +978,8 @@ class _SkeletonView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = AppStyles.isDark(context);
-    final shimmerColor = dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final shimmerColor =
+        dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
     Widget box({double? height, double? width, BorderRadius? radius}) {
       return Container(
@@ -954,7 +1005,8 @@ class _SkeletonView extends StatelessWidget {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             childAspectRatio: 2.4,
-            children: List.generate(4, (_) => box(radius: BorderRadius.circular(14))),
+            children:
+                List.generate(4, (_) => box(radius: BorderRadius.circular(14))),
           ),
           const SizedBox(height: 16),
           box(height: 120, radius: BorderRadius.circular(16)),
@@ -982,11 +1034,13 @@ class _LegendDot extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+          decoration: BoxDecoration(
+              color: color, borderRadius: BorderRadius.circular(4)),
         ),
         const SizedBox(width: 6),
         Text(label,
-            style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+            style: TextStyle(
+                fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
       ],
     );
   }

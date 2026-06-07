@@ -115,7 +115,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   service: list[i],
                   showHelp: widget.showHelp,
                   isFavorite: favoriteProvider.isServiceFavorite(list[i].id),
-                  onFavorite: () => favoriteProvider.toggleServiceFavorite(list[i].id),
+                  onFavorite: () =>
+                      favoriteProvider.toggleServiceFavorite(list[i].id),
                   onTap: () => Navigator.push(
                       ctx,
                       MaterialPageRoute(

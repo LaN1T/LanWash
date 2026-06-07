@@ -93,7 +93,6 @@ void _applyTranslitRu(TextEditingController ctrl, String v) {
   }
 }
 
-
 class AddEditAppointmentScreen extends StatefulWidget {
   final Appointment? appointment;
   const AddEditAppointmentScreen({super.key, this.appointment});
@@ -128,8 +127,10 @@ class _State extends State<AddEditAppointmentScreen> {
     _nameCtrl = TextEditingController(text: a?.clientName ?? '');
     final existingCar = a?.carModel ?? '';
     final parts = existingCar.split(' ');
-    _brandCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
-    _modelCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _brandCtrl =
+        TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(
+        text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
     _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
     _numberCtrl = TextEditingController(text: a?.carNumber ?? '');
     _notesCtrl = TextEditingController(text: a?.notes ?? '');
@@ -147,7 +148,9 @@ class _State extends State<AddEditAppointmentScreen> {
     final catalogProvider = context.read<CatalogProvider>();
     if (_washTypeId.isEmpty) {
       _washTypeId = catalogProvider.washTypeByCode('basic')?.id ??
-          (catalogProvider.washTypes.isNotEmpty ? catalogProvider.washTypes.first.id : '');
+          (catalogProvider.washTypes.isNotEmpty
+              ? catalogProvider.washTypes.first.id
+              : '');
       if (mounted) setState(() {});
     }
   }
@@ -173,11 +176,13 @@ class _State extends State<AddEditAppointmentScreen> {
       ..sort((a, b) => a.price.compareTo(b.price));
 
     if (_washTypeId.isEmpty && washTypes.isNotEmpty) {
-      _washTypeId = catalogProvider.washTypeByCode('basic')?.id ?? washTypes.first.id;
+      _washTypeId =
+          catalogProvider.washTypeByCode('basic')?.id ?? washTypes.first.id;
     }
 
-    final promo =
-        _selectedPromoId == null ? null : catalogProvider.promoById(_selectedPromoId!);
+    final promo = _selectedPromoId == null
+        ? null
+        : catalogProvider.promoById(_selectedPromoId!);
     final lockedExtras = <String>{};
     final washType = catalogProvider.washTypeById(_washTypeId);
     if (washType != null) lockedExtras.addAll(washType.includedExtraIds);
@@ -208,8 +213,8 @@ class _State extends State<AddEditAppointmentScreen> {
             _sectionLabel('Клиент и автомобиль'),
             TextFormField(
               controller: _nameCtrl,
-              decoration:
-                  AppStyles.inputDecorationFor(context, 'Имя клиента', icon: Icons.person),
+              decoration: AppStyles.inputDecorationFor(context, 'Имя клиента',
+                  icon: Icons.person),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
               textCapitalization: TextCapitalization.words,
@@ -274,14 +279,15 @@ class _State extends State<AddEditAppointmentScreen> {
                           onChanged: promo != null
                               ? null
                               : (v) => setState(() {
-                                    final oldWt =
-                                        catalogProvider.washTypeById(_washTypeId);
+                                    final oldWt = catalogProvider
+                                        .washTypeById(_washTypeId);
                                     if (oldWt != null) {
                                       _selectedAddServices
                                           .removeAll(oldWt.includedExtraIds);
                                     }
                                     _washTypeId = v!;
-                                    final newWt = catalogProvider.washTypeById(v);
+                                    final newWt =
+                                        catalogProvider.washTypeById(v);
                                     if (newWt != null) {
                                       _selectedAddServices
                                           .addAll(newWt.includedExtraIds);
@@ -312,10 +318,12 @@ class _State extends State<AddEditAppointmentScreen> {
                 items: [
                   const DropdownMenuItem<String?>(
                       value: null, child: Text('Без акции')),
-                  ...catalogProvider.promos.map((p) => DropdownMenuItem<String?>(
-                        value: p.id,
-                        child: Text(p.name, overflow: TextOverflow.ellipsis),
-                      )),
+                  ...catalogProvider.promos
+                      .map((p) => DropdownMenuItem<String?>(
+                            value: p.id,
+                            child:
+                                Text(p.name, overflow: TextOverflow.ellipsis),
+                          )),
                 ],
                 onChanged: (v) => setState(() {
                   _selectedPromoId = v;
@@ -387,7 +395,8 @@ class _State extends State<AddEditAppointmentScreen> {
             _sectionLabel('Заметки (необязательно)'),
             TextFormField(
               controller: _notesCtrl,
-              decoration: AppStyles.inputDecorationFor(context, 'Примечания для мойщика',
+              decoration: AppStyles.inputDecorationFor(
+                  context, 'Примечания для мойщика',
                   icon: Icons.notes),
               maxLines: 3,
             ),
@@ -426,8 +435,9 @@ class _State extends State<AddEditAppointmentScreen> {
 
   int _calcPrice(CatalogProvider catalogProvider) {
     final wt = catalogProvider.washTypeById(_washTypeId);
-    final promo =
-        _selectedPromoId == null ? null : catalogProvider.promoById(_selectedPromoId!);
+    final promo = _selectedPromoId == null
+        ? null
+        : catalogProvider.promoById(_selectedPromoId!);
 
     final locked = <String>{
       ...?wt?.includedExtraIds,
@@ -482,8 +492,9 @@ class _State extends State<AddEditAppointmentScreen> {
     final appointmentProvider = context.read<AppointmentProvider>();
 
     final newPrice = _calcPrice(catalogProvider);
-    final promo =
-        _selectedPromoId == null ? null : catalogProvider.promoById(_selectedPromoId!);
+    final promo = _selectedPromoId == null
+        ? null
+        : catalogProvider.promoById(_selectedPromoId!);
     final promoPrice = promo == null ? 0 : (promo.price > 0 ? promo.price : 0);
 
     final wt = catalogProvider.washTypeById(_washTypeId);
@@ -567,7 +578,8 @@ class _State extends State<AddEditAppointmentScreen> {
         ));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(appointmentProvider.errorMessage ?? 'Ошибка сохранения записи'),
+          content: Text(
+              appointmentProvider.errorMessage ?? 'Ошибка сохранения записи'),
           backgroundColor: AppStyles.danger,
         ));
       }

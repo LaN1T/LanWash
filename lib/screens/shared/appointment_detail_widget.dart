@@ -139,9 +139,10 @@ class AppointmentDetailWidget extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppStyles.primary.withValues(alpha:0.05),
+                  color: AppStyles.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppStyles.primary.withValues(alpha:0.2)),
+                  border: Border.all(
+                      color: AppStyles.primary.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
@@ -273,7 +274,8 @@ class AppointmentDetailWidget extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, AppointmentProvider provider, String id) {
+  void _confirmDelete(
+      BuildContext context, AppointmentProvider provider, String id) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -312,14 +314,16 @@ class _StatusBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-          color: color.withValues(alpha:0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 24),
         const SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Статус',
-              style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: AppStyles.adaptiveTextSecondary(context))),
           Text(AppStyles.statusLabel(status),
               style: TextStyle(
                   fontSize: 16, fontWeight: FontWeight.bold, color: color)),
@@ -342,7 +346,8 @@ class _Row extends StatelessWidget {
           const SizedBox(width: 12),
           Text(label,
               style: TextStyle(
-                  color: AppStyles.adaptiveTextSecondary(context), fontSize: 14)),
+                  color: AppStyles.adaptiveTextSecondary(context),
+                  fontSize: 14)),
           const Spacer(),
           Text(value,
               style:

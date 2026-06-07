@@ -57,7 +57,8 @@ class _FavAppointmentsTab extends StatelessWidget {
       itemCount: favs.length,
       itemBuilder: (ctx, i) => _FavAppointmentTile(
         appointment: favs[i],
-        onRemove: () => appointmentProvider.toggleAppointmentFavorite(favs[i].id),
+        onRemove: () =>
+            appointmentProvider.toggleAppointmentFavorite(favs[i].id),
         onTap: () => Navigator.push(
             ctx,
             MaterialPageRoute(
@@ -142,7 +143,9 @@ class _FavServicesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final catalogProvider = context.watch<CatalogProvider>();
     final favoriteProvider = context.watch<FavoriteProvider>();
-    final favs = catalogProvider.services.where((s) => favoriteProvider.isServiceFavorite(s.id)).toList();
+    final favs = catalogProvider.services
+        .where((s) => favoriteProvider.isServiceFavorite(s.id))
+        .toList();
 
     if (favs.isEmpty) {
       return _empty(context, 'Нет избранных услуг', Icons.local_car_wash);

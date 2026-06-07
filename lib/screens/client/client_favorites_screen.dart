@@ -62,7 +62,7 @@ class ClientFavoritesScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: s.isFromApi
-                      ? AppStyles.favorite.withValues(alpha:0.12)
+                      ? AppStyles.favorite.withValues(alpha: 0.12)
                       : AppStyles.primaryBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -86,7 +86,7 @@ class ClientFavoritesScreen extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppStyles.favorite.withValues(alpha:0.12),
+                      color: AppStyles.favorite.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text('Акция',
@@ -104,7 +104,8 @@ class ClientFavoritesScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(children: [
                       Icon(Icons.access_time,
-                          size: 12, color: AppStyles.adaptiveTextSecondary(context)),
+                          size: 12,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(width: 4),
                       Text(s.durationLabel, style: AppStyles.bodySmall),
                       const SizedBox(width: 10),

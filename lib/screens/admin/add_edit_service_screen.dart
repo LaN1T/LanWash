@@ -67,16 +67,16 @@ class _State extends State<AddEditServiceScreen> {
           _label('Название и описание'),
           TextFormField(
             controller: _nameCtrl,
-            decoration:
-                AppStyles.inputDecorationFor(context, 'Название услуги', icon: Icons.label),
+            decoration: AppStyles.inputDecorationFor(context, 'Название услуги',
+                icon: Icons.label),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите название' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _descCtrl,
-            decoration:
-                AppStyles.inputDecorationFor(context, 'Описание', icon: Icons.description),
+            decoration: AppStyles.inputDecorationFor(context, 'Описание',
+                icon: Icons.description),
             maxLines: 4,
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите описание' : null,
@@ -87,8 +87,8 @@ class _State extends State<AddEditServiceScreen> {
             Expanded(
                 child: TextFormField(
               controller: _priceCtrl,
-              decoration:
-                  AppStyles.inputDecorationFor(context, 'Цена (₽)', icon: Icons.payments),
+              decoration: AppStyles.inputDecorationFor(context, 'Цена (₽)',
+                  icon: Icons.payments),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (v) =>

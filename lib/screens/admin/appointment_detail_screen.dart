@@ -41,7 +41,8 @@ class AppointmentDetailScreen extends StatelessWidget {
           IconButton(
             icon: Icon(a.isFavorite ? Icons.star : Icons.star_border,
                 color: a.isFavorite ? AppStyles.favorite : Colors.white70),
-            onPressed: () => appointmentProvider.toggleAppointmentFavorite(a.id),
+            onPressed: () =>
+                appointmentProvider.toggleAppointmentFavorite(a.id),
           ),
         ],
       ),
@@ -152,8 +153,9 @@ class AppointmentDetailScreen extends StatelessWidget {
                   return Chip(
                     label: Text(service.name,
                         style: const TextStyle(fontSize: 13)),
-                    backgroundColor: AppStyles.primary.withValues(alpha:0.1),
-                    side: BorderSide(color: AppStyles.primary.withValues(alpha:0.3)),
+                    backgroundColor: AppStyles.primary.withValues(alpha: 0.1),
+                    side: BorderSide(
+                        color: AppStyles.primary.withValues(alpha: 0.3)),
                   );
                 }).toList(),
               ),
@@ -197,7 +199,8 @@ class AppointmentDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                onPressed: () => _confirmDelete(context, appointmentProvider, a.id),
+                onPressed: () =>
+                    _confirmDelete(context, appointmentProvider, a.id),
               ),
             ),
           ],
@@ -207,7 +210,8 @@ class AppointmentDetailScreen extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, AppointmentProvider appointmentProvider, String id) {
+  void _confirmDelete(BuildContext context,
+      AppointmentProvider appointmentProvider, String id) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -252,9 +256,9 @@ class _StatusBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha:0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 28),

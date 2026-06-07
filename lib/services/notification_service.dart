@@ -84,7 +84,8 @@ class NotificationService {
           _showLocalNotification(message);
         });
 
-        _onMessageOpenedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        _onMessageOpenedAppSub =
+            FirebaseMessaging.onMessageOpenedApp.listen((message) {
           _handleMessage(message);
         });
       }

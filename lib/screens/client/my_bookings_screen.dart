@@ -168,7 +168,8 @@ class _BookingsList extends StatelessWidget {
                           color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(width: 4),
                       Builder(builder: (context) {
-                        final washType = catalogProvider.washTypeById(a.washTypeId);
+                        final washType =
+                            catalogProvider.washTypeById(a.washTypeId);
                         final duration = a.calculateTotalPrice(
                                     services.cast<Service>(), washType) >=
                                 0

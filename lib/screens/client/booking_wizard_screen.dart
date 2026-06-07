@@ -75,7 +75,8 @@ class _BWState extends State<BookingWizardScreen> {
     final totalMinutes = dt.hour * 60 + dt.minute + duration + 5;
     if (totalMinutes > 22 * 60) return false;
 
-    final busy = context.read<AppointmentProvider>().busySlots['busy_slots'] as List?;
+    final busy =
+        context.read<AppointmentProvider>().busySlots['busy_slots'] as List?;
     if (busy == null) return true;
 
     final start = dt;
@@ -225,8 +226,10 @@ class _BWState extends State<BookingWizardScreen> {
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
     final existingCar = user?.carModel ?? '';
     final parts = existingCar.split(' ');
-    _brandCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
-    _modelCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _brandCtrl =
+        TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(
+        text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
     _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
     _numCtrl = TextEditingController(text: user?.carNumber ?? '');
     _extras = {};
@@ -245,7 +248,9 @@ class _BWState extends State<BookingWizardScreen> {
       _extras = Set.from(_promo!.includedExtraIds);
     } else {
       final basic = catalogProvider.washTypeByCode('basic') ??
-          (catalogProvider.washTypes.isNotEmpty ? catalogProvider.washTypes.first : null);
+          (catalogProvider.washTypes.isNotEmpty
+              ? catalogProvider.washTypes.first
+              : null);
       _washTypeId = basic?.id ?? '';
     }
     _addIncludedExtras();
@@ -414,7 +419,8 @@ class _BWState extends State<BookingWizardScreen> {
                 brandCtrl: _brandCtrl,
                 modelCtrl: _modelCtrl,
                 selectedBrand: _selectedBrand,
-                onBrandSelected: (brand) => setState(() => _selectedBrand = brand),
+                onBrandSelected: (brand) =>
+                    setState(() => _selectedBrand = brand),
                 numCtrl: _numCtrl,
                 isPromo: _isPromo,
                 onWashTypeChanged: (wt) => setState(() {
@@ -1144,7 +1150,8 @@ class _ServiceStep extends StatelessWidget {
                               )),
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () => favoriteProvider.toggleExtraFavorite(svc.id),
+                          onTap: () =>
+                              favoriteProvider.toggleExtraFavorite(svc.id),
                           behavior: HitTestBehavior.opaque,
                           child: Padding(
                             padding: const EdgeInsets.all(4),
