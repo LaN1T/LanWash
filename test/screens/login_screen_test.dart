@@ -55,8 +55,7 @@ void main() {
       await tester.tap(find.text('Войти'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Введите логин'), findsWidgets);
-      expect(find.text('Введите пароль'), findsWidgets);
+      expect(find.text('Обязательное поле'), findsNWidgets(2));
     });
 
     testWidgets('calls login on submit and shows error', (tester) async {
@@ -101,7 +100,7 @@ void main() {
       );
 
       await tester.tap(find.text('Войти'));
-      await tester.pump(); // loading starts
+      await tester.pumpAndSettle(); // loading starts
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       // After success _loading stays true (navigation handled by router)

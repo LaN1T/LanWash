@@ -41,7 +41,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Создать аккаунт'), findsOneWidget);
+      expect(find.text('Регистрация'), findsOneWidget);
       expect(find.byType(TextFormField), findsNWidgets(4));
       expect(find.text('Зарегистрироваться'), findsOneWidget);
     });
@@ -53,10 +53,7 @@ void main() {
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Введите имя'), findsOneWidget);
-      expect(find.text('Введите логин'), findsOneWidget);
-      expect(find.text('Введите пароль'), findsOneWidget);
-      expect(find.text('Введите телефон'), findsOneWidget);
+      expect(find.text('Обязательное поле'), findsNWidgets(4));
     });
 
     testWidgets('shows validation error for short login', (tester) async {
@@ -78,7 +75,7 @@ void main() {
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Минимум 4 символа'), findsOneWidget);
+      expect(find.text('Минимум 8 символов'), findsOneWidget);
     });
 
     testWidgets('calls register and shows error', (tester) async {
@@ -87,14 +84,14 @@ void main() {
             password: any(named: 'password'),
             displayName: any(named: 'displayName'),
             phone: any(named: 'phone'),
-          )).thenAnswer((_) async => 'Логин уже занят');
+          )).thenAnswer((_) async => 'Регистрация не удалась. Проверьте введённые данные.');
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Иван');
       await tester.enterText(find.byType(TextFormField).at(1), 'ivan123');
-      await tester.enterText(find.byType(TextFormField).at(2), 'password');
+      await tester.enterText(find.byType(TextFormField).at(2), 'TestPass123!');
       await tester.enterText(find.byType(TextFormField).at(3), '+7 (999) 000-00-00');
 
       await tester.tap(find.text('Зарегистрироваться'));
@@ -102,11 +99,11 @@ void main() {
 
       verify(() => mockAuth.register(
             username: 'ivan123',
-            password: 'password',
+            password: 'TestPass123!',
             displayName: 'Иван',
             phone: '+7 (999) 000-00-00',
           )).called(1);
-      expect(find.text('Логин уже занят'), findsOneWidget);
+      expect(find.text('Регистрация не удалась. Проверьте введённые данные.'), findsOneWidget);
     });
 
     testWidgets('successful registration reloads data and pops', (tester) async {
@@ -125,11 +122,11 @@ void main() {
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Иван');
       await tester.enterText(find.byType(TextFormField).at(1), 'ivan123');
-      await tester.enterText(find.byType(TextFormField).at(2), 'password');
+      await tester.enterText(find.byType(TextFormField).at(2), 'TestPass123!');
       await tester.enterText(find.byType(TextFormField).at(3), '+7 (999) 000-00-00');
 
       await tester.tap(find.text('Зарегистрироваться'));
-      await tester.pump(); // loading starts
+      await tester.pumpAndSettle(); // loading starts
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 100));
