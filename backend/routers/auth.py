@@ -34,7 +34,7 @@ from core.security import encrypt_token
 USERNAME_PATTERN = re.compile(r'^[a-z0-9_]{3,30}$')
 
 # Dummy hash for constant-time login (prevents user enumeration via timing)
-_DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHRzb21lc2FsdA$2mJLYy+W6dgyZ6x6K7b3Qj3lH9l6K5U0F3v7v7v7v7"
+_DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"
 
 # Директория для загрузки аватарок
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "avatars")

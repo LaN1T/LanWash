@@ -14,7 +14,7 @@ router = APIRouter(
 )
 
 
-async def _to_response(wt: WashType, extras_map: dict[str, list[str]]) -> dict:
+def _to_response(wt: WashType, extras_map: dict[str, list[str]]) -> dict:
     return {
         "id": wt.id,
         "code": wt.code,
