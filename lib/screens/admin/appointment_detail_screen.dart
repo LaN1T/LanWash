@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../models/service.dart';
 import 'add_edit_appointment_screen.dart';
 
@@ -14,9 +15,10 @@ class AppointmentDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
     final auth = context.watch<AuthProvider>();
-    final a = provider.appointments.firstWhere(
+    final a = appointmentProvider.appointments.firstWhere(
       (x) => x.id == appointment.id,
       orElse: () => appointment,
     );
@@ -34,12 +36,12 @@ class AppointmentDetailScreen extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w600)),
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: Icon(a.isFavorite ? Icons.star : Icons.star_border,
                 color: a.isFavorite ? AppStyles.favorite : Colors.white70),
-            onPressed: () => provider.toggleAppointmentFavorite(a.id),
+            onPressed: () => appointmentProvider.toggleAppointmentFavorite(a.id),
           ),
         ],
       ),
@@ -47,14 +49,14 @@ class AppointmentDetailScreen extends StatelessWidget {
         padding: AppStyles.pagePadding,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _StatusBanner(status: a.status),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           if (auth.isWasher &&
               (a.status == 'scheduled' || a.status == 'in_progress')) ...[
-            _SectionTitle('Управление статусом'),
+            const _SectionTitle('Управление статусом'),
             _StatusSelector(
               currentStatus: a.status,
               onChanged: (newStatus) async {
-                final success = await provider.updateAppointment(
+                final success = await appointmentProvider.updateAppointment(
                     a.copyWith(status: newStatus), auth);
                 if (success && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -63,21 +65,21 @@ class AppointmentDetailScreen extends StatelessWidget {
                 }
               },
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
           _Section(title: 'Клиент и автомобиль', children: [
             _Row(Icons.person, 'Клиент', a.clientName),
             _Row(Icons.directions_car, 'Автомобиль', a.carModel),
             _Row(Icons.pin, 'Номер', a.carNumber),
           ]),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _Section(title: 'Дата и время', children: [
             _Row(Icons.calendar_today, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
             Builder(builder: (context) {
-              final washType = provider.washTypeById(a.washTypeId);
+              final washType = catalogProvider.washTypeById(a.washTypeId);
               final duration =
-                  a.calculateTotalPrice(provider.services, washType) >= 0
+                  a.calculateTotalPrice(catalogProvider.services, washType) >= 0
                       ? (washType?.durationMinutes ?? 30) +
                           a.additionalServices
                               .where((id) =>
@@ -87,7 +89,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                                   0,
                                   (sum, id) =>
                                       sum +
-                                      (provider.services
+                                      (catalogProvider.services
                                           .firstWhere((s) => s.id == id,
                                               orElse: () => Service(
                                                   id: id,
@@ -116,19 +118,19 @@ class AppointmentDetailScreen extends StatelessWidget {
               return _Row(Icons.access_time, 'Время', timeStr);
             }),
           ]),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           _Section(title: 'Тип мойки', children: [
             _Row(Icons.local_car_wash, 'Пакет',
-                provider.washTypeName(a.washTypeId)),
+                catalogProvider.washTypeName(a.washTypeId)),
             _Row(Icons.payments, 'Итого',
-                '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(provider.services, provider.washTypeById(a.washTypeId))} ₽'),
+                '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(catalogProvider.services, catalogProvider.washTypeById(a.washTypeId))} ₽'),
             if (a.priceChanged)
               _PriceChangedRow(
                   newPrice: a.paidPrice, oldPrice: a.originalPrice),
           ]),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           if (a.additionalServices.isNotEmpty) ...[
-            _SectionTitle('Дополнительные услуги'),
+            const _SectionTitle('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
               padding: AppStyles.cardPadding,
@@ -137,7 +139,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                 runSpacing: 8,
                 children: a.additionalServices.map((id) {
                   final service = context
-                      .watch<AppProvider>()
+                      .watch<CatalogProvider>()
                       .services
                       .firstWhere((s) => s.id == id,
                           orElse: () => Service(
@@ -149,24 +151,24 @@ class AppointmentDetailScreen extends StatelessWidget {
                               category: ''));
                   return Chip(
                     label: Text(service.name,
-                        style: TextStyle(fontSize: 13)),
+                        style: const TextStyle(fontSize: 13)),
                     backgroundColor: AppStyles.primary.withValues(alpha:0.1),
                     side: BorderSide(color: AppStyles.primary.withValues(alpha:0.3)),
                   );
                 }).toList(),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
           ],
           if (a.notes.isNotEmpty) ...[
-            _SectionTitle('Заметки'),
+            const _SectionTitle('Заметки'),
             Container(
               width: double.infinity,
               decoration: AppStyles.cardDecoration,
               padding: AppStyles.cardPadding,
               child: Text(a.notes, style: AppStyles.bodyLarge),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
           ],
           if (canEdit) ...[
             SizedBox(
@@ -182,7 +184,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                             AddEditAppointmentScreen(appointment: a))),
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -190,22 +192,22 @@ class AppointmentDetailScreen extends StatelessWidget {
                 label: const Text('Удалить запись',
                     style: TextStyle(color: AppStyles.danger)),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppStyles.danger),
+                  side: const BorderSide(color: AppStyles.danger),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                onPressed: () => _confirmDelete(context, provider, a.id),
+                onPressed: () => _confirmDelete(context, appointmentProvider, a.id),
               ),
             ),
           ],
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
         ]),
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, AppProvider provider, String id) {
+  void _confirmDelete(BuildContext context, AppointmentProvider appointmentProvider, String id) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -228,7 +230,7 @@ class AppointmentDetailScreen extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context); // закрыть диалог
               final auth = context.read<AuthProvider>();
-              provider.deleteAppointment(id, auth);
+              appointmentProvider.deleteAppointment(id, auth);
               Navigator.pop(context); // вернуться в список
             },
             child: const Text('Удалить'),
@@ -256,7 +258,7 @@ class _StatusBanner extends StatelessWidget {
       ),
       child: Row(children: [
         Icon(AppStyles.statusIcon(status), color: color, size: 28),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Статус записи', style: AppStyles.label),
           Text(AppStyles.statusLabel(status),
@@ -317,8 +319,8 @@ class _PriceChangedRow extends StatelessWidget {
         child: Row(children: [
           const Icon(Icons.edit_note_rounded,
               size: 18, color: AppStyles.primary),
-          SizedBox(width: 12),
-          SizedBox(
+          const SizedBox(width: 12),
+          const SizedBox(
               width: 100, child: Text('Изменено', style: AppStyles.bodyMedium)),
           Expanded(
               child:
@@ -349,7 +351,7 @@ class _Row extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(children: [
           Icon(icon, size: 18, color: AppStyles.primary),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           // Фиксированная ширина лейбла — выровниваем все значения
           SizedBox(
             width: 100,
@@ -372,7 +374,6 @@ class _StatusSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> options = ['scheduled', 'in_progress', 'completed'];
     // Filter options based on business logic
     final List<String> availableOptions;
     if (currentStatus == 'scheduled') {
@@ -400,7 +401,7 @@ class _StatusSelector extends StatelessWidget {
                       children: [
                         Icon(AppStyles.statusIcon(s),
                             color: AppStyles.statusColor(s), size: 20),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Text(AppStyles.statusLabel(s),
                             style: AppStyles.bodyLarge.copyWith(
                               color: AppStyles.statusColor(s),

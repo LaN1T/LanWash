@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/favorite_provider.dart';
 import 'booking_wizard_screen.dart';
 
 class ClientFavoritesScreen extends StatelessWidget {
@@ -9,32 +10,36 @@ class ClientFavoritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final favs = provider.favoriteServices;
+    final catalogProvider = context.watch<CatalogProvider>();
+    final favoriteProvider = context.watch<FavoriteProvider>();
+    final favs = catalogProvider.services
+        .where((s) => favoriteProvider.isServiceFavorite(s.id))
+        .toList();
 
-    if (favs.isEmpty)
+    if (favs.isEmpty) {
       return Container(
         color: AppStyles.adaptiveBgPage(context),
         child: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
                 color: AppStyles.primaryBg, shape: BoxShape.circle),
-            child: Icon(Icons.star_outline_rounded,
+            child: const Icon(Icons.star_outline_rounded,
                 size: 44, color: AppStyles.primary),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text('Нет избранных услуг',
               style: TextStyle(
                   color: AppStyles.adaptiveTextSecondary(context),
                   fontSize: 16,
                   fontWeight: FontWeight.w500)),
-          SizedBox(height: 6),
-          Text('Добавляйте услуги при записи',
+          const SizedBox(height: 6),
+          const Text('Добавляйте услуги при записи',
               style: AppStyles.bodyMedium),
         ])),
       );
+    }
 
     return Container(
       color: AppStyles.adaptiveBgPage(context),
@@ -84,7 +89,7 @@ class ClientFavoritesScreen extends StatelessWidget {
                       color: AppStyles.favorite.withValues(alpha:0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('Акция',
+                    child: const Text('Акция',
                         style: TextStyle(
                             color: AppStyles.favorite,
                             fontSize: 10,
@@ -94,25 +99,25 @@ class ClientFavoritesScreen extends StatelessWidget {
               subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: 3),
+                    const SizedBox(height: 3),
                     Text(s.category, style: AppStyles.bodySmall),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Row(children: [
                       Icon(Icons.access_time,
                           size: 12, color: AppStyles.adaptiveTextSecondary(context)),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(s.durationLabel, style: AppStyles.bodySmall),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text('${s.price} ₽',
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: AppStyles.primary,
                               fontSize: 13,
                               fontWeight: FontWeight.bold)),
                     ]),
                   ]),
               trailing: IconButton(
-                icon: Icon(Icons.star_rounded, color: AppStyles.favorite),
-                onPressed: () => provider.toggleServiceFavorite(s.id),
+                icon: const Icon(Icons.star_rounded, color: AppStyles.favorite),
+                onPressed: () => favoriteProvider.toggleServiceFavorite(s.id),
                 tooltip: 'Убрать из избранного',
               ),
             ),

@@ -22,10 +22,10 @@ class PromoDetailScreen extends StatelessWidget {
           Container(
             height: 200,
             width: double.infinity,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: AppStyles.primaryGradient,
               borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(32)),
+                  BorderRadius.vertical(bottom: Radius.circular(32)),
             ),
             child: SafeArea(
               child: Padding(

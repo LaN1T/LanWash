@@ -268,7 +268,13 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
 @limiter.limit("10/minute")
 async def create(request: Request, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
-    
+    if current_user.role != 'admin':
+        # Non-admins cannot set prices; server will calculate or use defaults
+        req.promoPrice = 0
+        req.paidPrice = 0
+        req.originalPrice = 0
+        req.promoId = None
+
     if current_user.username != owner_username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете создавать записи для других пользователей.")
 
@@ -426,6 +432,21 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
 
     if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
+
+    # Washers can only change status and notes
+    if is_washer and not is_admin:
+        req.clientName = original_clientName
+        req.carModel = original_carModel
+        req.carNumber = original_carNumber
+        req.dateTime = original_dateTime
+        req.washTypeId = original_washTypeId
+        req.additionalServices = original_additionalServices
+        req.isFavorite = bool(original_isFavorite)
+        req.promoPrice = original_promoPrice
+        req.paidPrice = original_paidPrice
+        req.promoId = original_promoId
+        req.assignedWasher = original_assignedWasher
+        req.box_index = original_box_index
 
     old_status = appt.status
     old_datetime = appt.dateTime

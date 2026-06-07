@@ -9,7 +9,6 @@ import '../../models/daily_report.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
-import '../admin/grafana_webview_screen.dart';
 import '../admin/detailed_analytics_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
@@ -184,7 +183,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   children: [
                     Text(
                       isToday ? 'Сегодня' : _weekdayName(_selectedDate),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppStyles.primary,
@@ -316,10 +315,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   Widget _buildTopServicesChart(BuildContext context, DailyReport report) {
     if (report.topServices.isEmpty) {
-      return _SectionCard(
+      return const _SectionCard(
         title: 'Топ услуг',
         icon: Icons.star_rounded,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: Center(child: Text('Нет данных за выбранный день')),
         ),
@@ -571,7 +570,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             ),
             child: Row(
               children: [
-                Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
+                const Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -581,7 +580,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 2),
                       Text('Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
-                          style: TextStyle(fontSize: 12, color: AppStyles.danger)),
+                          style: const TextStyle(fontSize: 12, color: AppStyles.danger)),
                     ],
                   ),
                 ),
@@ -931,7 +930,7 @@ class _SkeletonView extends StatelessWidget {
     final dark = AppStyles.isDark(context);
     final shimmerColor = dark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-    Widget _box({double? height, double? width, BorderRadius? radius}) {
+    Widget box({double? height, double? width, BorderRadius? radius}) {
       return Container(
         height: height,
         width: width,
@@ -946,7 +945,7 @@ class _SkeletonView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       child: Column(
         children: [
-          _box(height: 60, radius: BorderRadius.circular(14)),
+          box(height: 60, radius: BorderRadius.circular(14)),
           const SizedBox(height: 16),
           GridView.count(
             shrinkWrap: true,
@@ -955,12 +954,12 @@ class _SkeletonView extends StatelessWidget {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             childAspectRatio: 2.4,
-            children: List.generate(4, (_) => _box(radius: BorderRadius.circular(14))),
+            children: List.generate(4, (_) => box(radius: BorderRadius.circular(14))),
           ),
           const SizedBox(height: 16),
-          _box(height: 120, radius: BorderRadius.circular(16)),
+          box(height: 120, radius: BorderRadius.circular(16)),
           const SizedBox(height: 16),
-          _box(height: 280, radius: BorderRadius.circular(16)),
+          box(height: 280, radius: BorderRadius.circular(16)),
         ],
       ),
     );

@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../models/service.dart';
-import '../../models/wash_type.dart';
 import '../shared/appointment_detail_widget.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -23,7 +23,7 @@ class _State extends State<MyBookingsScreen>
     super.initState();
     _tab = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<AppProvider>().clearDeletedByAdminFlag();
+      await context.read<AppointmentProvider>().clearDeletedByAdminFlag();
     });
   }
 
@@ -35,13 +35,14 @@ class _State extends State<MyBookingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
     final auth = context.watch<AuthProvider>();
     final username = auth.userLogin.toLowerCase();
 
     final all = auth.isAdmin
-        ? provider.appointments
-        : provider.appointments
+        ? appointmentProvider.appointments
+        : appointmentProvider.appointments
             .where((a) =>
                 a.ownerUsername.toLowerCase() == username ||
                 (a.ownerUsername.isEmpty &&
@@ -70,8 +71,8 @@ class _State extends State<MyBookingsScreen>
       ),
       Expanded(
           child: TabBarView(controller: _tab, children: [
-        _BookingsList(items: upcoming, services: provider.services),
-        _BookingsList(items: history, services: provider.services),
+        _BookingsList(items: upcoming, services: catalogProvider.services),
+        _BookingsList(items: history, services: catalogProvider.services),
       ])),
     ]);
   }
@@ -87,7 +88,7 @@ class _BookingsList extends StatelessWidget {
     return RefreshIndicator(
       color: AppStyles.primary,
       onRefresh: () => context
-          .read<AppProvider>()
+          .read<AppointmentProvider>()
           .reloadAppointments(context.read<AuthProvider>()),
       child: ListView.builder(
         padding: AppStyles.pagePadding,
@@ -96,14 +97,15 @@ class _BookingsList extends StatelessWidget {
           final a = items[i];
           final color = AppStyles.statusColor(a.status);
           final bgColor = AppStyles.statusBgColor(a.status);
-          final provider = context.watch<AppProvider>();
+          final catalogProvider = context.watch<CatalogProvider>();
 
           return GestureDetector(
             onTap: () {
-              ctx.read<AppProvider>().markAsSeen(a.id);
-              if (a.isModifiedByAdmin || a.isModifiedByWasher)
-                ctx.read<AppProvider>().clearModifiedFlag(a.id);
-              _showDetail(ctx, a, provider.services);
+              ctx.read<AppointmentProvider>().markAsSeen(a.id);
+              if (a.isModifiedByAdmin || a.isModifiedByWasher) {
+                ctx.read<AppointmentProvider>().clearModifiedFlag(a.id);
+              }
+              _showDetail(ctx, a, catalogProvider.services);
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -126,7 +128,7 @@ class _BookingsList extends StatelessWidget {
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                            Text(provider.washTypeName(a.washTypeId),
+                            Text(catalogProvider.washTypeName(a.washTypeId),
                                 style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     color: AppStyles.adaptiveTextPrimary(
@@ -166,7 +168,7 @@ class _BookingsList extends StatelessWidget {
                           color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(width: 4),
                       Builder(builder: (context) {
-                        final washType = provider.washTypeById(a.washTypeId);
+                        final washType = catalogProvider.washTypeById(a.washTypeId);
                         final duration = a.calculateTotalPrice(
                                     services.cast<Service>(), washType) >=
                                 0
@@ -179,7 +181,7 @@ class _BookingsList extends StatelessWidget {
                                         0,
                                         (sum, id) =>
                                             sum +
-                                            (provider.services
+                                            (catalogProvider.services
                                                 .firstWhere((s) => s.id == id,
                                                     orElse: () => Service(
                                                         id: id,
@@ -213,7 +215,7 @@ class _BookingsList extends StatelessWidget {
                       }),
                       const Spacer(),
                       Text(
-                          '${a.calculateTotalPrice(services.cast<Service>(), provider.washTypeById(a.washTypeId))} ₽',
+                          '${a.calculateTotalPrice(services.cast<Service>(), catalogProvider.washTypeById(a.washTypeId))} ₽',
                           style: const TextStyle(
                               color: AppStyles.primary,
                               fontSize: 15,

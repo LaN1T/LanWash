@@ -31,6 +31,8 @@ class NotificationService {
   Completer<void>? _initCompleter;
   String? _lastKnownUsername;
   StreamSubscription<String>? _tokenRefreshSub;
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+  StreamSubscription<RemoteMessage>? _onMessageOpenedAppSub;
 
   Future<void> init() async {
     if (_initCompleter != null) return _initCompleter!.future;
@@ -77,12 +79,12 @@ class NotificationService {
           sound: true,
         );
 
-        FirebaseMessaging.onMessage.listen((message) {
+        _onMessageSub = FirebaseMessaging.onMessage.listen((message) {
           _handleMessage(message);
           _showLocalNotification(message);
         });
 
-        FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        _onMessageOpenedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
           _handleMessage(message);
         });
       }
@@ -98,6 +100,10 @@ class NotificationService {
   void dispose() {
     _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
+    _onMessageSub?.cancel();
+    _onMessageSub = null;
+    _onMessageOpenedAppSub?.cancel();
+    _onMessageOpenedAppSub = null;
   }
 
   void _handleMessage(RemoteMessage message) {

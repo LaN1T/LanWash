@@ -23,19 +23,19 @@ Future<DateTime?> showAppDatePicker({
     builder: (ctx, child) => Theme(
       data: Theme.of(ctx).copyWith(
         colorScheme: dark
-            ? ColorScheme.dark(
+            ? const ColorScheme.dark(
                 primary: AppStyles.primary,
                 onPrimary: Colors.white,
-                surface: const Color(0xFF1E293B),
+                surface: Color(0xFF1E293B),
                 onSurface: Colors.white,
-                surfaceContainerHighest: const Color(0xFF334155),
+                surfaceContainerHighest: Color(0xFF334155),
               )
-            : ColorScheme.light(
+            : const ColorScheme.light(
                 primary: AppStyles.primary,
                 onPrimary: Colors.white,
                 surface: Colors.white,
                 onSurface: Colors.black,
-                surfaceContainerHighest: const Color(0xFFF1F5F9),
+                surfaceContainerHighest: Color(0xFFF1F5F9),
               ),
       ),
       child: child!,
@@ -57,19 +57,19 @@ Future<TimeOfDay?> showAppTimePicker({
     builder: (ctx, child) => Theme(
       data: Theme.of(ctx).copyWith(
         colorScheme: dark
-            ? ColorScheme.dark(
+            ? const ColorScheme.dark(
                 primary: AppStyles.primary,
                 onPrimary: Colors.white,
-                surface: const Color(0xFF1E293B),
+                surface: Color(0xFF1E293B),
                 onSurface: Colors.white,
-                surfaceContainerHighest: const Color(0xFF334155),
+                surfaceContainerHighest: Color(0xFF334155),
               )
-            : ColorScheme.light(
+            : const ColorScheme.light(
                 primary: AppStyles.primary,
                 onPrimary: Colors.white,
                 surface: Colors.white,
                 onSurface: Colors.black,
-                surfaceContainerHighest: const Color(0xFFF1F5F9),
+                surfaceContainerHighest: Color(0xFFF1F5F9),
               ),
       ),
       child: child!,

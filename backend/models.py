@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+import json
 from typing import Optional, List, Literal
 
 
@@ -41,6 +42,7 @@ class UserResponse(BaseModel):
     avatarUrl: str = ""
     createdAt: str
     isFavoriteAdmin: bool
+    passwordVersion: int = 1
 
 
 class UpdateProfileRequest(BaseModel):
@@ -102,6 +104,18 @@ class AppointmentRequest(BaseModel):
     dateTime: str = Field(..., max_length=30, description="Дата и время в ISO формате")
     washTypeId: str = Field(..., max_length=36, description="ID типа мойки")
     additionalServices: str = Field(default="[]", max_length=1000, description="JSON-массив ID доп. услуг")
+
+    @field_validator("additionalServices")
+    @classmethod
+    def validate_json(cls, v):
+        if v is None or v == "":
+            return "[]"
+        try:
+            json.loads(v)
+        except Exception:
+            raise ValueError("additionalServices must be valid JSON")
+        return v
+
     status: Literal["scheduled", "in_progress", "completed", "cancelled"] = "scheduled"
     notes: str = Field(default="", max_length=1000, description="Заметки")
     isFavorite: bool = False

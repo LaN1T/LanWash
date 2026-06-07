@@ -140,7 +140,7 @@ class AppStyles {
     color: textSecondary,
   );
 
-  static TextStyle adaptivePrice(BuildContext context) => TextStyle(
+  static TextStyle adaptivePrice(BuildContext context) => const TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
     color: primary,

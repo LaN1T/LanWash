@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/promo.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
 import 'booking_wizard_screen.dart';
 
 class PromosScreen extends StatelessWidget {
@@ -10,8 +10,8 @@ class PromosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final promos = provider.promos;
+    final catalogProvider = context.watch<CatalogProvider>();
+    final promos = catalogProvider.promos;
 
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
@@ -26,26 +26,23 @@ class PromosScreen extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: AppStyles.adaptiveTextPrimary(context))),
       ),
-      body: provider.loading && promos.isEmpty
+      body: promos.isEmpty
           ? Center(
-              child: CircularProgressIndicator(color: AppStyles.primary))
-          : promos.isEmpty
-              ? Center(
-                  child:
-                      Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.local_offer_outlined,
-                        size: 44, color: AppStyles.primary),
-                    SizedBox(height: 16),
-                    Text('Нет активных акций',
-                        style: TextStyle(
-                            color: AppStyles.adaptiveTextSecondary(context), fontSize: 16)),
-                  ]),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: promos.length,
-                  itemBuilder: (ctx, i) => _PromoCard(promo: promos[i]),
-                ),
+              child:
+                  Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.local_offer_outlined,
+                    size: 44, color: AppStyles.primary),
+                const SizedBox(height: 16),
+                Text('Нет активных акций',
+                    style: TextStyle(
+                        color: AppStyles.adaptiveTextSecondary(context), fontSize: 16)),
+              ]),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: promos.length,
+              itemBuilder: (ctx, i) => _PromoCard(promo: promos[i]),
+            ),
     );
   }
 }
@@ -56,8 +53,8 @@ class _PromoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final wt = provider.washTypeById(promo.washTypeId);
+    final catalogProvider = context.watch<CatalogProvider>();
+    final wt = catalogProvider.washTypeById(promo.washTypeId);
     final displayPrice = promo.discountPercent > 0 && wt != null
         ? wt.basePrice * (100 - promo.discountPercent) ~/ 100
         : promo.price;
@@ -73,15 +70,15 @@ class _PromoCard extends StatelessWidget {
           Container(
             width: 5,
             height: 110,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: AppStyles.primaryGradient,
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
                 bottomLeft: Radius.circular(16),
               ),
             ),
           ),
-          SizedBox(width: 14),
+          const SizedBox(width: 14),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -96,7 +93,7 @@ class _PromoCard extends StatelessWidget {
                           gradient: AppStyles.primaryGradient,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text('АКЦИЯ',
+                        child: const Text('АКЦИЯ',
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -106,34 +103,34 @@ class _PromoCard extends StatelessWidget {
                       Icon(Icons.chevron_right_rounded,
                           size: 20, color: AppStyles.adaptiveTextSecondary(context)),
                     ]),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(promo.name,
                         style: TextStyle(
                             color: AppStyles.adaptiveTextPrimary(context),
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(promo.description,
                         style: AppStyles.adaptiveBodySmall(context),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Row(children: [
                       Text('$displayPrice ₽',
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: AppStyles.primary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold)),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Icon(Icons.access_time_rounded,
                           size: 13, color: AppStyles.adaptiveTextSecondary(context)),
-                      SizedBox(width: 3),
+                      const SizedBox(width: 3),
                       Text('${promo.duration} мин', style: AppStyles.adaptiveBodySmall(context)),
                     ]),
                   ]),
             ),
           ),
-          SizedBox(width: 14),
+          const SizedBox(width: 14),
         ]),
       ),
     );

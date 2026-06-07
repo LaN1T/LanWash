@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../models/daily_report.dart';
-import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_date_picker.dart';
 
@@ -93,7 +91,7 @@ class _DetailedAnalyticsScreenState extends State<DetailedAnalyticsScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
             : _error != null
-                ? Center(child: Text(_error!, style: TextStyle(color: AppStyles.danger)))
+                ? Center(child: Text(_error!, style: const TextStyle(color: AppStyles.danger)))
                 : _report == null
                     ? const Center(child: Text('Нет данных'))
                     : CustomScrollView(
@@ -146,7 +144,7 @@ class _DateHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.calendar_month_rounded, color: AppStyles.primary, size: 20),
+          const Icon(Icons.calendar_month_rounded, color: AppStyles.primary, size: 20),
           const SizedBox(width: 10),
           Text(
             isToday
@@ -374,10 +372,10 @@ class _StatusPieChart extends StatelessWidget {
       counts[a.status] = (counts[a.status] ?? 0) + 1;
     }
     if (counts.isEmpty) {
-      return _SectionCard(
+      return const _SectionCard(
         title: 'Статусы записей',
         icon: Icons.pie_chart_outline_rounded,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: Center(child: Text('Нет данных')),
         ),
@@ -444,10 +442,10 @@ class _TopServicesChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (report.topServices.isEmpty) {
-      return _SectionCard(
+      return const _SectionCard(
         title: 'Топ услуг',
         icon: Icons.star_rounded,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: Center(child: Text('Нет данных')),
         ),
@@ -629,7 +627,7 @@ class _ConsumablesAlerts extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
+              const Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -638,7 +636,7 @@ class _ConsumablesAlerts extends StatelessWidget {
                     Text(a.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                     const SizedBox(height: 2),
                     Text('Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
-                        style: TextStyle(fontSize: 12, color: AppStyles.danger)),
+                        style: const TextStyle(fontSize: 12, color: AppStyles.danger)),
                   ],
                 ),
               ),
@@ -663,10 +661,10 @@ class _AppointmentsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (appointments.isEmpty) {
-      return _SectionCard(
+      return const _SectionCard(
         title: 'Записи',
         icon: Icons.list_alt_rounded,
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: Center(child: Text('Нет записей за выбранный день')),
         ),

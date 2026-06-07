@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
+import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/language_provider.dart';
 
@@ -15,9 +16,9 @@ class _PhoneInputFormatter extends TextInputFormatter {
     var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
     // Нормализуем: всегда 7 в начале
     if (digits.startsWith('8') || digits.startsWith('7')) {
-      digits = '7' + digits.substring(1);
+      digits = '7${digits.substring(1)}';
     } else if (digits.isNotEmpty) {
-      digits = '7' + digits;
+      digits = '7$digits';
     } else {
       return newValue.copyWith(
           text: '+7', selection: const TextSelection.collapsed(offset: 2));
@@ -28,12 +29,15 @@ class _PhoneInputFormatter extends TextInputFormatter {
       buf.write(' ($area');
       if (digits.length >= 4) buf.write(') ');
     }
-    if (digits.length > 4)
+    if (digits.length > 4) {
       buf.write(digits.substring(4, digits.length.clamp(4, 7)));
-    if (digits.length > 7)
+    }
+    if (digits.length > 7) {
       buf.write('-${digits.substring(7, digits.length.clamp(7, 9))}');
-    if (digits.length > 9)
+    }
+    if (digits.length > 9) {
       buf.write('-${digits.substring(9, digits.length.clamp(9, 11))}');
+    }
     final result = buf.toString();
     return newValue.copyWith(
       text: result,
@@ -92,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Успешная регистрация — загружаем данные и уходим на корень (_AppRouter покажет ClientShell)
-    await context.read<AppProvider>().reloadForUser(auth.userLogin, auth);
+    await context.read<AppointmentProvider>().reloadForUser(auth.userLogin, auth);
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
@@ -168,15 +172,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       )
                     ],
                   ),
-                  child: Icon(Icons.person_add_rounded,
+                  child: const Icon(Icons.person_add_rounded,
                       color: Colors.white, size: 36),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Text(lang.tr('register_title'), style: AppStyles.adaptiveHeadingLarge(context)),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(lang.tr('register_subtitle'),
                     style: AppStyles.adaptiveBodyMedium(context)),
-                SizedBox(height: 28),
+                const SizedBox(height: 28),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: AppStyles.cardDecorationFor(context),
@@ -191,7 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ? lang.tr('validation_required')
                           : null,
                     ),
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _loginCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
@@ -199,13 +203,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           hint: lang.tr('register_field_login_hint'),
                           icon: Icons.alternate_email_rounded),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty)
+                        if (v == null || v.trim().isEmpty) {
                           return lang.tr('validation_required');
+                        }
                         if (v.trim().length < 3) return lang.tr('validation_login_short');
                         return null;
                       },
                     ),
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: _obscure,
@@ -223,17 +228,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return lang.tr('validation_required');
-                        if (v.length < 8) return lang.tr('validation_password_short');
-                        if (!RegExp(r'[A-Z]').hasMatch(v)) return lang.tr('validation_password_upper');
-                        if (!RegExp(r'[a-z]').hasMatch(v)) return lang.tr('validation_password_lower');
-                        if (!RegExp(r'\d').hasMatch(v)) return lang.tr('validation_password_digit');
-                        if (!RegExp(r'[@$!%*?&_]').hasMatch(v)) return lang.tr('validation_password_special');
-                        return null;
-                      },
+                      validator: AppValidators.password,
                     ),
-                    SizedBox(height: 14),
+                    const SizedBox(height: 14),
                     TextFormField(
                       controller: _phoneCtrl,
                       style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
@@ -243,16 +240,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       keyboardType: TextInputType.phone,
                       inputFormatters: [_PhoneInputFormatter()],
                       validator: (v) {
-                        if (v == null || v.trim().length <= 2)
+                        if (v == null || v.trim().length <= 2) {
                           return lang.tr('validation_required');
+                        }
                         final digits = v.replaceAll(RegExp(r'\D'), '');
-                        if (digits.length < 11)
+                        if (digits.length < 11) {
                           return lang.tr('validation_phone_short');
+                        }
                         return null;
                       },
                     ),
                     if (_error != null) ...[
-                      SizedBox(height: 14),
+                      const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -262,24 +261,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: AppStyles.danger.withValues(alpha:0.3)),
                         ),
                         child: Row(children: [
-                          Icon(Icons.error_outline,
+                          const Icon(Icons.error_outline,
                               color: AppStyles.danger, size: 18),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
                               child: Text(_error!,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       color: AppStyles.danger, fontSize: 13))),
                         ]),
                       ),
                     ],
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: AppStyles.primaryButton,
                         onPressed: _loading ? null : _submit,
                         child: _loading
-                            ? SizedBox(
+                            ? const SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
@@ -289,11 +288,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ]),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(lang.tr('register_has_account'),
-                      style: TextStyle(color: AppStyles.primary, fontSize: 14)),
+                      style: const TextStyle(color: AppStyles.primary, fontSize: 14)),
                 ),
               ]),
             ),

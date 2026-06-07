@@ -3,11 +3,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_saver/file_saver.dart';
-import 'package:printing/printing.dart';
 
 import '../../app_styles.dart';
 import '../../widgets/app_date_picker.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
 import '../../services/pdf_export_service.dart';
@@ -37,8 +36,8 @@ class _PopularServicesReportScreenState
 
   Future<void> _fetchCategoriesAndReport() async {
     try {
-      final appProvider = Provider.of<AppProvider>(context, listen: false);
-      _categories = ['Все', ...await appProvider.getServiceCategories()];
+      final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
+      _categories = ['Все', ...await catalogProvider.getServiceCategories()];
       _categories.sort();
       await _fetchReport();
     } catch (e) {
@@ -148,7 +147,7 @@ class _PopularServicesReportScreenState
           : _error != null
               ? Center(
                   child: Text(_error!,
-                      style: TextStyle(
+                      style: const TextStyle(
                           color: AppStyles.danger, fontSize: 16)))
               : Column(
                   children: [
@@ -189,7 +188,7 @@ class _PopularServicesReportScreenState
                                       'Ноябрь',
                                       'Декабрь'
                                     ][DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -249,8 +248,8 @@ class _PopularServicesReportScreenState
                               itemCount: _report!.data.length,
                               itemBuilder: (context, index) {
                                 final entry = _report!.data[index];
-                                final name = entry.serviceName?.trim() ?? '';
-                                final isPromo = Provider.of<AppProvider>(
+                                final name = entry.serviceName.trim() ?? '';
+                                final isPromo = Provider.of<CatalogProvider>(
                                         context,
                                         listen: false)
                                     .promos

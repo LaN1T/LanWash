@@ -10,7 +10,10 @@ import 'firebase_options.dart';
 import 'app_styles.dart';
 import 'core/service_locator.dart';
 import 'providers/auth_provider.dart';
-import 'providers/app_provider.dart';
+import 'providers/appointment_provider.dart';
+import 'providers/catalog_provider.dart';
+import 'providers/note_provider.dart';
+import 'providers/favorite_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
 import 'services/api_service.dart';
@@ -65,10 +68,19 @@ void main() async {
           )..init(),
         ),
         ChangeNotifierProvider(
-          create: (_) => AppProvider(
+          create: (_) => AppointmentProvider(
             api: sl<ApiService>(),
             notificationService: sl<NotificationService>(),
           ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => CatalogProvider(api: sl<ApiService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NoteProvider(api: sl<ApiService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FavoriteProvider(api: sl<ApiService>()),
         ),
       ],
       child: const LanWashApp(),
@@ -118,11 +130,11 @@ class LanWashApp extends StatelessWidget {
 
   ThemeData _buildLightTheme() {
     return ThemeData(
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: AppStyles.primary,
         secondary: AppStyles.primaryLight,
         surface: AppStyles.bgCard,
-        surfaceVariant: AppStyles.bgPage,
+        surfaceContainerHighest: AppStyles.bgPage,
       ),
       useMaterial3: true,
       scaffoldBackgroundColor: AppStyles.bgPage,
@@ -229,11 +241,11 @@ class LanWashApp extends StatelessWidget {
     const darkTextSecondary = Color(0xFF94A3B8);
 
     return ThemeData(
-      colorScheme: ColorScheme.dark(
+      colorScheme: const ColorScheme.dark(
         primary: AppStyles.primaryLight,
         secondary: AppStyles.primary,
         surface: darkCard,
-        surfaceVariant: darkBg,
+        surfaceContainerHighest: darkBg,
       ),
       useMaterial3: true,
       scaffoldBackgroundColor: darkBg,
@@ -266,7 +278,7 @@ class LanWashApp extends StatelessWidget {
                     color: AppStyles.primaryLight,
                     fontSize: 12,
                     fontWeight: FontWeight.w600)
-                : TextStyle(color: darkTextSecondary, fontSize: 12)),
+                : const TextStyle(color: darkTextSecondary, fontSize: 12)),
         iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
             color: s.contains(WidgetState.selected)
                 ? AppStyles.primaryLight
@@ -338,15 +350,17 @@ class _AppRouter extends StatefulWidget {
 class _AppRouterState extends State<_AppRouter> {
   bool? _wasLoggedIn;
   bool _sessionResumed = false;
+  bool _loginCallbackPending = false;
+  bool _logoutCallbackPending = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
-      final provider = context.read<AppProvider>();
       if (auth.isLoggedIn) {
-        provider.init(auth);
+        context.read<AppointmentProvider>().init(auth);
+        context.read<CatalogProvider>().load();
       }
     });
   }
@@ -354,24 +368,31 @@ class _AppRouterState extends State<_AppRouter> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: true);
-    final provider = context.read<AppProvider>();
 
     // При выходе — сбросить данные
-    if (_wasLoggedIn == true && !auth.isLoggedIn) {
+    if (_wasLoggedIn == true && !auth.isLoggedIn && !_logoutCallbackPending) {
+      _logoutCallbackPending = true;
+      _loginCallbackPending = false;
       _sessionResumed = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        provider.clearData();
+        _logoutCallbackPending = false;
+        context.read<AppointmentProvider>().clearData();
+        context.read<FavoriteProvider>().clearData();
         if (!mounted) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
 
     // При входе — инициализация
-    if (auth.isLoggedIn && _wasLoggedIn != true) {
+    if (auth.isLoggedIn && _wasLoggedIn != true && !_loginCallbackPending) {
+      _loginCallbackPending = true;
+      _logoutCallbackPending = false;
       _sessionResumed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loginCallbackPending = false;
         if (!mounted) return;
-        provider.init(auth);
+        context.read<AppointmentProvider>().init(auth);
+        context.read<CatalogProvider>().load();
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }

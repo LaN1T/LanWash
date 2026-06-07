@@ -3,13 +3,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:file_saver/file_saver.dart';
-import 'package:printing/printing.dart';
 
 import '../../app_styles.dart';
 import '../../widgets/app_date_picker.dart';
 import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../services/pdf_export_service.dart';
 
 class ConsumablesReportScreen extends StatefulWidget {
@@ -50,8 +49,8 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
 
   Future<void> _fetchCategoriesAndReport() async {
     try {
-      final appProvider = Provider.of<AppProvider>(context, listen: false);
-      _categories = ['Все', ...await appProvider.getServiceCategories()];
+      final catalogProvider = Provider.of<CatalogProvider>(context, listen: false);
+      _categories = ['Все', ...await catalogProvider.getServiceCategories()];
       _categories.sort();
       await _fetchReport();
     } catch (e) {
@@ -159,7 +158,7 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
           : _error != null
               ? Center(
                   child: Text(_error!,
-                      style: TextStyle(
+                      style: const TextStyle(
                           color: AppStyles.danger, fontSize: 16)))
               : Column(
                   children: [
@@ -174,7 +173,7 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
                               _selectedDate.length == 7
                                   ? 'Отчет: ${_monthNames[DateTime.parse('$_selectedDate-01').month - 1]} ${DateFormat('yyyy').format(DateTime.parse('$_selectedDate-01'))}'
                                   : 'Отчет: ${DateFormat('d', 'ru').format(DateTime.parse(_selectedDate))} ${_monthNames[DateTime.parse(_selectedDate).month - 1]} ${DateFormat('yyyy').format(DateTime.parse(_selectedDate))}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),

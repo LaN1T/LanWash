@@ -6,8 +6,10 @@ import '../../models/appointment.dart';
 import '../../models/promo.dart';
 import '../../models/service.dart';
 import '../../models/wash_type.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
+import '../../providers/favorite_provider.dart';
 import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
 import '../../utils/translit.dart';
@@ -62,7 +64,7 @@ class _BWState extends State<BookingWizardScreen> {
 
   void _updateBusySlots() {
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    context.read<AppProvider>().fetchBusySlots(dateStr);
+    context.read<AppointmentProvider>().fetchBusySlots(dateStr);
   }
 
   bool _isSlotAvailable(DateTime dt, int duration) {
@@ -73,7 +75,7 @@ class _BWState extends State<BookingWizardScreen> {
     final totalMinutes = dt.hour * 60 + dt.minute + duration + 5;
     if (totalMinutes > 22 * 60) return false;
 
-    final busy = context.read<AppProvider>().busySlots['busy_slots'] as List?;
+    final busy = context.read<AppointmentProvider>().busySlots['busy_slots'] as List?;
     if (busy == null) return true;
 
     final start = dt;
@@ -97,14 +99,14 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   int _getDuration() {
-    final provider = context.read<AppProvider>();
-    final wt = provider.washTypeById(_washTypeId);
+    final catalogProvider = context.read<CatalogProvider>();
+    final wt = catalogProvider.washTypeById(_washTypeId);
     int duration = wt?.durationMinutes ?? 30;
 
     final locked = _lockedExtras();
     for (final id in _extras) {
       if (!locked.contains(id)) {
-        final svc = provider.services.firstWhere((s) => s.id == id,
+        final svc = catalogProvider.services.firstWhere((s) => s.id == id,
             orElse: () => Service(
                 id: id,
                 name: id,
@@ -125,10 +127,10 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   WashType? get _washType =>
-      context.read<AppProvider>().washTypeById(_washTypeId);
+      context.read<CatalogProvider>().washTypeById(_washTypeId);
 
   int _extraPrice(String id) {
-    final svc = context.read<AppProvider>().services.firstWhere(
+    final svc = context.read<CatalogProvider>().services.firstWhere(
           (s) => s.id == id,
           orElse: () => Service(
               id: id,
@@ -142,7 +144,7 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   int _extraDuration(String id) {
-    final svc = context.read<AppProvider>().services.firstWhere(
+    final svc = context.read<CatalogProvider>().services.firstWhere(
           (s) => s.id == id,
           orElse: () => Service(
               id: id,
@@ -237,13 +239,13 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   void _initFromProvider() {
-    final provider = context.read<AppProvider>();
+    final catalogProvider = context.read<CatalogProvider>();
     if (_isPromo) {
       _washTypeId = _promo!.washTypeId;
       _extras = Set.from(_promo!.includedExtraIds);
     } else {
-      final basic = provider.washTypeByCode('basic') ??
-          (provider.washTypes.isNotEmpty ? provider.washTypes.first : null);
+      final basic = catalogProvider.washTypeByCode('basic') ??
+          (catalogProvider.washTypes.isNotEmpty ? catalogProvider.washTypes.first : null);
       _washTypeId = basic?.id ?? '';
     }
     _addIncludedExtras();
@@ -251,7 +253,7 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   void _addIncludedExtras() {
-    final wt = context.read<AppProvider>().washTypeById(_washTypeId);
+    final wt = context.read<CatalogProvider>().washTypeById(_washTypeId);
     if (wt != null) _extras.addAll(wt.includedExtraIds);
   }
 
@@ -303,7 +305,7 @@ class _BWState extends State<BookingWizardScreen> {
 
     final auth = context.read<AuthProvider>();
     final login = auth.userLogin.toLowerCase();
-    final ok = await context.read<AppProvider>().addAppointment(
+    final ok = await context.read<AppointmentProvider>().addAppointment(
         Appointment(
           id: '',
           clientName: _nameCtrl.text.trim(),
@@ -347,14 +349,14 @@ class _BWState extends State<BookingWizardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final washTypes = [...provider.washTypes]
+    final catalogProvider = context.watch<CatalogProvider>();
+    final washTypes = [...catalogProvider.washTypes]
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
     if (_washTypeId.isEmpty && washTypes.isNotEmpty) {
       _washTypeId = _isPromo
           ? _promo!.washTypeId
-          : (provider.washTypeByCode('basic')?.id ?? washTypes.first.id);
+          : (catalogProvider.washTypeByCode('basic')?.id ?? washTypes.first.id);
       _addIncludedExtras();
     }
 
@@ -416,7 +418,7 @@ class _BWState extends State<BookingWizardScreen> {
                 numCtrl: _numCtrl,
                 isPromo: _isPromo,
                 onWashTypeChanged: (wt) => setState(() {
-                  final oldWt = provider.washTypeById(_washTypeId);
+                  final oldWt = catalogProvider.washTypeById(_washTypeId);
                   if (oldWt != null) _extras.removeAll(oldWt.includedExtraIds);
                   _washTypeId = wt.id;
                   _extras.addAll(wt.includedExtraIds);
@@ -448,7 +450,7 @@ class _BWState extends State<BookingWizardScreen> {
                     .format(_finalDateTime),
                 washType: _washType,
                 extras: _extras.toList(),
-                services: provider.services,
+                services: catalogProvider.services,
                 name: _nameCtrl.text,
                 car: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
                 number: _numCtrl.text,
@@ -805,8 +807,9 @@ class _ServiceStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final extraServices = provider.services
+    final catalogProvider = context.watch<CatalogProvider>();
+    final favoriteProvider = context.watch<FavoriteProvider>();
+    final extraServices = catalogProvider.services
         .where((s) => s.category != 'Акции')
         .toList()
       ..sort((a, b) => a.price.compareTo(b.price));
@@ -1021,8 +1024,8 @@ class _ServiceStep extends StatelessWidget {
                 final svc = entry.value;
                 final checked = extras.contains(svc.id);
                 final last = i == extraServices.length - 1;
-                final isFav = provider.isExtraFavorite(svc.id);
-                final wt = provider.washTypeById(washTypeId);
+                final isFav = favoriteProvider.isExtraFavorite(svc.id);
+                final wt = catalogProvider.washTypeById(washTypeId);
                 final isWashIncluded =
                     wt?.includedExtraIds.contains(svc.id) ?? false;
                 final isPromoIncluded =
@@ -1141,7 +1144,7 @@ class _ServiceStep extends StatelessWidget {
                               )),
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () => provider.toggleExtraFavorite(svc.id),
+                          onTap: () => favoriteProvider.toggleExtraFavorite(svc.id),
                           behavior: HitTestBehavior.opaque,
                           child: Padding(
                             padding: const EdgeInsets.all(4),
