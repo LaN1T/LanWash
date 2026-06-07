@@ -4,6 +4,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 import 'package:lanwash/providers/auth_provider.dart';
 import 'package:lanwash/providers/appointment_provider.dart';
+import 'package:lanwash/providers/theme_provider.dart';
+import 'package:lanwash/providers/language_provider.dart';
 import 'package:lanwash/screens/auth/register_screen.dart';
 import '../mocks.dart';
 
@@ -26,6 +28,8 @@ void main() {
         providers: [
           ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
           ChangeNotifierProvider<AppointmentProvider>.value(value: mockAppointment),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ],
         child: const RegisterScreen(),
       ),

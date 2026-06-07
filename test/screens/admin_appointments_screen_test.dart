@@ -198,14 +198,15 @@ void main() {
     });
 
     testWidgets('shows pagination when multiple pages', (tester) async {
+      final today = DateTime.now().toIso8601String().substring(0, 10);
       when(() => mockAppointment.loading).thenReturn(false);
       when(() => mockAppointment.appointments).thenReturn([]);
       when(() => mockCatalog.services).thenReturn([]);
       when(() => mockAppointment.totalPages).thenReturn(3);
       when(() => mockAppointment.currentPage).thenReturn(2);
-      when(() => mockAppointment.currentDate).thenReturn('2026-05-30');
+      when(() => mockAppointment.currentDate).thenReturn(today);
       when(() => mockAppointment.uniqueDates).thenReturn([
-        '2026-05-30',
+        today,
         '2026-05-29',
         '2026-05-28',
       ]);
