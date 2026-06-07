@@ -50,6 +50,11 @@ void main() {
     test('returns Failure on 401', () async {
       when(() => mockClient.get(any(), headers: any(named: 'headers')))
           .thenAnswer((_) async => http.Response('Unauthorized', 401));
+      when(() => mockClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          )).thenAnswer((_) async => http.Response('{"error":"invalid"}', 401));
 
       final result = await ApiClient.get('/test');
 

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 import 'package:lanwash/providers/auth_provider.dart';
+import 'package:lanwash/providers/theme_provider.dart';
+import 'package:lanwash/providers/language_provider.dart';
 import 'package:lanwash/screens/auth/login_screen.dart';
 import 'package:lanwash/screens/auth/register_screen.dart';
 import '../mocks.dart';
@@ -20,8 +22,12 @@ void main() {
 
   Widget buildTestWidget({bool isResume = false}) {
     return MaterialApp(
-      home: ChangeNotifierProvider<AuthProvider>.value(
-        value: mockAuth,
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ],
         child: LoginScreen(isResume: isResume),
       ),
     );

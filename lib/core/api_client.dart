@@ -172,7 +172,7 @@ class ApiClient {
         if (_cachedToken != null && !_isRefreshing) {
           _isRefreshing = true;
           try {
-            final refreshResponse = await http.post(
+            final refreshResponse = await _httpClient.post(
               Uri.parse('${AppConfig.baseUrl}/auth/refresh'),
               headers: {'Authorization': 'Bearer $_cachedToken'},
             );
