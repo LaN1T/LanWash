@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
-import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/language_provider.dart';
@@ -143,21 +142,21 @@ class _LoginScreenState extends State<LoginScreen>
                             )
                           ],
                         ),
-                        child: Icon(Icons.local_car_wash,
+                        child: const Icon(Icons.local_car_wash,
                             color: Colors.white, size: 44),
                       ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       Text(lang.tr('app_name'),
                           style: TextStyle(
                               color: AppStyles.adaptiveTextPrimary(context),
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.5)),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text('Автомобильный Premium сервис',
                           style: TextStyle(
                               color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
-                      SizedBox(height: 36),
+                      const SizedBox(height: 36),
 
                       // ── Карточка формы ───────────────────────────────────
                       widget.isResume
@@ -168,10 +167,10 @@ class _LoginScreenState extends State<LoginScreen>
                                 children: [
                                   Text(
                                       '${lang.tr('login_resume_title')}, ${context.read<AuthProvider>().userLogin}!',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600)),
-                                  SizedBox(height: 20),
+                                  const SizedBox(height: 20),
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton(
@@ -180,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       child: Text(lang.tr('login_resume_button')),
                                     ),
                                   ),
-                                  SizedBox(height: 12),
+                                  const SizedBox(height: 12),
                                   TextButton(
                                     onPressed: () {
                                       showDialog(
@@ -236,12 +235,12 @@ class _LoginScreenState extends State<LoginScreen>
                                             color: AppStyles.adaptiveTextPrimary(context),
                                             fontSize: 18,
                                             fontWeight: FontWeight.w700)),
-                                    SizedBox(height: 6),
+                                    const SizedBox(height: 6),
                                     Text(lang.tr('login_subtitle'),
                                         style: TextStyle(
                                             color: AppStyles.adaptiveTextSecondary(context),
                                             fontSize: 13)),
-                                    SizedBox(height: 20),
+                                    const SizedBox(height: 20),
                                     TextFormField(
                                       controller: _loginCtrl,
                                       style: TextStyle(
@@ -255,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen>
                                               ? lang.tr('validation_required')
                                               : null,
                                     ),
-                                    SizedBox(height: 14),
+                                    const SizedBox(height: 14),
                                     TextFormField(
                                       controller: _passCtrl,
                                       obscureText: _obscure,
@@ -285,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       onFieldSubmitted: (_) => _submit(),
                                     ),
                                     if (_error != null) ...[
-                                      SizedBox(height: 12),
+                                      const SizedBox(height: 12),
                                       Container(
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
@@ -297,25 +296,25 @@ class _LoginScreenState extends State<LoginScreen>
                                                   .withValues(alpha:0.3)),
                                         ),
                                         child: Row(children: [
-                                          Icon(Icons.error_outline,
+                                          const Icon(Icons.error_outline,
                                               color: AppStyles.danger,
                                               size: 18),
-                                          SizedBox(width: 8),
+                                          const SizedBox(width: 8),
                                           Text(_error!,
-                                              style: TextStyle(
+                                              style: const TextStyle(
                                                   color: AppStyles.danger,
                                                   fontSize: 13)),
                                         ]),
                                       ),
                                     ],
-                                    SizedBox(height: 20),
+                                    const SizedBox(height: 20),
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
                                         style: AppStyles.primaryButton,
                                         onPressed: _loading ? null : _submit,
                                         child: _loading
-                                            ? SizedBox(
+                                            ? const SizedBox(
                                                 width: 20,
                                                 height: 20,
                                                 child:
@@ -327,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     ),
                                   ]),
                             ),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
                       TextButton(
                         onPressed: () => Navigator.push(
@@ -337,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Text(
                           lang.tr('login_no_account'),
                           style:
-                              TextStyle(color: AppStyles.primary, fontSize: 14),
+                              const TextStyle(color: AppStyles.primary, fontSize: 14),
                         ),
                       ),
                     ]),
@@ -364,44 +363,4 @@ class _LoginScreenState extends State<LoginScreen>
       ],
     ));
   }
-}
-
-class _Hint extends StatelessWidget {
-  final String role, login, pass;
-  const _Hint(this.role, this.login, this.pass);
-
-  @override
-  Widget build(BuildContext context) => Row(children: [
-        Text('$role: ',
-            style:
-                TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppStyles.adaptiveBgMuted(context),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(login,
-              style: TextStyle(
-                  color: AppStyles.adaptiveTextPrimary(context),
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w600)),
-        ),
-        Text(' / ',
-            style: TextStyle(color: AppStyles.adaptiveTextMuted(context), fontSize: 12)),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppStyles.adaptiveBgMuted(context),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(pass,
-              style: TextStyle(
-                  color: AppStyles.adaptiveTextPrimary(context),
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w600)),
-        ),
-      ]);
 }

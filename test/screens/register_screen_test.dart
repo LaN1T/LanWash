@@ -3,13 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 import 'package:lanwash/providers/auth_provider.dart';
-import 'package:lanwash/providers/app_provider.dart';
+import 'package:lanwash/providers/appointment_provider.dart';
 import 'package:lanwash/screens/auth/register_screen.dart';
 import '../mocks.dart';
 
 void main() {
   late MockAuthProvider mockAuth;
-  late MockAppProvider mockApp;
+  late MockAppointmentProvider mockAppointment;
 
   setUpAll(() {
     registerMockFallbacks();
@@ -17,7 +17,7 @@ void main() {
 
   setUp(() {
     mockAuth = MockAuthProvider();
-    mockApp = MockAppProvider();
+    mockAppointment = MockAppointmentProvider();
   });
 
   Widget buildTestWidget() {
@@ -25,7 +25,7 @@ void main() {
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
-          ChangeNotifierProvider<AppProvider>.value(value: mockApp),
+          ChangeNotifierProvider<AppointmentProvider>.value(value: mockAppointment),
         ],
         child: const RegisterScreen(),
       ),
@@ -113,7 +113,7 @@ void main() {
             phone: any(named: 'phone'),
           )).thenAnswer((_) async => null);
       when(() => mockAuth.userLogin).thenReturn('ivan123');
-      when(() => mockApp.reloadForUser(any(), any()))
+      when(() => mockAppointment.reloadForUser(any(), any()))
           .thenAnswer((_) => Future.value());
 
       await tester.pumpWidget(buildTestWidget());
@@ -130,7 +130,7 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 100));
 
-      verify(() => mockApp.reloadForUser('ivan123', mockAuth)).called(1);
+      verify(() => mockAppointment.reloadForUser('ivan123', mockAuth)).called(1);
     });
 
     testWidgets('toggles password visibility', (tester) async {

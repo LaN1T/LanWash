@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
@@ -15,6 +16,7 @@ class _LogsScreenState extends State<LogsScreen> {
   bool _loading = true;
   String _filterUser = '';
   final _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -24,6 +26,7 @@ class _LogsScreenState extends State<LogsScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -31,11 +34,12 @@ class _LogsScreenState extends State<LogsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final logs = await LogService.instance.getAll();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _logs = logs;
         _loading = false;
       });
+    }
   }
 
   Future<void> _confirmClear() async {
@@ -111,7 +115,12 @@ class _LogsScreenState extends State<LogsScreen> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: TextField(
             controller: _searchCtrl,
-            onChanged: (v) => setState(() => _filterUser = v),
+            onChanged: (v) {
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                setState(() => _filterUser = v);
+              });
+            },
             decoration: AppStyles.inputDecorationFor(
                 context, 'Фильтр по логину',
                 icon: Icons.person_search_outlined),
@@ -125,7 +134,7 @@ class _LogsScreenState extends State<LogsScreen> {
             child: Row(children: [
               Text('Записей: ${filtered.length}', style: AppStyles.bodySmall),
               if (_filterUser.isNotEmpty) ...[
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () {
                     _searchCtrl.clear();
@@ -158,7 +167,7 @@ class _LogsScreenState extends State<LogsScreen> {
                       Icon(Icons.history_rounded,
                           size: 56,
                           color: AppStyles.adaptiveTextSecondary(context)),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(_filterUser.isEmpty ? 'Журнал пуст' : 'Нет записей',
                           style: TextStyle(
                               color: AppStyles.adaptiveTextSecondary(context),
@@ -195,8 +204,9 @@ class _LogCard extends StatelessWidget {
 
   IconData get _actionIcon {
     final a = entry.action;
-    if (a.contains('Вход') && a.contains('Неудачн'))
+    if (a.contains('Вход') && a.contains('Неудачн')) {
       return Icons.lock_open_rounded;
+    }
     if (a.contains('Вход')) return Icons.login_rounded;
     if (a.contains('Выход')) return Icons.logout_rounded;
     if (a.contains('Регистрация')) return Icons.person_add_rounded;
@@ -225,7 +235,7 @@ class _LogCard extends StatelessWidget {
             ),
             child: Icon(_actionIcon, color: color, size: 18),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +249,7 @@ class _LogCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(entry.username,
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: AppStyles.primary,
                             fontSize: 11,
                             fontWeight: FontWeight.w700)),
@@ -250,14 +260,14 @@ class _LogCard extends StatelessWidget {
                     style: AppStyles.bodySmall,
                   ),
                 ]),
-                SizedBox(height: 5),
+                const SizedBox(height: 5),
                 Text(entry.action,
                     style: TextStyle(
                         color: color,
                         fontSize: 13,
                         fontWeight: FontWeight.w600)),
                 if (entry.details.isNotEmpty) ...[
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(entry.details, style: AppStyles.bodySmall),
                 ],
               ])),

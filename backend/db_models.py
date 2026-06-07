@@ -16,6 +16,7 @@ class User(Base):
     avatarUrl = Column(String, nullable=True, default='')
     createdAt = Column(String, nullable=False)
     isFavoriteAdmin = Column(Integer, nullable=False, default=0)
+    passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
 
 class WashType(Base):

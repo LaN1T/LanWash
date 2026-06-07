@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from sqlalchemy import select, func, and_, cast, String
@@ -7,6 +7,7 @@ from db_models import (
     Appointment, Consumable, ConsumableUsageLog, Service, ServiceConsumable,
     Promo, WashType, WashTypeConsumable, Shift, User,
 )
+from services.auth_service import get_current_user
 from datetime import datetime
 import json
 import random
@@ -14,7 +15,7 @@ from collections import defaultdict
 
 
 def _escape_like(s: str) -> str:
-    return s.replace('%', r'\%').replace('_', r'\_')
+    return s.replace('\\', '\\\\').replace('%', r'\%').replace('_', r'\_')
 
 router = APIRouter(
     prefix="/api/reports",
@@ -47,7 +48,9 @@ class CarPriceService:
 
 @router.get("/monthly-check-vs-price/")
 @limiter.limit("30/minute")
-async def monthly_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db)):
+async def monthly_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
     if not date:
         date = datetime.now().strftime("%Y-%m")
     safe_date = _escape_like(date)
@@ -77,7 +80,9 @@ async def monthly_report(request: Request, date: str = None, db: AsyncSession = 
 
 @router.get("/popular-additional-services/")
 @limiter.limit("30/minute")
-async def get_popular_additional_services(request: Request, date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
+async def get_popular_additional_services(request: Request, date: str = None, category: str = None, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
     if not date:
         date = datetime.now().strftime("%Y-%m")
 
@@ -152,7 +157,9 @@ async def get_popular_additional_services(request: Request, date: str = None, ca
 
 @router.get("/consumables-usage/")
 @limiter.limit("30/minute")
-async def get_consumables_usage(request: Request, date: str = None, category: str = None, db: AsyncSession = Depends(get_db)):
+async def get_consumables_usage(request: Request, date: str = None, category: str = None, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
     if not date:
         date = datetime.now().strftime("%Y-%m")
 
@@ -226,8 +233,10 @@ async def get_consumables_usage(request: Request, date: str = None, category: st
 
 @router.get("/daily/")
 @limiter.limit("60/minute")
-async def daily_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db)):
+async def daily_report(request: Request, date: str = None, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Daily summary: revenue, appointments, top services, washers on shift, consumables alerts."""
+    if current_user.role != 'admin':
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
     if not date:
         date = datetime.now().strftime("%Y-%m-%d")
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
+import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/service_locator.dart';
@@ -272,8 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: AppStyles.inputDecorationFor(
                     context, 'Новый пароль',
                     icon: Icons.lock_outline_rounded),
-                validator: (v) =>
-                    (v == null || v.length < 4) ? 'Минимум 4 символа' : null,
+                validator: AppValidators.password,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -311,9 +311,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               decoration: AppStyles.cardDecorationFor(context),
               child: ListTile(
-                leading: Icon(Icons.logout_outlined,
+                leading: const Icon(Icons.logout_outlined,
                     color: AppStyles.danger, size: 22),
-                title: Text('Выйти из аккаунта',
+                title: const Text('Выйти из аккаунта',
                     style: TextStyle(
                         color: AppStyles.danger,
                         fontSize: 14,

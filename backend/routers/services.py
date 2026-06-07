@@ -19,11 +19,20 @@ router = APIRouter(
 async def get_promos(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Promo))
     promos = result.scalars().all()
+    if not promos:
+        return []
+
+    promo_ids = [p.id for p in promos]
+    extras_res = await db.execute(
+        select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
+        .where(PromoIncludedExtra.promoId.in_(promo_ids))
+    )
+    extras_map: dict[str, list[str]] = {}
+    for promo_id, extra_id in extras_res.all():
+        extras_map.setdefault(promo_id, []).append(extra_id)
+
     out = []
     for p in promos:
-        extras_res = await db.execute(
-            select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == p.id)
-        )
         out.append({
             "id": p.id,
             "washTypeId": p.washTypeId,
@@ -33,7 +42,7 @@ async def get_promos(request: Request, db: AsyncSession = Depends(get_db), curre
             "discountPercent": p.discountPercent,
             "duration": p.duration,
             "weekendOnly": p.weekendOnly,
-            "includedExtraIds": [r[0] for r in extras_res.all()],
+            "includedExtraIds": extras_map.get(p.id, []),
         })
     return out
 

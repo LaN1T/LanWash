@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../app_styles.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
@@ -64,6 +65,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (result == null || result.files.single.bytes == null) return;
 
     final bytes = result.files.single.bytes!;
+    const maxAvatarSizeBytes = 5 * 1024 * 1024; // 5 MB
+    final fileSize = result.files.single.size > 0 ? result.files.single.size : bytes.length;
+    if (fileSize > maxAvatarSizeBytes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Файл слишком большой. Максимум 5 МБ.')),
+        );
+      }
+      return;
+    }
+
     final filename = result.files.single.name;
     final user = auth.user;
     if (user?.id == null) return;
@@ -135,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : AppStyles.primaryGradient,
                         image: user?.avatarUrl.isNotEmpty == true
                             ? DecorationImage(
-                                image: NetworkImage(user!.avatarUrl),
+                                image: CachedNetworkImageProvider(user!.avatarUrl),
                                 fit: BoxFit.cover,
                               )
                             : null,

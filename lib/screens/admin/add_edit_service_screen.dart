@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/service.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/catalog_provider.dart';
 
 const _categories = [
   'Мойка кузова',
@@ -72,7 +72,7 @@ class _State extends State<AddEditServiceScreen> {
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите название' : null,
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           TextFormField(
             controller: _descCtrl,
             decoration:
@@ -81,7 +81,7 @@ class _State extends State<AddEditServiceScreen> {
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Введите описание' : null,
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           _label('Стоимость и длительность'),
           Row(children: [
             Expanded(
@@ -94,7 +94,7 @@ class _State extends State<AddEditServiceScreen> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Введите цену' : null,
             )),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
                 child: TextFormField(
               controller: _durCtrl,
@@ -106,7 +106,7 @@ class _State extends State<AddEditServiceScreen> {
                   (v == null || v.isEmpty) ? 'Введите время' : null,
             )),
           ]),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           _label('Категория'),
           Container(
             decoration: AppStyles.cardDecoration,
@@ -125,14 +125,14 @@ class _State extends State<AddEditServiceScreen> {
                   .toList(),
             ),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           ElevatedButton.icon(
             icon: const Icon(Icons.save),
             label: Text(_isEditing ? 'Сохранить изменения' : 'Добавить услугу'),
             style: AppStyles.primaryButton,
             onPressed: _save,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
         ]),
       ),
     );
@@ -147,7 +147,7 @@ class _State extends State<AddEditServiceScreen> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    final provider = context.read<AppProvider>();
+    final provider = context.read<CatalogProvider>();
 
     if (_isEditing) {
       provider.updateService(widget.service!.copyWith(

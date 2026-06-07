@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../../core/config.dart';
-import '../../services/api_service.dart';
+import '../../core/api_client.dart';
 
 class Review {
   final int id;
@@ -57,20 +54,18 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final token = await ApiService.getToken();
-      final res = await http.get(
-        Uri.parse('${AppConfig.baseUrl}/reviews/admin/all'),
-        headers: {'Authorization': 'Bearer $token'},
+      final result = await ApiClient.getList('/reviews/admin/all');
+      result.when(
+        success: (data) {
+          setState(() {
+            _reviews = data.map((e) => Review.fromJson(e as Map<String, dynamic>)).toList();
+            _loading = false;
+          });
+        },
+        failure: (err) {
+          setState(() { _error = 'Ошибка загрузки: ${err.message}'; _loading = false; });
+        },
       );
-      if (res.statusCode == 200) {
-        final List data = jsonDecode(res.body);
-        setState(() {
-          _reviews = data.map((e) => Review.fromJson(e)).toList();
-          _loading = false;
-        });
-      } else {
-        setState(() { _error = 'Ошибка загрузки: ${res.statusCode}'; _loading = false; });
-      }
     } catch (e) {
       setState(() { _error = 'Ошибка: $e'; _loading = false; });
     }
@@ -78,18 +73,14 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
 
   Future<void> _togglePublish(Review review, bool publish) async {
     try {
-      final token = await ApiService.getToken();
-      final res = await http.patch(
-        Uri.parse('${AppConfig.baseUrl}/reviews/admin/${review.id}'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'isPublished': publish}),
+      final result = await ApiClient.patch(
+        '/reviews/admin/${review.id}',
+        body: {'isPublished': publish},
       );
-      if (res.statusCode == 200) {
-        setState(() => review.isPublished = publish);
-      }
+      result.when(
+        success: (_) => setState(() => review.isPublished = publish),
+        failure: (err) => _showSnack('Ошибка: ${err.message}'),
+      );
     } catch (e) {
       _showSnack('Ошибка: $e');
     }
@@ -110,15 +101,14 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
     if (confirm != true) return;
 
     try {
-      final token = await ApiService.getToken();
-      final res = await http.delete(
-        Uri.parse('${AppConfig.baseUrl}/reviews/admin/${review.id}'),
-        headers: {'Authorization': 'Bearer $token'},
+      final result = await ApiClient.delete('/reviews/admin/${review.id}');
+      result.when(
+        success: (_) {
+          setState(() => _reviews.remove(review));
+          _showSnack('Отзыв удалён');
+        },
+        failure: (err) => _showSnack('Ошибка: ${err.message}'),
       );
-      if (res.statusCode == 200) {
-        setState(() => _reviews.remove(review));
-        _showSnack('Отзыв удалён');
-      }
     } catch (e) {
       _showSnack('Ошибка: $e');
     }
@@ -135,7 +125,7 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: TextStyle(color: Colors.red)))
+              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
@@ -154,13 +144,13 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                                   CircleAvatar(
                                     child: Text(r.userName.isNotEmpty ? r.userName[0] : '?'),
                                   ),
-                                  SizedBox(width: 12),
+                                  const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(r.userName, style: TextStyle(fontWeight: FontWeight.bold)),
-                                        Text('${'★' * r.rating}${'☆' * (5 - r.rating)}', style: TextStyle(color: Colors.amber)),
+                                        Text(r.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('${'★' * r.rating}${'☆' * (5 - r.rating)}', style: const TextStyle(color: Colors.amber)),
                                       ],
                                     ),
                                   ),
@@ -170,13 +160,13 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 12),
+                              const SizedBox(height: 12),
                               Text(r.comment),
-                              SizedBox(height: 12),
+                              const SizedBox(height: 12),
                               Row(
                                 children: [
                                   const Text('Опубликован:'),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Switch(
                                     value: r.isPublished,
                                     onChanged: (v) => _togglePublish(r, v),

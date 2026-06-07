@@ -6,7 +6,8 @@ import '../../app_styles.dart';
 import '../../widgets/app_date_picker.dart';
 import '../../models/appointment.dart';
 import '../../models/service.dart';
-import '../../providers/app_provider.dart';
+import '../../providers/appointment_provider.dart';
+import '../../providers/catalog_provider.dart';
 import '../../core/service_locator.dart';
 import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
@@ -143,10 +144,10 @@ class _State extends State<AddEditAppointmentScreen> {
   }
 
   void _initDefaults() {
-    final provider = context.read<AppProvider>();
+    final catalogProvider = context.read<CatalogProvider>();
     if (_washTypeId.isEmpty) {
-      _washTypeId = provider.washTypeByCode('basic')?.id ??
-          (provider.washTypes.isNotEmpty ? provider.washTypes.first.id : '');
+      _washTypeId = catalogProvider.washTypeByCode('basic')?.id ??
+          (catalogProvider.washTypes.isNotEmpty ? catalogProvider.washTypes.first.id : '');
       if (mounted) setState(() {});
     }
   }
@@ -163,22 +164,22 @@ class _State extends State<AddEditAppointmentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-    final washTypes = [...provider.washTypes]
+    final catalogProvider = context.watch<CatalogProvider>();
+    final washTypes = [...catalogProvider.washTypes]
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    final extraServices = provider.services
+    final extraServices = catalogProvider.services
         .where((s) => s.category != 'Акции')
         .toList()
       ..sort((a, b) => a.price.compareTo(b.price));
 
     if (_washTypeId.isEmpty && washTypes.isNotEmpty) {
-      _washTypeId = provider.washTypeByCode('basic')?.id ?? washTypes.first.id;
+      _washTypeId = catalogProvider.washTypeByCode('basic')?.id ?? washTypes.first.id;
     }
 
     final promo =
-        _selectedPromoId == null ? null : provider.promoById(_selectedPromoId!);
+        _selectedPromoId == null ? null : catalogProvider.promoById(_selectedPromoId!);
     final lockedExtras = <String>{};
-    final washType = provider.washTypeById(_washTypeId);
+    final washType = catalogProvider.washTypeById(_washTypeId);
     if (washType != null) lockedExtras.addAll(washType.includedExtraIds);
     if (promo != null) lockedExtras.addAll(promo.includedExtraIds);
 
@@ -191,10 +192,10 @@ class _State extends State<AddEditAppointmentScreen> {
       appBar: AppBar(
         backgroundColor: AppStyles.primary,
         foregroundColor: Colors.white,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           _isEditing ? 'Редактировать запись' : 'Новая запись',
-          style: TextStyle(
+          style: const TextStyle(
               color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
@@ -214,7 +215,7 @@ class _State extends State<AddEditAppointmentScreen> {
               textCapitalization: TextCapitalization.words,
               onChanged: (v) => _applyTranslitRu(_nameCtrl, v),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             CarAutocompleteField(
               label: 'Марка авто',
               icon: Icons.directions_car,
@@ -227,7 +228,7 @@ class _State extends State<AddEditAppointmentScreen> {
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите марку' : null,
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             CarAutocompleteField(
               label: 'Модель авто',
               hint: _selectedBrand == null ? 'Сначала выберите марку' : null,
@@ -241,7 +242,7 @@ class _State extends State<AddEditAppointmentScreen> {
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _numberCtrl,
               style: TextStyle(
@@ -255,13 +256,13 @@ class _State extends State<AddEditAppointmentScreen> {
                 if (_plateError != null) setState(() => _plateError = null);
               },
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _sectionLabel('Дата и время визита'),
             _DateTimeRow(
               dateTime: _dateTime,
               onChanged: (dt) => setState(() => _dateTime = dt),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _sectionLabel('Тип мойки'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -274,13 +275,13 @@ class _State extends State<AddEditAppointmentScreen> {
                               ? null
                               : (v) => setState(() {
                                     final oldWt =
-                                        provider.washTypeById(_washTypeId);
+                                        catalogProvider.washTypeById(_washTypeId);
                                     if (oldWt != null) {
                                       _selectedAddServices
                                           .removeAll(oldWt.includedExtraIds);
                                     }
                                     _washTypeId = v!;
-                                    final newWt = provider.washTypeById(v);
+                                    final newWt = catalogProvider.washTypeById(v);
                                     if (newWt != null) {
                                       _selectedAddServices
                                           .addAll(newWt.includedExtraIds);
@@ -296,13 +297,13 @@ class _State extends State<AddEditAppointmentScreen> {
                     .toList(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _sectionLabel('Акция (необязательно)'),
             Container(
               decoration: AppStyles.cardDecoration,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: DropdownButtonFormField<String?>(
-                value: _selectedPromoId,
+                initialValue: _selectedPromoId,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   border: InputBorder.none,
@@ -311,7 +312,7 @@ class _State extends State<AddEditAppointmentScreen> {
                 items: [
                   const DropdownMenuItem<String?>(
                       value: null, child: Text('Без акции')),
-                  ...provider.promos.map((p) => DropdownMenuItem<String?>(
+                  ...catalogProvider.promos.map((p) => DropdownMenuItem<String?>(
                         value: p.id,
                         child: Text(p.name, overflow: TextOverflow.ellipsis),
                       )),
@@ -319,10 +320,10 @@ class _State extends State<AddEditAppointmentScreen> {
                 onChanged: (v) => setState(() {
                   _selectedPromoId = v;
                   if (v != null) {
-                    final p = provider.promoById(v);
+                    final p = catalogProvider.promoById(v);
                     if (p != null) {
                       _washTypeId = p.washTypeId;
-                      final wt = provider.washTypeById(_washTypeId);
+                      final wt = catalogProvider.washTypeById(_washTypeId);
                       if (wt != null) {
                         _selectedAddServices.addAll(wt.includedExtraIds);
                       }
@@ -332,7 +333,7 @@ class _State extends State<AddEditAppointmentScreen> {
                 }),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _sectionLabel('Дополнительные услуги'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -363,7 +364,7 @@ class _State extends State<AddEditAppointmentScreen> {
                 }).toList(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _sectionLabel('Статус записи'),
             Container(
               decoration: AppStyles.cardDecoration,
@@ -382,7 +383,7 @@ class _State extends State<AddEditAppointmentScreen> {
                     .toList(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _sectionLabel('Заметки (необязательно)'),
             TextFormField(
               controller: _notesCtrl,
@@ -390,7 +391,7 @@ class _State extends State<AddEditAppointmentScreen> {
                   icon: Icons.notes),
               maxLines: 3,
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
               label:
@@ -398,7 +399,7 @@ class _State extends State<AddEditAppointmentScreen> {
               style: AppStyles.primaryButton,
               onPressed: _save,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -423,10 +424,10 @@ class _State extends State<AddEditAppointmentScreen> {
     );
   }
 
-  int _calcPrice(AppProvider provider) {
-    final wt = provider.washTypeById(_washTypeId);
+  int _calcPrice(CatalogProvider catalogProvider) {
+    final wt = catalogProvider.washTypeById(_washTypeId);
     final promo =
-        _selectedPromoId == null ? null : provider.promoById(_selectedPromoId!);
+        _selectedPromoId == null ? null : catalogProvider.promoById(_selectedPromoId!);
 
     final locked = <String>{
       ...?wt?.includedExtraIds,
@@ -447,7 +448,7 @@ class _State extends State<AddEditAppointmentScreen> {
     int p = base;
     for (final id in _selectedAddServices) {
       if (locked.contains(id)) continue;
-      final svc = provider.services.firstWhere(
+      final svc = catalogProvider.services.firstWhere(
         (s) => s.id == id,
         orElse: () => Service(
             id: id,
@@ -477,14 +478,15 @@ class _State extends State<AddEditAppointmentScreen> {
     if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
       return;
     }
-    final provider = context.read<AppProvider>();
+    final catalogProvider = context.read<CatalogProvider>();
+    final appointmentProvider = context.read<AppointmentProvider>();
 
-    final newPrice = _calcPrice(provider);
+    final newPrice = _calcPrice(catalogProvider);
     final promo =
-        _selectedPromoId == null ? null : provider.promoById(_selectedPromoId!);
+        _selectedPromoId == null ? null : catalogProvider.promoById(_selectedPromoId!);
     final promoPrice = promo == null ? 0 : (promo.price > 0 ? promo.price : 0);
 
-    final wt = provider.washTypeById(_washTypeId);
+    final wt = catalogProvider.washTypeById(_washTypeId);
     final finalServices = Set<String>.from(_selectedAddServices)
       ..addAll(wt?.includedExtraIds ?? [])
       ..addAll(promo?.includedExtraIds ?? []);
@@ -517,7 +519,7 @@ class _State extends State<AddEditAppointmentScreen> {
           _selectedPromoId != oldAppt.promoId;
 
       final auth = context.read<AuthProvider>();
-      success = await provider.updateAppointment(
+      success = await appointmentProvider.updateAppointment(
           oldAppt.copyWith(
             clientName: _nameCtrl.text.trim(),
             carModel: carModel,
@@ -553,7 +555,7 @@ class _State extends State<AddEditAppointmentScreen> {
         originalPrice: newPrice,
         promoId: _selectedPromoId,
       );
-      success = await provider.addAppointment(newAppt, auth);
+      success = await appointmentProvider.addAppointment(newAppt, auth);
     }
     setState(() => _isSaving = false);
     if (mounted) {
@@ -565,7 +567,7 @@ class _State extends State<AddEditAppointmentScreen> {
         ));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(provider.errorMessage ?? 'Ошибка сохранения записи'),
+          content: Text(appointmentProvider.errorMessage ?? 'Ошибка сохранения записи'),
           backgroundColor: AppStyles.danger,
         ));
       }
@@ -592,12 +594,13 @@ class _DateTimeRow extends StatelessWidget {
             firstDate: DateTime.now().subtract(const Duration(days: 365)),
             lastDate: DateTime.now().add(const Duration(days: 365)),
           );
-          if (d != null)
+          if (d != null) {
             onChanged(DateTime(
                 d.year, d.month, d.day, dateTime.hour, dateTime.minute));
+          }
         },
       )),
-      SizedBox(width: 12),
+      const SizedBox(width: 12),
       Expanded(
           child: _Picker(
         icon: Icons.access_time,
@@ -608,9 +611,10 @@ class _DateTimeRow extends StatelessWidget {
             initialTime: TimeOfDay.fromDateTime(dateTime),
             initialEntryMode: TimePickerEntryMode.inputOnly,
           );
-          if (t != null)
+          if (t != null) {
             onChanged(DateTime(
                 dateTime.year, dateTime.month, dateTime.day, t.hour, t.minute));
+          }
         },
       )),
     ]);
@@ -635,7 +639,7 @@ class _Picker extends StatelessWidget {
           ),
           child: Row(children: [
             Icon(icon, size: 18, color: AppStyles.primary),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(
                 child: Text(label,
                     style: AppStyles.bodyLarge,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
-import '../../providers/app_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_provider.dart';
 import 'booking_wizard_screen.dart';
 import 'promos_screen.dart';
 
@@ -11,9 +11,9 @@ class ClientHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
+    final catalogProvider = context.watch<CatalogProvider>();
     final auth = context.watch<AuthProvider>();
-    final promos = provider.promos;
+    final promos = catalogProvider.promos;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -139,11 +139,9 @@ class ClientHomeScreen extends StatelessWidget {
                             fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
                     Text(
-                      provider.loadingApi
-                          ? 'Загрузка...'
-                          : promos.isEmpty
-                              ? 'Нет активных акций'
-                              : '${promos.length} предложени${promos.length == 1 ? "е" : (promos.length < 5 ? "я" : "й")}',
+                      promos.isEmpty
+                          ? 'Нет активных акций'
+                          : '${promos.length} предложени${promos.length == 1 ? "е" : (promos.length < 5 ? "я" : "й")}',
                       style: AppStyles.bodySmall.copyWith(
                           color: AppStyles.adaptiveTextSecondary(context)),
                     ),
@@ -172,12 +170,12 @@ class ClientHomeScreen extends StatelessWidget {
         const SizedBox(height: 28),
 
         // ── Как это работает ─────────────────────────────────────────────
-        _SectionHeader('Как записаться'),
+        const _SectionHeader('Как записаться'),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: AppStyles.cardDecorationFor(context),
-          child: Column(children: [
+          child: const Column(children: [
             _StepRow('1', 'Укажите данные авто',
                 'Марка, модель и государственный номер'),
             _StepRow(

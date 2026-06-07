@@ -41,6 +41,8 @@ async def list_shifts(
         raise HTTPException(status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD")
 
     stmt = select(Shift).where(and_(Shift.date >= start_date, Shift.date <= end_date))
+    if current_user.role != 'admin':
+        stmt = stmt.where(Shift.userId == current_user.id)
     result = await db.execute(stmt)
     shifts = result.scalars().all()
     return shifts

@@ -134,14 +134,19 @@ async def export_consumables(
         query_refill = query_refill.where(ConsumableRefillLog.timestamp <= date_to)
 
     refill_logs = (await db.execute(query_refill)).scalars().all()
-    cons_names = {}
+    # Bulk load consumable names
+    refill_cids = {log.consumableId for log in refill_logs}
+    cons_names: dict[str, str] = {}
+    if refill_cids:
+        c_res = await db.execute(
+            select(Consumable.id, Consumable.name).where(Consumable.id.in_(refill_cids))
+        )
+        cons_names = {cid: name for cid, name in c_res.all()}
+
     for log in refill_logs:
-        if log.consumableId not in cons_names:
-            c_res = await db.execute(select(Consumable.name).where(Consumable.id == log.consumableId))
-            name = c_res.scalar_one_or_none() or log.consumableId
-            cons_names[log.consumableId] = name
+        name = cons_names.get(log.consumableId, log.consumableId)
         ws_refill.append([
-            _sanitize_excel(cons_names[log.consumableId]),
+            _sanitize_excel(name),
             log.amount,
             log.oldStock,
             log.newStock,
@@ -164,20 +169,23 @@ async def export_consumables(
         query_usage = query_usage.where(ConsumableUsageLog.timestamp <= date_to)
     usage_logs = (await db.execute(query_usage)).scalars().all()
 
+    # Collect unique consumable IDs
+    usage_cids = {log.consumableId for log in usage_logs}
+    # Bulk load consumable names and units
+    consumables_res = await db.execute(
+        select(Consumable.id, Consumable.name, Consumable.unit)
+        .where(Consumable.id.in_(usage_cids))
+    )
+    consumables_map = {cid: (name, unit) for cid, name, unit in consumables_res.all()}
+
     usage_sums: dict[str, float] = {}
-    usage_units: dict[str, str] = {}
     for log in usage_logs:
-        if log.consumableId not in usage_units:
-            c_res = await db.execute(select(Consumable).where(Consumable.id == log.consumableId))
-            c = c_res.scalar_one_or_none()
-            usage_units[log.consumableId] = c.unit if c else ""
         usage_sums[log.consumableId] = usage_sums.get(log.consumableId, 0.0) + log.quantityUsed
 
     period_label = f"{date_from or '...'} - {date_to or '...'}"
     for cid, total in sorted(usage_sums.items(), key=lambda x: x[1], reverse=True):
-        c_res = await db.execute(select(Consumable).where(Consumable.id == cid))
-        c = c_res.scalar_one_or_none()
-        ws_usage.append([_sanitize_excel(c.name if c else cid), _sanitize_excel(usage_units.get(cid, "")), round(total, 2), _sanitize_excel(period_label)])
+        name, unit = consumables_map.get(cid, (cid, ""))
+        ws_usage.append([_sanitize_excel(name), _sanitize_excel(unit), round(total, 2), _sanitize_excel(period_label)])
     _auto_width(ws_usage)
 
     # 4. Лист "Прогноз"
@@ -189,15 +197,20 @@ async def export_consumables(
 
     all_consumables = (await db.execute(select(Consumable))).scalars().all()
     thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
-    for c in all_consumables:
-        usage_res = await db.execute(
-            select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0))
-            .where(
-                ConsumableUsageLog.consumableId == c.id,
-                ConsumableUsageLog.timestamp >= thirty_days_ago,
-            )
+
+    # Bulk load usage sums for all consumables in one query
+    usage_sums_res = await db.execute(
+        select(
+            ConsumableUsageLog.consumableId,
+            func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0),
         )
-        total_used = usage_res.scalar() or 0.0
+        .where(ConsumableUsageLog.timestamp >= thirty_days_ago)
+        .group_by(ConsumableUsageLog.consumableId)
+    )
+    usage_sums_map = {cid: float(total) for cid, total in usage_sums_res.all()}
+
+    for c in all_consumables:
+        total_used = usage_sums_map.get(c.id, 0.0)
         avg_daily = total_used / 30.0 if total_used > 0 else 0.0
         days_left = round(c.currentStock / avg_daily, 1) if avg_daily > 0 else "—"
         target = c.minStock * 3

@@ -1,115 +1,72 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/appointment.dart';
-import '../models/service.dart';
-import '../models/promo.dart';
-import '../models/note.dart';
 import '../models/user.dart';
-import '../models/wash_type.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import 'auth_provider.dart';
 
-class AppProvider extends ChangeNotifier {
+class AppointmentProvider extends ChangeNotifier {
   final ApiService _api;
   final NotificationService _notificationService;
   StreamSubscription? _updateSubscription;
 
-  AppProvider(
-      {required ApiService api,
-      required NotificationService notificationService})
-      : _api = api,
+  AppointmentProvider({
+    required ApiService api,
+    required NotificationService notificationService,
+  })  : _api = api,
         _notificationService = notificationService {
     _updateSubscription = _notificationService.onAppointmentUpdated.listen((_) {
-      _refreshAllData();
+      notifyListeners();
     });
   }
 
-  Future<void> _refreshAllData() async {
-    notifyListeners();
-  }
-
   List<Appointment> _appointmentList = [];
-  List<Service> _serviceList = [];
-  List<Promo> _promoList = [];
-  List<WashType> _washTypeList = [];
-  List<Note> _noteList = [];
-  Set<String> _extraFavSet = {};
-  Set<String> _serviceFavSet = {};
-  String _currentUser = '';
   bool _loading = true;
-  bool _hasDeletedByAdmin = false;
-  final bool _loadingApi = false;
-  int _unreadNotes = 0;
-  int _currentPage = 1;
-  int _totalPages = 1;
-  String _currentDate = '';
-  List<String> _uniqueDates = [];
   String? _errorMessage;
-
-  final Map<int, List<Appointment>> _cacheAppointments = {};
-  final Map<int, String> _cacheDates = {};
-  final Map<int, int> _cacheTotalPages = {};
-
-  int get currentPage => _currentPage;
-  int get totalPages => _totalPages;
-  String get currentDate => _currentDate;
-  List<String> get uniqueDates => _uniqueDates;
-  List<Appointment> get appointments => _appointmentList;
-  List<Service> get services => _serviceList;
-  List<Promo> get promos => _promoList;
-  List<WashType> get washTypes => _washTypeList;
-  List<Note> get notes => _noteList;
-  Set<String> get extraFavorites => _extraFavSet;
-  bool get loading => _loading;
-  bool get loadingApi => _loadingApi;
-  int get unreadNotes => _unreadNotes;
-  bool get hasDeletedByAdmin => _hasDeletedByAdmin;
-  String? get errorMessage => _errorMessage;
-
-  void clearError() {
-    _errorMessage = null;
-  }
+  bool _hasDeletedByAdmin = false;
+  String _currentUser = '';
 
   Map<String, dynamic> _busySlots = {
     'num_boxes': 2,
     'busy_slots': [[], []]
   };
+
+  // Pagination cache
+  final Map<int, List<Appointment>> _cacheAppointments = {};
+  final Map<int, String> _cacheDates = {};
+  final Map<int, int> _cacheTotalPages = {};
+  int _currentPage = 1;
+  int _totalPages = 1;
+  String _currentDate = '';
+  List<String> _uniqueDates = [];
+
+  List<Appointment> get appointments => _appointmentList;
+  bool get loading => _loading;
+  String? get errorMessage => _errorMessage;
+  bool get hasDeletedByAdmin => _hasDeletedByAdmin;
   Map<String, dynamic> get busySlots => _busySlots;
+
+  int get currentPage => _currentPage;
+  int get totalPages => _totalPages;
+  String get currentDate => _currentDate;
+  List<String> get uniqueDates => _uniqueDates;
 
   List<Appointment> get favoriteAppointments =>
       _appointmentList.where((a) => a.isFavorite).toList();
-  List<Service> get favoriteServices =>
-      _serviceList.where((s) => _serviceFavSet.contains(s.id)).toList();
-  bool isServiceFavorite(String id) => _serviceFavSet.contains(id);
-  bool isExtraFavorite(String serviceId) => _extraFavSet.contains(serviceId);
 
-  WashType? washTypeById(String id) {
-    final results = _washTypeList.where((w) => w.id == id);
-    return results.isNotEmpty ? results.first : null;
-  }
+  void clearError() => _errorMessage = null;
 
-  WashType? washTypeByCode(String code) {
-    final results = _washTypeList.where((w) => w.code == code);
-    return results.isNotEmpty ? results.first : null;
-  }
-
-  String washTypeName(String id) => washTypeById(id)?.name ?? id;
-  Promo? promoById(String id) {
-    final results = _promoList.where((p) => p.id == id);
-    return results.isNotEmpty ? results.first : null;
+  void clearCache() {
+    _cacheAppointments.clear();
+    _cacheDates.clear();
+    _cacheTotalPages.clear();
   }
 
   @override
   void dispose() {
     _updateSubscription?.cancel();
     super.dispose();
-  }
-
-  void clearCache() {
-    _cacheAppointments.clear();
-    _cacheDates.clear();
-    _cacheTotalPages.clear();
   }
 
   Future<List<Appointment>> _fetchAppointments(AuthProvider auth,
@@ -123,7 +80,6 @@ class AppProvider extends ChangeNotifier {
       _currentDate = res.currentDate;
       _uniqueDates = res.uniqueDates;
 
-      // Update cache
       _cacheAppointments[_currentPage] = res.appointments;
       _cacheDates[_currentPage] = res.currentDate;
       _cacheTotalPages[_currentPage] = res.totalPages;
@@ -211,27 +167,13 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     clearCache();
     try {
-      // Parallel loading of reference data + first page of appointments
-      final results = await Future.wait([
-        _api.getServices(),
-        _api.getPromos(),
-        _api.getWashTypes(),
-        _fetchAppointments(auth, page: 1),
-      ]);
-      _serviceList = results[0] as List<Service>;
-      _promoList = results[1] as List<Promo>;
-      _washTypeList = results[2] as List<WashType>;
-
-      // With asc() sort in backend, last page = most recent records.
-      // Jump to last page so user sees newest appointments first.
+      _appointmentList = await _fetchAppointments(auth, page: 1);
       if (auth.isAdmin && _totalPages > 1) {
         _currentPage = _totalPages;
         _appointmentList = await _fetchAppointments(auth);
-      } else {
-        _appointmentList = results[3] as List<Appointment>;
       }
     } catch (e) {
-      _errorMessage = 'Ошибка загрузки данных. Проверьте подключение.';
+      _errorMessage = 'Ошибка загрузки записей';
     }
     _loading = false;
     notifyListeners();
@@ -255,8 +197,6 @@ class AppProvider extends ChangeNotifier {
     clearCache();
     try {
       _appointmentList = await _fetchAppointments(auth);
-      _extraFavSet = await _api.getExtraFavorites(_currentUser);
-      _serviceFavSet = await _api.getServiceFavorites(_currentUser);
       _hasDeletedByAdmin = await _api.hasDeletedNotification(_currentUser);
       notifyListeners();
     } catch (e) {
@@ -267,12 +207,13 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> clearData() async {
     _appointmentList = [];
-    _noteList = [];
-    _extraFavSet = {};
-    _serviceFavSet = {};
     _currentUser = '';
-    _unreadNotes = 0;
     _hasDeletedByAdmin = false;
+    _currentPage = 1;
+    _totalPages = 1;
+    _currentDate = '';
+    _uniqueDates = [];
+    clearCache();
     notifyListeners();
   }
 
@@ -348,104 +289,13 @@ class AppProvider extends ChangeNotifier {
     } catch (e) {}
   }
 
-  Future<void> addService(Service s) async {
-    clearError();
-    try {
-      await _api.createService(s);
-      _serviceList = await _api.getServices();
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Ошибка добавления услуги';
-      notifyListeners();
-    }
-  }
-
-  Future<void> updateService(Service s) async {
-    clearError();
-    try {
-      await _api.updateService(s);
-      final i = _serviceList.indexWhere((x) => x.id == s.id);
-      if (i != -1) _serviceList[i] = s;
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Ошибка обновления услуги';
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteService(String id) async {
-    clearError();
-    try {
-      await _api.deleteService(id);
-      _serviceList.removeWhere((s) => s.id == id);
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Ошибка удаления услуги';
-      notifyListeners();
-    }
-  }
-
-  Future<void> toggleServiceFavorite(String id) async {
-    clearError();
-    final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
-    try {
-      final ok = await _api.toggleServiceFavorite(user, id);
-      if (ok) {
-        if (_serviceFavSet.contains(id)) {
-          _serviceFavSet.remove(id);
-        } else {
-          _serviceFavSet.add(id);
-        }
-        notifyListeners();
-      }
-    } catch (e) {}
-  }
-
-  Future<void> toggleExtraFavorite(String serviceId) async {
-    clearError();
-    final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
-    try {
-      final ok = await _api.toggleExtraFavorite(user, serviceId);
-      if (ok) {
-        if (_extraFavSet.contains(serviceId)) {
-          _extraFavSet.remove(serviceId);
-        } else {
-          _extraFavSet.add(serviceId);
-        }
-        notifyListeners();
-      }
-    } catch (e) {}
-  }
-
-  Future<List<String>> getServiceCategories() => _api.getServiceCategories();
-
-  Future<void> reloadWashTypes() async {
-    _washTypeList = await _api.getWashTypes();
-    notifyListeners();
-  }
-
   Future<void> fetchBusySlots(String date) async {
     _busySlots = await _api.getBusySlots(date);
     notifyListeners();
   }
 
-  Future<bool> updateWashType(WashType wt) async {
-    final updated = await _api.updateWashType(wt);
-    if (updated != null) {
-      final i = _washTypeList.indexWhere((x) => x.id == updated.id);
-      if (i != -1) {
-        _washTypeList[i] = updated;
-      } else {
-        _washTypeList.add(updated);
-      }
-      _washTypeList.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-      notifyListeners();
-      return true;
-    }
-    return false;
-  }
-
   Future<List<User>> getWashers() => _api.getWashers();
+
   Future<List<Appointment>> getAppointmentsByWasher(String username) =>
       _api.getAppointmentsByWasher(username);
 
@@ -466,82 +316,6 @@ class AppProvider extends ChangeNotifier {
       }
     }
     return ok;
-  }
-
-  Future<void> loadNotes({String? username}) async {
-    clearError();
-    try {
-      _noteList = username != null
-          ? await _api.getNotesByUser(username)
-          : await _api.getNotes();
-      _unreadNotes = _noteList.where((n) => !n.isRead).length;
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Ошибка загрузки заметок';
-      notifyListeners();
-    }
-  }
-
-  Future<void> refreshUnreadCount(AuthProvider auth) async {
-    if (!auth.isAdmin) return;
-    try {
-      _unreadNotes = await _api.getUnreadNotesCount();
-      notifyListeners();
-    } catch (e) {}
-  }
-
-  Future<Note?> addNote(
-      String username, String title, String message, String category) async {
-    clearError();
-    try {
-      final note = await _api.createNote(username, title, message, category);
-      if (note != null) {
-        _noteList.insert(0, note);
-        _unreadNotes = _noteList.where((n) => !n.isRead).length;
-        notifyListeners();
-      }
-      return note;
-    } catch (e) {
-      _errorMessage = 'Ошибка создания заметки';
-      notifyListeners();
-      return null;
-    }
-  }
-
-  Future<void> markNoteRead(int noteId) async {
-    try {
-      final ok = await _api.markNoteRead(noteId);
-      if (ok) {
-        final i = _noteList.indexWhere((n) => n.id == noteId);
-        if (i != -1) {
-          _noteList[i] = _noteList[i].copyWith(isRead: true);
-          _unreadNotes = _noteList.where((n) => !n.isRead).length;
-          notifyListeners();
-        }
-      }
-    } catch (e) {}
-  }
-
-  Future<void> markAllNotesRead() async {
-    try {
-      final ok = await _api.markAllNotesRead();
-      if (ok) {
-        _noteList = _noteList.map((n) => n.copyWith(isRead: true)).toList();
-        _unreadNotes = 0;
-        notifyListeners();
-      }
-    } catch (e) {}
-  }
-
-  Future<void> deleteNote(int noteId) async {
-    try {
-      final ok = await _api.deleteNote(noteId);
-      if (ok) {
-        _noteList.removeWhere((n) => n.id == noteId);
-        _unreadNotes = _noteList.where((n) => !n.isRead).length;
-        notifyListeners();
-      }
-    } catch (e) {}
   }
 
   Future<void> clearDeletedByAdminFlag() async {
