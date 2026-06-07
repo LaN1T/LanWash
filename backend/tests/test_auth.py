@@ -44,7 +44,7 @@ class TestRegister:
             "displayName": "Second",
         })
         assert response.status_code == 400
-        assert "Пользователь уже существует" in response.json()["detail"]
+        assert "Регистрация не удалась" in response.json()["detail"]
 
 
 class TestLogin:
