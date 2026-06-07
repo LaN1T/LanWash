@@ -67,7 +67,7 @@ class ServiceDetailScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppStyles.apiTag.withValues(alpha:0.12),
+                    color: AppStyles.apiTag.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [

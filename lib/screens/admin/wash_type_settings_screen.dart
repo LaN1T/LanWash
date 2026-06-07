@@ -296,8 +296,8 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                 TextField(
                   controller: _descCtrl,
                   maxLines: 3,
-                  decoration:
-                      AppStyles.inputDecorationFor(context, 'Описание', icon: Icons.notes),
+                  decoration: AppStyles.inputDecorationFor(context, 'Описание',
+                      icon: Icons.notes),
                 ),
                 const SizedBox(height: 12),
                 Row(children: [
@@ -305,7 +305,8 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                       child: TextField(
                     controller: _priceCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: AppStyles.inputDecorationFor(context, 'Цена (₽)',
+                    decoration: AppStyles.inputDecorationFor(
+                        context, 'Цена (₽)',
                         icon: Icons.payments_outlined),
                   )),
                   const SizedBox(width: 12),
@@ -313,7 +314,8 @@ class _WashTypeEditorState extends State<_WashTypeEditor> {
                       child: TextField(
                     controller: _durationCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: AppStyles.inputDecorationFor(context, 'Время (мин)',
+                    decoration: AppStyles.inputDecorationFor(
+                        context, 'Время (мин)',
                         icon: Icons.access_time_rounded),
                   )),
                 ]),

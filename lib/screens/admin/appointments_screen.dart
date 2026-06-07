@@ -93,8 +93,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       Expanded(
         child: RefreshIndicator(
           color: AppStyles.primary,
-          onRefresh: () =>
-              appointmentProvider.reloadAppointments(context.read<AuthProvider>()),
+          onRefresh: () => appointmentProvider
+              .reloadAppointments(context.read<AuthProvider>()),
           child: list.isEmpty
               ? _emptyState(context)
               : ListView.builder(
@@ -103,8 +103,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   itemBuilder: (ctx, i) => _AppointmentCard(
                     appointment: list[i],
                     services: catalogProvider.services,
-                    onFavorite: () =>
-                        appointmentProvider.toggleAppointmentFavorite(list[i].id),
+                    onFavorite: () => appointmentProvider
+                        .toggleAppointmentFavorite(list[i].id),
                     onTap: () => Navigator.push(
                         ctx,
                         MaterialPageRoute(

@@ -63,8 +63,8 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
       ),
       body: RefreshIndicator(
         color: AppStyles.primary,
-        onRefresh: () =>
-            appointmentProvider.reloadAppointments(context.read<AuthProvider>()),
+        onRefresh: () => appointmentProvider
+            .reloadAppointments(context.read<AuthProvider>()),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: GridView.builder(
@@ -85,16 +85,21 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isToday
-                        ? AppStyles.primary.withValues(alpha:0.1)
+                        ? AppStyles.primary.withValues(alpha: 0.1)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isToday ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+                      color: isToday
+                          ? AppStyles.primary
+                          : AppStyles.adaptiveBorder(context),
                       width: isToday ? 2 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.shadow.withValues(alpha:0.04),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .shadow
+                            .withValues(alpha: 0.04),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -133,14 +138,16 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                                     fontWeight: FontWeight.w600,
                                     color: isToday
                                         ? AppStyles.primary
-                                        : AppStyles.adaptiveTextSecondary(context))),
+                                        : AppStyles.adaptiveTextSecondary(
+                                            context))),
                             Text('${day.day}',
                                 style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: isToday
                                         ? AppStyles.primary
-                                        : AppStyles.adaptiveTextPrimary(context))),
+                                        : AppStyles.adaptiveTextPrimary(
+                                            context))),
                           ],
                         ),
                       ),
@@ -266,9 +273,10 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppStyles.primary.withValues(alpha:0.08),
+                            color: AppStyles.primary.withValues(alpha: 0.08),
                             border: Border(
-                                bottom: BorderSide(color: AppStyles.adaptiveBorder(context))),
+                                bottom: BorderSide(
+                                    color: AppStyles.adaptiveBorder(context))),
                           ),
                           child: Row(children: [
                             const Icon(Icons.people,
@@ -278,7 +286,8 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppStyles.adaptiveTextPrimary(context))),
+                                    color: AppStyles.adaptiveTextPrimary(
+                                        context))),
                           ]),
                         ),
                         Expanded(
@@ -288,7 +297,9 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                   padding: const EdgeInsets.all(16),
                                   child: Text('Нет мойщиков',
                                       style: TextStyle(
-                                          color: AppStyles.adaptiveTextSecondary(context),
+                                          color:
+                                              AppStyles.adaptiveTextSecondary(
+                                                  context),
                                           fontSize: 13)),
                                 ))
                               : ListView.builder(
@@ -308,12 +319,13 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                         decoration: BoxDecoration(
                                           color: selected
                                               ? AppStyles.primary
-                                                  .withValues(alpha:0.12)
+                                                  .withValues(alpha: 0.12)
                                               : Colors.transparent,
                                           border: Border(
                                             bottom: BorderSide(
-                                                color: AppStyles.adaptiveBorder(context)
-                                                    .withValues(alpha:0.5)),
+                                                color: AppStyles.adaptiveBorder(
+                                                        context)
+                                                    .withValues(alpha: 0.5)),
                                           ),
                                         ),
                                         child: Row(children: [
@@ -325,7 +337,7 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                               color: selected
                                                   ? AppStyles.primary
                                                   : AppStyles.warning
-                                                      .withValues(alpha:0.15),
+                                                      .withValues(alpha: 0.15),
                                             ),
                                             child: Icon(Icons.person,
                                                 size: 16,
@@ -346,7 +358,9 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                                     : FontWeight.normal,
                                                 color: selected
                                                     ? AppStyles.primary
-                                                    : AppStyles.adaptiveTextPrimary(context),
+                                                    : AppStyles
+                                                        .adaptiveTextPrimary(
+                                                            context),
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -371,9 +385,10 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppStyles.primary.withValues(alpha:0.08),
+                          color: AppStyles.primary.withValues(alpha: 0.08),
                           border: Border(
-                              bottom: BorderSide(color: AppStyles.adaptiveBorder(context))),
+                              bottom: BorderSide(
+                                  color: AppStyles.adaptiveBorder(context))),
                         ),
                         child: Row(children: [
                           const Icon(Icons.list_alt,
@@ -383,7 +398,8 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: AppStyles.adaptiveTextPrimary(context))),
+                                  color:
+                                      AppStyles.adaptiveTextPrimary(context))),
                         ]),
                       ),
                       Expanded(
@@ -393,11 +409,15 @@ class _DayScheduleScreenState extends State<_DayScheduleScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.event_busy,
-                                      size: 48, color: AppStyles.adaptiveTextMuted(context)),
+                                      size: 48,
+                                      color:
+                                          AppStyles.adaptiveTextMuted(context)),
                                   const SizedBox(height: 8),
                                   Text('Нет записей',
                                       style: TextStyle(
-                                          color: AppStyles.adaptiveTextSecondary(context),
+                                          color:
+                                              AppStyles.adaptiveTextSecondary(
+                                                  context),
                                           fontSize: 14)),
                                 ],
                               ))
@@ -601,7 +621,7 @@ class _AppointmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha:0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(AppStyles.statusLabel(a.status),
@@ -620,7 +640,8 @@ class _AppointmentCard extends StatelessWidget {
               Expanded(
                   child: Text(a.clientName,
                       style: TextStyle(
-                          fontSize: 13, color: AppStyles.adaptiveTextPrimary(context)),
+                          fontSize: 13,
+                          color: AppStyles.adaptiveTextPrimary(context)),
                       overflow: TextOverflow.ellipsis)),
             ]),
             const SizedBox(height: 6),
@@ -632,7 +653,8 @@ class _AppointmentCard extends StatelessWidget {
               Expanded(
                   child: Text('${a.carModel}  ${a.carNumber}',
                       style: TextStyle(
-                          fontSize: 12, color: AppStyles.adaptiveTextSecondary(context)),
+                          fontSize: 12,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       overflow: TextOverflow.ellipsis)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -655,7 +677,8 @@ class _AppointmentCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text(context.watch<CatalogProvider>().washTypeName(a.washTypeId),
                   style: TextStyle(
-                      fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+                      fontSize: 12,
+                      color: AppStyles.adaptiveTextSecondary(context))),
               const Spacer(),
               Text(
                   '${a.calculateTotalPrice(services.cast(), context.watch<CatalogProvider>().washTypeById(a.washTypeId))} \u20BD',
@@ -687,7 +710,7 @@ class _AppointmentCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppStyles.primary.withValues(alpha:0.08),
+                      color: AppStyles.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(service.name,
@@ -705,10 +728,10 @@ class _AppointmentCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppStyles.success.withValues(alpha:0.08),
+                  color: AppStyles.success.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: AppStyles.success.withValues(alpha:0.25)),
+                  border: Border.all(
+                      color: AppStyles.success.withValues(alpha: 0.25)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,13 +758,15 @@ class _AppointmentCard extends StatelessWidget {
                                     style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: AppStyles.adaptiveTextPrimary(context)))),
+                                        color: AppStyles.adaptiveTextPrimary(
+                                            context)))),
                             GestureDetector(
                               onTap: () => onRemoveWasher(username),
                               child: Container(
                                 padding: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(
-                                  color: AppStyles.danger.withValues(alpha:0.1),
+                                  color:
+                                      AppStyles.danger.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: const Icon(Icons.close,

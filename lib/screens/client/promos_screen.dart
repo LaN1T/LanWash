@@ -28,14 +28,14 @@ class PromosScreen extends StatelessWidget {
       ),
       body: promos.isEmpty
           ? Center(
-              child:
-                  Column(mainAxisSize: MainAxisSize.min, children: [
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.local_offer_outlined,
                     size: 44, color: AppStyles.primary),
                 const SizedBox(height: 16),
                 Text('Нет активных акций',
                     style: TextStyle(
-                        color: AppStyles.adaptiveTextSecondary(context), fontSize: 16)),
+                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 16)),
               ]),
             )
           : ListView.builder(
@@ -101,7 +101,8 @@ class _PromoCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       Icon(Icons.chevron_right_rounded,
-                          size: 20, color: AppStyles.adaptiveTextSecondary(context)),
+                          size: 20,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                     ]),
                     const SizedBox(height: 8),
                     Text(promo.name,
@@ -123,9 +124,11 @@ class _PromoCard extends StatelessWidget {
                               fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
                       Icon(Icons.access_time_rounded,
-                          size: 13, color: AppStyles.adaptiveTextSecondary(context)),
+                          size: 13,
+                          color: AppStyles.adaptiveTextSecondary(context)),
                       const SizedBox(width: 3),
-                      Text('${promo.duration} мин', style: AppStyles.adaptiveBodySmall(context)),
+                      Text('${promo.duration} мин',
+                          style: AppStyles.adaptiveBodySmall(context)),
                     ]),
                   ]),
             ),

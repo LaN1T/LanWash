@@ -41,8 +41,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
     final existingCar = user?.carModel ?? '';
     final parts = existingCar.split(' ');
-    _brandCtrl = TextEditingController(text: parts.isNotEmpty ? parts.first : '');
-    _modelCtrl = TextEditingController(text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _brandCtrl =
+        TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(
+        text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
     _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
     _carNumberCtrl = TextEditingController(text: user?.carNumber ?? '');
     _usernameCtrl = TextEditingController(text: user?.username ?? '');
@@ -62,7 +64,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           phone: _phoneCtrl.text.trim(),
           carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
           carNumber: _carNumberCtrl.text.trim().toUpperCase(),
-          newPassword: _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
+          newPassword:
+              _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
         );
     setState(() => _saving = false);
     if (mounted) {
@@ -222,7 +225,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 enabled: _selectedBrand != null,
                 optionsBuilder: (q) {
                   if (_selectedBrand == null) return [];
-                  return sl<CarCatalogService>().searchModels(_selectedBrand!, q);
+                  return sl<CarCatalogService>()
+                      .searchModels(_selectedBrand!, q);
                 },
               ),
               const SizedBox(height: 12),

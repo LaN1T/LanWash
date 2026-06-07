@@ -12,7 +12,8 @@ class DetailedAnalyticsScreen extends StatefulWidget {
   const DetailedAnalyticsScreen({super.key, required this.initialDate});
 
   @override
-  State<DetailedAnalyticsScreen> createState() => _DetailedAnalyticsScreenState();
+  State<DetailedAnalyticsScreen> createState() =>
+      _DetailedAnalyticsScreenState();
 }
 
 class _DetailedAnalyticsScreenState extends State<DetailedAnalyticsScreen> {
@@ -89,9 +90,12 @@ class _DetailedAnalyticsScreenState extends State<DetailedAnalyticsScreen> {
         color: AppStyles.primary,
         onRefresh: _load,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppStyles.primary))
             : _error != null
-                ? Center(child: Text(_error!, style: const TextStyle(color: AppStyles.danger)))
+                ? Center(
+                    child: Text(_error!,
+                        style: const TextStyle(color: AppStyles.danger)))
                 : _report == null
                     ? const Center(child: Text('Нет данных'))
                     : CustomScrollView(
@@ -144,7 +148,8 @@ class _DateHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.calendar_month_rounded, color: AppStyles.primary, size: 20),
+          const Icon(Icons.calendar_month_rounded,
+              color: AppStyles.primary, size: 20),
           const SizedBox(width: 10),
           Text(
             isToday
@@ -210,62 +215,66 @@ class _KpiGrid extends StatelessWidget {
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       childAspectRatio: 1.3,
-      children: items.map((i) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: dark ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
-          ),
-          boxShadow: [
-            if (!dark)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: i.bg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(i.icon, color: i.color, size: 22),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(i.value,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.adaptiveTextPrimary(context),
-                    )),
-                if (i.sub != null)
-                  Text(i.sub!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppStyles.adaptiveTextSecondary(context),
-                      )),
-                Text(i.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppStyles.adaptiveTextMuted(context),
-                      fontWeight: FontWeight.w500,
-                    )),
-              ],
-            ),
-          ],
-        ),
-      )).toList(),
+      children: items
+          .map((i) => Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: dark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: dark
+                        ? const Color(0xFF334155)
+                        : AppStyles.adaptiveBorder(context),
+                  ),
+                  boxShadow: [
+                    if (!dark)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: i.bg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(i.icon, color: i.color, size: 22),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(i.value,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppStyles.adaptiveTextPrimary(context),
+                            )),
+                        if (i.sub != null)
+                          Text(i.sub!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppStyles.adaptiveTextSecondary(context),
+                              )),
+                        Text(i.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppStyles.adaptiveTextMuted(context),
+                              fontWeight: FontWeight.w500,
+                            )),
+                      ],
+                    ),
+                  ],
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -282,7 +291,13 @@ class _KpiItem {
   final String? sub;
   final Color color;
   final Color bg;
-  _KpiItem({required this.icon, required this.label, required this.value, this.sub, required this.color, required this.bg});
+  _KpiItem(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      this.sub,
+      required this.color,
+      required this.bg});
 }
 
 class _HourlyChart extends StatelessWidget {
@@ -296,7 +311,11 @@ class _HourlyChart extends StatelessWidget {
       hourly[a.dateTime.hour]++;
     }
     final maxY = hourly.reduce((a, b) => a > b ? a : b).toDouble();
-    final spots = hourly.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.toDouble())).toList();
+    final spots = hourly
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
+        .toList();
 
     return _SectionCard(
       title: 'Распределение по часам',
@@ -317,9 +336,12 @@ class _HourlyChart extends StatelessWidget {
             ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
@@ -327,7 +349,9 @@ class _HourlyChart extends StatelessWidget {
                   getTitlesWidget: (value, meta) {
                     final h = value.toInt();
                     return Text('${h.toString().padLeft(2, '0')}:00',
-                        style: TextStyle(fontSize: 10, color: AppStyles.adaptiveTextSecondary(context)));
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: AppStyles.adaptiveTextSecondary(context)));
                   },
                 ),
               ),
@@ -395,7 +419,8 @@ class _StatusPieChart extends StatelessWidget {
         value: e.value.toDouble(),
         title: '${(pct * 100).toStringAsFixed(0)}%',
         radius: 60,
-        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: const TextStyle(
+            fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
       );
     }).toList();
 
@@ -407,26 +432,41 @@ class _StatusPieChart extends StatelessWidget {
           SizedBox(
             height: 140,
             width: 140,
-            child: PieChart(PieChartData(sections: sections, centerSpaceRadius: 0)),
+            child: PieChart(
+                PieChartData(sections: sections, centerSpaceRadius: 0)),
           ),
           const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: counts.entries.map((e) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Container(width: 10, height: 10,
-                        decoration: BoxDecoration(color: colors[e.key], borderRadius: BorderRadius.circular(3))),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(AppStyles.statusLabel(e.key),
-                        style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextPrimary(context)))),
-                    Text('${e.value}',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppStyles.adaptiveTextSecondary(context))),
-                  ],
-                ),
-              )).toList(),
+              children: counts.entries
+                  .map((e) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                    color: colors[e.key],
+                                    borderRadius: BorderRadius.circular(3))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: Text(AppStyles.statusLabel(e.key),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppStyles.adaptiveTextPrimary(
+                                            context)))),
+                            Text('${e.value}',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppStyles.adaptiveTextSecondary(
+                                        context))),
+                          ],
+                        ),
+                      ))
+                  .toList(),
             ),
           ),
         ],
@@ -451,7 +491,8 @@ class _TopServicesChart extends StatelessWidget {
         ),
       );
     }
-    final maxCount = report.topServices.map((s) => s.count).reduce((a, b) => a > b ? a : b);
+    final maxCount =
+        report.topServices.map((s) => s.count).reduce((a, b) => a > b ? a : b);
     return _SectionCard(
       title: 'Топ услуг',
       icon: Icons.star_rounded,
@@ -460,39 +501,50 @@ class _TopServicesChart extends StatelessWidget {
         child: BarChart(
           BarChartData(
             maxY: maxCount * 1.2,
-            barGroups: report.topServices.asMap().entries.map((e) => BarChartGroupData(
-              x: e.key,
-              barRods: [
-                BarChartRodData(
-                  toY: e.value.count.toDouble(),
-                  width: 20,
-                  borderRadius: BorderRadius.circular(6),
-                  color: AppStyles.primary,
-                  backDrawRodData: BackgroundBarChartRodData(
-                    show: true,
-                    toY: maxCount.toDouble(),
-                    color: AppStyles.adaptiveInnerCard(context),
-                  ),
-                ),
-              ],
-            )).toList(),
+            barGroups: report.topServices
+                .asMap()
+                .entries
+                .map((e) => BarChartGroupData(
+                      x: e.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: e.value.count.toDouble(),
+                          width: 20,
+                          borderRadius: BorderRadius.circular(6),
+                          color: AppStyles.primary,
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: maxCount.toDouble(),
+                            color: AppStyles.adaptiveInnerCard(context),
+                          ),
+                        ),
+                      ],
+                    ))
+                .toList(),
             gridData: const FlGridData(show: false),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   getTitlesWidget: (value, meta) {
                     final idx = value.toInt();
-                    if (idx < 0 || idx >= report.topServices.length) return const SizedBox.shrink();
+                    if (idx < 0 || idx >= report.topServices.length)
+                      return const SizedBox.shrink();
                     final name = report.topServices[idx].name;
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(name.length > 8 ? '${name.substring(0, 8)}...' : name,
-                          style: TextStyle(fontSize: 10, color: AppStyles.adaptiveTextSecondary(context))),
+                      child: Text(
+                          name.length > 8 ? '${name.substring(0, 8)}...' : name,
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: AppStyles.adaptiveTextSecondary(context))),
                     );
                   },
                 ),
@@ -501,12 +553,16 @@ class _TopServicesChart extends StatelessWidget {
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
                 getTooltipColor: (_) => AppStyles.adaptiveCard(context),
-                tooltipBorder: BorderSide(color: AppStyles.adaptiveBorder(context)),
+                tooltipBorder:
+                    BorderSide(color: AppStyles.adaptiveBorder(context)),
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   final s = report.topServices[groupIndex];
                   return BarTooltipItem(
                     '${s.name}\n${s.count} шт',
-                    TextStyle(color: AppStyles.adaptiveTextPrimary(context), fontWeight: FontWeight.w600, fontSize: 12),
+                    TextStyle(
+                        color: AppStyles.adaptiveTextPrimary(context),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12),
                   );
                 },
               ),
@@ -527,7 +583,12 @@ class _BoxOccupancy extends StatelessWidget {
     if (report.boxOccupancy.isEmpty) return const SizedBox.shrink();
     final entries = report.boxOccupancy.entries.toList();
     final total = entries.fold(0, (sum, e) => sum + e.value);
-    final colors = [AppStyles.primary, AppStyles.success, AppStyles.warning, AppStyles.inProgress];
+    final colors = [
+      AppStyles.primary,
+      AppStyles.success,
+      AppStyles.warning,
+      AppStyles.inProgress
+    ];
 
     return _SectionCard(
       title: 'Загрузка боксов',
@@ -545,8 +606,14 @@ class _BoxOccupancy extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Бокс $boxNum', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    Text('$count моек', style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context), fontWeight: FontWeight.w600)),
+                    Text('Бокс $boxNum',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500)),
+                    Text('$count моек',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppStyles.adaptiveTextSecondary(context),
+                            fontWeight: FontWeight.w600)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -556,7 +623,8 @@ class _BoxOccupancy extends StatelessWidget {
                     value: pct,
                     minHeight: 8,
                     backgroundColor: AppStyles.adaptiveInnerCard(context),
-                    valueColor: AlwaysStoppedAnimation<Color>(colors[entry.key % colors.length]),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        colors[entry.key % colors.length]),
                   ),
                 ),
               ],
@@ -579,27 +647,43 @@ class _WashersSection extends StatelessWidget {
       title: 'Мойщики на смене',
       icon: Icons.people_alt_rounded,
       child: Column(
-        children: report.washersOnShift.map((w) => ListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          leading: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(gradient: AppStyles.primaryGradient, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.person, color: Colors.white, size: 18),
-          ),
-          title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          subtitle: Text('${w.start} – ${w.end}', style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppStyles.successBg,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
-            ),
-            child: const Text('На смене', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppStyles.success)),
-          ),
-        )).toList(),
+        children: report.washersOnShift
+            .map((w) => ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                        gradient: AppStyles.primaryGradient,
+                        borderRadius: BorderRadius.circular(10)),
+                    child:
+                        const Icon(Icons.person, color: Colors.white, size: 18),
+                  ),
+                  title: Text(w.name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: Text('${w.start} – ${w.end}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppStyles.adaptiveTextSecondary(context))),
+                  trailing: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppStyles.successBg,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                          color: AppStyles.success.withValues(alpha: 0.3)),
+                    ),
+                    child: const Text('На смене',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppStyles.success)),
+                  ),
+                ))
+            .toList(),
       ),
     );
   }
@@ -617,38 +701,53 @@ class _ConsumablesAlerts extends StatelessWidget {
       icon: Icons.warning_amber_rounded,
       accentColor: AppStyles.danger,
       child: Column(
-        children: report.consumablesAlert.map((a) => Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppStyles.dangerBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppStyles.danger.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.inventory_2_outlined, color: AppStyles.danger, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(a.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text('Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
-                        style: const TextStyle(fontSize: 12, color: AppStyles.danger)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: AppStyles.danger.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                child: Text('${((a.currentStock / a.minStock) * 100).toStringAsFixed(0)}%',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppStyles.danger)),
-              ),
-            ],
-          ),
-        )).toList(),
+        children: report.consumablesAlert
+            .map((a) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppStyles.dangerBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppStyles.danger.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined,
+                          color: AppStyles.danger, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(a.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 14)),
+                            const SizedBox(height: 2),
+                            Text(
+                                'Осталось: ${a.currentStock.toStringAsFixed(1)} (мин. ${a.minStock.toStringAsFixed(1)})',
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppStyles.danger)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                            color: AppStyles.danger.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6)),
+                        child: Text(
+                            '${((a.currentStock / a.minStock) * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppStyles.danger)),
+                      ),
+                    ],
+                  ),
+                ))
+            .toList(),
       ),
     );
   }
@@ -670,44 +769,61 @@ class _AppointmentsList extends StatelessWidget {
         ),
       );
     }
-    final sorted = [...appointments]..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final sorted = [...appointments]
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return _SectionCard(
       title: 'Записи (${appointments.length})',
       icon: Icons.list_alt_rounded,
       child: Column(
-        children: sorted.map((a) => Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppStyles.adaptiveInnerCard(context),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppStyles.statusColor(a.status).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(AppStyles.statusIcon(a.status), color: AppStyles.statusColor(a.status), size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(DateFormat('HH:mm').format(a.dateTime),
-                        style: TextStyle(fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
-                    Text(a.carModel, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppStyles.adaptiveTextPrimary(context))),
-                  ],
-                ),
-              ),
-              Text('${a.paidPrice} ₽', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppStyles.primary)),
-            ],
-          ),
-        )).toList(),
+        children: sorted
+            .map((a) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppStyles.adaptiveInnerCard(context),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppStyles.statusColor(a.status)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(AppStyles.statusIcon(a.status),
+                            color: AppStyles.statusColor(a.status), size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(DateFormat('HH:mm').format(a.dateTime),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppStyles.adaptiveTextSecondary(
+                                        context))),
+                            Text(a.carModel,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppStyles.adaptiveTextPrimary(
+                                        context))),
+                          ],
+                        ),
+                      ),
+                      Text('${a.paidPrice} ₽',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppStyles.primary)),
+                    ],
+                  ),
+                ))
+            .toList(),
       ),
     );
   }
@@ -719,7 +835,11 @@ class _SectionCard extends StatelessWidget {
   final Widget child;
   final Color? accentColor;
 
-  const _SectionCard({required this.title, required this.icon, required this.child, this.accentColor});
+  const _SectionCard(
+      {required this.title,
+      required this.icon,
+      required this.child,
+      this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -730,10 +850,16 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context)),
+        border: Border.all(
+            color: dark
+                ? const Color(0xFF334155)
+                : AppStyles.adaptiveBorder(context)),
         boxShadow: [
           if (!dark)
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -744,11 +870,17 @@ class _SectionCard extends StatelessWidget {
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, color: accent, size: 18),
               ),
               const SizedBox(width: 10),
-              Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppStyles.adaptiveTextPrimary(context))),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppStyles.adaptiveTextPrimary(context))),
             ],
           ),
           const SizedBox(height: 12),

@@ -37,7 +37,8 @@ class ReviewsModerationScreen extends StatefulWidget {
   const ReviewsModerationScreen({super.key});
 
   @override
-  State<ReviewsModerationScreen> createState() => _ReviewsModerationScreenState();
+  State<ReviewsModerationScreen> createState() =>
+      _ReviewsModerationScreenState();
 }
 
 class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
@@ -52,22 +53,33 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final result = await ApiClient.getList('/reviews/admin/all');
       result.when(
         success: (data) {
           setState(() {
-            _reviews = data.map((e) => Review.fromJson(e as Map<String, dynamic>)).toList();
+            _reviews = data
+                .map((e) => Review.fromJson(e as Map<String, dynamic>))
+                .toList();
             _loading = false;
           });
         },
         failure: (err) {
-          setState(() { _error = 'Ошибка загрузки: ${err.message}'; _loading = false; });
+          setState(() {
+            _error = 'Ошибка загрузки: ${err.message}';
+            _loading = false;
+          });
         },
       );
     } catch (e) {
-      setState(() { _error = 'Ошибка: $e'; _loading = false; });
+      setState(() {
+        _error = 'Ошибка: $e';
+        _loading = false;
+      });
     }
   }
 
@@ -93,8 +105,12 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
         title: const Text('Удалить отзыв?'),
         content: Text('Отзыв от ${review.userName}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Удалить')),
         ],
       ),
     );
@@ -125,7 +141,9 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+              ? Center(
+                  child:
+                      Text(_error!, style: const TextStyle(color: Colors.red)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
@@ -133,7 +151,8 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                     itemBuilder: (context, i) {
                       final r = _reviews[i];
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -142,20 +161,29 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                               Row(
                                 children: [
                                   CircleAvatar(
-                                    child: Text(r.userName.isNotEmpty ? r.userName[0] : '?'),
+                                    child: Text(r.userName.isNotEmpty
+                                        ? r.userName[0]
+                                        : '?'),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(r.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        Text('${'★' * r.rating}${'☆' * (5 - r.rating)}', style: const TextStyle(color: Colors.amber)),
+                                        Text(r.userName,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        Text(
+                                            '${'★' * r.rating}${'☆' * (5 - r.rating)}',
+                                            style: const TextStyle(
+                                                color: Colors.amber)),
                                       ],
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.red),
                                     onPressed: () => _delete(r),
                                   ),
                                 ],
@@ -173,8 +201,11 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                                   ),
                                   const Spacer(),
                                   Text(
-                                    r.createdAt.substring(0, 16).replaceAll('T', ' '),
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    r.createdAt
+                                        .substring(0, 16)
+                                        .replaceAll('T', ' '),
+                                    style: TextStyle(
+                                        color: Colors.grey[600], fontSize: 12),
                                   ),
                                 ],
                               ),

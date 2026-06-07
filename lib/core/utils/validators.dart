@@ -13,7 +13,8 @@ class AppValidators {
     if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Добавьте заглавную букву';
     if (!RegExp(r'[a-z]').hasMatch(value)) return 'Добавьте строчную букву';
     if (!RegExp(r'[0-9]').hasMatch(value)) return 'Добавьте цифру';
-    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) return 'Добавьте спецсимвол';
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value))
+      return 'Добавьте спецсимвол';
     return null;
   }
 

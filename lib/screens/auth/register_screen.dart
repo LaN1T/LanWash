@@ -96,7 +96,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Успешная регистрация — загружаем данные и уходим на корень (_AppRouter покажет ClientShell)
-    await context.read<AppointmentProvider>().reloadForUser(auth.userLogin, auth);
+    await context
+        .read<AppointmentProvider>()
+        .reloadForUser(auth.userLogin, auth);
     if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
@@ -148,7 +150,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: Text('Регистрация', style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
+        title: Text('Регистрация',
+            style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
         actions: [_buildLanguageButton(), _buildThemeButton()],
       ),
       body: Center(
@@ -167,7 +170,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     gradient: AppStyles.primaryGradient,
                     boxShadow: [
                       BoxShadow(
-                        color: AppStyles.primary.withValues(alpha:0.25),
+                        color: AppStyles.primary.withValues(alpha: 0.25),
                         blurRadius: 20,
                       )
                     ],
@@ -176,7 +179,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: Colors.white, size: 36),
                 ),
                 const SizedBox(height: 20),
-                Text(lang.tr('register_title'), style: AppStyles.adaptiveHeadingLarge(context)),
+                Text(lang.tr('register_title'),
+                    style: AppStyles.adaptiveHeadingLarge(context)),
                 const SizedBox(height: 6),
                 Text(lang.tr('register_subtitle'),
                     style: AppStyles.adaptiveBodyMedium(context)),
@@ -187,8 +191,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(children: [
                     TextFormField(
                       controller: _nameCtrl,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_name'),
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_name'),
                           icon: Icons.person_outline_rounded),
                       textCapitalization: TextCapitalization.words,
                       validator: (v) => (v == null || v.trim().isEmpty)
@@ -198,15 +204,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _loginCtrl,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_login'),
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_login'),
                           hint: lang.tr('register_field_login_hint'),
                           icon: Icons.alternate_email_rounded),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return lang.tr('validation_required');
                         }
-                        if (v.trim().length < 3) return lang.tr('validation_login_short');
+                        if (v.trim().length < 3)
+                          return lang.tr('validation_login_short');
                         return null;
                       },
                     ),
@@ -214,8 +223,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: _obscure,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_password'),
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                              context, lang.tr('register_field_password'),
                               icon: Icons.lock_outline_rounded)
                           .copyWith(
                         suffixIcon: IconButton(
@@ -233,8 +244,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _phoneCtrl,
-                      style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-                      decoration: AppStyles.inputDecorationFor(context, lang.tr('register_field_phone'),
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_phone'),
                           hint: lang.tr('register_field_phone_hint'),
                           icon: Icons.phone_outlined),
                       keyboardType: TextInputType.phone,
@@ -258,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           color: AppStyles.dangerBg,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                              color: AppStyles.danger.withValues(alpha:0.3)),
+                              color: AppStyles.danger.withValues(alpha: 0.3)),
                         ),
                         child: Row(children: [
                           const Icon(Icons.error_outline,
@@ -292,7 +305,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(lang.tr('register_has_account'),
-                      style: const TextStyle(color: AppStyles.primary, fontSize: 14)),
+                      style: const TextStyle(
+                          color: AppStyles.primary, fontSize: 14)),
                 ),
               ]),
             ),

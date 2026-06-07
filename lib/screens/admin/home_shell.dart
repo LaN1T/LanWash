@@ -126,7 +126,8 @@ class _HomeShellState extends State<HomeShell> {
               label: 'Записи',
             ),
             NavigationDestination(
-              icon: Icon(Icons.local_car_wash, color: AppStyles.adaptiveTextSecondary(context)),
+              icon: Icon(Icons.local_car_wash,
+                  color: AppStyles.adaptiveTextSecondary(context)),
               selectedIcon:
                   const Icon(Icons.local_car_wash, color: AppStyles.primary),
               label: 'Услуги',

@@ -74,7 +74,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha:0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(children: [
@@ -158,8 +158,8 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        _confirmCancel(context, appointmentProvider, auth, a.id),
+                    onPressed: () => _confirmCancel(
+                        context, appointmentProvider, auth, a.id),
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Отменить запись',
                         style: TextStyle(fontWeight: FontWeight.bold)),
@@ -226,7 +226,8 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(width: 16),
           Text(label,
               style: TextStyle(
-                  color: AppStyles.adaptiveTextSecondary(context), fontSize: 15)),
+                  color: AppStyles.adaptiveTextSecondary(context),
+                  fontSize: 15)),
           const Spacer(),
           Text(value,
               style:

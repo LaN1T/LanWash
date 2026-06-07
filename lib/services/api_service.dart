@@ -140,7 +140,8 @@ class ApiService {
           try {
             appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
           } catch (e, st) {
-            if (kDebugMode) debugPrint('getAppointments parse error: $e | item: $item');
+            if (kDebugMode)
+              debugPrint('getAppointments parse error: $e | item: $item');
             if (kDebugMode) debugPrint('Stack: $st');
           }
         }
@@ -178,7 +179,9 @@ class ApiService {
         );
       },
       failure: (err) {
-        if (kDebugMode) debugPrint('getAppointments failure: ${err.message} (code: ${err.statusCode})');
+        if (kDebugMode)
+          debugPrint(
+              'getAppointments failure: ${err.message} (code: ${err.statusCode})');
         return PaginatedAppointments(
             appointments: [],
             totalPages: 1,

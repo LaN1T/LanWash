@@ -105,8 +105,7 @@ class LanWashApp extends StatelessWidget {
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor:
-            isDark ? AppStyles.bgDark : Colors.white,
+        systemNavigationBarColor: isDark ? AppStyles.bgDark : Colors.white,
         systemNavigationBarIconBrightness:
             isDark ? Brightness.light : Brightness.dark,
       ),

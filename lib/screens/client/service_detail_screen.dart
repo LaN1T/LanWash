@@ -28,7 +28,8 @@ class ServiceDetailScreen extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: AppStyles.adaptiveBorder(context))),
+            child:
+                Container(height: 1, color: AppStyles.adaptiveBorder(context))),
         title: const Text('Услуга'),
         actions: [
           IconButton(
@@ -60,7 +61,8 @@ class ServiceDetailScreen extends StatelessWidget {
               const SizedBox(height: 6),
               Text(s.category,
                   style: TextStyle(
-                      color: AppStyles.adaptiveTextSecondary(context), fontSize: 14)),
+                      color: AppStyles.adaptiveTextSecondary(context),
+                      fontSize: 14)),
               const SizedBox(height: 16),
               Row(children: [
                 _Stat(Icons.payments_outlined, 'Стоимость', '${s.price} ₽'),
