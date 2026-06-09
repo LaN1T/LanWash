@@ -11,7 +11,8 @@ from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest,
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry, Car,
+    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry, Car, Subscription,
+    WashType,
 )
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -308,15 +309,47 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         car_model = f"{car.brand} {car.model}".strip()
         car_number = car.number
 
+    # Determine target user ID for subscription lookup
+    target_user_id = current_user.id
+    if current_user.role == 'admin' and current_user.username != owner_username.lower():
+        target_user_res = await db.execute(select(User).where(User.username == owner_username.lower()))
+        target_user = target_user_res.scalar_one_or_none()
+        if target_user:
+            target_user_id = target_user.id
+
+    # Check for active subscription
+    today = datetime.now().isoformat()[:10]
+    sub_res = await db.execute(
+        select(Subscription).where(
+            Subscription.userId == target_user_id,
+            Subscription.washTypeId == req.washTypeId,
+            Subscription.usedWashes < Subscription.totalWashes,
+            or_(Subscription.validUntil == None, Subscription.validUntil >= today),
+        ).with_for_update()
+    )
+    sub = sub_res.scalar_one_or_none()
+
+    subscription_id = req.subscriptionId
+    if sub:
+        subscription_id = sub.id
+        sub.usedWashes += 1
+        req.paidPrice = 0
+        # Preserve original price for savings tracking
+        if req.originalPrice == 0:
+            wt_res = await db.execute(select(WashType).where(WashType.id == req.washTypeId))
+            wt = wt_res.scalar_one_or_none()
+            req.originalPrice = wt.basePrice if wt else 0
+
     # Находим свободный бокс
     duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
     box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
-    
+
     if box_idx == -1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
 
     appt_data = {
         "id": req.id if req.id else str(uuid.uuid4()),
+        "userId": target_user_id,
         "clientName": req.clientName,
         "carModel": car_model,
         "carNumber": car_number,
@@ -330,6 +363,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         "promoPrice": req.promoPrice,
         "paidPrice": req.paidPrice,
         "promoId": req.promoId,
+        "subscriptionId": subscription_id,
         "box_index": box_idx,
     }
 
@@ -346,7 +380,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
             "isModifiedByAdmin": 0,
             "isModifiedByWasher": 0,
             "isSeenByClient": 1,
-            "originalPrice": req.paidPrice,
+            "originalPrice": req.paidPrice if req.originalPrice == 0 else req.originalPrice,
             "assignedWasher": "[]",
         })
 

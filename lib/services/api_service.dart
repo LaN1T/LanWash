@@ -19,6 +19,7 @@ import '../models/review.dart';
 import '../models/car.dart';
 import '../models/referral.dart';
 import '../models/tip.dart';
+import '../models/subscription.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -1043,5 +1044,45 @@ class ApiService {
   Future<bool> markTipPaid(int tipId) async {
     final result = await ApiClient.post('/tips/$tipId/mark-paid');
     return result.isSuccess;
+  }
+
+  // ─── Subscriptions ─────────────────────────────────────────────────────────
+  Future<List<Subscription>> getMySubscriptions() async {
+    final result = await ApiClient.getList('/subscriptions/my');
+    return result.when(
+      success: (list) => list.map((m) => Subscription.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => <Subscription>[],
+    );
+  }
+
+  Future<Subscription?> createSubscription({
+    required int userId,
+    required String name,
+    required String type,
+    required String washTypeId,
+    required int totalWashes,
+    String? validUntil,
+  }) async {
+    final body = <String, dynamic>{
+      'userId': userId,
+      'name': name,
+      'type': type,
+      'washTypeId': washTypeId,
+      'totalWashes': totalWashes,
+      if (validUntil != null) 'validUntil': validUntil,
+    };
+    final result = await ApiClient.post('/subscriptions/', body: body);
+    return result.when(
+      success: (data) => Subscription.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getSubscriptionStats() async {
+    final result = await ApiClient.get('/subscriptions/stats');
+    return result.when(
+      success: (data) => data,
+      failure: (_) => null,
+    );
   }
 }
