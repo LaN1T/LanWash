@@ -117,7 +117,7 @@ class NotificationService {
       _updateController.add(message.data['id']);
     }
     if (message.data['type'] == 'support_chat') {
-      final chatId = int.tryParse(message.data['chat_id'] ?? '');
+      final chatId = int.tryParse(message.data['chat_id']?.toString() ?? '');
       if (chatId != null) {
         _supportChatController.add(chatId);
       }

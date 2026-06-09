@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/support_chat.dart';
 import '../../models/support_message.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/support_provider.dart';
 
 class SupportChatScreen extends StatefulWidget {
@@ -19,25 +20,29 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   late SupportChat _chat;
   String? _aiDraft;
   bool _aiLoading = false;
+  int _lastMessageCount = 0;
+
+  late SupportProvider _provider;
 
   @override
   void initState() {
     super.initState();
     _chat = widget.chat;
-    final provider = context.read<SupportProvider>();
-    provider.loadMessages(_chat.id).then((_) {
-      provider.connectToChat(_chat.id);
-      provider.markChatRead(_chat.id);
+    _provider = context.read<SupportProvider>();
+    _lastMessageCount = _provider.messages.length;
+    _provider.addListener(_onProviderChanged);
+    _provider.loadMessages(_chat.id).then((_) {
+      if (!mounted) return;
+      _provider.connectToChat(_chat.id);
+      _provider.markChatRead(_chat.id);
       _scrollToBottom();
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final provider = context.read<SupportProvider>();
+  void _onProviderChanged() {
+    if (!mounted) return;
     SupportChat? updated;
-    for (final c in provider.chats) {
+    for (final c in _provider.chats) {
       if (c.id == _chat.id) {
         updated = c;
         break;
@@ -46,12 +51,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     if (updated != null && !identical(updated, _chat)) {
       setState(() => _chat = updated!);
     }
-    _scrollToBottom();
+    final newCount = _provider.messages.length;
+    if (newCount > _lastMessageCount) {
+      _lastMessageCount = newCount;
+      _scrollToBottom();
+    }
   }
 
   @override
   void dispose() {
-    context.read<SupportProvider>().disconnect();
+    _provider.removeListener(_onProviderChanged);
+    _provider.disconnect();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -93,8 +103,18 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _assign() async {
-    final ok = await context.read<SupportProvider>().assignChat(_chat.id);
+    final ok = await _provider.assignChat(_chat.id);
     if (!mounted) return;
+    if (ok) {
+      final auth = context.read<AuthProvider>();
+      setState(() {
+        _chat = _chat.copyWith(
+          status: 'admin_assigned',
+          assignedAdminId: auth.user?.id,
+          assignedAdminName: auth.user?.displayName,
+        );
+      });
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(ok ? 'Чат назначен на вас' : 'Не удалось назначить чат'),
