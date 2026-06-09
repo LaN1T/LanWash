@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/admin_dashboard.dart';
+import '../../models/forecast.dart';
 import '../../services/api_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -18,10 +19,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _error;
   String _period = 'week'; // week | month | quarter
 
+  ForecastResponse? _forecast;
+  bool _forecastLoading = true;
+  String? _forecastError;
+  int _forecastDays = 7;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _loadForecast();
   }
 
   void _load() {
@@ -64,6 +71,78 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         }
       });
     }
+  }
+
+  Future<void> _loadForecast() async {
+    setState(() {
+      _forecastLoading = true;
+      _forecastError = null;
+    });
+    final result = await ApiService().getForecast(days: _forecastDays);
+    if (mounted) {
+      setState(() {
+        _forecastLoading = false;
+        if (result == null) {
+          _forecastError = 'Ошибка загрузки прогноза';
+        } else {
+          _forecast = result;
+        }
+      });
+    }
+  }
+
+  Widget _buildForecastSection(BuildContext context) {
+    return _SectionCard(
+      title: 'Прогноз загрузки',
+      icon: Icons.insights_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SegmentedButton<int>(
+            segments: const [
+              ButtonSegment<int>(value: 7, label: Text('7 дней')),
+              ButtonSegment<int>(value: 14, label: Text('14 дней')),
+            ],
+            selected: {_forecastDays},
+            onSelectionChanged: (value) {
+              setState(() {
+                _forecastDays = value.first;
+              });
+              _loadForecast();
+            },
+            showSelectedIcon: false,
+          ),
+          const SizedBox(height: 16),
+          if (_forecastLoading)
+            const SizedBox(
+              height: 200,
+              child: Center(
+                child: CircularProgressIndicator(color: AppStyles.primary),
+              ),
+            )
+          else if (_forecastError != null)
+            SizedBox(
+              height: 200,
+              child: Center(
+                child: Text(
+                  _forecastError!,
+                  style: const TextStyle(color: AppStyles.danger),
+                ),
+              ),
+            )
+          else if (_forecast == null || _forecast!.items.isEmpty)
+            const SizedBox(
+              height: 200,
+              child: Center(child: Text('Нет данных')),
+            )
+          else
+            SizedBox(
+              height: 220,
+              child: _ForecastChart(slots: _forecast!.items),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -126,6 +205,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 _TopWashers(dashboard: _dashboard!),
                                 const SizedBox(height: 24),
                                 _TopClients(dashboard: _dashboard!),
+                                const SizedBox(height: 24),
+                                _buildForecastSection(context),
                               ]),
                             ),
                           ),
@@ -226,7 +307,7 @@ class _KpiGrid extends StatelessWidget {
         icon: Icons.person_add_alt_1_rounded,
         label: 'Новые клиенты',
         value: '${dashboard.newClients}',
-        color: AppStyles.info,
+        color: AppStyles.apiTag,
         bg: const Color(0xFFDBEAFE),
       ),
       _KpiItem(
@@ -463,14 +544,14 @@ class _TopWashers extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: _rankColor(i).withValues(alpha: 0.15),
+                color: _rankColor(i, context).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text('${i + 1}',
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: _rankColor(i),
+                        color: _rankColor(i, context),
                         fontSize: 13)),
               ),
             ),
@@ -485,7 +566,7 @@ class _TopWashers extends StatelessWidget {
     );
   }
 
-  Color _rankColor(int index) {
+  Color _rankColor(int index, BuildContext context) {
     final colors = [const Color(0xFFF59E0B), const Color(0xFF94A3B8), const Color(0xFFCD7F32)];
     return index < 3 ? colors[index] : AppStyles.adaptiveTextMuted(context);
   }
@@ -518,7 +599,6 @@ class _TopClients extends StatelessWidget {
       icon: Icons.favorite_rounded,
       child: Column(
         children: items.asMap().entries.map((e) {
-          final i = e.key;
           final c = e.value;
           return ListTile(
             dense: true,
@@ -599,6 +679,99 @@ class _SectionCard extends StatelessWidget {
           const SizedBox(height: 12),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class _ForecastChart extends StatelessWidget {
+  final List<ForecastSlot> slots;
+
+  const _ForecastChart({required this.slots});
+
+  Color _barColor(double utilization) {
+    if (utilization < 50) return Colors.green;
+    if (utilization < 80) return Colors.orange;
+    return Colors.red;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxY = slots.isEmpty
+        ? 1.0
+        : slots.map((s) => s.predictedLoad).reduce((a, b) => a > b ? a : b) * 1.2;
+    final safeMaxY = maxY < 0.1 ? 1.0 : maxY;
+
+    return BarChart(
+      BarChartData(
+        maxY: safeMaxY,
+        barGroups: slots.asMap().entries.map((entry) {
+          final s = entry.value;
+          return BarChartGroupData(
+            x: entry.key,
+            barRods: [
+              BarChartRodData(
+                toY: s.predictedLoad,
+                color: _barColor(s.utilizationPct),
+                width: 6,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= slots.length) {
+                  return const SizedBox.shrink();
+                }
+                final s = slots[idx];
+                if (s.hour != 12) return const SizedBox.shrink();
+                return Text(
+                  s.date.substring(5),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppStyles.adaptiveTextSecondary(context),
+                  ),
+                );
+              },
+              reservedSize: 24,
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              getTitlesWidget: (value, meta) => Text(
+                value.toStringAsFixed(0),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppStyles.adaptiveTextSecondary(context),
+                ),
+              ),
+            ),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
+            strokeWidth: 1,
+          ),
+        ),
       ),
     );
   }
