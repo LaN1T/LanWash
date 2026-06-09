@@ -14,6 +14,7 @@ import '../models/wash_type.dart';
 import '../models/shift.dart';
 import '../models/consumable.dart';
 import '../models/daily_report.dart';
+import '../models/review.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -882,6 +883,38 @@ class ApiService {
     return result.when(
       success: (data) => DailyReport.fromJson(data),
       failure: (_) => null,
+    );
+  }
+
+  // ─── Reviews ───────────────────────────────────────────────────────────────
+  Future<bool> createReview({
+    required int userId,
+    required int rating,
+    required String comment,
+    String? appointmentId,
+  }) async {
+    final result = await ApiClient.post('/reviews/', body: {
+      'userId': userId,
+      'rating': rating,
+      'comment': comment,
+      if (appointmentId != null) 'appointmentId': appointmentId,
+    });
+    return result.isSuccess;
+  }
+
+  Future<List<Review>> getMyReviews() async {
+    final result = await ApiClient.getList('/reviews/my');
+    return result.when(
+      success: (list) => list.map((m) => Review.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => <Review>[],
+    );
+  }
+
+  Future<bool> hasReviewForAppointment(String appointmentId) async {
+    final result = await ApiClient.get('/reviews/has-review?appointment_id=$appointmentId');
+    return result.when(
+      success: (data) => data['hasReview'] == true,
+      failure: (_) => false,
     );
   }
 }

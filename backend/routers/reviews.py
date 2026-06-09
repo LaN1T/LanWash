@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from database import get_db
-from db_models import Review, User
+from db_models import Review, User, Appointment
 from models import ReviewCreateRequest, ReviewResponse, ReviewModerateRequest
 from services.auth_service import get_current_user
 from core.limiter import limiter
@@ -44,6 +44,36 @@ async def list_reviews(
     return result.scalars().all()
 
 
+@router.get("/my", response_model=List[ReviewResponse])
+@limiter.limit("60/minute")
+async def list_my_reviews(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    stmt = select(Review).where(Review.userId == current_user.id).order_by(Review.createdAt.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.get("/has-review")
+@limiter.limit("60/minute")
+async def has_review(
+    request: Request,
+    appointment_id: str = Query(..., description="ID записи"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Review).where(
+            Review.userId == current_user.id,
+            Review.appointmentId == appointment_id,
+        )
+    )
+    review = result.scalar_one_or_none()
+    return {"hasReview": review is not None}
+
+
 @router.post("/", response_model=ReviewResponse)
 @limiter.limit("10/minute")
 async def create_review(
@@ -54,13 +84,35 @@ async def create_review(
 ):
     if current_user.id != data.userId and current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Можно оставлять отзыв только от своего имени")
+
+    if data.appointmentId is not None:
+        result = await db.execute(select(Appointment).where(Appointment.id == data.appointmentId))
+        appointment = result.scalar_one_or_none()
+        if not appointment:
+            raise HTTPException(status_code=400, detail="Запись не найдена")
+        if appointment.ownerUsername != current_user.username:
+            raise HTTPException(status_code=403, detail="Нельзя оставить отзыв на чужую запись")
+        if appointment.status != 'completed':
+            raise HTTPException(status_code=400, detail="Можно оставить отзыв только на завершённую мойку")
+
+        # Проверка на дублирование отзыва
+        existing = await db.execute(
+            select(Review).where(
+                Review.userId == current_user.id,
+                Review.appointmentId == data.appointmentId,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="Отзыв на эту запись уже существует")
+
     review = Review(
         userId=data.userId,
-        userName=data.userName,
+        userName=current_user.displayName,
         rating=data.rating,
         comment=data.comment,
         isPublished=0,
         createdAt=datetime.now(timezone.utc).isoformat(),
+        appointmentId=data.appointmentId,
     )
     db.add(review)
     await db.commit()

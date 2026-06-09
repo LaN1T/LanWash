@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -191,6 +191,9 @@ class NotificationQueue(Base):
 
 class Review(Base):
     __tablename__ = 'reviews'
+    __table_args__ = (
+        UniqueConstraint('userId', 'appointmentId', name='uq_review_user_appointment'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id'), nullable=False)
     userName = Column(String, nullable=False)
@@ -198,3 +201,4 @@ class Review(Base):
     comment = Column(String, nullable=False, default='')
     isPublished = Column(Integer, nullable=False, default=0)
     createdAt = Column(String, nullable=False)
+    appointmentId = Column(String, ForeignKey('appointments.id'), nullable=True)

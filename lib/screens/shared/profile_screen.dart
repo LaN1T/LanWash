@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/appointment.dart';
 import '../../models/user_stats.dart';
+import '../../models/review.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,12 +23,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _statsLoading = true;
   List<Appointment> _history = [];
   bool _historyLoading = true;
+  List<Review> _reviews = [];
+  bool _reviewsLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
     _loadHistory();
+    _loadReviews();
   }
 
   Future<void> _loadStats() async {
@@ -50,6 +54,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _history = list.where((a) => a.status == 'completed').toList()
           ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
         _historyLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadReviews() async {
+    final list = await context.read<ApiService>().getMyReviews();
+    if (mounted) {
+      setState(() {
+        _reviews = list..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        _reviewsLoading = false;
       });
     }
   }
@@ -215,6 +229,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // ─── История моек ────────────────────────────────────────────────
           if (!isAdmin) _buildHistorySection(),
+          if (!isAdmin) const SizedBox(height: 24),
+
+          // ─── Мои отзывы ──────────────────────────────────────────────────
+          if (!isAdmin) _buildReviewsSection(),
           if (!isAdmin) const SizedBox(height: 24),
 
           // ─── Данные профиля (только просмотр) ────────────────────────────
@@ -413,6 +431,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontWeight: FontWeight.bold,
                         color: AppStyles.primary)),
               ]),
+            )),
+      ],
+    );
+  }
+
+  Widget _buildReviewsSection() {
+    if (_reviewsLoading) {
+      return const Center(
+          child: CircularProgressIndicator(color: AppStyles.primary));
+    }
+    if (_reviews.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Мои отзывы'),
+        const SizedBox(height: 10),
+        ..._reviews.map((r) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: AppStyles.cardDecorationFor(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Row(
+                        children: List.generate(5, (index) {
+                          return Icon(
+                            index < r.rating
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            size: 16,
+                            color: AppStyles.gold,
+                          );
+                        }),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: r.isPublished
+                              ? AppStyles.successBg
+                              : AppStyles.warningBg,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          r.statusLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: r.isPublished
+                                ? AppStyles.success
+                                : AppStyles.warning,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        DateFormat('d MMM yyyy', 'ru').format(r.createdAt),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppStyles.adaptiveTextSecondary(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (r.comment.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      r.comment,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppStyles.adaptiveTextPrimary(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             )),
       ],
     );

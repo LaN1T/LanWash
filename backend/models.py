@@ -321,9 +321,9 @@ class ShiftResponse(BaseModel):
 # ─── Reviews ─────────────────────────────────────────────────────────────────
 class ReviewCreateRequest(BaseModel):
     userId: int = Field(..., ge=1)
-    userName: str = Field(..., min_length=1, max_length=100)
     rating: int = Field(default=5, ge=1, le=5)
     comment: str = Field(default="", max_length=2000)
+    appointmentId: Optional[str] = None
 
 
 class ReviewResponse(BaseModel):
@@ -336,6 +336,7 @@ class ReviewResponse(BaseModel):
     comment: str
     isPublished: bool
     createdAt: str
+    appointmentId: Optional[str] = None
 
 
 class ReviewModerateRequest(BaseModel):
