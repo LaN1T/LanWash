@@ -71,6 +71,12 @@ class Subscription(Base):
 
 class Appointment(Base):
     __tablename__ = 'appointments'
+    __table_args__ = (
+        Index('ix_appointments_datetime', 'dateTime'),
+        Index('ix_appointments_owner', 'ownerUsername'),
+        Index('ix_appointments_status', 'status'),
+        Index('ix_appointments_owner_status', 'ownerUsername', 'status'),
+    )
     id = Column(String, primary_key=True)
     userId = Column(Integer, ForeignKey('users.id'), nullable=True)
     clientName = Column(String, nullable=False)
@@ -128,6 +134,10 @@ class PromoIncludedExtra(Base):
 
 class LogEntry(Base):
     __tablename__ = 'logs'
+    __table_args__ = (
+        Index('ix_logs_username', 'username'),
+        Index('ix_logs_timestamp', 'timestamp'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, nullable=False)
     action = Column(String, nullable=False)
@@ -183,6 +193,10 @@ class ServiceConsumable(Base):
 
 class ConsumableUsageLog(Base):
     __tablename__ = 'consumable_usage_log'
+    __table_args__ = (
+        Index('ix_usage_log_appointment', 'appointmentId'),
+        Index('ix_usage_log_consumable', 'consumableId'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     appointmentId = Column(String, ForeignKey('appointments.id'), nullable=False)
     consumableId = Column(String, ForeignKey('consumables.id'), nullable=False)
@@ -201,6 +215,10 @@ class ConsumableRefillLog(Base):
 
 class Shift(Base):
     __tablename__ = 'shifts'
+    __table_args__ = (
+        Index('ix_shifts_user_date', 'userId', 'date'),
+        Index('ix_shifts_date_status', 'date', 'status'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id'), nullable=False)
     date = Column(String, nullable=False)
