@@ -413,7 +413,7 @@ class CarResponse(BaseModel):
 # ─── Tips ────────────────────────────────────────────────────────────────────
 class TipCreateRequest(BaseModel):
     appointmentId: str = Field(..., max_length=36, description="ID записи")
-    amount: int = Field(..., ge=50, description="Сумма чаевых в рублях")
+    amount: int = Field(..., ge=50, le=50000, description="Сумма чаевых в рублях")
     method: Literal["sbp", "cash", "app"] = Field(default="sbp", description="Способ оплаты")
 
 
@@ -427,6 +427,7 @@ class TipResponse(BaseModel):
     method: str
     status: str
     createdAt: str
+    sbpUrl: Optional[str] = None
 
 
 class TipStatsResponse(BaseModel):

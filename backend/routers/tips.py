@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 
 from database import get_db
 from db_models import Tip, Appointment, User
@@ -54,6 +54,12 @@ async def create_tip(
     if not washer_username:
         raise HTTPException(status_code=400, detail="На эту запись не назначен мойщик")
 
+    existing = await db.execute(
+        select(Tip).where(Tip.appointmentId == data.appointmentId, Tip.washerUsername == washer_username)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Чаевые на эту запись уже оставлены")
+
     tip = Tip(
         appointmentId=data.appointmentId,
         washerUsername=washer_username,
@@ -66,11 +72,7 @@ async def create_tip(
     await db.commit()
     await db.refresh(tip)
 
-    # Для SBP возвращаем ссылку отдельно через заголовок (не ломаем response_model)
-    # Фронт может делать доп.запрос или мы расширяем модель — тут проще через заголовок
-    # Но т.к. response_model=TipResponse, добавляем ссылку в headers
-    from fastapi.responses import JSONResponse
-    tip_dict = {
+    resp_data = {
         "id": tip.id,
         "appointmentId": tip.appointmentId,
         "washerUsername": tip.washerUsername,
@@ -79,10 +81,9 @@ async def create_tip(
         "status": tip.status,
         "createdAt": tip.createdAt,
     }
-    resp = JSONResponse(content=tip_dict)
     if data.method == "sbp":
-        resp.headers["X-SBP-URL"] = generate_sbp_url(data.amount, washer_username)
-    return resp
+        resp_data["sbpUrl"] = generate_sbp_url(data.amount, washer_username)
+    return resp_data
 
 
 @router.get("/my", response_model=List[TipWithAppointmentResponse])
@@ -171,7 +172,15 @@ async def mark_tip_paid(
     if current_user.username != tip.washerUsername and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет прав на изменение статуса")
 
-    tip.status = "paid"
+    update_result = await db.execute(
+        update(Tip)
+        .where(Tip.id == tip_id, Tip.status == "pending")
+        .values(status="paid")
+    )
     await db.commit()
+    if update_result.rowcount == 0:
+        raise HTTPException(status_code=409, detail="Чаевые уже отмечены как полученные")
+
     await db.refresh(tip)
+    tip.status = "paid"
     return tip
