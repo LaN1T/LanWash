@@ -8,6 +8,8 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../models/service.dart';
+import '../../services/api_service.dart';
+import 'review_create_screen.dart';
 
 class ClientAppointmentDetailScreen extends StatelessWidget {
   final Appointment appointment;
@@ -96,6 +98,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 ),
               ]),
             ),
+            if (a.status == 'completed') _buildReviewBanner(context, a.id),
             _InfoTile(Icons.calendar_today_rounded, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
             _InfoTile(Icons.access_time_rounded, 'Время', timeStr),
@@ -231,6 +234,91 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+
+  Widget _buildReviewBanner(BuildContext context, String appointmentId) {
+    final api = context.read<ApiService>();
+    return FutureBuilder<bool>(
+      future: api.hasReviewForAppointment(appointmentId),
+      builder: (ctx, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        if (snapshot.data == true) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: AppStyles.primaryGradient,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppStyles.primary.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.star_rounded, color: Colors.white, size: 24),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Оцените мойку',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Ваш отзыв поможет нам стать лучше',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ReviewCreateScreen(appointmentId: appointmentId),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppStyles.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Text('Оставить отзыв'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
