@@ -28,7 +28,13 @@ class SupportProvider extends ChangeNotifier {
   int get unreadClientCount => _chats.fold(0, (sum, c) => sum + c.unreadByUser);
 
   WebSocketChannel? _wsChannel;
+  StreamSubscription? _wsSubscription;
+  Timer? _reconnectTimer;
   int? _activeChatId;
+  bool _shouldReconnect = false;
+  int _reconnectAttempt = 0;
+
+  final ValueNotifier<bool> isConnected = ValueNotifier(false);
 
   String? _lastStatus;
   bool? _lastIsAdmin;
@@ -57,7 +63,7 @@ class SupportProvider extends ChangeNotifier {
           ? await _api.getAllSupportChats(status: status)
           : await _api.getMySupportChats();
     } catch (e) {
-      _error = e.toString();
+      _error = _mapError(e, 'Не удалось загрузить чаты. Проверьте подключение.');
     }
     _loading = false;
     notifyListeners();
@@ -68,10 +74,11 @@ class SupportProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _messages = await _api.getSupportMessages(chatId);
+      final loaded = await _api.getSupportMessages(chatId);
+      _messages = _dedupeAndSortMessages(loaded);
       await _api.markSupportChatRead(chatId);
     } catch (e) {
-      _error = e.toString();
+      _error = _mapError(e, 'Не удалось загрузить сообщения. Проверьте подключение.');
     }
     _loading = false;
     notifyListeners();
@@ -132,25 +139,35 @@ class SupportProvider extends ChangeNotifier {
   void connectToChat(int chatId) {
     disconnect();
     _activeChatId = chatId;
+    _shouldReconnect = true;
+    _reconnectAttempt = 0;
     _connectWs(chatId);
   }
 
   Future<void> _connectWs(int chatId) async {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+
     try {
       final token = await ApiClient.getToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        isConnected.value = false;
+        return;
+      }
       final base = AppConfig.baseUrl;
       final host = base.endsWith('/api') ? base.substring(0, base.length - 4) : base;
       final wsUrl = '${host.replaceFirst('http', 'ws')}/ws/support/chats/$chatId?token=$token';
       _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      _wsChannel!.stream.listen(
+      isConnected.value = true;
+      _reconnectAttempt = 0;
+      _wsSubscription = _wsChannel!.stream.listen(
         (event) {
           try {
             final data = jsonDecode(event as String) as Map<String, dynamic>;
             final type = data['type'] as String?;
             if (type == 'new_message') {
               final msg = SupportMessage.fromMap(data['data'] as Map<String, dynamic>);
-              if (_activeChatId == chatId) {
+              if (_activeChatId == chatId && !_messages.any((m) => m.id == msg.id)) {
                 _messages.add(msg);
                 _bumpChat(chatId, msg.content);
                 notifyListeners();
@@ -162,18 +179,77 @@ class SupportProvider extends ChangeNotifier {
             }
           } catch (_) {}
         },
-        onError: (_) {},
-        onDone: () {},
+        onError: (_) {
+          isConnected.value = false;
+          _scheduleReconnect(chatId);
+        },
+        onDone: () {
+          isConnected.value = false;
+          _scheduleReconnect(chatId);
+        },
       );
-    } catch (_) {}
+    } catch (_) {
+      isConnected.value = false;
+      _scheduleReconnect(chatId);
+    }
+  }
+
+  void _scheduleReconnect(int chatId) {
+    if (_activeChatId != chatId || !_shouldReconnect) return;
+    _reconnectTimer?.cancel();
+    final delaySeconds = [1, 2, 4, 8, 16, 30][(_reconnectAttempt < 5) ? _reconnectAttempt : 5];
+    _reconnectAttempt++;
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      if (_activeChatId == chatId && _shouldReconnect) {
+        _connectWs(chatId);
+      }
+    });
   }
 
   void disconnect() {
+    _shouldReconnect = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    try {
+      _wsSubscription?.cancel();
+    } catch (_) {}
+    _wsSubscription = null;
     try {
       _wsChannel?.sink.close();
     } catch (_) {}
     _wsChannel = null;
     _activeChatId = null;
+    isConnected.value = false;
+  }
+
+  List<SupportMessage> _dedupeAndSortMessages(List<SupportMessage> list) {
+    final seen = <int>{};
+    final result = <SupportMessage>[];
+    for (final m in list) {
+      if (seen.add(m.id)) result.add(m);
+    }
+    result.sort((a, b) {
+      final da = DateTime.tryParse(a.createdAt) ?? DateTime(1970);
+      final db = DateTime.tryParse(b.createdAt) ?? DateTime(1970);
+      return da.compareTo(db);
+    });
+    return result;
+  }
+
+  String _mapError(Object e, String fallback) {
+    if (e is FormatException) return 'Некорректный ответ сервера.';
+    if (e is TimeoutException) {
+      return 'Превышено время ожидания. Проверьте подключение.';
+    }
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('socket') ||
+        msg.contains('connection') ||
+        msg.contains('failed host lookup') ||
+        msg.contains('network') ||
+        msg.contains('internet')) {
+      return 'Не удалось подключиться к серверу. Проверьте интернет-соединение.';
+    }
+    return fallback;
   }
 
   void _bumpChat(int chatId, String? preview) {
@@ -195,6 +271,7 @@ class SupportProvider extends ChangeNotifier {
   void dispose() {
     _pushSub?.cancel();
     disconnect();
+    isConnected.dispose();
     super.dispose();
   }
 }
