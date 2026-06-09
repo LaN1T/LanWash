@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 import os
 
-from database import init_db
+from database import init_db, get_db
 from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews, cars, referrals, tips, subscriptions, reminders, admin, health, support
 from services.auth_service import check_roles, get_current_user
 
@@ -278,6 +278,83 @@ else:
 @app.on_event("startup")
 async def startup_event():
     pass
+
+
+# ─── Support Chat WebSocket ─────────────────────────────────────────────────
+from fastapi import WebSocket, WebSocketDisconnect
+from sqlalchemy import select
+from db_models import SupportChat
+import json
+
+# In-memory connection registry: chat_id -> list of websockets
+_ws_connections: dict[int, list[WebSocket]] = {}
+
+
+@app.websocket("/ws/support/chats/{chat_id}")
+async def support_chat_websocket(websocket: WebSocket, chat_id: int):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    db_gen = None
+    try:
+        db_gen = get_db()
+        db = await anext(db_gen)
+    except Exception:
+        await websocket.close(code=1011)
+        return
+
+    try:
+        current_user = await get_current_user(token=token, db=db)
+    except Exception:
+        await websocket.close(code=1008)
+        if db_gen:
+            try:
+                await db_gen.aclose()
+            except Exception:
+                pass
+        return
+
+    chat_res = await db.execute(select(SupportChat).where(SupportChat.id == chat_id))
+    chat = chat_res.scalar_one_or_none()
+    if not chat or (current_user.role != "admin" and chat.userId != current_user.id):
+        await websocket.close(code=1008)
+        try:
+            await db_gen.aclose()
+        except Exception:
+            pass
+        return
+
+    await websocket.accept()
+    _ws_connections.setdefault(chat_id, []).append(websocket)
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            if data.get("type") == "pong":
+                continue
+    except WebSocketDisconnect:
+        pass
+    finally:
+        _ws_connections.get(chat_id, []).remove(websocket)
+        try:
+            await db_gen.aclose()
+        except Exception:
+            pass
+
+
+async def _broadcast_to_chat(chat_id: int, message: dict):
+    payload = json.dumps(message)
+    for ws in list(_ws_connections.get(chat_id, [])):
+        try:
+            await ws.send_text(payload)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
