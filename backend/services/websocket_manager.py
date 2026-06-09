@@ -29,15 +29,23 @@ class _WebSocketManager:
     async def broadcast(self, chat_id: int, message: dict) -> None:
         payload = json.dumps(message)
         conns = list(self._connections.get(chat_id, []))
-        for ws, user_id in conns:
+
+        async def _send(ws: WebSocket, user_id: int) -> None:
             try:
-                await ws.send_text(payload)
+                await asyncio.wait_for(ws.send_text(payload), timeout=5.0)
             except (WebSocketDisconnect, RuntimeError) as e:
                 logger.warning(
                     "websocket_stale_removed",
                     chat_id=chat_id,
                     user_id=user_id,
                     error=str(e),
+                )
+                self.disconnect(chat_id, ws)
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "websocket_send_timeout",
+                    chat_id=chat_id,
+                    user_id=user_id,
                 )
                 self.disconnect(chat_id, ws)
             except Exception as e:
@@ -47,6 +55,9 @@ class _WebSocketManager:
                     user_id=user_id,
                     error=str(e),
                 )
+
+        if conns:
+            await asyncio.gather(*(_send(ws, uid) for ws, uid in conns), return_exceptions=True)
 
     def connected_user_ids(self, chat_id: int) -> Set[int]:
         return {uid for _, uid in self._connections.get(chat_id, [])}

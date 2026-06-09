@@ -168,7 +168,8 @@ class TestSupportWebSocket:
             assert create_resp.status_code == 200
             chat_id = create_resp.json()["id"]
 
-            with client.websocket_connect(f"/ws/support/chats/{chat_id}?token={admin_token}") as ws:
+            with client.websocket_connect(f"/ws/support/chats/{chat_id}") as ws:
+                ws.send_json({"type": "auth", "token": admin_token})
                 with patch("routers.support.classify_and_reply", new_callable=AsyncMock, return_value=None):
                     msg_resp = client.post(
                         f"/api/support/chats/{chat_id}/messages",
