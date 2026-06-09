@@ -21,6 +21,7 @@ import '../models/referral.dart';
 import '../models/tip.dart';
 import '../models/subscription.dart';
 import '../models/admin_dashboard.dart';
+import '../models/forecast.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -921,6 +922,14 @@ class ApiService {
     final result = await ApiClient.get('/admin/dashboard?from_date=$fromDate&to_date=$toDate');
     return result.when(
       success: (data) => AdminDashboard.fromJson(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<ForecastResponse?> getForecast({int days = 7}) async {
+    final result = await ApiClient.get('/admin/forecast?days=$days');
+    return result.when(
+      success: (data) => ForecastResponse.fromMap(data),
       failure: (_) => null,
     );
   }
