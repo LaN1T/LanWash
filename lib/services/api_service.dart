@@ -20,6 +20,7 @@ import '../models/car.dart';
 import '../models/referral.dart';
 import '../models/tip.dart';
 import '../models/subscription.dart';
+import '../models/admin_dashboard.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -891,6 +892,15 @@ class ApiService {
     final result = await ApiClient.get('/reports/daily/?date=$date');
     return result.when(
       success: (data) => DailyReport.fromJson(data),
+      failure: (_) => null,
+    );
+  }
+
+  // ─── Admin Dashboard ───────────────────────────────────────────────────────
+  Future<AdminDashboard?> getAdminDashboard(String fromDate, String toDate) async {
+    final result = await ApiClient.get('/admin/dashboard?from_date=$fromDate&to_date=$toDate');
+    return result.when(
+      success: (data) => AdminDashboard.fromJson(data),
       failure: (_) => null,
     );
   }
