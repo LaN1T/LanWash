@@ -70,6 +70,42 @@ class TestInventoryForecastService:
         assert item.status == "ok"
 
 
+class TestInventoryForecastTask:
+    @pytest.mark.asyncio
+    async def test_check_inventory_forecast_task(self, db_session):
+        from tasks import check_inventory_forecast
+        from db_models import Consumable, ConsumableUsageLog
+        from datetime import datetime, timedelta
+
+        # Create critical consumable: 30 stock, 100 minStock, high usage
+        shampoo = Consumable(
+            id="c_crit_task",
+            name="Critical",
+            unit="мл",
+            currentStock=30.0,
+            minStock=100.0,
+        )
+        db_session.add(shampoo)
+
+        ref = datetime(2026, 6, 9, 12, 0, 0)
+        for i in range(30):
+            db_session.add(
+                ConsumableUsageLog(
+                    appointmentId=f"appt_{i}",
+                    consumableId="c_crit_task",
+                    quantityUsed=50.0,
+                    timestamp=(ref - timedelta(days=i + 1)).isoformat(),
+                )
+            )
+        await db_session.commit()
+
+        result = await check_inventory_forecast(None, db=db_session)
+        assert result["checked"] >= 1
+        critical = [a for a in result["alerts"] if a["consumable_id"] == "c_crit_task"]
+        assert len(critical) == 1
+        assert critical[0]["status"] == "critical"
+
+
 class TestInventoryForecastEndpoint:
     @pytest.mark.asyncio
     async def test_inventory_forecast_endpoint_access(self, async_client, admin_token):
