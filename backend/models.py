@@ -478,3 +478,39 @@ class TipWithAppointmentResponse(BaseModel):
     status: str
     createdAt: str
     appointment: Optional[AppointmentResponse] = None
+
+
+# ─── Admin Dashboard ─────────────────────────────────────────────────────────
+class DailyBreakdown(BaseModel):
+    date: str
+    revenue: int
+    appointments: int
+    completed: int
+
+
+class TopWasher(BaseModel):
+    name: str
+    revenue: int
+    appointments: int
+
+
+class TopClient(BaseModel):
+    name: str
+    visits: int
+    totalSpent: int
+
+
+class DashboardResponse(BaseModel):
+    fromDate: str
+    toDate: str
+    totalRevenue: int
+    totalAppointments: int
+    completedAppointments: int
+    cancelledAppointments: int
+    averageCheck: float
+    newClients: int
+    returningClients: int
+    averageRating: float
+    dailyBreakdown: List[DailyBreakdown]
+    topWashers: List[TopWasher]
+    topClients: List[TopClient]

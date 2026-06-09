@@ -18,6 +18,7 @@ import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 import 'consumables_stock_screen.dart';
 import 'reviews_moderation_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -287,6 +288,27 @@ class _HomeShellState extends State<HomeShell> {
                       ctx,
                       MaterialPageRoute(
                           builder: (_) => const ReviewsModerationScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          // Дашборд
+          if (auth.isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: Icon(Icons.dashboard_rounded,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Дашборд',
+                    style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const AdminDashboardScreen()));
                 },
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
