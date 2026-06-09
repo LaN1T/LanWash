@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete
 from database import get_db
@@ -114,10 +114,16 @@ async def list_current_shifts(
 @limiter.limit("60/minute")
 async def list_my_shifts(
     request: Request,
+    limit: int = Query(365, ge=1, le=2000),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    stmt = select(Shift).where(Shift.userId == current_user.id).order_by(Shift.date.asc())
+    stmt = (
+        select(Shift)
+        .where(Shift.userId == current_user.id)
+        .order_by(Shift.date.asc())
+        .limit(limit)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 

@@ -48,10 +48,11 @@ async def list_reviews(
 @limiter.limit("60/minute")
 async def list_my_reviews(
     request: Request,
+    limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    stmt = select(Review).where(Review.userId == current_user.id).order_by(Review.createdAt.desc())
+    stmt = select(Review).where(Review.userId == current_user.id).order_by(Review.createdAt.desc()).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -126,12 +127,13 @@ async def create_review(
 @limiter.limit("60/minute")
 async def list_all_reviews(
     request: Request,
+    limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    stmt = select(Review).order_by(Review.createdAt.desc())
+    stmt = select(Review).order_by(Review.createdAt.desc()).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 

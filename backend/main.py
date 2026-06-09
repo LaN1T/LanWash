@@ -3,7 +3,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Depends, HTTPException, Header, status
+from fastapi import FastAPI, Depends, HTTPException, Header, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 import os
@@ -248,7 +248,8 @@ app.include_router(health.router)
 TELEGRAM_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 
 @app.post("/webhook")
-async def telegram_webhook(update: dict, x_telegram_bot_api_secret_token: str = Header(None)):
+@limiter.limit("20/minute")
+async def telegram_webhook(request: Request, update: dict, x_telegram_bot_api_secret_token: str = Header(None)):
     if TELEGRAM_SECRET and x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
         raise HTTPException(403, "Invalid secret token")
     from bot.webhook import process_update
