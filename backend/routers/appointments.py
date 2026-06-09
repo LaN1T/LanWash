@@ -1018,13 +1018,13 @@ async def cancel_with_reason(
     except json.JSONDecodeError:
         assigned_washers = []
 
-    target_usernames = set(assigned_washers)
-    target_usernames.add('admin')
-
-    tokens_res = await db.execute(
-        select(FcmToken.token).where(FcmToken.username.in_(list(target_usernames)))
+    admin_tokens_res = await db.execute(
+        select(FcmToken.token).join(User, FcmToken.username == User.username).where(User.role == 'admin')
     )
-    encrypted_tokens = tokens_res.scalars().all()
+    washer_tokens_res = await db.execute(
+        select(FcmToken.token).where(FcmToken.username.in_(assigned_washers))
+    )
+    encrypted_tokens = list(set(admin_tokens_res.scalars().all() + washer_tokens_res.scalars().all()))
     if encrypted_tokens:
         tokens = []
         for t in encrypted_tokens:
