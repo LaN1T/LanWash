@@ -27,6 +27,7 @@ class RegisterRequest(BaseModel):
     phone: str = Field(default="", max_length=20, description="Номер телефона")
     carModel: str = Field(default="", max_length=50, description="Марка и модель автомобиля")
     carNumber: str = Field(default="", max_length=50, description="Госномер автомобиля")
+    referralCode: Optional[str] = Field(default=None, max_length=20, description="Реферальный код пригласившего")
 
 
 class UserResponse(BaseModel):
@@ -43,6 +44,7 @@ class UserResponse(BaseModel):
     createdAt: str
     isFavoriteAdmin: bool
     passwordVersion: int = 1
+    referralCode: Optional[str] = None
 
 
 class UpdateProfileRequest(BaseModel):
@@ -62,6 +64,24 @@ class UserStatsResponse(BaseModel):
     level: str
     levelProgress: int  # процент до следующего уровня
     points: int
+
+
+class ReferralResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    referrerId: int
+    referredId: int
+    referredName: str
+    rewardClaimed: bool
+    createdAt: str
+
+
+class ReferralStatsResponse(BaseModel):
+    referralCode: str
+    totalReferrals: int
+    claimedRewards: int
+    pendingRewards: int
 
 
 class FcmTokenRequest(BaseModel):

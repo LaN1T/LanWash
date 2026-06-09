@@ -6,13 +6,14 @@ import re
 from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
+from sqlalchemy.exc import IntegrityError
 from database import get_db
 from models import (
     LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest,
     FcmTokenRequest, LoginResponse, UserStatsResponse,
     TelegramAuthRequest, TelegramLinkRequest, TelegramAuthResponse
 )
-from db_models import User, FcmToken, Appointment, WashType, Shift
+from db_models import User, FcmToken, Appointment, WashType, Shift, Referral
 from services.telegram_auth_service import verify_telegram_init_data
 import secrets
 import string
@@ -32,6 +33,24 @@ from core.config import get_settings
 from core.security import encrypt_token
 
 USERNAME_PATTERN = re.compile(r'^[a-z0-9_]{3,30}$')
+
+# Referral code alphabet: excludes ambiguous chars 0, O, I, l, 1
+_REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+_REFERRAL_CODE_LENGTH = 8
+
+
+def _generate_referral_code() -> str:
+    return ''.join(secrets.choice(_REFERRAL_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH))
+
+
+async def _ensure_unique_referral_code(db: AsyncSession) -> str:
+    """Generate a referral code and ensure it's unique in the DB."""
+    while True:
+        code = _generate_referral_code()
+        result = await db.execute(select(User).where(User.referralCode == code))
+        if result.scalar_one_or_none() is None:
+            return code
+
 
 # Dummy hash for constant-time login (prevents user enumeration via timing)
 _DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"
@@ -110,6 +129,17 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     if not req.displayName.strip():
         raise generic_error
 
+    # Handle referral code if provided (before duplicate check so we can return specific error)
+    referrer = None
+    if req.referralCode is not None and req.referralCode.strip():
+        ref_code = req.referralCode.strip().upper()
+        res = await db.execute(select(User).where(User.referralCode == ref_code))
+        referrer = res.scalar_one_or_none()
+        if not referrer:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Неверный реферальный код.")
+        if referrer.username == req.username.lower().strip():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Нельзя использовать свой реферальный код.")
+
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     if result.scalar_one_or_none():
         raise generic_error
@@ -123,9 +153,32 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         carModel=req.carModel.strip(),
         carNumber=req.carNumber.strip(),
         createdAt=datetime.now().isoformat(),
-        isFavoriteAdmin=0
+        isFavoriteAdmin=0,
     )
-    db.add(new_user)
+
+    for _ in range(10):
+        code = _generate_referral_code()
+        new_user.referralCode = code
+        try:
+            db.add(new_user)
+            await db.flush()
+            break
+        except IntegrityError:
+            await db.rollback()
+            continue
+    else:
+        raise HTTPException(500, "Could not generate unique referral code")
+
+    # Create referral record if referrer exists
+    if referrer is not None:
+        referral_row = Referral(
+            referrerId=referrer.id,
+            referredId=new_user.id,
+            rewardClaimed=False,
+            createdAt=datetime.now().isoformat(),
+        )
+        db.add(referral_row)
+
     await db.commit()
     await db.refresh(new_user)
     
@@ -189,7 +242,20 @@ async def telegram_auth(
                 isFavoriteAdmin=0,
                 telegramId=telegram_id,
             )
-            db.add(new_user)
+
+            for _ in range(10):
+                code = _generate_referral_code()
+                new_user.referralCode = code
+                try:
+                    db.add(new_user)
+                    await db.flush()
+                    break
+                except IntegrityError:
+                    await db.rollback()
+                    continue
+            else:
+                raise HTTPException(500, "Could not generate unique referral code")
+
             await db.commit()
             await db.refresh(new_user)
             user = new_user

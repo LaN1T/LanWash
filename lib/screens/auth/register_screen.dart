@@ -58,6 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController(text: '+7');
+  final _refCtrl = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
   String? _error;
@@ -68,6 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passCtrl.dispose();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
+    _refCtrl.dispose();
     super.dispose();
   }
 
@@ -84,6 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passCtrl.text,
       displayName: _nameCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
+      referralCode: _refCtrl.text.trim().isEmpty ? null : _refCtrl.text.trim().toUpperCase(),
     );
 
     if (!mounted) return;
@@ -240,6 +243,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       validator: AppValidators.password,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _refCtrl,
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_referral'),
+                          hint: lang.tr('register_field_referral_hint'),
+                          icon: Icons.card_giftcard_outlined),
+                      textCapitalization: TextCapitalization.characters,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(

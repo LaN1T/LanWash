@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../models/appointment.dart';
 import '../../models/user_stats.dart';
 import '../../models/review.dart';
+import '../client/referral_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -233,6 +234,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           // ─── Мои отзывы ──────────────────────────────────────────────────
           if (!isAdmin) _buildReviewsSection(),
+          if (!isAdmin) const SizedBox(height: 24),
+
+          // ─── Реферальная программа ───────────────────────────────────────
+          if (!isAdmin) _buildReferralCard(),
           if (!isAdmin) const SizedBox(height: 24),
 
           // ─── Данные профиля (только просмотр) ────────────────────────────
@@ -513,6 +518,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )),
       ],
+    );
+  }
+
+  Widget _buildReferralCard() {
+    return Container(
+      decoration: AppStyles.cardDecorationFor(context),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppStyles.adaptivePrimaryBg(context),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.card_giftcard,
+              color: AppStyles.primary, size: 20),
+        ),
+        title: Text('Реферальная программа',
+            style: TextStyle(
+                color: AppStyles.adaptiveTextPrimary(context),
+                fontSize: 14,
+                fontWeight: FontWeight.w600)),
+        subtitle: Text('Приглашайте друзей и получайте награды',
+            style: TextStyle(
+                color: AppStyles.adaptiveTextSecondary(context),
+                fontSize: 12)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded,
+            size: 14, color: AppStyles.adaptiveTextMuted(context)),
+        onTap: () {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const ReferralScreen()));
+        },
+      ),
     );
   }
 

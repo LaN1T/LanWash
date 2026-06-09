@@ -106,6 +106,7 @@ class AuthProvider extends ChangeNotifier {
     String phone = '',
     String carModel = '',
     String carNumber = '',
+    String? referralCode,
   }) async {
     clearError();
     _loading = true;
@@ -119,6 +120,7 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         carModel: carModel,
         carNumber: carNumber,
+        referralCode: referralCode,
       );
 
       _loading = false;
