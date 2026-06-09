@@ -20,3 +20,4 @@ prometheus-fastapi-instrumentator<7.0.0
 sentry-sdk[fastapi]>=2.0
 openpyxl
 arq>=0.25.0
+google-genai>=1.0
