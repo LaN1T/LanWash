@@ -20,31 +20,38 @@ class _QrScannerBodyState extends State<QrScannerBody> {
     setState(() => _isProcessing = true);
     await _controller.stop();
 
-    final apiService = ApiService();
-    final appointment = await apiService.scanQrCode(code);
-    if (!mounted) return;
+    try {
+      final apiService = ApiService();
+      final appointment = await apiService.scanQrCode(code);
+      if (!mounted) return;
 
-    if (appointment == null) {
-      setState(() => _isProcessing = false);
-      await _controller.start();
+      if (appointment == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Запись не найдена или недоступна'),
+            backgroundColor: AppStyles.danger,
+          ),
+        );
+        return;
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AppointmentDetailWidget(appointment: appointment, isClient: false),
+        ),
+      );
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Запись не найдена или недоступна'),
+        SnackBar(
+          content: Text(e.toString()),
           backgroundColor: AppStyles.danger,
         ),
       );
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AppointmentDetailWidget(appointment: appointment, isClient: false),
-      ),
-    );
-
-    if (mounted) {
-      setState(() => _isProcessing = false);
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
       await _controller.start();
     }
   }

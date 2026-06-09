@@ -891,6 +891,14 @@ async def scan_appointment_qr(
     appt.status = 'in_progress'
     appt.isModifiedByWasher = 1
     appt.isSeenByClient = 0
+
+    db.add(LogEntry(
+        username=current_user.username,
+        action="qr_scan",
+        details=f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress",
+        timestamp=datetime.now().isoformat(),
+    ))
+
     await db.commit()
     appointments_total.labels(status='in_progress').inc()
 
@@ -913,14 +921,6 @@ async def scan_appointment_qr(
                     data={"type": "appointment_updated", "id": appt.id},
                 ))
 
-    # Логирование действия
-    db.add(LogEntry(
-        username=current_user.username,
-        action="qr_scan",
-        details=f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress",
-        timestamp=datetime.now().isoformat(),
-    ))
-    await db.commit()
     await db.refresh(appt)
     return appt
 
