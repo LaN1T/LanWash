@@ -514,3 +514,25 @@ class DashboardResponse(BaseModel):
     dailyBreakdown: List[DailyBreakdown]
     topWashers: List[TopWasher]
     topClients: List[TopClient]
+
+
+# ─── Bulk Operations ─────────────────────────────────────────────────────────
+class BulkAssignWasherRequest(BaseModel):
+    appointmentIds: List[str] = Field(..., min_length=1, max_length=100)
+    washerUsername: str = Field(..., min_length=1, max_length=50)
+
+
+class BulkCancelRequest(BaseModel):
+    appointmentIds: List[str] = Field(..., min_length=1, max_length=100)
+    reason: str = Field(default="", max_length=500)
+
+
+class BulkUpdateStatusRequest(BaseModel):
+    appointmentIds: List[str] = Field(..., min_length=1, max_length=100)
+    status: str = Field(..., pattern=r'^(scheduled|in_progress|completed|cancelled)$')
+
+
+class BulkResult(BaseModel):
+    processed: int
+    failed: int
+    errors: List[str] = []

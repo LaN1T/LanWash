@@ -921,6 +921,39 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>?> bulkAssignWasher(List<String> appointmentIds, String washerUsername) async {
+    final result = await ApiClient.post('/admin/bulk/assign-washer', body: {
+      'appointmentIds': appointmentIds,
+      'washerUsername': washerUsername,
+    });
+    return result.when(
+      success: (data) => data as Map<String, dynamic>,
+      failure: (_) => null,
+    );
+  }
+
+  Future<Map<String, dynamic>?> bulkCancel(List<String> appointmentIds, {String reason = ''}) async {
+    final result = await ApiClient.post('/admin/bulk/cancel', body: {
+      'appointmentIds': appointmentIds,
+      'reason': reason,
+    });
+    return result.when(
+      success: (data) => data as Map<String, dynamic>,
+      failure: (_) => null,
+    );
+  }
+
+  Future<Map<String, dynamic>?> bulkUpdateStatus(List<String> appointmentIds, String status) async {
+    final result = await ApiClient.post('/admin/bulk/update-status', body: {
+      'appointmentIds': appointmentIds,
+      'status': status,
+    });
+    return result.when(
+      success: (data) => data as Map<String, dynamic>,
+      failure: (_) => null,
+    );
+  }
+
   // ─── Reviews ───────────────────────────────────────────────────────────────
   Future<bool> createReview({
     required int userId,
