@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from database import get_db
-from db_models import Review, User
+from db_models import Review, User, Appointment
 from models import ReviewCreateRequest, ReviewResponse, ReviewModerateRequest
 from services.auth_service import get_current_user
 from core.limiter import limiter
@@ -44,6 +44,18 @@ async def list_reviews(
     return result.scalars().all()
 
 
+@router.get("/my", response_model=List[ReviewResponse])
+@limiter.limit("60/minute")
+async def list_my_reviews(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    stmt = select(Review).where(Review.userId == current_user.id).order_by(Review.createdAt.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 @router.post("/", response_model=ReviewResponse)
 @limiter.limit("10/minute")
 async def create_review(
@@ -54,6 +66,17 @@ async def create_review(
 ):
     if current_user.id != data.userId and current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Можно оставлять отзыв только от своего имени")
+
+    if data.appointmentId is not None:
+        result = await db.execute(select(Appointment).where(Appointment.id == data.appointmentId))
+        appointment = result.scalar_one_or_none()
+        if not appointment:
+            raise HTTPException(status_code=400, detail="Запись не найдена")
+        if appointment.ownerUsername != current_user.username:
+            raise HTTPException(status_code=403, detail="Нельзя оставить отзыв на чужую запись")
+        if appointment.status != 'completed':
+            raise HTTPException(status_code=400, detail="Можно оставить отзыв только на завершённую мойку")
+
     review = Review(
         userId=data.userId,
         userName=data.userName,
@@ -61,6 +84,7 @@ async def create_review(
         comment=data.comment,
         isPublished=0,
         createdAt=datetime.now(timezone.utc).isoformat(),
+        appointmentId=data.appointmentId,
     )
     db.add(review)
     await db.commit()

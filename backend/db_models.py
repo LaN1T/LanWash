@@ -198,3 +198,4 @@ class Review(Base):
     comment = Column(String, nullable=False, default='')
     isPublished = Column(Integer, nullable=False, default=0)
     createdAt = Column(String, nullable=False)
+    appointmentId = Column(String, ForeignKey('appointments.id'), nullable=True)
