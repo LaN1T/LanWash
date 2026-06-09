@@ -3,8 +3,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/admin_dashboard.dart';
+import '../../models/consumable_forecast.dart';
 import '../../models/forecast.dart';
 import '../../services/api_service.dart';
+import 'inventory_forecast_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -24,11 +26,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _forecastError;
   int _forecastDays = 7;
 
+  InventoryForecastResponse? _inventoryForecast;
+  bool _inventoryLoading = true;
+  String? _inventoryError;
+
   @override
   void initState() {
     super.initState();
     _load();
     _loadForecast();
+    _loadInventoryForecast();
   }
 
   void _load() {
@@ -88,6 +95,105 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _forecast = result;
         }
       });
+    }
+  }
+
+  Future<void> _loadInventoryForecast() async {
+    setState(() {
+      _inventoryLoading = true;
+      _inventoryError = null;
+    });
+    final result = await ApiService().getInventoryForecast();
+    if (mounted) {
+      setState(() {
+        _inventoryLoading = false;
+        if (result == null) {
+          _inventoryError = 'Ошибка загрузки прогноза расходников';
+          debugPrint(_inventoryError);
+        } else {
+          _inventoryForecast = result;
+        }
+      });
+    }
+  }
+
+  Widget _buildInventoryAlertCard(BuildContext context) {
+    final critical = _inventoryForecast?.criticalItems ?? [];
+    if (_inventoryLoading || critical.isEmpty) return const SizedBox.shrink();
+
+    final label = _pluralize(critical.length, 'расходник', 'расходника', 'расходников');
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const InventoryForecastScreen(),
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppStyles.danger.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppStyles.danger.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppStyles.danger.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.warning_amber_rounded,
+                  color: AppStyles.danger, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '⚠️ ${critical.length} $label требует срочной закупки',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppStyles.danger,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Нажмите, чтобы открыть прогноз',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppStyles.adaptiveTextSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppStyles.danger),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _pluralize(int count, String one, String few, String many) {
+    final n = count % 100;
+    if (n >= 11 && n <= 19) return many;
+    switch (count % 10) {
+      case 1:
+        return one;
+      case 2:
+      case 3:
+      case 4:
+        return few;
+      default:
+        return many;
     }
   }
 
@@ -190,6 +296,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                             sliver: SliverList(
                               delegate: SliverChildListDelegate([
+                                _buildInventoryAlertCard(context),
                                 _PeriodSelector(
                                   period: _period,
                                   onChanged: (p) {
