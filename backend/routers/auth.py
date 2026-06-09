@@ -353,7 +353,7 @@ async def update_profile(request: Request, user_id: int, req: UpdateProfileReque
             exp = payload.get("exp")
             if jti and exp:
                 ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
-                blacklist_token(jti, ttl)
+                await blacklist_token(jti, ttl)
         except jwt.JWTError:
             pass
 
@@ -595,7 +595,7 @@ async def logout(
             exp = payload.get("exp")
             if jti and exp:
                 ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
-                blacklist_token(jti, ttl)
+                await blacklist_token(jti, ttl)
         except jwt.JWTError:
             pass
     return {"status": "ok"}
