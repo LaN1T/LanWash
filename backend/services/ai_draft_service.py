@@ -7,8 +7,10 @@ from google.genai import types
 
 from db_models import SupportChat, SupportMessage, User, Appointment
 from core.config import get_settings
+import structlog
 
 settings = get_settings()
+logger = structlog.get_logger()
 
 FAQ_TEXT = """Ты — ассистент автомойки LanWash.
 Если вопрос клиента можно ответить по FAQ — дай краткий вежливый ответ.
@@ -49,12 +51,16 @@ async def classify_and_reply(
     history = _build_history(messages)
     prompt = f"{FAQ_TEXT}\n\nИстория диалога:\n{history}\n\nОтветь на последнее сообщение клиента."
 
-    response = await client.aio.models.generate_content(
-        model="gemini-1.5-flash-latest",
-        contents=prompt,
-        config=types.GenerateContentConfig(max_output_tokens=200),
-    )
-    text = (response.text or "").strip()
+    try:
+        response = await client.aio.models.generate_content(
+            model="gemini-1.5-flash-latest",
+            contents=prompt,
+            config=types.GenerateContentConfig(max_output_tokens=200),
+        )
+        text = (response.text or "").strip()
+    except Exception as e:
+        logger.warning("gemini_classify_failed", error=str(e))
+        return None
     if text == "ADMIN_NEEDED" or not text:
         return None
     return text
@@ -83,20 +89,26 @@ async def generate_admin_draft(
     appt_lines = [f"- {a.dateTime}: {a.carModel}, статус {a.status}" for a in appts]
     appt_info = "История записей:\n" + "\n".join(appt_lines) if appt_lines else "История записей отсутствует."
 
-    history = _build_history(messages)
+    history = _build_history(messages[-10:])
     prompt = (
         f"Ты — опытный администратор автомойки LanWash.\n"
+        f"{FAQ_TEXT}\n\n"
         f"{user_info}\n"
         f"{appt_info}\n\n"
-        f"Диалог:\n{history}\n\n"
+        f"Диалог (последние сообщения):\n{history}\n\n"
         f"Напиши вежливый, профессиональный ответ клиенту. "
         f"Будь кратким (не более 3-4 предложений). "
         f"Если не хватает информации — предложи клиенту уточнить детали."
     )
 
-    response = await client.aio.models.generate_content(
-        model="gemini-1.5-flash-latest",
-        contents=prompt,
-        config=types.GenerateContentConfig(max_output_tokens=300),
-    )
-    return (response.text or "").strip() or "Здравствуйте! Уточните, пожалуйста, детали, чтобы я мог помочь."
+    fallback = "Здравствуйте! Уточните, пожалуйста, детали, чтобы я мог помочь."
+    try:
+        response = await client.aio.models.generate_content(
+            model="gemini-1.5-flash-latest",
+            contents=prompt,
+            config=types.GenerateContentConfig(max_output_tokens=300),
+        )
+        return (response.text or "").strip() or fallback
+    except Exception as e:
+        logger.warning("gemini_draft_failed", error=str(e))
+        return fallback

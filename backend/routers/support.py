@@ -18,18 +18,23 @@ from models import (
 from services.auth_service import get_current_user, check_roles
 from services.ai_draft_service import classify_and_reply, generate_admin_draft
 from services.fcm_service import fcm_service
+from services.websocket_manager import broadcast, connected_user_ids
 import structlog
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/support", tags=["support"])
 
 
-async def _admin_tokens(db: AsyncSession) -> list[str]:
+async def _admin_tokens(db: AsyncSession, exclude_user_ids: Optional[set[int]] = None) -> list[str]:
     from db_models import FcmToken
-    res = await db.execute(
-        select(FcmToken.token).join(User, FcmToken.username == User.username)
+    stmt = (
+        select(FcmToken.token)
+        .join(User, FcmToken.username == User.username)
         .where(User.role == 'admin')
     )
+    if exclude_user_ids:
+        stmt = stmt.where(User.id.not_in(exclude_user_ids))
+    res = await db.execute(stmt)
     return [r[0] for r in res.all() if r[0]]
 
 
@@ -122,17 +127,18 @@ async def create_chat(
         chat.unreadByUser += 1
         chat.lastMessageAt = ai_msg.createdAt
         await db.commit()
+        users_map = {current_user.id: current_user}
         try:
-            from main import _broadcast_to_chat
-            users_map = {current_user.id: current_user}
-            await _broadcast_to_chat(chat.id, {
+            await broadcast(chat.id, {
                 "type": "new_message",
                 "data": _to_message_response(ai_msg, users_map).model_dump(),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("support_broadcast_failed", error=str(e))
     else:
-        tokens = await _admin_tokens(db)
+        chat.status = "waiting_admin"
+        await db.commit()
+        tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
         if tokens:
             try:
                 await fcm_service.send_notification_to_tokens(
@@ -275,6 +281,8 @@ async def send_message(
         content=req.content.strip(),
         createdAt=now,
     )
+    if is_admin and req.isAiDraft:
+        msg.isAiDraft = 1
     db.add(msg)
 
     chat.lastMessageAt = now
@@ -291,13 +299,12 @@ async def send_message(
 
     users = {current_user.id: current_user}
     try:
-        from main import _broadcast_to_chat
-        await _broadcast_to_chat(chat_id, {
+        await broadcast(chat_id, {
             "type": "new_message",
             "data": _to_message_response(msg, users).model_dump(),
         })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("support_broadcast_failed", error=str(e))
 
     # Push notification
     if is_admin:
@@ -335,15 +342,16 @@ async def send_message(
             chat.lastMessageAt = ai_msg.createdAt
             await db.commit()
             try:
-                from main import _broadcast_to_chat
-                await _broadcast_to_chat(chat_id, {
+                await broadcast(chat_id, {
                     "type": "new_message",
                     "data": _to_message_response(ai_msg, users).model_dump(),
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("support_broadcast_failed", error=str(e))
         else:
-            tokens = await _admin_tokens(db)
+            chat.status = "waiting_admin"
+            await db.commit()
+            tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
             if tokens:
                 try:
                     await fcm_service.send_notification_to_tokens(
@@ -398,10 +406,29 @@ async def assign_chat(
     chat.updatedAt = datetime.now().isoformat()
     await db.commit()
     try:
-        from main import _broadcast_to_chat
-        await _broadcast_to_chat(chat_id, {"type": "status_update", "data": {"assignedAdminId": current_user.id, "status": chat.status}})
+        await broadcast(chat_id, {"type": "status_update", "data": {"assignedAdminId": current_user.id, "status": chat.status}})
+    except Exception as e:
+        logger.warning("support_broadcast_failed", error=str(e))
+
+    # Notify assigned admin
+    try:
+        client_res = await db.execute(select(User).where(User.id == chat.userId))
+        client = client_res.scalar_one_or_none()
+        client_name = client.displayName if client else "клиента"
     except Exception:
-        pass
+        client_name = "клиента"
+    tokens = await _user_tokens(db, current_user.id)
+    if tokens:
+        try:
+            await fcm_service.send_notification_to_tokens(
+                tokens,
+                title="Обращение назначено вам",
+                body=f"Обращение от {client_name}",
+                data={"type": "support_chat", "chat_id": str(chat.id)},
+            )
+        except Exception as e:
+            logger.warning("support_push_failed", error=str(e))
+
     return {"ok": True}
 
 
@@ -421,10 +448,9 @@ async def close_chat(
     chat.updatedAt = datetime.now().isoformat()
     await db.commit()
     try:
-        from main import _broadcast_to_chat
-        await _broadcast_to_chat(chat_id, {"type": "status_update", "data": {"status": chat.status}})
-    except Exception:
-        pass
+        await broadcast(chat_id, {"type": "status_update", "data": {"status": chat.status}})
+    except Exception as e:
+        logger.warning("support_broadcast_failed", error=str(e))
     return {"ok": True}
 
 
