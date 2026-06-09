@@ -274,3 +274,27 @@ class Tip(Base):
     method = Column(String, nullable=False, default='sbp')
     status = Column(String, nullable=False, default='pending')
     createdAt = Column(String, nullable=False)
+
+
+class SupportChat(Base):
+    __tablename__ = 'support_chats'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    status = Column(String, nullable=False, default='open')
+    assignedAdminId = Column(Integer, ForeignKey('users.id'), nullable=True)
+    unreadByUser = Column(Integer, nullable=False, default=0)
+    unreadByAdmin = Column(Integer, nullable=False, default=0)
+    lastMessageAt = Column(String, nullable=True)
+    createdAt = Column(String, nullable=False)
+    updatedAt = Column(String, nullable=False)
+
+
+class SupportMessage(Base):
+    __tablename__ = 'support_messages'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chatId = Column(Integer, ForeignKey('support_chats.id', ondelete='CASCADE'), nullable=False)
+    senderRole = Column(String, nullable=False)
+    senderId = Column(Integer, ForeignKey('users.id'), nullable=True)
+    content = Column(String, nullable=False)
+    isAiDraft = Column(Integer, nullable=False, default=0)
+    createdAt = Column(String, nullable=False)
