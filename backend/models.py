@@ -591,3 +591,48 @@ class ConsumableForecastItem(BaseModel):
 class InventoryForecastResponse(BaseModel):
     items: list[ConsumableForecastItem]
     generated_at: str
+
+
+# ─── Support Chat ────────────────────────────────────────────────────────────
+
+class SupportMessageCreateRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000, description="Текст сообщения")
+    isAiDraft: bool = Field(default=False, description="Сообщение отправлено на основе черновика ИИ")
+
+
+class SupportMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    chatId: int
+    senderRole: str
+    senderId: Optional[int] = None
+    senderName: Optional[str] = None
+    content: str
+    isAiDraft: bool
+    createdAt: str
+
+
+class SupportChatCreateRequest(BaseModel):
+    firstMessage: str = Field(..., min_length=1, max_length=2000, description="Первое сообщение в чате поддержки")
+
+
+class SupportChatResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    userName: str
+    userPhone: Optional[str] = None
+    status: str
+    assignedAdminId: Optional[int] = None
+    assignedAdminName: Optional[str] = None
+    unreadByUser: int
+    unreadByAdmin: int
+    lastMessageAt: Optional[str] = None
+    lastMessagePreview: Optional[str] = None
+    createdAt: str
+
+
+class AiDraftResponse(BaseModel):
+    draft: str

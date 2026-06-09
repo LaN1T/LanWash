@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -41,6 +41,9 @@ class Settings(BaseSettings):
 
     # Telegram Bot (optional)
     telegram_bot_token: str = ""
+
+    # Gemini AI (optional)
+    gemini_api_key: Optional[str] = None
 
     @property
     def cors_origins(self) -> List[str]:
