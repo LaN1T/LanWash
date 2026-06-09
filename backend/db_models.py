@@ -56,6 +56,19 @@ class WashTypeConsumable(Base):
     consumableId = Column(String, ForeignKey('consumables.id', ondelete='CASCADE'), primary_key=True)
     quantity_per_service = Column(Float, nullable=False)
 
+class Subscription(Base):
+    __tablename__ = 'subscriptions'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    name = Column(String, nullable=False)  # e.g., "Пакет 5 комплексных"
+    type = Column(String, nullable=False)  # 'package' or 'monthly'
+    washTypeId = Column(String, ForeignKey('wash_types.id'), nullable=False)
+    totalWashes = Column(Integer, nullable=False)
+    usedWashes = Column(Integer, nullable=False, default=0)
+    validUntil = Column(String, nullable=True)  # ISO date for monthly; NULL for package
+    createdAt = Column(String, nullable=False)
+
+
 class Appointment(Base):
     __tablename__ = 'appointments'
     id = Column(String, primary_key=True)
@@ -79,6 +92,7 @@ class Appointment(Base):
     originalPrice = Column(Integer, nullable=False, default=0)
     assignedWasher = Column(String, nullable=False, default='[]')
     promoId = Column(String, ForeignKey('promos.id'), nullable=True)
+    subscriptionId = Column(Integer, ForeignKey('subscriptions.id'), nullable=True)
     box_index = Column(Integer, nullable=False, default=0)
     late_minutes = Column(Integer, nullable=False, default=0)
     cancel_reason = Column(String, nullable=False, default='')

@@ -115,6 +115,35 @@ class WashTypeResponse(BaseModel):
     includedExtraIds: List[str] = []
 
 
+# ─── Subscriptions ───────────────────────────────────────────────────────────
+class SubscriptionCreateRequest(BaseModel):
+    userId: int = Field(..., ge=1)
+    name: str = Field(..., max_length=200)
+    type: Literal["package", "monthly"] = "package"
+    washTypeId: str = Field(..., max_length=36)
+    totalWashes: int = Field(..., ge=1)
+    validUntil: Optional[str] = Field(default=None, max_length=30)
+
+
+class SubscriptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    name: str
+    type: str
+    washTypeId: str
+    totalWashes: int
+    usedWashes: int
+    validUntil: Optional[str] = None
+    createdAt: str
+
+
+class SubscriptionStatsResponse(BaseModel):
+    activeCount: int
+    totalSaved: int
+
+
 # ─── Appointments ────────────────────────────────────────────────────────────
 class AppointmentRequest(BaseModel):
     id: str = Field(..., max_length=36, description="Уникальный ID записи")
@@ -149,6 +178,7 @@ class AppointmentRequest(BaseModel):
     originalPrice: int = Field(default=0, ge=0)
     assignedWasher: str = Field(default="[]", max_length=500)
     promoId: Optional[str] = Field(default=None, max_length=36)
+    subscriptionId: Optional[int] = Field(default=None)
     box_index: int = Field(default=0, ge=0)
     late_minutes: int = Field(default=0, ge=0)
     cancel_reason: str = Field(default="", max_length=500)
@@ -177,6 +207,7 @@ class AppointmentResponse(BaseModel):
     originalPrice: int = 0
     assignedWasher: str = "[]"
     promoId: Optional[str] = None
+    subscriptionId: Optional[int] = None
     box_index: int = 0
     late_minutes: int = 0
     cancel_reason: str = ""
