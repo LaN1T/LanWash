@@ -16,6 +16,7 @@ import '../models/consumable.dart';
 import '../models/daily_report.dart';
 import '../models/review.dart';
 import '../models/car.dart';
+import '../models/referral.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -63,15 +64,19 @@ class ApiService {
     String phone = '',
     String carModel = '',
     String carNumber = '',
+    String? referralCode,
   }) async {
-    final result = await ApiClient.post('/auth/register', body: {
+    final body = {
       'username': username,
       'password': password,
       'displayName': displayName,
       'phone': phone,
       'carModel': carModel,
       'carNumber': carNumber,
-    });
+      if (referralCode != null && referralCode.isNotEmpty)
+        'referralCode': referralCode,
+    };
+    final result = await ApiClient.post('/auth/register', body: body);
     return result.when(
       success: (data) async {
         await setToken(data['access_token']);
@@ -969,5 +974,34 @@ class ApiService {
   Future<bool> deleteCar(int id) async {
     final result = await ApiClient.delete('/cars/$id');
     return result.isSuccess;
+  }
+
+  // ─── Referrals ─────────────────────────────────────────────────────────────
+  Future<ReferralStats?> getReferralStats() async {
+    final result = await ApiClient.get('/referrals/my');
+    return result.when(
+      success: (data) => ReferralStats.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<List<Referral>> getReferrals() async {
+    final result = await ApiClient.getList('/referrals/list');
+    return result.when(
+      success: (list) =>
+          list.map((m) => Referral.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => <Referral>[],
+    );
+  }
+
+  Future<int?> claimRewards() async {
+    final result = await ApiClient.post('/referrals/claim');
+    return result.when(
+      success: (data) {
+        final claimed = data['claimed'];
+        return claimed is int ? claimed : (claimed as num?)?.toInt();
+      },
+      failure: (_) => null,
+    );
   }
 }

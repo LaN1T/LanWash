@@ -18,6 +18,7 @@ class User(Base):
     isFavoriteAdmin = Column(Integer, nullable=False, default=0)
     passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
+    referralCode = Column(String, nullable=True, unique=True, index=True)
 
 class Car(Base):
     __tablename__ = 'cars'
@@ -217,3 +218,14 @@ class Review(Base):
     isPublished = Column(Integer, nullable=False, default=0)
     createdAt = Column(String, nullable=False)
     appointmentId = Column(String, ForeignKey('appointments.id'), nullable=True)
+
+class Referral(Base):
+    __tablename__ = 'referrals'
+    __table_args__ = (
+        UniqueConstraint('referrerId', 'referredId', name='uq_referral_referrer_referred'),
+    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    referrerId = Column(Integer, ForeignKey('users.id'), nullable=False)
+    referredId = Column(Integer, ForeignKey('users.id'), nullable=False)
+    rewardClaimed = Column(Boolean, nullable=False, default=False)
+    createdAt = Column(String, nullable=False)
