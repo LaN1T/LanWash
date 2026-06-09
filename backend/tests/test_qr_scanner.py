@@ -107,35 +107,35 @@ class TestQrScanner:
         data = resp.json()
         assert data["status"] == "in_progress"
         assert data["id"] == "qr_appt_5"
+        assert data["isModifiedByWasher"] == 1
+        assert data["isSeenByClient"] == 0
 
     @pytest.mark.asyncio
-    async def test_scan_qr_forbidden_non_assigned_washer(self, async_client, admin_token, client_token, db_session):
-        # Создаём ещё одного мойщика
-        from services.auth_service import get_password_hash
-        from db_models import User
-        from datetime import datetime
-        other_washer = User(
-            username="other_washer",
-            passwordHash=get_password_hash("TestPass123!"),
-            role="washer",
-            displayName="Other Washer",
-            createdAt=datetime.now().isoformat(),
+    async def test_scan_qr_admin(self, async_client, admin_token, client_token):
+        await self._create_appointment(
+            async_client, admin_token, "qr_appt_5a", "2099-05-05T11:00:00",
+            owner="client_test", assigned_washer="washer_test"
         )
-        db_session.add(other_washer)
-        await db_session.commit()
+        resp = await async_client.post(
+            "/api/appointments/scan-qr",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"qrData": "qr_appt_5a"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "in_progress"
+        assert data["isModifiedByWasher"] == 1
+        assert data["isSeenByClient"] == 0
 
+    @pytest.mark.asyncio
+    async def test_scan_qr_forbidden_non_assigned_washer(self, async_client, admin_token, other_washer_token):
         await self._create_appointment(
             async_client, admin_token, "qr_appt_6", "2099-05-06T10:00:00",
             owner="client_test", assigned_washer="washer_test"
         )
-        login_resp = await async_client.post("/api/auth/login", json={
-            "username": "other_washer",
-            "password": "TestPass123!",
-        })
-        other_token = login_resp.json()["access_token"]
         resp = await async_client.post(
             "/api/appointments/scan-qr",
-            headers={"Authorization": f"Bearer {other_token}"},
+            headers={"Authorization": f"Bearer {other_washer_token}"},
             json={"qrData": "qr_appt_6"},
         )
         assert resp.status_code == 403
@@ -159,5 +159,31 @@ class TestQrScanner:
             "/api/appointments/scan-qr",
             headers={"Authorization": f"Bearer {washer_token}"},
             json={"qrData": "qr_appt_7"},
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_scan_qr_in_progress(self, async_client, admin_token, washer_token, client_token):
+        await self._create_appointment(
+            async_client, admin_token, "qr_appt_8", "2099-05-08T10:00:00",
+            status="in_progress", owner="client_test", assigned_washer="washer_test"
+        )
+        resp = await async_client.post(
+            "/api/appointments/scan-qr",
+            headers={"Authorization": f"Bearer {washer_token}"},
+            json={"qrData": "qr_appt_8"},
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_scan_qr_cancelled(self, async_client, admin_token, washer_token, client_token):
+        await self._create_appointment(
+            async_client, admin_token, "qr_appt_9", "2099-05-09T10:00:00",
+            status="cancelled", owner="client_test", assigned_washer="washer_test"
+        )
+        resp = await async_client.post(
+            "/api/appointments/scan-qr",
+            headers={"Authorization": f"Bearer {washer_token}"},
+            json={"qrData": "qr_appt_9"},
         )
         assert resp.status_code == 400
