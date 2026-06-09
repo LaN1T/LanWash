@@ -315,8 +315,8 @@ class TestAppointments:
         db_session.add(shift)
         await db_session.commit()
 
-        # Create appointment without assignedWasher
-        dt = (datetime.now() + timedelta(hours=1)).isoformat()
+        # Create appointment without assignedWasher (midday to avoid date rollover)
+        dt = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
         resp = await async_client.post(
             "/api/appointments/",
             headers={"Authorization": f"Bearer {admin_token}"},
