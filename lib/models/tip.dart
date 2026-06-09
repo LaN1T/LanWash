@@ -6,6 +6,7 @@ class Tip {
   final String method;
   final String status;
   final DateTime createdAt;
+  final String? sbpUrl;
 
   const Tip({
     required this.id,
@@ -15,6 +16,7 @@ class Tip {
     required this.method,
     required this.status,
     required this.createdAt,
+    this.sbpUrl,
   });
 
   factory Tip.fromMap(Map<String, dynamic> m) => Tip(
@@ -27,6 +29,7 @@ class Tip {
         createdAt: m['createdAt'] != null
             ? DateTime.tryParse(m['createdAt']) ?? DateTime.now()
             : DateTime.now(),
+        sbpUrl: m['sbpUrl']?.toString(),
       );
 
   Map<String, dynamic> toMap() => {
@@ -37,6 +40,7 @@ class Tip {
         'method': method,
         'status': status,
         'createdAt': createdAt.toIso8601String(),
+        'sbpUrl': sbpUrl,
       };
 
   String get methodLabel {

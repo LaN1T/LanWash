@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -718,7 +719,7 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
 
   bool get _isValid {
     final a = _amount;
-    return a != null && a >= 50;
+    return a != null && a >= 50 && a <= 50000;
   }
 
   @override
@@ -751,19 +752,22 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                 runSpacing: 8,
                 children: _presets.map((amount) {
                   final selected = _selectedAmount == amount;
-                  return ChoiceChip(
-                    label: Text('$amount ₽'),
-                    selected: selected,
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedAmount = amount;
-                        _customController.clear();
-                      });
-                    },
-                    selectedColor: AppStyles.primary,
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : AppStyles.adaptiveTextPrimary(context),
-                      fontWeight: FontWeight.w600,
+                  return Semantics(
+                    label: '$amount рублей',
+                    child: ChoiceChip(
+                      label: Text('$amount ₽'),
+                      selected: selected,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedAmount = amount;
+                          _customController.clear();
+                        });
+                      },
+                      selectedColor: AppStyles.primary,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : AppStyles.adaptiveTextPrimary(context),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -774,7 +778,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                 keyboardType: TextInputType.number,
                 enabled: !_isLoading,
                 decoration: InputDecoration(
-                  hintText: 'Другая сумма (мин. 50 ₽)',
+                  labelText: 'Другая сумма',
+                  hintText: 'мин. 50 ₽, макс. 50 000 ₽',
                   prefixIcon: const Icon(Icons.edit),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -887,16 +892,15 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
 
   Future<void> _submit() async {
     setState(() => _isLoading = true);
-    final amount = _amount!;
     try {
       final result = await widget.api.createTip(
         appointmentId: widget.appointmentId,
-        amount: amount,
+        amount: _amount!,
         method: _method,
       );
       if (result != null) {
         if (_method == 'sbp') {
-          _sbpUrl = 'https://pay.example.com/sbp?amount=$amount&name=${Uri.encodeComponent(result.washerUsername)}';
+          _sbpUrl = result.sbpUrl;
         }
         if (mounted) {
           setState(() {
@@ -925,13 +929,33 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
   Future<void> _openSbpUrl() async {
     if (_sbpUrl == null) return;
     final uri = Uri.parse(_sbpUrl!);
-    // url_launcher будет импортирован при необходимости
-    // ignore: undefined_function
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        _showSbpOpenFailure(_sbpUrl!);
+      }
     } catch (_) {
-      // fallback
+      if (mounted) {
+        _showSbpOpenFailure(_sbpUrl!);
+      }
     }
+  }
+
+  void _showSbpOpenFailure(String url) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Не удалось открыть банковское приложение'),
+        action: SnackBarAction(
+          label: 'Копировать ссылку',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: url));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ссылка скопирована')),
+            );
+          },
+        ),
+      ),
+    );
   }
 }
 

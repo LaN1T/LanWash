@@ -232,6 +232,9 @@ class Referral(Base):
 
 class Tip(Base):
     __tablename__ = 'tips'
+    __table_args__ = (
+        UniqueConstraint('appointmentId', 'washerUsername', name='uq_tip_appointment_washer'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     appointmentId = Column(String, ForeignKey('appointments.id'), nullable=False)
     washerUsername = Column(String, nullable=False)

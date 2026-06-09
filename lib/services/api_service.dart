@@ -1023,24 +1023,6 @@ class ApiService {
     );
   }
 
-  Future<String?> createTipSbpUrl({
-    required String appointmentId,
-    required int amount,
-  }) async {
-    final result = await ApiClient.post('/tips/', body: {
-      'appointmentId': appointmentId,
-      'amount': amount,
-      'method': 'sbp',
-    });
-    return result.when(
-      success: (_) {
-        // SBP URL comes in header on success
-        return null;
-      },
-      failure: (_) => null,
-    );
-  }
-
   Future<List<Tip>> getMyTips() async {
     final result = await ApiClient.getList('/tips/my');
     return result.when(

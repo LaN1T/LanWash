@@ -58,7 +58,7 @@ class TestTips:
         assert data["method"] == "sbp"
         assert data["status"] == "pending"
         assert data["washerUsername"] == "washer_test"
-        assert resp.headers.get("x-sbp-url") is not None
+        assert data.get("sbpUrl") is not None
 
     @pytest.mark.asyncio
     async def test_create_tip_for_non_completed_appointment(self, async_client, client_token, admin_token):
@@ -224,3 +224,110 @@ class TestTips:
         )
         assert mark_resp.status_code == 403
         assert "Нет прав" in mark_resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_duplicate_tip(self, async_client, client_token, admin_token):
+        appt_resp = await self._create_appointment_as_admin(
+            async_client, admin_token, "appt_tip_8", "2099-05-08T10:00:00",
+            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+        )
+        assert appt_resp.status_code == 200
+
+        resp1 = await async_client.post(
+            "/api/tips/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "appointmentId": "appt_tip_8",
+                "amount": 100,
+                "method": "sbp",
+            },
+        )
+        assert resp1.status_code == 200
+
+        resp2 = await async_client.post(
+            "/api/tips/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "appointmentId": "appt_tip_8",
+                "amount": 200,
+                "method": "cash",
+            },
+        )
+        assert resp2.status_code == 409
+        assert "уже оставлены" in resp2.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_mark_paid_idempotent(self, async_client, client_token, washer_token, admin_token):
+        appt_resp = await self._create_appointment_as_admin(
+            async_client, admin_token, "appt_tip_9", "2099-05-09T10:00:00",
+            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+        )
+        assert appt_resp.status_code == 200
+
+        create_resp = await async_client.post(
+            "/api/tips/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "appointmentId": "appt_tip_9",
+                "amount": 300,
+                "method": "cash",
+            },
+        )
+        assert create_resp.status_code == 200
+        tip_id = create_resp.json()["id"]
+
+        mark1 = await async_client.post(
+            f"/api/tips/{tip_id}/mark-paid",
+            headers={"Authorization": f"Bearer {washer_token}"},
+        )
+        assert mark1.status_code == 200
+        assert mark1.json()["status"] == "paid"
+
+        mark2 = await async_client.post(
+            f"/api/tips/{tip_id}/mark-paid",
+            headers={"Authorization": f"Bearer {washer_token}"},
+        )
+        assert mark2.status_code == 409
+        assert "уже отмечены" in mark2.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_tip_amount_too_high(self, async_client, client_token, admin_token):
+        appt_resp = await self._create_appointment_as_admin(
+            async_client, admin_token, "appt_tip_10", "2099-05-10T10:00:00",
+            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+        )
+        assert appt_resp.status_code == 200
+
+        resp = await async_client.post(
+            "/api/tips/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "appointmentId": "appt_tip_10",
+                "amount": 100000,
+                "method": "sbp",
+            },
+        )
+        assert resp.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_create_tip_sbp_url_in_response(self, async_client, client_token, admin_token):
+        appt_resp = await self._create_appointment_as_admin(
+            async_client, admin_token, "appt_tip_11", "2099-05-11T10:00:00",
+            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+        )
+        assert appt_resp.status_code == 200
+
+        resp = await async_client.post(
+            "/api/tips/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "appointmentId": "appt_tip_11",
+                "amount": 150,
+                "method": "sbp",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "sbpUrl" in data
+        assert data["sbpUrl"] is not None
+        assert isinstance(data["sbpUrl"], str)
