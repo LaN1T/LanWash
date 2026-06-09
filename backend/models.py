@@ -572,3 +572,22 @@ class ForecastSlot(BaseModel):
 class ForecastResponse(BaseModel):
     items: List[ForecastSlot]
     generated_at: str
+
+
+class ConsumableForecastItem(BaseModel):
+    consumable_id: str
+    name: str
+    unit: str
+    current_stock: float
+    min_stock: float
+    avg_daily_usage: float
+    planned_usage_7d: float
+    days_until_low: float | None
+    days_until_empty: float | None
+    recommended_order_amount: float
+    status: Literal["critical", "warning", "ok"]
+
+
+class InventoryForecastResponse(BaseModel):
+    items: list[ConsumableForecastItem]
+    generated_at: str
