@@ -1,4 +1,3 @@
-import asyncio
 import re
 import time
 from contextlib import asynccontextmanager
@@ -17,6 +16,7 @@ from core.limiter import limiter
 from core.config import get_settings
 from core.logging import configure_logging
 from core.metrics import update_business_metrics
+from core.background import get_arq_pool, close_arq_pool
 from core.request_id import RequestIdMiddleware, get_request_id
 from core.security_headers import SecurityHeadersMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -75,30 +75,23 @@ if settings.sentry_dsn:
 _start_time = datetime.now(timezone.utc)
 
 
-async def _metrics_background_task():
-    """Update business metrics every 30 seconds."""
-    while True:
-        await asyncio.sleep(30)
-        try:
-            await update_business_metrics()
-        except Exception as e:
-            logger.warning("background_metrics_update_failed", error=str(e))
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", environment=settings.environment)
     await init_db()
     logger.info("app_ready", environment=settings.environment)
 
-    metrics_task = asyncio.create_task(_metrics_background_task())
+    try:
+        arq_pool = await get_arq_pool()
+        app.state.arq_pool = arq_pool
+        await arq_pool.enqueue_job("update_metrics", _defer_by=30)
+    except Exception as e:
+        logger.warning("arq_pool_initialization_failed", error=str(e))
+        app.state.arq_pool = None
+
     yield
 
-    metrics_task.cancel()
-    try:
-        await metrics_task
-    except asyncio.CancelledError:
-        pass
+    await close_arq_pool()
     logger.info("app_shutting_down")
 
 

@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Error tracking (optional)
     sentry_dsn: str = ""
 
+    # Redis
+    redis_url: str = ""
+
     # Telegram Bot (optional)
     telegram_bot_token: str = ""
 
