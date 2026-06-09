@@ -2,7 +2,7 @@ import asyncio
 import json
 import uuid
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, status, Response, Request
 from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_, and_
@@ -128,11 +128,18 @@ async def get_all(
     # Построение запроса извлечения даты — dateTime хранится как ISO-строка YYYY-MM-DDTHH:mm:ss
     date_extract = func.substr(Appointment.dateTime, 1, 10)
 
+    # Cap unique dates to the last 90 days to avoid unbounded headers/memory
+    cutoff_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+
     # 1. Get unique dates (days) in descending order
     if current_user.role == 'admin':
         dates_query = (
             select(date_extract)
-            .where(Appointment.dateTime != None, Appointment.dateTime != '')
+            .where(
+                Appointment.dateTime != None,
+                Appointment.dateTime != '',
+                date_extract >= cutoff_date,
+            )
             .distinct()
             .order_by(date_extract.asc())
         )
@@ -142,6 +149,7 @@ async def get_all(
             .where(
                 Appointment.dateTime != None,
                 Appointment.dateTime != '',
+                date_extract >= cutoff_date,
                 or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
             )
             .distinct()
@@ -221,16 +229,21 @@ async def get_all(
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_owner(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_owner(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only owner or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя.")
-    result = await db.execute(select(Appointment).where(Appointment.ownerUsername == username.lower()).order_by(Appointment.dateTime.asc()))
+    result = await db.execute(
+        select(Appointment)
+        .where(Appointment.ownerUsername == username.lower())
+        .order_by(Appointment.dateTime.asc())
+        .limit(limit)
+    )
     return result.scalars().all()
 
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_washer(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_washer(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only washer or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
@@ -245,6 +258,7 @@ async def get_by_washer(request: Request, username: str, db: AsyncSession = Depe
     result = await db.execute(
         select(Appointment)
         .where(Appointment.assignedWasher.like(f'%"{safe_username}"%', escape='\\'))
+        .limit(limit)
     )
     explicit = list(result.scalars().all())
     explicit_ids = {a.id for a in explicit}
@@ -261,12 +275,13 @@ async def get_by_washer(request: Request, username: str, db: AsyncSession = Depe
             appt_time >= Shift.startTime,
             appt_time <= Shift.endTime,
         ))
+        .limit(limit)
     )
     shift_based = [a for a in result2.scalars().all() if a.id not in explicit_ids]
 
     all_appts = explicit + shift_based
     all_appts.sort(key=lambda a: a.dateTime)
-    return all_appts
+    return all_appts[:limit]
 
 async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
     # 0. Восстановить остатки из предыдущих списаний и удалить старые логи

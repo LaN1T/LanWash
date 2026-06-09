@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -109,7 +110,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _inventoryLoading = false;
         if (result == null) {
           _inventoryError = 'Ошибка загрузки прогноза расходников';
-          debugPrint(_inventoryError);
+          if (kDebugMode) debugPrint(_inventoryError);
         } else {
           _inventoryForecast = result;
         }

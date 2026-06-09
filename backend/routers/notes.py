@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from sqlalchemy import select, update, delete, func
@@ -16,20 +16,23 @@ router = APIRouter(
 
 @router.get("/", response_model=list[NoteResponse])
 @limiter.limit("60/minute")
-async def get_all(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
+async def get_all(request: Request, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
     """Все заметки (для админа)."""
-    result = await db.execute(select(WasherNote).order_by(WasherNote.createdAt.desc()))
+    result = await db.execute(select(WasherNote).order_by(WasherNote.createdAt.desc()).limit(limit))
     return result.scalars().all()
 
 @router.get("/by-user/{username}", response_model=list[NoteResponse])
 @limiter.limit("60/minute")
-async def get_by_user(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_user(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Заметки конкретного мойщика."""
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к чужим заметкам")
-    
+
     result = await db.execute(
-        select(WasherNote).where(WasherNote.username == username.lower()).order_by(WasherNote.createdAt.desc())
+        select(WasherNote)
+        .where(WasherNote.username == username.lower())
+        .order_by(WasherNote.createdAt.desc())
+        .limit(limit)
     )
     return result.scalars().all()
 

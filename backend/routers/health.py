@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.redis_client import get_redis
+from core.limiter import limiter
 from database import get_db
 
 settings = get_settings()
@@ -27,7 +28,8 @@ async def health_check():
 
 
 @router.get("/health/deep")
-async def health_check_deep(db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def health_check_deep(request: Request, db: AsyncSession = Depends(get_db)):
     uptime = (datetime.now(timezone.utc) - _start_time).total_seconds()
     checks = {}
     overall = "healthy"

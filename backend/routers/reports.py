@@ -1,21 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
-from sqlalchemy import select, func, and_, cast, String
+from sqlalchemy import select, func, and_
 from database import get_db
 from db_models import (
     Appointment, Consumable, ConsumableUsageLog, Service, ServiceConsumable,
     Promo, WashType, WashTypeConsumable, Shift, User,
 )
 from services.auth_service import get_current_user
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import random
 from collections import defaultdict
 
 
-def _escape_like(s: str) -> str:
-    return s.replace('\\', '\\\\').replace('%', r'\%').replace('_', r'\_')
+def _month_bounds(date_str: str) -> tuple[str, str]:
+    """Return (start, end_exclusive) ISO strings for a YYYY-MM date."""
+    dt = datetime.strptime(date_str, "%Y-%m")
+    start = dt.strftime("%Y-%m")
+    year, month = (dt.year, dt.month + 1) if dt.month < 12 else (dt.year + 1, 1)
+    end = f"{year}-{month:02d}"
+    return start, end
+
+
+def _day_bounds(date_str: str) -> tuple[str, str]:
+    """Return (start, end_exclusive) ISO strings for a YYYY-MM-DD date."""
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    start = dt.strftime("%Y-%m-%d")
+    end = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    return start, end
+
 
 router = APIRouter(
     prefix="/api/reports",
@@ -53,14 +67,18 @@ async def monthly_report(request: Request, date: str = None, db: AsyncSession = 
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
     if not date:
         date = datetime.now().strftime("%Y-%m")
-    safe_date = _escape_like(date)
+    start, end = _month_bounds(date)
     result = await db.execute(
         select(
             Appointment.carModel,
             func.avg(Appointment.paidPrice).label("avgCheck"),
             func.count(Appointment.id).label("visitCount")
         )
-        .where(and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{safe_date}%", escape='\\')))
+        .where(and_(
+            Appointment.status == 'completed',
+            Appointment.dateTime >= start,
+            Appointment.dateTime < end,
+        ))
         .group_by(Appointment.carModel)
     )
     rows = result.all()
@@ -99,13 +117,17 @@ async def get_popular_additional_services(request: Request, date: str = None, ca
     all_promos = (await db.execute(select(Promo.id, Promo.name))).all()
     promo_id_to_name = {p.id: p.name for p in all_promos}
 
-    safe_date = _escape_like(date)
+    start, end = _month_bounds(date)
     query = select(
         Appointment.additionalServices,
         Appointment.promoId,
         Appointment.washTypeId,
     ).where(
-        and_(Appointment.status == 'completed', cast(Appointment.dateTime, String).like(f"{safe_date}%", escape='\\'))
+        and_(
+            Appointment.status == 'completed',
+            Appointment.dateTime >= start,
+            Appointment.dateTime < end,
+        )
     )
     rows = (await db.execute(query)).all()
 
@@ -179,6 +201,7 @@ async def get_consumables_usage(request: Request, date: str = None, category: st
     for (c_id,) in wt_links:
         cons_to_cats[c_id].add(WASH_CATEGORY)
 
+    start, end = _month_bounds(date)
     # Логи использования за месяц
     query = (
         select(
@@ -192,7 +215,8 @@ async def get_consumables_usage(request: Request, date: str = None, category: st
         .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
         .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id) # соединение с Appointment
         .where(and_(
-            cast(Appointment.dateTime, String).like(f"{_escape_like(date)}%", escape='\\'), # фильтр по Appointment.dateTime
+            Appointment.dateTime >= start,
+            Appointment.dateTime < end,
             Appointment.status == 'completed' # учитываем только завершённые записи
         ))
     )
@@ -240,9 +264,9 @@ async def daily_report(request: Request, date: str = None, db: AsyncSession = De
     if not date:
         date = datetime.now().strftime("%Y-%m-%d")
 
-    safe_date = _escape_like(date)
+    start, end = _day_bounds(date)
     # ─── Revenue & appointments ─────────────────────────────────────────────
-    base_filter = cast(Appointment.dateTime, String).like(f"{safe_date}%", escape='\\')
+    base_filter = and_(Appointment.dateTime >= start, Appointment.dateTime < end)
 
     total_result = await db.execute(
         select(func.count(Appointment.id)).where(base_filter)
