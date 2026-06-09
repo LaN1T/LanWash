@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -12,7 +13,7 @@ import 'api_result.dart';
 class ApiClient {
   static const _storage = FlutterSecureStorage();
   static String? _cachedToken;
-  static bool _isRefreshing = false;
+  static Completer<String?>? _refreshCompleter;
   static http.Client _httpClient = http.Client();
 
   /// Для тестов: позволяет подменить HTTP-клиент.
@@ -141,6 +142,49 @@ class ApiClient {
     );
   }
 
+  // ─── Token refresh ─────────────────────────────────────────────────────────
+
+  static Future<String?> _refreshToken() async {
+    // Если refresh уже в процессе — ждём его результат
+    if (_refreshCompleter != null) {
+      return _refreshCompleter!.future;
+    }
+
+    _refreshCompleter = Completer<String?>();
+    try {
+      final token = _cachedToken;
+      if (token == null) {
+        _refreshCompleter!.complete(null);
+        return null;
+      }
+
+      final refreshResponse = await _httpClient.post(
+        Uri.parse('${AppConfig.baseUrl}/auth/refresh'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (refreshResponse.statusCode == 200) {
+        final data = jsonDecode(refreshResponse.body);
+        if (data is Map && data['access_token'] != null) {
+          final newToken = data['access_token'] as String;
+          await setToken(newToken);
+          _refreshCompleter!.complete(newToken);
+          return newToken;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Token refresh failed: $e');
+    } finally {
+      // Если completer ещё не завершён — завершим с null
+      if (!_refreshCompleter!.isCompleted) {
+        _refreshCompleter!.complete(null);
+      }
+      _refreshCompleter = null;
+    }
+    await deleteToken();
+    return null;
+  }
+
   // ─── Core request handler ──────────────────────────────────────────────────
 
   static Future<ApiResult<Map<String, dynamic>>> _request({
@@ -150,6 +194,7 @@ class ApiClient {
             Uri url, Map<String, String> headers)
         requestFn,
     Map<String, dynamic>? body,
+    int retryCount = 0,
   }) async {
     final url = Uri.parse('${AppConfig.baseUrl}$path');
     final headers = await _headers();
@@ -169,29 +214,17 @@ class ApiClient {
       }
 
       if (response.statusCode == 401) {
-        if (_cachedToken != null && !_isRefreshing) {
-          _isRefreshing = true;
-          try {
-            final refreshResponse = await _httpClient.post(
-              Uri.parse('${AppConfig.baseUrl}/auth/refresh'),
-              headers: {'Authorization': 'Bearer $_cachedToken'},
+        if (retryCount < 1) {
+          final newToken = await _refreshToken();
+          if (newToken != null) {
+            return _request(
+              method: method,
+              path: path,
+              requestFn: requestFn,
+              body: body,
+              retryCount: retryCount + 1,
             );
-            if (refreshResponse.statusCode == 200) {
-              final data = jsonDecode(refreshResponse.body);
-              if (data is Map && data['access_token'] != null) {
-                await setToken(data['access_token'] as String);
-                _isRefreshing = false;
-                return _request(
-                  method: method,
-                  path: path,
-                  requestFn: requestFn,
-                  body: body,
-                );
-              }
-            }
-          } catch (_) {}
-          _isRefreshing = false;
-          await deleteToken();
+          }
         }
         return Failure(AppError.unauthorized());
       }
@@ -237,14 +270,37 @@ class ApiClient {
   // ─── Сырой запрос (для не-JSON или кастомного парсинга) ────────────────────
 
   static Future<ApiResult<http.Response>> rawGet(String path) async {
+    return _rawRequest(
+      path: path,
+      requestFn: (url, headers) => _httpClient.get(url, headers: headers),
+    );
+  }
+
+  static Future<ApiResult<http.Response>> _rawRequest({
+    required String path,
+    required Future<http.Response> Function(Uri url, Map<String, String> headers)
+        requestFn,
+    int retryCount = 0,
+  }) async {
     final url = Uri.parse('${AppConfig.baseUrl}$path');
     final headers = await _headers();
     try {
-      final resp = await _httpClient
-          .get(url, headers: headers)
-          .timeout(AppConfig.requestTimeout);
+      final resp = await requestFn(url, headers).timeout(AppConfig.requestTimeout);
       if (resp.statusCode >= 200 && resp.statusCode < 300) return Success(resp);
-      if (resp.statusCode == 401) return Failure(AppError.unauthorized());
+
+      if (resp.statusCode == 401) {
+        if (retryCount < 1) {
+          final newToken = await _refreshToken();
+          if (newToken != null) {
+            return _rawRequest(
+              path: path,
+              requestFn: requestFn,
+              retryCount: retryCount + 1,
+            );
+          }
+        }
+        return Failure(AppError.unauthorized());
+      }
       return Failure(AppError.server(resp.statusCode));
     } catch (e) {
       if (kDebugMode) debugPrint('rawGet error: $e | url: $url');

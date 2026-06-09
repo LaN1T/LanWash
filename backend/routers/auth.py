@@ -293,6 +293,9 @@ async def link_telegram(
     if not verify_password(req.password, user.passwordHash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
 
+    user.telegramId = req.telegramId.strip()
+    await db.commit()
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
@@ -446,8 +449,9 @@ async def upload_avatar(
     filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(UPLOAD_DIR, os.path.basename(filename))
 
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    import aiofiles
+    async with aiofiles.open(filepath, "wb") as buffer:
+        await buffer.write(content)
 
     avatar_url = f"/uploads/avatars/{filename}"
 

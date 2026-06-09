@@ -271,12 +271,16 @@ async def get_by_washer(request: Request, username: str, db: AsyncSession = Depe
 async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
     # 0. Восстановить остатки из предыдущих списаний и удалить старые логи
     old_logs_res = await db.execute(select(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
-    for old_log in old_logs_res.scalars().all():
-        res = await db.execute(select(Consumable).where(Consumable.id == old_log.consumableId))
-        c = res.scalar_one_or_none()
-        if c:
-            c.currentStock += old_log.quantityUsed
-        await db.delete(old_log)
+    old_logs = old_logs_res.scalars().all()
+    if old_logs:
+        consumable_ids = {log.consumableId for log in old_logs}
+        cons_res = await db.execute(select(Consumable).where(Consumable.id.in_(consumable_ids)))
+        cons_map = {c.id: c for c in cons_res.scalars().all()}
+        for old_log in old_logs:
+            c = cons_map.get(old_log.consumableId)
+            if c:
+                c.currentStock += old_log.quantityUsed
+            await db.delete(old_log)
 
     # 1. Сбор расходников из типа мойки
     res_wt = await db.execute(select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service).where(WashTypeConsumable.washTypeId == wash_type_id))
@@ -467,11 +471,12 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
                 except Exception:
                     pass
             if tokens:
-                await fcm_service.send_notification_to_tokens(
+                asyncio.create_task(_send_fcm_bg(
                     tokens,
-                    title="Новая запись создана!",
-                    body=f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана."
-                )
+                    "Новая запись создана!",
+                    f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана.",
+                    {}
+                ))
 
     appointments_total.labels(status=effective_status).inc()
     await db.refresh(appt)
@@ -687,16 +692,16 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
                 elif appt.status == "scheduled":
                     title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}."
             
-            await fcm_service.send_notification_to_tokens(client_tokens, title=title, body=body, data={"type": "appointment_updated", "id": appt.id})
+            asyncio.create_task(_send_fcm_bg(client_tokens, title, body, {"type": "appointment_updated", "id": appt.id}))
 
             if old_datetime != appt.dateTime:
                 dt_str = format_date(appt.dateTime)
-                await fcm_service.send_notification_to_tokens(
+                asyncio.create_task(_send_fcm_bg(
                     client_tokens,
-                    title="Время мойки изменено",
-                    body=f"Ваша запись перенесена на {dt_str}.",
-                    data={"type": "appointment_updated", "id": appt.id}
-                )
+                    "Время мойки изменено",
+                    f"Ваша запись перенесена на {dt_str}.",
+                    {"type": "appointment_updated", "id": appt.id}
+                ))
 
     new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
     old_assigned_washers = json.loads(old_assigned_washer) if old_assigned_washer else []
@@ -710,22 +715,24 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
             dt_str = format_date(appt.dateTime)
-            await fcm_service.send_notification_to_tokens(
+            asyncio.create_task(_send_fcm_bg(
                 tokens,
-                title="Новая запись",
-                body=f"Вы назначены на мойку {appt.carModel} {dt_str}."
-            )
+                "Новая запись",
+                f"Вы назначены на мойку {appt.carModel} {dt_str}.",
+                {}
+            ))
     for washer_username in removed_washers:
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
         encrypted_tokens = tokens_res.scalars().all()
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
             dt_str = format_date(appt.dateTime)
-            await fcm_service.send_notification_to_tokens(
+            asyncio.create_task(_send_fcm_bg(
                 tokens,
-                title="Назначение отменено",
-                body=f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}."
-            )
+                "Назначение отменено",
+                f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}.",
+                {}
+            ))
 
     await db.refresh(appt)
     return appt
@@ -755,11 +762,12 @@ async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends
     tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == owner))
     client_tokens = tokens_res.scalars().all()
     if client_tokens:
-        await fcm_service.send_notification_to_tokens(
+        asyncio.create_task(_send_fcm_bg(
             client_tokens,
-            title="Запись отменена",
-            body=f"Ваша запись на мойку {car_model} в {date_time} была отменена."
-        )
+            "Запись отменена",
+            f"Ваша запись на мойку {car_model} в {date_time} была отменена.",
+            {}
+        ))
 
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()
@@ -859,21 +867,21 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             if username in current:
                 # Назначен
                 box_str = f" Бокс №{appt.box_index + 1}" if appt.box_index is not None else ""
-                await fcm_service.send_notification_to_tokens(
+                asyncio.create_task(_send_fcm_bg(
                     tokens,
-                    title="Новая запись",
-                    body=f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
-                    data={"type": "appointment_updated", "id": appt.id}
-                )
+                    "Новая запись",
+                    f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
+                    {"type": "appointment_updated", "id": appt.id}
+                ))
                 logger.info("notification_sent", event="assignment", username=username)
             else:
                 # Снят
-                await fcm_service.send_notification_to_tokens(
+                asyncio.create_task(_send_fcm_bg(
                     tokens,
-                    title="Запись снята",
-                    body=f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
-                    data={"type": "appointment_updated", "id": appt.id}
-                )
+                    "Запись снята",
+                    f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
+                    {"type": "appointment_updated", "id": appt.id}
+                ))
                 logger.info("notification_sent", event="removal", username=username)
 
     return appt

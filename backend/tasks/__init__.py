@@ -20,11 +20,11 @@ async def update_metrics(ctx):
     """Update business metrics and reschedule self in 30 seconds."""
     await update_business_metrics()
     try:
-        pool = await create_pool(REDIS_SETTINGS)
+        from core.background import get_arq_pool
+        pool = await get_arq_pool()
         await pool.enqueue_job("update_metrics", _defer_by=30)
-        await pool.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("metrics_reschedule_failed", error=str(e))
     return True
 
 
