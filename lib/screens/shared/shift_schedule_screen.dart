@@ -18,6 +18,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   bool _loading = true;
   List<User> _washers = [];
   List<Shift> _shifts = [];
+  int _currentOnDuty = 0;
   late DateTime _weekStart;
 
   @override
@@ -72,10 +73,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final end = _weekStart.add(const Duration(days: 6));
     final fmt = DateFormat('yyyy-MM-dd');
     final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
+    final current = await api.getCurrentShifts();
     if (mounted) {
       setState(() {
         _washers = washers;
         _shifts = shifts;
+        _currentOnDuty = current.length;
         _loading = false;
       });
     }
@@ -196,7 +199,29 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Расписание смен'),
+        title: Row(
+          children: [
+            const Text('Расписание смен'),
+            const SizedBox(width: 10),
+            if (_currentOnDuty > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppStyles.successBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  'На смене: $_currentOnDuty',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppStyles.success,
+                  ),
+                ),
+              ),
+          ],
+        ),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
