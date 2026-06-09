@@ -15,6 +15,7 @@ import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 import '../admin/notes_screen.dart';
 import '../shared/appointment_detail_widget.dart';
+import 'qr_scanner_screen.dart';
 
 class WasherShell extends StatefulWidget {
   const WasherShell({super.key});
@@ -71,6 +72,18 @@ class _WasherShellState extends State<WasherShell> {
               style:
                   const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
         ]),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner, color: AppStyles.primary),
+            tooltip: 'Сканировать QR',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+              );
+            },
+          ),
+        ],
       ),
       drawer: _buildDrawer(context, auth),
       body: IndexedStack(

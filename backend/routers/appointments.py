@@ -6,11 +6,11 @@ from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_, and_
 from database import get_db
-from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
+from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest, QrScanRequest
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User, Consumable, Shift,
+    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry,
 )
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -807,6 +807,90 @@ async def mark_appointment_seen(request: Request, appt_id: str, db: AsyncSession
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isSeenByClient=1))
     await db.commit()
     return {"ok": True}
+
+@router.get("/{appointment_id}/qr")
+@limiter.limit("60/minute")
+async def get_appointment_qr(
+    request: Request,
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+
+    assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    is_owner = current_user.username == appt.ownerUsername
+    is_admin = current_user.role == 'admin'
+    is_assigned_washer = current_user.role == 'washer' and current_user.username in assigned_washers
+
+    if not (is_owner or is_admin or is_assigned_washer):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к QR-коду этой записи.")
+
+    return {"qrData": appt.id}
+
+
+@router.post("/scan-qr", response_model=AppointmentResponse)
+@limiter.limit("30/minute")
+async def scan_appointment_qr(
+    request: Request,
+    req: QrScanRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == req.qrData))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+
+    if appt.status != 'scheduled':
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Некорректный статус записи: {appt.status}")
+
+    assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    is_admin = current_user.role == 'admin'
+    is_assigned_washer = current_user.role == 'washer' and current_user.username in assigned_washers
+
+    if not (is_admin or is_assigned_washer):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на сканирование этой записи.")
+
+    appt.status = 'in_progress'
+    appt.isModifiedByWasher = 1
+    appt.isSeenByClient = 0
+    await db.commit()
+    appointments_total.labels(status='in_progress').inc()
+
+    # Отправка FCM-уведомления клиенту
+    if appt.ownerUsername:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        encrypted_tokens = tokens_res.scalars().all()
+        if encrypted_tokens:
+            client_tokens = []
+            for t in encrypted_tokens:
+                try:
+                    client_tokens.append(decrypt_token(t))
+                except Exception:
+                    pass
+            if client_tokens:
+                await fcm_service.send_notification_to_tokens(
+                    client_tokens,
+                    title="Начало обслуживания",
+                    body="Мойка началась",
+                    data={"type": "appointment_updated", "id": appt.id},
+                )
+
+    # Логирование действия
+    db.add(LogEntry(
+        username=current_user.username,
+        action="qr_scan",
+        details=f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress",
+        timestamp=datetime.now().isoformat(),
+    ))
+    await db.commit()
+    await db.refresh(appt)
+    return appt
+
 
 @router.get("/stats")
 @limiter.limit("60/minute")

@@ -161,6 +161,10 @@ class AssignWasherRequest(BaseModel):
     washerUsername: str = Field(..., min_length=3, max_length=50)
 
 
+class QrScanRequest(BaseModel):
+    qrData: str = Field(..., min_length=1, max_length=36, description="ID записи из QR-кода")
+
+
 # ─── Services ────────────────────────────────────────────────────────────────
 class ServiceRequest(BaseModel):
     id: str = Field(..., max_length=36)

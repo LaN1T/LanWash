@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/appointment_provider.dart';
@@ -152,9 +153,29 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ],
-            if (a.status == 'scheduled')
+            if (a.status == 'scheduled') ...[
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showQrCode(context, a.id),
+                    icon: const Icon(Icons.qr_code, size: 18, color: AppStyles.primary),
+                    label: const Text('Показать QR-код',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppStyles.primary,
+                      side: const BorderSide(color: AppStyles.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -173,8 +194,71 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
             const SizedBox(height: 20),
           ]),
+        ),
+      ),
+    );
+  }
+
+  void _showQrCode(BuildContext context, String appointmentId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppStyles.adaptiveCard(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'QR-код записи',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppStyles.adaptiveTextPrimary(context),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: QrImageView(
+                  data: appointmentId,
+                  size: 220,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Покажите этот код мойщику для начала мойки',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppStyles.adaptiveTextSecondary(context),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Закрыть'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

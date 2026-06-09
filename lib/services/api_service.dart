@@ -341,6 +341,22 @@ class ApiService {
     );
   }
 
+  Future<String?> getAppointmentQr(String appointmentId) async {
+    final result = await ApiClient.get('/appointments/$appointmentId/qr');
+    return result.when(
+      success: (data) => data['qrData'] as String?,
+      failure: (err) => null,
+    );
+  }
+
+  Future<Appointment?> scanQrCode(String qrData) async {
+    final result = await ApiClient.post('/appointments/scan-qr', body: {'qrData': qrData});
+    return result.when(
+      success: (data) => Appointment.fromMap(data),
+      failure: (err) => null,
+    );
+  }
+
   Future<List<User>> getWashers() async {
     final result = await ApiClient.getList('/auth/washers');
     return result.when(
