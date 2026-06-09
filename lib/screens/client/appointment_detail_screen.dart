@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/appointment_provider.dart';
@@ -152,13 +153,65 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
             ],
-            if (a.status == 'scheduled')
+            if (a.status == 'scheduled') ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text('Опаздываю на',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [15, 30, 60].map((minutes) {
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: minutes == 60 ? 0 : 8),
+                        child: ActionChip(
+                          avatar: const Icon(Icons.timer, size: 18),
+                          label: Text('$minutes мин'),
+                          onPressed: () => _confirmLate(
+                              context, appointmentProvider, auth, a.id, minutes),
+                          backgroundColor:
+                              AppStyles.warning.withValues(alpha: 0.15),
+                          side: BorderSide(
+                              color: AppStyles.warning.withValues(alpha: 0.4)),
+                          labelStyle: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () => _confirmCancel(
+                    onPressed: () => _showQrCode(context, a.id),
+                    icon: const Icon(Icons.qr_code, size: 18, color: AppStyles.primary),
+                    label: const Text('Показать QR-код',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppStyles.primary,
+                      side: const BorderSide(color: AppStyles.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (a.status == 'scheduled' || a.status == 'in_progress') ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showCancelBottomSheet(
                         context, appointmentProvider, auth, a.id),
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Отменить запись',
@@ -173,6 +226,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
             const SizedBox(height: 20),
           ]),
         ),
@@ -180,35 +234,240 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
     );
   }
 
-  void _confirmCancel(BuildContext context, AppointmentProvider provider,
-      AuthProvider auth, String id) {
+  void _showQrCode(BuildContext context, String appointmentId) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Отменить запись?'),
-        content: const Text('Это действие нельзя будет отменить.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Назад')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final ok = await provider.cancelAppointment(id, auth);
-              if (ok && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Запись отменена'),
-                      backgroundColor: AppStyles.success),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.danger,
-                foregroundColor: Colors.white),
-            child: const Text('Отменить'),
+      builder: (ctx) => Dialog(
+        backgroundColor: AppStyles.adaptiveCard(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'QR-код записи',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppStyles.adaptiveTextPrimary(context),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: QrImageView(
+                  data: appointmentId,
+                  size: 220,
+                  backgroundColor: Colors.white,
+                  semanticsLabel: 'QR-код записи на мойку',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Покажите этот код мойщику для начала мойки',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppStyles.adaptiveTextSecondary(context),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Закрыть'),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  void _confirmLate(BuildContext context, AppointmentProvider provider,
+      AuthProvider auth, String id, int minutes) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        var isLoading = false;
+        String? errorText;
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Сообщить об опоздании?'),
+            content: isLoading
+                ? const SizedBox(
+                    height: 60,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Text(errorText ?? 'Вы уверены, что опаздываете на $minutes минут?'),
+            actions: isLoading
+                ? []
+                : [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Назад')),
+                    ElevatedButton(
+                      onPressed: () async {
+                        setState(() {
+                          isLoading = true;
+                          errorText = null;
+                        });
+                        final ok = await provider.reportLate(id, minutes, auth);
+                        if (!ctx.mounted) return;
+                        if (ok) {
+                          Navigator.pop(ctx);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Администратор уведомлён об опоздании на $minutes мин'),
+                                  backgroundColor: AppStyles.success),
+                            );
+                          }
+                        } else {
+                          setState(() {
+                            isLoading = false;
+                            errorText = 'Не удалось сообщить об опоздании';
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppStyles.warning,
+                          foregroundColor: Colors.white),
+                      child: const Text('Подтвердить'),
+                    ),
+                  ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCancelBottomSheet(BuildContext context,
+      AppointmentProvider provider, AuthProvider auth, String id) {
+    final controller = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
+        var isLoading = false;
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottom),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Отмена записи',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      const Text('Укажите причину отмены (до 500 символов):',
+                          style: TextStyle(fontSize: 14)),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: controller,
+                        maxLines: 3,
+                        maxLength: 500,
+                        enabled: !isLoading,
+                        decoration: InputDecoration(
+                          hintText: 'Причина отмены',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.cancel_outlined),
+                          label: Text(isLoading ? 'Отмена...' : 'Подтвердить отмену'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.danger,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  final reason = controller.text.trim();
+                                  if (reason.isEmpty) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Укажите причину отмены')),
+                                    );
+                                    return;
+                                  }
+                                  setState(() {
+                                    isLoading = true;
+                                  });
+                                  final ok = await provider.cancelWithReason(
+                                      id, reason, auth);
+                                  if (!ctx.mounted) return;
+                                  if (ok) {
+                                    Navigator.pop(ctx);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text('Запись отменена'),
+                                            backgroundColor: AppStyles.success),
+                                      );
+                                    }
+                                  } else {
+                                    setState(() {
+                                      isLoading = false;
+                                    });
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      const SnackBar(
+                                          content:
+                                              Text('Не удалось отменить запись'),
+                                          backgroundColor: AppStyles.danger),
+                                    );
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

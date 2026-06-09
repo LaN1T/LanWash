@@ -341,6 +341,44 @@ class ApiService {
     );
   }
 
+  Future<String?> getAppointmentQr(String appointmentId) async {
+    final result = await ApiClient.get('/appointments/$appointmentId/qr');
+    return result.when(
+      success: (data) => data['qrData'] as String?,
+      failure: (err) => null,
+    );
+  }
+
+  Future<Appointment?> scanQrCode(String qrData) async {
+    final result = await ApiClient.post('/appointments/scan-qr', body: {'qrData': qrData});
+    return result.when(
+      success: (data) => Appointment.fromMap(data),
+      failure: (err) => null,
+    );
+  }
+
+  Future<bool> reportLate(String appointmentId, int minutes) async {
+    final result = await ApiClient.post(
+      '/appointments/$appointmentId/late',
+      body: {'minutes': minutes},
+    );
+    return result.when(
+      success: (_) => true,
+      failure: (err) => false,
+    );
+  }
+
+  Future<bool> cancelWithReason(String appointmentId, String reason) async {
+    final result = await ApiClient.post(
+      '/appointments/$appointmentId/cancel-reason',
+      body: {'reason': reason},
+    );
+    return result.when(
+      success: (_) => true,
+      failure: (err) => false,
+    );
+  }
+
   Future<List<User>> getWashers() async {
     final result = await ApiClient.getList('/auth/washers');
     return result.when(

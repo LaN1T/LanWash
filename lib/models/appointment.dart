@@ -24,6 +24,8 @@ class Appointment {
   List<String> assignedWashers;
   String? promoId; // внешний ключ → promos.id
   int box_index;
+  int lateMinutes;
+  String cancelReason;
 
   Appointment({
     required this.id,
@@ -46,6 +48,8 @@ class Appointment {
     List<String>? assignedWashers,
     this.promoId,
     this.box_index = 0,
+    this.lateMinutes = 0,
+    this.cancelReason = '',
   }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
@@ -69,6 +73,8 @@ class Appointment {
         'assignedWasher': jsonEncode(assignedWashers),
         'promoId': promoId,
         'box_index': box_index,
+        'late_minutes': lateMinutes,
+        'cancel_reason': cancelReason,
       };
 
   factory Appointment.fromMap(Map<String, dynamic> m) {
@@ -96,6 +102,8 @@ class Appointment {
         assignedWashers: _parseWashers(m['assignedWasher']),
         promoId: m['promoId']?.toString(),
         box_index: (m['box_index'] as num?)?.toInt() ?? 0,
+        lateMinutes: (m['late_minutes'] as num?)?.toInt() ?? 0,
+        cancelReason: m['cancel_reason']?.toString() ?? '',
       );
     } catch (e, st) {
       if (kDebugMode) debugPrint('Appointment.fromMap error: $e | map: $m');
@@ -162,6 +170,8 @@ class Appointment {
     List<String>? assignedWashers,
     String? promoId,
     int? box_index,
+    int? lateMinutes,
+    String? cancelReason,
   }) =>
       Appointment(
         id: id,
@@ -184,6 +194,8 @@ class Appointment {
         assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
         promoId: promoId ?? this.promoId,
         box_index: box_index ?? this.box_index,
+        lateMinutes: lateMinutes ?? this.lateMinutes,
+        cancelReason: cancelReason ?? this.cancelReason,
       );
 
   bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;

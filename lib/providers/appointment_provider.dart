@@ -257,6 +257,49 @@ class AppointmentProvider extends ChangeNotifier {
     return updateAppointment(a.copyWith(status: 'cancelled'), auth);
   }
 
+  Future<bool> reportLate(String id, int minutes, AuthProvider auth) async {
+    clearError();
+    try {
+      final success = await _api.reportLate(id, minutes);
+      if (success) {
+        final i = _appointmentList.indexWhere((a) => a.id == id);
+        if (i != -1) {
+          _appointmentList[i] = _appointmentList[i].copyWith(lateMinutes: minutes);
+          notifyListeners();
+        }
+        await reloadAppointments(auth);
+      }
+      return success;
+    } catch (e) {
+      _errorMessage = 'Ошибка при отправке опоздания';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> cancelWithReason(String id, String reason, AuthProvider auth) async {
+    clearError();
+    try {
+      final success = await _api.cancelWithReason(id, reason);
+      if (success) {
+        final i = _appointmentList.indexWhere((a) => a.id == id);
+        if (i != -1) {
+          _appointmentList[i] = _appointmentList[i].copyWith(
+            status: 'cancelled',
+            cancelReason: reason,
+          );
+          notifyListeners();
+        }
+        await reloadAppointments(auth);
+      }
+      return success;
+    } catch (e) {
+      _errorMessage = 'Ошибка при отмене записи';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteAppointment(String id, AuthProvider auth) async {
     clearError();
     try {

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from typing import Optional
@@ -6,11 +7,11 @@ from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_, and_
 from database import get_db
-from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest
+from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest, QrScanRequest, LateReportRequest, CancelReasonRequest
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User, Consumable, Shift,
+    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry,
 )
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -23,6 +24,13 @@ from core.metrics import appointments_total
 import structlog
 
 logger = structlog.get_logger()
+
+
+async def _send_fcm_bg(tokens: list[str], title: str, body: str, data: dict):
+    try:
+        await fcm_service.send_notification_to_tokens(tokens, title=title, body=body, data=data)
+    except Exception as e:
+        logger.warning("fcm_send_failed", error=str(e))
 
 router = APIRouter(
     prefix="/api/appointments",
@@ -807,6 +815,235 @@ async def mark_appointment_seen(request: Request, appt_id: str, db: AsyncSession
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isSeenByClient=1))
     await db.commit()
     return {"ok": True}
+
+@router.get("/{appointment_id}/qr")
+@limiter.limit("60/minute")
+async def get_appointment_qr(
+    request: Request,
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+
+    try:
+        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    except json.JSONDecodeError:
+        assigned_washers = []
+
+    is_owner = current_user.username == appt.ownerUsername
+    is_admin = current_user.role == 'admin'
+    is_washer = current_user.role == 'washer'
+    is_assigned_washer = is_washer and current_user.username in assigned_washers
+
+    # Мойщик может видеть QR записей, которые попадают в его смену
+    is_shift_washer = False
+    if is_washer and not is_assigned_washer:
+        appt_date = appt.dateTime[:10] if appt.dateTime else None
+        appt_time = appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        if appt_date and appt_time:
+            shift_res = await db.execute(
+                select(Shift).where(
+                    Shift.userId == current_user.id,
+                    Shift.date == appt_date,
+                    Shift.startTime <= appt_time,
+                    Shift.endTime >= appt_time,
+                )
+            )
+            is_shift_washer = shift_res.scalar_one_or_none() is not None
+
+    if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к QR-коду этой записи.")
+
+    return {"qrData": appt.id}
+
+
+@router.post("/scan-qr", response_model=AppointmentResponse)
+@limiter.limit("30/minute")
+async def scan_appointment_qr(
+    request: Request,
+    req: QrScanRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == req.qrData).with_for_update())
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+
+    if appt.status != 'scheduled':
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Некорректный статус записи: {appt.status}")
+
+    try:
+        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    except json.JSONDecodeError:
+        assigned_washers = []
+
+    is_admin = current_user.role == 'admin'
+    is_assigned_washer = current_user.role == 'washer' and current_user.username in assigned_washers
+
+    if not (is_admin or is_assigned_washer):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на сканирование этой записи.")
+
+    appt.status = 'in_progress'
+    appt.isModifiedByWasher = 1
+    appt.isSeenByClient = 0
+
+    db.add(LogEntry(
+        username=current_user.username,
+        action="qr_scan",
+        details=f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress",
+        timestamp=datetime.now().isoformat(),
+    ))
+
+    await db.commit()
+    appointments_total.labels(status='in_progress').inc()
+
+    # Отправка FCM-уведомления клиенту (не блокируем ответ)
+    if appt.ownerUsername:
+        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        encrypted_tokens = tokens_res.scalars().all()
+        if encrypted_tokens:
+            client_tokens = []
+            for t in encrypted_tokens:
+                try:
+                    client_tokens.append(decrypt_token(t))
+                except Exception:
+                    pass
+            if client_tokens:
+                asyncio.create_task(_send_fcm_bg(
+                    client_tokens,
+                    title="Начало обслуживания",
+                    body="Мойка началась",
+                    data={"type": "appointment_updated", "id": appt.id},
+                ))
+
+    await db.refresh(appt)
+    return appt
+
+
+@router.post("/{appointment_id}/late", response_model=AppointmentResponse)
+@limiter.limit("10/minute")
+async def report_late(
+    request: Request,
+    appointment_id: str,
+    req: LateReportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id).with_for_update())
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt.ownerUsername:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только владелец может сообщить об опоздании.")
+    if appt.status != 'scheduled':
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно сообщить об опоздании только для запланированной записи.")
+
+    # Idempotency: if the value is already the same, return without mutating or notifying
+    if appt.late_minutes == req.minutes:
+        return appt
+
+    appt.late_minutes = req.minutes
+
+    db.add(LogEntry(
+        username=current_user.username,
+        action="report_late",
+        details=f"Клиент сообщил об опоздании на {req.minutes} мин для записи {appt.id}",
+        timestamp=datetime.now().isoformat(),
+    ))
+
+    await db.commit()
+    await db.refresh(appt)
+
+    # FCM-уведомление админам (не блокируем ответ)
+    admin_tokens_res = await db.execute(
+        select(FcmToken.token).join(User, FcmToken.username == User.username).where(User.role == 'admin')
+    )
+    encrypted_tokens = admin_tokens_res.scalars().all()
+    if encrypted_tokens:
+        tokens = []
+        for t in encrypted_tokens:
+            try:
+                tokens.append(decrypt_token(t))
+            except Exception:
+                pass
+        if tokens:
+            asyncio.create_task(_send_fcm_bg(
+                tokens,
+                title="Оповещение об опоздании",
+                body=f"Клиент {appt.clientName} опаздывает на {req.minutes} мин",
+                data={"type": "appointment_updated", "id": appt.id},
+            ))
+
+    return appt
+
+
+@router.post("/{appointment_id}/cancel-reason", response_model=AppointmentResponse)
+@limiter.limit("10/minute")
+async def cancel_with_reason(
+    request: Request,
+    appointment_id: str,
+    req: CancelReasonRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id).with_for_update())
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt.ownerUsername:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только владелец может отменить запись с указанием причины.")
+    if appt.status not in ('scheduled', 'in_progress'):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно отменить только запланированную или текущую запись.")
+
+    appt.cancel_reason = req.reason
+    appt.status = 'cancelled'
+
+    db.add(LogEntry(
+        username=current_user.username,
+        action="cancel_with_reason",
+        details=f"Запись {appt.id} отменена. Причина: {req.reason}",
+        timestamp=datetime.now().isoformat(),
+    ))
+
+    await db.commit()
+    await db.refresh(appt)
+    appointments_total.labels(status='cancelled').inc()
+
+    # FCM-уведомление назначенным мойщикам и админам (не блокируем ответ)
+    try:
+        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    except json.JSONDecodeError:
+        assigned_washers = []
+
+    admin_tokens_res = await db.execute(
+        select(FcmToken.token).join(User, FcmToken.username == User.username).where(User.role == 'admin')
+    )
+    washer_tokens_res = await db.execute(
+        select(FcmToken.token).where(FcmToken.username.in_(assigned_washers))
+    )
+    encrypted_tokens = list(set(admin_tokens_res.scalars().all() + washer_tokens_res.scalars().all()))
+    if encrypted_tokens:
+        tokens = []
+        for t in encrypted_tokens:
+            try:
+                tokens.append(decrypt_token(t))
+            except Exception:
+                pass
+        if tokens:
+            asyncio.create_task(_send_fcm_bg(
+                tokens,
+                title="Запись отменена",
+                body=f"Запись отменена: {req.reason}",
+                data={"type": "appointment_updated", "id": appt.id},
+            ))
+
+    return appt
+
 
 @router.get("/stats")
 @limiter.limit("60/minute")
