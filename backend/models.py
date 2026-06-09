@@ -129,6 +129,8 @@ class AppointmentRequest(BaseModel):
     assignedWasher: str = Field(default="[]", max_length=500)
     promoId: Optional[str] = Field(default=None, max_length=36)
     box_index: int = Field(default=0, ge=0)
+    late_minutes: int = Field(default=0, ge=0)
+    cancel_reason: str = Field(default="", max_length=500)
 
 
 class AppointmentResponse(BaseModel):
@@ -155,10 +157,27 @@ class AppointmentResponse(BaseModel):
     assignedWasher: str = "[]"
     promoId: Optional[str] = None
     box_index: int = 0
+    late_minutes: int = 0
+    cancel_reason: str = ""
 
 
 class AssignWasherRequest(BaseModel):
     washerUsername: str = Field(..., min_length=3, max_length=50)
+
+
+class LateReportRequest(BaseModel):
+    minutes: int = Field(..., ge=15, le=60, description="Минуты опоздания")
+
+    @field_validator("minutes")
+    @classmethod
+    def validate_minutes(cls, v):
+        if v not in (15, 30, 60):
+            raise ValueError("minutes must be one of: 15, 30, 60")
+        return v
+
+
+class CancelReasonRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500, description="Причина отмены")
 
 
 class QrScanRequest(BaseModel):

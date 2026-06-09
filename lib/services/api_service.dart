@@ -357,6 +357,28 @@ class ApiService {
     );
   }
 
+  Future<bool> reportLate(String appointmentId, int minutes) async {
+    final result = await ApiClient.post(
+      '/appointments/$appointmentId/late',
+      body: {'minutes': minutes},
+    );
+    return result.when(
+      success: (_) => true,
+      failure: (err) => false,
+    );
+  }
+
+  Future<bool> cancelWithReason(String appointmentId, String reason) async {
+    final result = await ApiClient.post(
+      '/appointments/$appointmentId/cancel-reason',
+      body: {'reason': reason},
+    );
+    return result.when(
+      success: (_) => true,
+      failure: (err) => false,
+    );
+  }
+
   Future<List<User>> getWashers() async {
     final result = await ApiClient.getList('/auth/washers');
     return result.when(
