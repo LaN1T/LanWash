@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 
 from core.limiter import limiter
 from database import get_db
@@ -176,15 +176,21 @@ async def list_my_chats(
     users = {u.id: u for u in users_res.scalars().all()}
 
     chat_ids = [c.id for c in chats]
-    msg_res = await db.execute(
-        select(SupportMessage.chatId, SupportMessage.content)
+    subq = (
+        select(
+            SupportMessage.chatId,
+            SupportMessage.content,
+            func.row_number().over(
+                partition_by=SupportMessage.chatId,
+                order_by=SupportMessage.createdAt.desc()
+            ).label("rn"),
+        )
         .where(SupportMessage.chatId.in_(chat_ids))
-        .order_by(SupportMessage.createdAt.desc())
+        .subquery()
     )
-    last_msgs: dict[int, str] = {}
-    for row in msg_res.all():
-        if row[0] not in last_msgs:
-            last_msgs[row[0]] = row[1]
+    stmt = select(subq.c.chatId, subq.c.content).where(subq.c.rn == 1)
+    last_rows = (await db.execute(stmt)).all()
+    last_msgs = {row.chatId: row.content for row in last_rows}
 
     return [_to_chat_response(c, users, last_msgs.get(c.id)) for c in chats]
 
@@ -212,15 +218,21 @@ async def list_all_chats(
     users = {u.id: u for u in users_res.scalars().all()}
 
     chat_ids = [c.id for c in chats]
-    msg_res = await db.execute(
-        select(SupportMessage.chatId, SupportMessage.content)
+    subq = (
+        select(
+            SupportMessage.chatId,
+            SupportMessage.content,
+            func.row_number().over(
+                partition_by=SupportMessage.chatId,
+                order_by=SupportMessage.createdAt.desc()
+            ).label("rn"),
+        )
         .where(SupportMessage.chatId.in_(chat_ids))
-        .order_by(SupportMessage.createdAt.desc())
+        .subquery()
     )
-    last_msgs: dict[int, str] = {}
-    for row in msg_res.all():
-        if row[0] not in last_msgs:
-            last_msgs[row[0]] = row[1]
+    stmt = select(subq.c.chatId, subq.c.content).where(subq.c.rn == 1)
+    last_rows = (await db.execute(stmt)).all()
+    last_msgs = {row.chatId: row.content for row in last_rows}
 
     return [_to_chat_response(c, users, last_msgs.get(c.id)) for c in chats]
 
@@ -320,14 +332,15 @@ async def send_message(
             except Exception as e:
                 logger.warning("support_push_failed", error=str(e))
     else:
-        # Client sent new message — try auto-reply for FAQ
-        all_msgs_res = await db.execute(
+        # Client sent new message — try auto-reply for FAQ (last 50 messages only)
+        msgs_res = await db.execute(
             select(SupportMessage)
             .where(SupportMessage.chatId == chat_id)
-            .order_by(SupportMessage.createdAt.asc())
+            .order_by(SupportMessage.createdAt.desc())
+            .limit(50)
         )
-        all_msgs = all_msgs_res.scalars().all()
-        ai_text = await classify_and_reply(db, chat, all_msgs)
+        msgs = list(reversed(msgs_res.scalars().all()))
+        ai_text = await classify_and_reply(db, chat, msgs)
         if ai_text:
             ai_msg = SupportMessage(
                 chatId=chat_id,
@@ -382,9 +395,10 @@ async def ai_draft(
     msgs_res = await db.execute(
         select(SupportMessage)
         .where(SupportMessage.chatId == chat_id)
-        .order_by(SupportMessage.createdAt.asc())
+        .order_by(SupportMessage.createdAt.desc())
+        .limit(50)
     )
-    msgs = msgs_res.scalars().all()
+    msgs = list(reversed(msgs_res.scalars().all()))
     draft = await generate_admin_draft(db, chat, msgs)
     return AiDraftResponse(draft=draft)
 

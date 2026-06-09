@@ -156,8 +156,9 @@ class SupportProvider extends ChangeNotifier {
       }
       final base = AppConfig.baseUrl;
       final host = base.endsWith('/api') ? base.substring(0, base.length - 4) : base;
-      final wsUrl = '${host.replaceFirst('http', 'ws')}/ws/support/chats/$chatId?token=$token';
+      final wsUrl = '${host.replaceFirst('http', 'ws')}/ws/support/chats/$chatId';
       _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _wsChannel!.sink.add(jsonEncode({'type': 'auth', 'token': token}));
       isConnected.value = true;
       _reconnectAttempt = 0;
       _wsSubscription = _wsChannel!.stream.listen(
