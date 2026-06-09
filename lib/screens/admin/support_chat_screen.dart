@@ -16,16 +16,18 @@ class SupportChatScreen extends StatefulWidget {
 class _SupportChatScreenState extends State<SupportChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  late SupportChat _chat;
   String? _aiDraft;
   bool _aiLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _chat = widget.chat;
     final provider = context.read<SupportProvider>();
-    provider.loadMessages(widget.chat.id).then((_) {
-      provider.connectToChat(widget.chat.id);
-      provider.markChatRead(widget.chat.id);
+    provider.loadMessages(_chat.id).then((_) {
+      provider.connectToChat(_chat.id);
+      provider.markChatRead(_chat.id);
       _scrollToBottom();
     });
   }
@@ -33,6 +35,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final provider = context.read<SupportProvider>();
+    SupportChat? updated;
+    for (final c in provider.chats) {
+      if (c.id == _chat.id) {
+        updated = c;
+        break;
+      }
+    }
+    if (updated != null && !identical(updated, _chat)) {
+      setState(() => _chat = updated!);
+    }
     _scrollToBottom();
   }
 
@@ -46,7 +59,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   Future<void> _generateDraft() async {
     setState(() => _aiLoading = true);
-    final draft = await context.read<SupportProvider>().generateAiDraft(widget.chat.id);
+    final draft = await context.read<SupportProvider>().generateAiDraft(_chat.id);
     if (mounted) {
       setState(() {
         _aiDraft = draft;
@@ -58,7 +71,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   Future<void> _send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    await context.read<SupportProvider>().sendMessage(widget.chat.id, trimmed);
+    await context.read<SupportProvider>().sendMessage(_chat.id, trimmed);
     _controller.clear();
     if (mounted) setState(() => _aiDraft = null);
     _scrollToBottom();
@@ -80,7 +93,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _assign() async {
-    final ok = await context.read<SupportProvider>().assignChat(widget.chat.id);
+    final ok = await context.read<SupportProvider>().assignChat(_chat.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -91,9 +104,39 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   Future<void> _close() async {
-    final ok = await context.read<SupportProvider>().closeChat(widget.chat.id);
+    final ok = await context.read<SupportProvider>().closeChat(_chat.id);
     if (!mounted) return;
     if (ok) Navigator.pop(context);
+  }
+
+  void _showClientInfo() {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Клиент', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: Text(_chat.userName),
+                subtitle: Text(_chat.userPhone ?? 'Телефон не указан'),
+              ),
+              const ListTile(
+                leading: Icon(Icons.directions_car),
+                title: Text('Модель авто'),
+                subtitle: Text('—'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -103,14 +146,19 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(widget.chat.userName),
+        title: Text(_chat.userName),
         actions: [
-          if (widget.chat.status != 'closed')
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'Клиент',
+            onPressed: _showClientInfo,
+          ),
+          if (_chat.status != 'closed')
             TextButton(
               onPressed: _assign,
               child: const Text('Назначить', style: TextStyle(color: Colors.white)),
             ),
-          if (widget.chat.status != 'closed')
+          if (_chat.status != 'closed')
             TextButton(
               onPressed: _close,
               child: const Text('Закрыть', style: TextStyle(color: Colors.white)),
@@ -215,7 +263,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _AiDraftCard extends StatelessWidget {
+class _AiDraftCard extends StatefulWidget {
   final String draft;
   final ValueChanged<String> onEdit;
   final VoidCallback onSend;
@@ -225,6 +273,35 @@ class _AiDraftCard extends StatelessWidget {
     required this.onEdit,
     required this.onSend,
   });
+
+  @override
+  State<_AiDraftCard> createState() => _AiDraftCardState();
+}
+
+class _AiDraftCardState extends State<_AiDraftCard> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.draft)
+      ..selection = TextSelection.collapsed(offset: widget.draft.length);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AiDraftCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.draft != _controller.text) {
+      _controller.text = widget.draft;
+      _controller.selection = TextSelection.collapsed(offset: widget.draft.length);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -255,8 +332,7 @@ class _AiDraftCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           TextField(
-            controller: TextEditingController(text: draft)
-              ..selection = TextSelection.collapsed(offset: draft.length),
+            controller: _controller,
             maxLines: null,
             decoration: const InputDecoration(
               isDense: true,
@@ -264,18 +340,18 @@ class _AiDraftCard extends StatelessWidget {
               border: InputBorder.none,
             ),
             style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-            onChanged: onEdit,
+            onChanged: widget.onEdit,
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               TextButton(
-                onPressed: () => onEdit(''),
+                onPressed: () => widget.onEdit(''),
                 child: const Text('Очистить'),
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: onSend,
+                onPressed: widget.onSend,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppStyles.inProgress,
                   foregroundColor: Colors.white,
