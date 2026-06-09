@@ -1,3 +1,4 @@
+import asyncio
 import re
 import time
 from contextlib import asynccontextmanager
@@ -286,8 +287,8 @@ from sqlalchemy import select
 from db_models import SupportChat
 import json
 
-# In-memory connection registry: chat_id -> list of websockets
-_ws_connections: dict[int, list[WebSocket]] = {}
+# In-memory connection registry: chat_id -> list of (websocket, user_id) tuples
+_ws_connections: dict[int, list[tuple[WebSocket, int]]] = {}
 
 
 @app.websocket("/ws/support/chats/{chat_id}")
@@ -327,7 +328,9 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int):
         return
 
     await websocket.accept()
-    _ws_connections.setdefault(chat_id, []).append(websocket)
+    _ws_connections.setdefault(chat_id, []).append((websocket, current_user.id))
+
+    heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
 
     try:
         while True:
@@ -341,16 +344,34 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int):
     except WebSocketDisconnect:
         pass
     finally:
-        _ws_connections.get(chat_id, []).remove(websocket)
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+        conns = _ws_connections.get(chat_id, [])
+        for item in list(conns):
+            if item[0] is websocket:
+                conns.remove(item)
+                break
         try:
             await db_gen.aclose()
         except Exception:
             pass
 
 
+async def _websocket_heartbeat(websocket: WebSocket):
+    while True:
+        try:
+            await asyncio.sleep(30)
+            await websocket.send_text(json.dumps({"type": "ping"}))
+        except Exception:
+            break
+
+
 async def _broadcast_to_chat(chat_id: int, message: dict):
     payload = json.dumps(message)
-    for ws in list(_ws_connections.get(chat_id, [])):
+    for ws, _ in list(_ws_connections.get(chat_id, [])):
         try:
             await ws.send_text(payload)
         except Exception:
