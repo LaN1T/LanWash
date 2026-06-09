@@ -101,6 +101,7 @@ class AppointmentRequest(BaseModel):
     clientName: str = Field(..., max_length=100, description="Имя клиента")
     carModel: str = Field(..., max_length=50, description="Марка и модель авто")
     carNumber: str = Field(..., max_length=20, description="Госномер")
+    carId: Optional[int] = Field(default=None, description="ID автомобиля из гаража")
     dateTime: str = Field(..., max_length=30, description="Дата и время в ISO формате")
     washTypeId: str = Field(..., max_length=36, description="ID типа мойки")
     additionalServices: str = Field(default="[]", max_length=1000, description="JSON-массив ID доп. услуг")
@@ -368,3 +369,22 @@ class TelegramAuthResponse(BaseModel):
     user: UserResponse
     access_token: str
     token_type: str
+
+
+# ─── Cars ────────────────────────────────────────────────────────────────────
+class CarRequest(BaseModel):
+    brand: str = Field(..., max_length=50, description="Марка автомобиля")
+    model: str = Field(..., max_length=50, description="Модель автомобиля")
+    number: Optional[str] = Field(default=None, max_length=20, description="Госномер")
+    isPrimary: Optional[bool] = Field(default=None, description="Основной автомобиль")
+
+
+class CarResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    brand: str
+    model: str
+    number: str
+    isPrimary: bool

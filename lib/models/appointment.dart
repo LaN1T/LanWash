@@ -23,6 +23,7 @@ class Appointment {
   bool isSeenByClient;
   List<String> assignedWashers;
   String? promoId; // внешний ключ → promos.id
+  int? carId; // внешний ключ → cars.id
   int box_index;
   int lateMinutes;
   String cancelReason;
@@ -47,6 +48,7 @@ class Appointment {
     this.isSeenByClient = false,
     List<String>? assignedWashers,
     this.promoId,
+    this.carId,
     this.box_index = 0,
     this.lateMinutes = 0,
     this.cancelReason = '',
@@ -72,6 +74,7 @@ class Appointment {
         'isSeenByClient': isSeenByClient,
         'assignedWasher': jsonEncode(assignedWashers),
         'promoId': promoId,
+        'carId': carId,
         'box_index': box_index,
         'late_minutes': lateMinutes,
         'cancel_reason': cancelReason,
@@ -101,6 +104,7 @@ class Appointment {
         isSeenByClient: m['isSeenByClient'] == 1 || m['isSeenByClient'] == true,
         assignedWashers: _parseWashers(m['assignedWasher']),
         promoId: m['promoId']?.toString(),
+        carId: m['carId'] != null ? (m['carId'] as num).toInt() : null,
         box_index: (m['box_index'] as num?)?.toInt() ?? 0,
         lateMinutes: (m['late_minutes'] as num?)?.toInt() ?? 0,
         cancelReason: m['cancel_reason']?.toString() ?? '',
@@ -169,6 +173,7 @@ class Appointment {
     bool? isSeenByClient,
     List<String>? assignedWashers,
     String? promoId,
+    int? carId,
     int? box_index,
     int? lateMinutes,
     String? cancelReason,
@@ -193,6 +198,7 @@ class Appointment {
         isSeenByClient: isSeenByClient ?? this.isSeenByClient,
         assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
         promoId: promoId ?? this.promoId,
+        carId: carId ?? this.carId,
         box_index: box_index ?? this.box_index,
         lateMinutes: lateMinutes ?? this.lateMinutes,
         cancelReason: cancelReason ?? this.cancelReason,

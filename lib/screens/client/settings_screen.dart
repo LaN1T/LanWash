@@ -5,9 +5,9 @@ import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/service_locator.dart';
-import '../../services/car_catalog_service.dart';
-import '../../utils/plate_formatter.dart';
-import '../../widgets/car_autocomplete_field.dart';
+import '../../models/car.dart';
+import '../../services/api_service.dart';
+import 'car_list_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -20,10 +20,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
-  late TextEditingController _brandCtrl;
-  late TextEditingController _modelCtrl;
-  String? _selectedBrand;
-  late TextEditingController _carNumberCtrl;
   late TextEditingController _usernameCtrl;
 
   late TextEditingController _passCtrl;
@@ -32,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _saving = false;
   bool _showPass = false;
   bool _changePass = false;
+  Car? _primaryCar;
 
   @override
   void initState() {
@@ -39,17 +36,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
-    final existingCar = user?.carModel ?? '';
-    final parts = existingCar.split(' ');
-    _brandCtrl =
-        TextEditingController(text: parts.isNotEmpty ? parts.first : '');
-    _modelCtrl = TextEditingController(
-        text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
-    _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
-    _carNumberCtrl = TextEditingController(text: user?.carNumber ?? '');
     _usernameCtrl = TextEditingController(text: user?.username ?? '');
     _passCtrl = TextEditingController();
     _passConfirmCtrl = TextEditingController();
+    _loadPrimaryCar();
+  }
+
+  Future<void> _loadPrimaryCar() async {
+    final cars = await sl<ApiService>().getCars();
+    if (mounted) {
+      setState(() {
+        _primaryCar = cars.where((c) => c.isPrimary).firstOrNull;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -62,8 +61,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final error = await context.read<AuthProvider>().updateProfile(
           displayName: _nameCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
-          carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
-          carNumber: _carNumberCtrl.text.trim().toUpperCase(),
           newPassword:
               _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
         );
@@ -94,9 +91,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (final c in [
       _nameCtrl,
       _phoneCtrl,
-      _brandCtrl,
-      _modelCtrl,
-      _carNumberCtrl,
       _usernameCtrl,
       _passCtrl,
       _passConfirmCtrl,
@@ -198,46 +192,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             if (!isAdmin) ...[
               _sectionLabel('Данные автомобиля'),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.only(left: 2, bottom: 10),
-                child: Text('Будут автоматически заполняться при записи',
-                    style: TextStyle(
-                        color: AppStyles.adaptiveTextSecondary(context),
-                        fontSize: 12)),
-              ),
-              CarAutocompleteField(
-                label: 'Марка авто',
-                icon: Icons.directions_car_outlined,
-                controller: _brandCtrl,
-                optionsBuilder: (q) => sl<CarCatalogService>().searchBrands(q),
-                onSelected: (brand) {
-                  setState(() => _selectedBrand = brand);
-                  _modelCtrl.clear();
-                },
-              ),
-              const SizedBox(height: 12),
-              CarAutocompleteField(
-                label: 'Модель авто',
-                hint: _selectedBrand == null ? 'Сначала выберите марку' : null,
-                icon: Icons.settings_outlined,
-                controller: _modelCtrl,
-                enabled: _selectedBrand != null,
-                optionsBuilder: (q) {
-                  if (_selectedBrand == null) return [];
-                  return sl<CarCatalogService>()
-                      .searchModels(_selectedBrand!, q);
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _carNumberCtrl,
-                style: TextStyle(
-                    color: AppStyles.adaptiveTextPrimary(context),
-                    letterSpacing: 1.5,
-                    fontWeight: FontWeight.w600),
-                decoration: _plateDecoration(),
-                inputFormatters: [PlateInputFormatter()],
+              const SizedBox(height: 10),
+              if (_primaryCar != null) ...[
+                Container(
+                  decoration: AppStyles.cardDecorationFor(context),
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppStyles.adaptivePrimaryBg(context),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.directions_car_outlined,
+                            color: AppStyles.primary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _primaryCar!.displayName,
+                              style: TextStyle(
+                                color: AppStyles.adaptiveTextPrimary(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (_primaryCar!.number.isNotEmpty)
+                              Text(
+                                _primaryCar!.number,
+                                style: TextStyle(
+                                  color: AppStyles.adaptiveTextSecondary(context),
+                                  fontSize: 13,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppStyles.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('Основное',
+                            style: TextStyle(
+                                color: AppStyles.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Container(
+                decoration: AppStyles.cardDecorationFor(context),
+                child: ListTile(
+                  leading: const Icon(Icons.garage_outlined,
+                      color: AppStyles.primary, size: 22),
+                  title: Text('Мои автомобили',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500)),
+                  subtitle: Text('Управление автомобилями',
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextSecondary(context),
+                          fontSize: 12)),
+                  trailing: Icon(Icons.arrow_forward_ios_rounded,
+                      size: 14, color: AppStyles.adaptiveTextMuted(context)),
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const CarListScreen()),
+                    );
+                    _loadPrimaryCar();
+                  },
+                ),
               ),
               const SizedBox(height: 24),
             ],
@@ -389,16 +429,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding:
             WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 8)),
       ),
-    );
-  }
-
-  InputDecoration _plateDecoration() {
-    final base = AppStyles.inputDecorationFor(context, 'Гос. номер',
-        icon: Icons.pin_outlined);
-    return base.copyWith(
-      helperText: 'Формат: А000АА777',
-      helperStyle: TextStyle(
-          color: AppStyles.adaptiveTextSecondary(context), fontSize: 11),
     );
   }
 

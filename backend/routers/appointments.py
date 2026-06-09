@@ -11,7 +11,7 @@ from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest,
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry,
+    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry, Car,
 )
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -289,6 +289,25 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     # Клиенты и мойщики могут создавать только запланированные записи
     effective_status = req.status if current_user.role == 'admin' else 'scheduled'
 
+    # Если указан carId, валидируем принадлежность и подставляем данные
+    car_model = req.carModel
+    car_number = req.carNumber
+    if req.carId is not None:
+        # Determine the target user for car ownership validation
+        target_user_id = current_user.id
+        if current_user.role == 'admin' and current_user.username != owner_username.lower():
+            target_user_res = await db.execute(select(User).where(User.username == owner_username.lower()))
+            target_user = target_user_res.scalar_one_or_none()
+            if target_user:
+                target_user_id = target_user.id
+
+        car_res = await db.execute(select(Car).where(Car.id == req.carId, Car.userId == target_user_id))
+        car = car_res.scalar_one_or_none()
+        if not car:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Указанный автомобиль не найден или не принадлежит клиенту")
+        car_model = f"{car.brand} {car.model}".strip()
+        car_number = car.number
+
     # Находим свободный бокс
     duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
     box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
@@ -299,8 +318,8 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     appt_data = {
         "id": req.id if req.id else str(uuid.uuid4()),
         "clientName": req.clientName,
-        "carModel": req.carModel,
-        "carNumber": req.carNumber,
+        "carModel": car_model,
+        "carNumber": car_number,
         "dateTime": req.dateTime,
         "washTypeId": req.washTypeId,
         "additionalServices": req.additionalServices,

@@ -14,8 +14,11 @@ import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
 import '../../utils/translit.dart';
 import '../../widgets/car_autocomplete_field.dart';
+import '../../models/car.dart';
+import '../../services/api_service.dart';
 import 'client_shell.dart';
 import '../../core/service_locator.dart';
+import 'car_list_screen.dart';
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
@@ -43,6 +46,9 @@ class _BWState extends State<BookingWizardScreen> {
   late TextEditingController _numCtrl;
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
+
+  List<Car> _cars = [];
+  int? _selectedCarId;
 
   Promo? get _promo => widget.templateAppointment != null ? null : widget.initialPromo;
   bool get _isPromo => _promo != null;
@@ -261,7 +267,32 @@ class _BWState extends State<BookingWizardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initFromProvider();
       _updateBusySlots();
+      _loadCars();
     });
+  }
+
+  Future<void> _loadCars() async {
+    final cars = await sl<ApiService>().getCars();
+    if (mounted) {
+      setState(() {
+        _cars = cars;
+        if (_cars.isNotEmpty) {
+          final primary = _cars.where((c) => c.isPrimary).firstOrNull ?? _cars.first;
+          _selectedCarId = primary.id;
+          // Don't overwrite template appointment car data
+          if (widget.templateAppointment == null) {
+            _applyCarSelection(primary);
+          }
+        }
+      });
+    }
+  }
+
+  void _applyCarSelection(Car car) {
+    _brandCtrl.text = car.brand;
+    _modelCtrl.text = car.model;
+    _selectedBrand = car.brand.isNotEmpty ? car.brand : null;
+    _numCtrl.text = car.number;
   }
 
   void _initFromProvider() {
@@ -334,12 +365,14 @@ class _BWState extends State<BookingWizardScreen> {
 
     final auth = context.read<AuthProvider>();
     final login = auth.userLogin.toLowerCase();
+    final selectedCar = _cars.where((c) => c.id == _selectedCarId).firstOrNull;
     final ok = await context.read<AppointmentProvider>().addAppointment(
         Appointment(
           id: '',
           clientName: _nameCtrl.text.trim(),
           carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
           carNumber: _numCtrl.text.trim().toUpperCase(),
+          carId: selectedCar?.id,
           dateTime: _finalDateTime,
           washTypeId: _washTypeId,
           additionalServices: _extras.toList(),
@@ -446,6 +479,22 @@ class _BWState extends State<BookingWizardScreen> {
                     setState(() => _selectedBrand = brand),
                 numCtrl: _numCtrl,
                 isPromo: _isPromo,
+                cars: _cars,
+                selectedCarId: _selectedCarId,
+                onCarSelected: (carId) {
+                  setState(() {
+                    _selectedCarId = carId;
+                    final car = _cars.where((c) => c.id == carId).firstOrNull;
+                    if (car != null) _applyCarSelection(car);
+                  });
+                },
+                onAddCar: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CarListScreen()),
+                  );
+                  await _loadCars();
+                },
                 onWashTypeChanged: (wt) => setState(() {
                   final oldWt = catalogProvider.washTypeById(_washTypeId);
                   if (oldWt != null) _extras.removeAll(oldWt.includedExtraIds);
@@ -816,6 +865,10 @@ class _ServiceStep extends StatelessWidget {
   final bool isPromo;
   final ValueChanged<WashType> onWashTypeChanged;
   final void Function(String id, bool value) onExtrasChanged;
+  final List<Car> cars;
+  final int? selectedCarId;
+  final ValueChanged<int?> onCarSelected;
+  final VoidCallback onAddCar;
 
   const _ServiceStep(
       {this.scrollCtrl,
@@ -832,7 +885,11 @@ class _ServiceStep extends StatelessWidget {
       required this.numCtrl,
       required this.isPromo,
       required this.onWashTypeChanged,
-      required this.onExtrasChanged});
+      required this.onExtrasChanged,
+      required this.cars,
+      required this.selectedCarId,
+      required this.onCarSelected,
+      required this.onAddCar});
 
   @override
   Widget build(BuildContext context) {
@@ -853,6 +910,65 @@ class _ServiceStep extends StatelessWidget {
               style: AppStyles.headingMedium
                   .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
           const SizedBox(height: 14),
+          if (cars.isNotEmpty) ...[
+            Text('Автомобиль',
+                style: TextStyle(
+                    color: AppStyles.adaptiveTextSecondary(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            Semantics(
+              label: 'Автомобиль',
+              child: Container(
+                decoration: AppStyles.cardDecorationFor(context),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int?>(
+                    isExpanded: true,
+                    value: selectedCarId,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    dropdownColor: AppStyles.adaptiveCard(context),
+                    style: TextStyle(
+                      color: AppStyles.adaptiveTextPrimary(context),
+                      fontSize: 14,
+                    ),
+                    hint: Text('Выберите автомобиль',
+                        style: TextStyle(
+                            color: AppStyles.adaptiveTextMuted(context))),
+                    items: cars.map((car) {
+                      return DropdownMenuItem<int?>(
+                        value: car.id,
+                        child: Text(car.fullDisplay),
+                      );
+                    }).toList(),
+                    onChanged: onCarSelected,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ] else ...[
+            Container(
+              decoration: AppStyles.cardDecorationFor(context),
+              child: ListTile(
+                leading: const Icon(Icons.add_circle_outline_rounded,
+                    color: AppStyles.primary, size: 22),
+                title: Text('Добавить автомобиль',
+                    style: TextStyle(
+                        color: AppStyles.adaptiveTextPrimary(context),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500)),
+                subtitle: Text('Сохраните авто для быстрого выбора',
+                    style: TextStyle(
+                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 12)),
+                trailing: Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: AppStyles.adaptiveTextMuted(context)),
+                onTap: onAddCar,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           TextFormField(
             controller: nameCtrl,
             style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
