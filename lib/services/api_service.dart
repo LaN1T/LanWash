@@ -887,6 +887,22 @@ class ApiService {
     return result.isSuccess;
   }
 
+  Future<List<Shift>> getTodayShifts() async {
+    final result = await ApiClient.get('/shifts/today');
+    return result.when(
+      success: (data) => (data as List<dynamic>).map((e) => Shift.fromMap(e as Map<String, dynamic>)).toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getCurrentShifts() async {
+    final result = await ApiClient.get('/shifts/current');
+    return result.when(
+      success: (data) => (data as List<dynamic>).cast<Map<String, dynamic>>(),
+      failure: (_) => [],
+    );
+  }
+
   // ─── Daily Report ──────────────────────────────────────────────────────────
   Future<DailyReport?> getDailyReport(String date) async {
     final result = await ApiClient.get('/reports/daily/?date=$date');
