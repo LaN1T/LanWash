@@ -279,7 +279,10 @@ class _BWState extends State<BookingWizardScreen> {
         if (_cars.isNotEmpty) {
           final primary = _cars.where((c) => c.isPrimary).firstOrNull ?? _cars.first;
           _selectedCarId = primary.id;
-          _applyCarSelection(primary);
+          // Don't overwrite template appointment car data
+          if (widget.templateAppointment == null) {
+            _applyCarSelection(primary);
+          }
         }
       });
     }
@@ -908,29 +911,38 @@ class _ServiceStep extends StatelessWidget {
                   .copyWith(color: AppStyles.adaptiveTextPrimary(context))),
           const SizedBox(height: 14),
           if (cars.isNotEmpty) ...[
-            Container(
-              decoration: AppStyles.cardDecorationFor(context),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int?>(
-                  isExpanded: true,
-                  value: selectedCarId,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  dropdownColor: AppStyles.adaptiveCard(context),
-                  style: TextStyle(
-                    color: AppStyles.adaptiveTextPrimary(context),
-                    fontSize: 14,
+            Text('Автомобиль',
+                style: TextStyle(
+                    color: AppStyles.adaptiveTextSecondary(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            Semantics(
+              label: 'Автомобиль',
+              child: Container(
+                decoration: AppStyles.cardDecorationFor(context),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int?>(
+                    isExpanded: true,
+                    value: selectedCarId,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    dropdownColor: AppStyles.adaptiveCard(context),
+                    style: TextStyle(
+                      color: AppStyles.adaptiveTextPrimary(context),
+                      fontSize: 14,
+                    ),
+                    hint: Text('Выберите автомобиль',
+                        style: TextStyle(
+                            color: AppStyles.adaptiveTextMuted(context))),
+                    items: cars.map((car) {
+                      return DropdownMenuItem<int?>(
+                        value: car.id,
+                        child: Text(car.fullDisplay),
+                      );
+                    }).toList(),
+                    onChanged: onCarSelected,
                   ),
-                  hint: Text('Выберите автомобиль',
-                      style: TextStyle(
-                          color: AppStyles.adaptiveTextMuted(context))),
-                  items: cars.map((car) {
-                    return DropdownMenuItem<int?>(
-                      value: car.id,
-                      child: Text(car.fullDisplay),
-                    );
-                  }).toList(),
-                  onChanged: onCarSelected,
                 ),
               ),
             ),

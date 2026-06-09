@@ -293,10 +293,18 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     car_model = req.carModel
     car_number = req.carNumber
     if req.carId is not None:
-        car_res = await db.execute(select(Car).where(Car.id == req.carId, Car.userId == current_user.id))
+        # Determine the target user for car ownership validation
+        target_user_id = current_user.id
+        if current_user.role == 'admin' and current_user.username != owner_username.lower():
+            target_user_res = await db.execute(select(User).where(User.username == owner_username.lower()))
+            target_user = target_user_res.scalar_one_or_none()
+            if target_user:
+                target_user_id = target_user.id
+
+        car_res = await db.execute(select(Car).where(Car.id == req.carId, Car.userId == target_user_id))
         car = car_res.scalar_one_or_none()
         if not car:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Указанный автомобиль не найден или не принадлежит вам")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Указанный автомобиль не найден или не принадлежит клиенту")
         car_model = f"{car.brand} {car.model}".strip()
         car_number = car.number
 
