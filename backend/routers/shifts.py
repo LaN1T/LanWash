@@ -28,6 +28,11 @@ def _parse_time(time_str: str) -> bool:
         return False
 
 
+def _time_to_minutes(time_str: str) -> int:
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m
+
+
 @router.get("/", response_model=List[ShiftResponse])
 @limiter.limit("60/minute")
 async def list_shifts(
@@ -46,6 +51,63 @@ async def list_shifts(
     result = await db.execute(stmt)
     shifts = result.scalars().all()
     return shifts
+
+
+@router.get("/today", response_model=List[ShiftResponse])
+@limiter.limit("60/minute")
+async def list_today_shifts(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List confirmed shifts for today."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    stmt = select(Shift).where(
+        and_(Shift.date == today, Shift.status == "confirmed")
+    ).order_by(Shift.startTime.asc())
+    if current_user.role != 'admin':
+        stmt = stmt.where(Shift.userId == current_user.id)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.get("/current", response_model=List[dict])
+@limiter.limit("60/minute")
+async def list_current_shifts(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List washers currently on shift (confirmed, today, within time range)."""
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
+    current_minutes = _time_to_minutes(current_time)
+
+    stmt = select(Shift, User).join(User, Shift.userId == User.id).where(
+        and_(
+            Shift.date == today,
+            Shift.status == "confirmed",
+        )
+    )
+    if current_user.role != 'admin':
+        stmt = stmt.where(Shift.userId == current_user.id)
+
+    result = await db.execute(stmt)
+    on_duty = []
+    for shift, user in result.all():
+        start_m = _time_to_minutes(shift.startTime)
+        end_m = _time_to_minutes(shift.endTime)
+        if start_m <= current_minutes <= end_m:
+            on_duty.append({
+                "shiftId": shift.id,
+                "userId": user.id,
+                "name": user.displayName,
+                "phone": user.phone,
+                "start": shift.startTime,
+                "end": shift.endTime,
+            })
+    return on_duty
 
 
 @router.get("/my", response_model=List[ShiftResponse])
@@ -72,6 +134,8 @@ async def create_shift(
         raise HTTPException(status_code=400, detail="Неверный формат даты")
     if not _parse_time(req.startTime) or not _parse_time(req.endTime):
         raise HTTPException(status_code=400, detail="Неверный формат времени. Ожидается HH:MM")
+    if _time_to_minutes(req.startTime) >= _time_to_minutes(req.endTime):
+        raise HTTPException(status_code=400, detail="Время начала должно быть раньше времени окончания")
 
     user_res = await db.execute(select(User).where(User.id == req.userId))
     target_user = user_res.scalar_one_or_none()
