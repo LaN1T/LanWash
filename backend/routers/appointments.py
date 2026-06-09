@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from typing import Optional
@@ -23,6 +24,13 @@ from core.metrics import appointments_total
 import structlog
 
 logger = structlog.get_logger()
+
+
+async def _send_fcm_bg(tokens: list[str], title: str, body: str, data: dict):
+    try:
+        await fcm_service.send_notification_to_tokens(tokens, title=title, body=body, data=data)
+    except Exception as e:
+        logger.warning("fcm_send_failed", error=str(e))
 
 router = APIRouter(
     prefix="/api/appointments",
@@ -821,12 +829,33 @@ async def get_appointment_qr(
     if not appt:
         raise HTTPException(404, "Запись не найдена")
 
-    assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    try:
+        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    except json.JSONDecodeError:
+        assigned_washers = []
+
     is_owner = current_user.username == appt.ownerUsername
     is_admin = current_user.role == 'admin'
-    is_assigned_washer = current_user.role == 'washer' and current_user.username in assigned_washers
+    is_washer = current_user.role == 'washer'
+    is_assigned_washer = is_washer and current_user.username in assigned_washers
 
-    if not (is_owner or is_admin or is_assigned_washer):
+    # Мойщик может видеть QR записей, которые попадают в его смену
+    is_shift_washer = False
+    if is_washer and not is_assigned_washer:
+        appt_date = appt.dateTime[:10] if appt.dateTime else None
+        appt_time = appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        if appt_date and appt_time:
+            shift_res = await db.execute(
+                select(Shift).where(
+                    Shift.userId == current_user.id,
+                    Shift.date == appt_date,
+                    Shift.startTime <= appt_time,
+                    Shift.endTime >= appt_time,
+                )
+            )
+            is_shift_washer = shift_res.scalar_one_or_none() is not None
+
+    if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к QR-коду этой записи.")
 
     return {"qrData": appt.id}
@@ -840,7 +869,7 @@ async def scan_appointment_qr(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == req.qrData))
+    result = await db.execute(select(Appointment).where(Appointment.id == req.qrData).with_for_update())
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
@@ -848,7 +877,11 @@ async def scan_appointment_qr(
     if appt.status != 'scheduled':
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Некорректный статус записи: {appt.status}")
 
-    assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    try:
+        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    except json.JSONDecodeError:
+        assigned_washers = []
+
     is_admin = current_user.role == 'admin'
     is_assigned_washer = current_user.role == 'washer' and current_user.username in assigned_washers
 
@@ -861,7 +894,7 @@ async def scan_appointment_qr(
     await db.commit()
     appointments_total.labels(status='in_progress').inc()
 
-    # Отправка FCM-уведомления клиенту
+    # Отправка FCM-уведомления клиенту (не блокируем ответ)
     if appt.ownerUsername:
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
         encrypted_tokens = tokens_res.scalars().all()
@@ -873,12 +906,12 @@ async def scan_appointment_qr(
                 except Exception:
                     pass
             if client_tokens:
-                await fcm_service.send_notification_to_tokens(
+                asyncio.create_task(_send_fcm_bg(
                     client_tokens,
                     title="Начало обслуживания",
                     body="Мойка началась",
                     data={"type": "appointment_updated", "id": appt.id},
-                )
+                ))
 
     # Логирование действия
     db.add(LogEntry(

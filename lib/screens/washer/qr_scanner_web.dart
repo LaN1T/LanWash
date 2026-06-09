@@ -12,13 +12,19 @@ class QrScannerBody extends StatefulWidget {
 
 class _QrScannerWebBodyState extends State<QrScannerBody> {
   final _controller = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> _onSearch() async {
     final code = _controller.text.trim();
-    if (code.isEmpty) return;
+    if (code.isEmpty || _isLoading) return;
+    setState(() => _isLoading = true);
+
     final apiService = ApiService();
     final appointment = await apiService.scanQrCode(code);
+
     if (!mounted) return;
+    setState(() => _isLoading = false);
+
     if (appointment == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -43,60 +49,73 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.qr_code_scanner,
-            size: 80,
-            color: AppStyles.adaptiveTextSecondary(context).withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Сканер QR недоступен в браузере',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppStyles.adaptiveTextPrimary(context),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Введите ID записи вручную',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppStyles.adaptiveTextSecondary(context),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _controller,
-            decoration: InputDecoration(
-              hintText: 'ID записи',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.qr_code_scanner,
+                size: 80,
+                color: AppStyles.adaptiveTextSecondary(context).withValues(alpha: 0.4),
               ),
-              onPressed: _onSearch,
-              child: const Text('Найти'),
-            ),
+              const SizedBox(height: 24),
+              Text(
+                'Сканер QR недоступен в браузере',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppStyles.adaptiveTextPrimary(context),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Введите ID записи вручную',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppStyles.adaptiveTextSecondary(context),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _controller,
+                enabled: !_isLoading,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _onSearch(),
+                decoration: InputDecoration(
+                  hintText: 'ID записи',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isLoading ? null : _onSearch,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Найти'),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

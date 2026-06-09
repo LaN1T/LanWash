@@ -232,6 +232,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                   data: appointmentId,
                   size: 220,
                   backgroundColor: Colors.white,
+                  semanticsLabel: 'QR-код записи на мойку',
                 ),
               ),
               const SizedBox(height: 16),

@@ -104,3 +104,25 @@ async def client_token(async_client):
     })
     assert response.status_code == 200
     return response.json()["access_token"]
+
+
+@pytest_asyncio.fixture
+async def other_washer_token(async_client, db_session):
+    """Токен другого мойщика (не назначенного на записи)."""
+    from services.auth_service import get_password_hash
+    user = User(
+        username="other_washer",
+        passwordHash=get_password_hash("TestPass123!"),
+        role="washer",
+        displayName="Other Washer",
+        createdAt=datetime.now().isoformat(),
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    response = await async_client.post("/api/auth/login", json={
+        "username": "other_washer",
+        "password": "TestPass123!",
+    })
+    assert response.status_code == 200
+    return response.json()["access_token"]
