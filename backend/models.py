@@ -324,7 +324,6 @@ class ReviewCreateRequest(BaseModel):
     rating: int = Field(default=5, ge=1, le=5)
     comment: str = Field(default="", max_length=2000)
     appointmentId: Optional[str] = None
-    idempotencyKey: Optional[str] = Field(default=None, max_length=100)
 
 
 class ReviewResponse(BaseModel):

@@ -41,7 +41,6 @@ class _ReviewCreateScreenState extends State<ReviewCreateScreen> {
       rating: _rating,
       comment: _commentController.text.trim(),
       appointmentId: widget.appointmentId,
-      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
     if (!mounted) return;
