@@ -21,6 +21,7 @@ import '../models/referral.dart';
 import '../models/tip.dart';
 import '../models/subscription.dart';
 import '../models/admin_dashboard.dart';
+import '../models/consumable_forecast.dart';
 import '../models/forecast.dart';
 
 class PaginatedAppointments {
@@ -749,6 +750,14 @@ class ApiService {
     final result = await ApiClient.get('/consumables/$id/forecast');
     return result.when(
       success: (data) => ConsumableForecast.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<InventoryForecastResponse?> getInventoryForecast() async {
+    final result = await ApiClient.get('/consumables/forecast');
+    return result.when(
+      success: (data) => InventoryForecastResponse.fromMap(data),
       failure: (_) => null,
     );
   }
