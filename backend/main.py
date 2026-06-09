@@ -17,6 +17,7 @@ from core.config import get_settings
 from core.logging import configure_logging
 from core.metrics import update_business_metrics
 from core.background import get_arq_pool, close_arq_pool
+from tasks import check_inventory_forecast
 from core.request_id import RequestIdMiddleware, get_request_id
 from core.security_headers import SecurityHeadersMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -85,6 +86,10 @@ async def lifespan(app: FastAPI):
         arq_pool = await get_arq_pool()
         app.state.arq_pool = arq_pool
         await arq_pool.enqueue_job("update_metrics", _defer_by=30)
+        try:
+            await arq_pool.enqueue_job("check_inventory_forecast", _defer_by=3600)
+        except Exception as e:
+            logger.warning("inventory_task_schedule_failed", error=str(e))
     except Exception as e:
         logger.warning("arq_pool_initialization_failed", error=str(e))
         app.state.arq_pool = None

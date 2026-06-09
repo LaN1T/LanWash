@@ -28,8 +28,44 @@ async def update_metrics(ctx):
     return True
 
 
+async def check_inventory_forecast(ctx, db=None):
+    """Check inventory forecast and log alerts for critical items."""
+    from services.inventory_forecast_service import generate_inventory_forecast
+    from database import AsyncSessionLocal
+
+    session = db
+    opened_session = False
+    if session is None:
+        session = AsyncSessionLocal()
+        opened_session = True
+
+    try:
+        forecast = await generate_inventory_forecast(session)
+        alerts = []
+        for item in forecast.items:
+            if item.status == "critical":
+                logger.warning(
+                    "inventory_critical_alert",
+                    consumable_id=item.consumable_id,
+                    name=item.name,
+                    days_until_low=item.days_until_low,
+                )
+                alerts.append(
+                    {
+                        "consumable_id": item.consumable_id,
+                        "name": item.name,
+                        "days_until_low": item.days_until_low,
+                        "status": item.status,
+                    }
+                )
+        return {"checked": len(forecast.items), "alerts": alerts}
+    finally:
+        if opened_session:
+            await session.close()
+
+
 class WorkerSettings:
     """ARQ worker configuration."""
 
-    functions = [send_notification, update_metrics]
+    functions = [send_notification, update_metrics, check_inventory_forecast]
     redis_settings = REDIS_SETTINGS
