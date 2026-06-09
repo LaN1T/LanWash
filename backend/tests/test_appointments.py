@@ -282,3 +282,126 @@ class TestAppointments:
             headers={"Authorization": f"Bearer {client_token}"},
         )
         assert check_resp.json()["hasNotification"] is False
+
+    @pytest.mark.asyncio
+    async def test_auto_assign_washer_on_create(self, async_client, db_session, admin_token):
+        """When creating an appointment without washer, auto-assign from shift."""
+        from datetime import datetime, timedelta
+        from db_models import User, Shift
+
+        # Create a washer with a confirmed shift for today
+        washer = User(
+            username="auto_washer",
+            passwordHash="fakehash",
+            role="washer",
+            displayName="Auto Washer",
+            createdAt=datetime.now().isoformat(),
+        )
+        db_session.add(washer)
+        await db_session.commit()
+        await db_session.refresh(washer)
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        shift = Shift(
+            userId=washer.id,
+            date=today,
+            startTime="00:00",
+            endTime="23:59",
+            status="confirmed",
+            createdBy="admin",
+            createdAt=datetime.now().isoformat(),
+            updatedAt=datetime.now().isoformat(),
+        )
+        db_session.add(shift)
+        await db_session.commit()
+
+        # Create appointment without assignedWasher
+        dt = (datetime.now() + timedelta(hours=1)).isoformat()
+        resp = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "id": "auto_assign_appt",
+                "clientName": "Тест Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": dt,
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "status": "scheduled",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 1000,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 1000,
+                "assignedWasher": "[]",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["assignedWasher"] == '["auto_washer"]'
+
+    @pytest.mark.asyncio
+    async def test_auto_assign_respects_admin_override(self, async_client, db_session, admin_token):
+        """Admin-specified washer is not overwritten by auto-assign."""
+        from datetime import datetime, timedelta
+        from db_models import User, Shift
+
+        washer = User(
+            username="auto_washer2",
+            passwordHash="fakehash",
+            role="washer",
+            displayName="Auto Washer 2",
+            createdAt=datetime.now().isoformat(),
+        )
+        db_session.add(washer)
+        await db_session.commit()
+        await db_session.refresh(washer)
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        shift = Shift(
+            userId=washer.id,
+            date=today,
+            startTime="00:00",
+            endTime="23:59",
+            status="confirmed",
+            createdBy="admin",
+            createdAt=datetime.now().isoformat(),
+            updatedAt=datetime.now().isoformat(),
+        )
+        db_session.add(shift)
+        await db_session.commit()
+
+        dt = (datetime.now() + timedelta(hours=2)).isoformat()
+        resp = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "id": "manual_assign_appt",
+                "clientName": "Тест Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": dt,
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "status": "scheduled",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 1000,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 1000,
+                "assignedWasher": '["washer_test"]',
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Admin-specified washer should be preserved
+        assert data["assignedWasher"] == '["washer_test"]'
