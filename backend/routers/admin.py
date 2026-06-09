@@ -6,13 +6,17 @@ from db_models import Appointment, User, Review
 from models import (
     DashboardResponse, BulkAssignWasherRequest, BulkCancelRequest,
     BulkUpdateStatusRequest, BulkResult, UserListResponse, UserListItem,
+    ForecastResponse,
 )
 from typing import Optional
 from services.auth_service import check_roles
+from services.forecast_service import generate_forecast
 from core.limiter import limiter
+from core.redis_client import get_redis
 from datetime import datetime, timedelta
 from collections import defaultdict
 import json
+import json as _json
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -221,6 +225,41 @@ async def admin_dashboard(
         topWashers=top_washers,
         topClients=top_clients,
     )
+
+
+# ─── Workload Forecast ───────────────────────────────────────────────────────
+@router.get("/forecast", response_model=ForecastResponse)
+@limiter.limit("60/minute")
+async def get_forecast(
+    request: Request,
+    days: int = 7,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    if days < 1 or days > 14:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 14")
+
+    cache_key = f"forecast:{days}"
+    try:
+        redis = get_redis()
+        if redis:
+            cached = await redis.get(cache_key)
+            if cached:
+                data = _json.loads(cached)
+                return ForecastResponse(**data)
+    except Exception:
+        pass
+
+    forecast = await generate_forecast(db, days=days)
+
+    try:
+        redis = get_redis()
+        if redis:
+            await redis.setex(cache_key, 3600, _json.dumps(forecast.model_dump()))
+    except Exception:
+        pass
+
+    return forecast
 
 
 # ─── Bulk Operations ────────────────────────────────────────────────────────
