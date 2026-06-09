@@ -305,13 +305,18 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => ReviewCreateScreen(appointmentId: appointmentId),
                       ),
                     );
+                    if (mounted) {
+                      setState(() {
+                        _hasReviewFuture = context.read<ApiService>().hasReviewForAppointment(appointmentId);
+                      });
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,

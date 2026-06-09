@@ -91,7 +91,6 @@ class TestReviews:
             headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "userId": user["id"],
-                "userName": user["displayName"],
                 "rating": 5,
                 "comment": "Отличная мойка!",
                 "appointmentId": "appt_review_1",
@@ -117,7 +116,6 @@ class TestReviews:
             headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "userId": user["id"],
-                "userName": user["displayName"],
                 "rating": 4,
                 "comment": "Хорошо",
                 "appointmentId": "appt_review_2",
@@ -163,7 +161,6 @@ class TestReviews:
             headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "userId": user["id"],
-                "userName": user["displayName"],
                 "rating": 5,
                 "comment": "Отлично",
                 "appointmentId": "appt_review_3",
@@ -180,7 +177,6 @@ class TestReviews:
             headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "userId": user["id"],
-                "userName": user["displayName"],
                 "rating": 3,
                 "comment": "Нормально",
             },
@@ -199,7 +195,6 @@ class TestReviews:
             headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "userId": user["id"],
-                "userName": user["displayName"],
                 "rating": 5,
                 "comment": "Супер",
             },
@@ -295,7 +290,6 @@ class TestReviews:
             headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "userId": user["id"],
-                "userName": "Spoofed Name",
                 "rating": 5,
                 "comment": "Тест подмены имени",
             },

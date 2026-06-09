@@ -892,14 +892,12 @@ class ApiService {
     required int rating,
     required String comment,
     String? appointmentId,
-    String? idempotencyKey,
   }) async {
     final result = await ApiClient.post('/reviews/', body: {
       'userId': userId,
       'rating': rating,
       'comment': comment,
       if (appointmentId != null) 'appointmentId': appointmentId,
-      if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
     });
     return result.isSuccess;
   }
