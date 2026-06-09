@@ -120,7 +120,7 @@ async def generate_inventory_forecast(
 
         if days_until_low is not None and days_until_low <= 3:
             status = "critical"
-        elif days_until_low is not None and days_until_low <= 30:
+        elif days_until_low is not None and days_until_low <= 7:
             status = "warning"
         else:
             status = "ok"
