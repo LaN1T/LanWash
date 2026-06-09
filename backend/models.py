@@ -536,3 +536,24 @@ class BulkResult(BaseModel):
     processed: int
     failed: int
     errors: List[str] = []
+
+
+# ─── User Search ─────────────────────────────────────────────────────────────
+class UserListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    role: str
+    displayName: str
+    phone: str
+    carModel: str
+    carNumber: str
+    avatarUrl: str = ""
+    createdAt: str
+    referralCode: Optional[str] = None
+
+
+class UserListResponse(BaseModel):
+    items: List[UserListItem]
+    total: int

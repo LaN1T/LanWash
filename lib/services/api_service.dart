@@ -151,8 +151,9 @@ class ApiService {
           try {
             appointments.add(Appointment.fromMap(item as Map<String, dynamic>));
           } catch (e, st) {
-            if (kDebugMode)
+            if (kDebugMode) {
               debugPrint('getAppointments parse error: $e | item: $item');
+            }
             if (kDebugMode) debugPrint('Stack: $st');
           }
         }
@@ -178,7 +179,9 @@ class ApiService {
         if (uniqueDatesHeader != null && uniqueDatesHeader.isNotEmpty) {
           try {
             uniqueDates = List<String>.from(jsonDecode(uniqueDatesHeader));
-          } catch (e) {}
+          } catch (e) {
+            // ignore: empty_catches
+          }
         }
 
         return PaginatedAppointments(
@@ -190,9 +193,10 @@ class ApiService {
         );
       },
       failure: (err) {
-        if (kDebugMode)
+        if (kDebugMode) {
           debugPrint(
               'getAppointments failure: ${err.message} (code: ${err.statusCode})');
+        }
         return PaginatedAppointments(
             appointments: [],
             totalPages: 1,
@@ -927,7 +931,7 @@ class ApiService {
       'washerUsername': washerUsername,
     });
     return result.when(
-      success: (data) => data as Map<String, dynamic>,
+      success: (data) => data,
       failure: (_) => null,
     );
   }
@@ -938,7 +942,7 @@ class ApiService {
       'reason': reason,
     });
     return result.when(
-      success: (data) => data as Map<String, dynamic>,
+      success: (data) => data,
       failure: (_) => null,
     );
   }
@@ -949,7 +953,7 @@ class ApiService {
       'status': status,
     });
     return result.when(
-      success: (data) => data as Map<String, dynamic>,
+      success: (data) => data,
       failure: (_) => null,
     );
   }
@@ -1096,6 +1100,21 @@ class ApiService {
     final result = await ApiClient.get('/tips/stats');
     return result.when(
       success: (data) => TipStats.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<Map<String, dynamic>?> searchUsers({String? q, String? role, int limit = 20, int offset = 0}) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+    };
+    if (q != null && q.isNotEmpty) params['q'] = q;
+    if (role != null && role.isNotEmpty) params['role'] = role;
+    final query = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    final result = await ApiClient.get('/admin/users?$query');
+    return result.when(
+      success: (data) => data,
       failure: (_) => null,
     );
   }
