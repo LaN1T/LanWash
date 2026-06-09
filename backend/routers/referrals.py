@@ -116,7 +116,7 @@ async def claim_rewards(
         select(Referral).where(
             Referral.referrerId == current_user.id,
             Referral.rewardClaimed == False,
-        )
+        ).with_for_update()
     )
     unclaimed = result.scalars().all()
 

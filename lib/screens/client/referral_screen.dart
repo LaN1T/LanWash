@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/referral.dart';
+import '../../providers/language_provider.dart';
 import '../../services/api_service.dart';
 
 class ReferralScreen extends StatefulWidget {
@@ -46,13 +47,14 @@ class _ReferralScreenState extends State<ReferralScreen> {
     if (!mounted) return;
     setState(() => _claiming = false);
 
+    final lang = context.read<LanguageProvider>();
     if (claimed != null && claimed > 0) {
-      _showSnack('Награды получены: $claimed');
+      _showSnack(lang.tr('referral_snack_rewards').replaceAll('{count}', '$claimed'));
       await _loadData();
     } else if (claimed == 0) {
-      _showSnack('Нет доступных наград');
+      _showSnack(lang.tr('referral_snack_no_rewards'));
     } else {
-      _showSnack('Ошибка получения наград', isError: true);
+      _showSnack(lang.tr('referral_snack_error'), isError: true);
     }
   }
 
@@ -65,11 +67,12 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   void _copyCode(String code) {
     Clipboard.setData(ClipboardData(text: code));
-    _showSnack('Код скопирован');
+    _showSnack(context.read<LanguageProvider>().tr('referral_snack_copied'));
   }
 
   void _shareCode(String code) {
-    Share.share('Запишись на мойку в LanWash! Мой код: $code');
+    final lang = context.read<LanguageProvider>();
+    Share.share(lang.tr('referral_share_text').replaceAll('{code}', code));
   }
 
   @override
@@ -85,8 +88,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: const Text('Реферальная программа',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        title: Text(context.read<LanguageProvider>().tr('referral_title'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
       ),
       body: _loading
           ? const Center(
@@ -114,15 +117,16 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
   Widget _buildCodeCard() {
     final code = _stats?.referralCode ?? '';
+    final lang = context.read<LanguageProvider>();
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: AppStyles.primaryCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'Ваш реферальный код',
-            style: TextStyle(
+          Text(
+            lang.tr('referral_your_code'),
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -136,13 +140,16 @@ class _ReferralScreenState extends State<ReferralScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             ),
-            child: Text(
-              code.isEmpty ? '—' : code,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
+            child: Semantics(
+              label: '${lang.tr('referral_your_code')}: $code',
+              child: Text(
+                code.isEmpty ? '—' : code,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
               ),
             ),
           ),
@@ -153,8 +160,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 child: OutlinedButton.icon(
                   onPressed: code.isEmpty ? null : () => _copyCode(code),
                   icon: const Icon(Icons.copy, size: 18, color: Colors.white),
-                  label: const Text('Копировать',
-                      style: TextStyle(color: Colors.white)),
+                  label: Text(lang.tr('referral_copy'),
+                      style: const TextStyle(color: Colors.white)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.white54),
                     shape: RoundedRectangleBorder(
@@ -168,7 +175,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 child: ElevatedButton.icon(
                   onPressed: code.isEmpty ? null : () => _shareCode(code),
                   icon: const Icon(Icons.share, size: 18),
-                  label: const Text('Поделиться'),
+                  label: Text(lang.tr('referral_share')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppStyles.primary,
@@ -189,23 +196,24 @@ class _ReferralScreenState extends State<ReferralScreen> {
   Widget _buildStatsCard() {
     final stats = _stats;
     if (stats == null) return const SizedBox.shrink();
+    final lang = context.read<LanguageProvider>();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppStyles.cardDecorationFor(context),
       child: Row(
         children: [
-          _statItem('${stats.totalReferrals}', 'Приглашено'),
+          _statItem('${stats.totalReferrals}', lang.tr('referral_invited')),
           Container(
               width: 1,
               height: 32,
               color: AppStyles.adaptiveBorder(context)),
-          _statItem('${stats.claimedRewards}', 'Награды получено'),
+          _statItem('${stats.claimedRewards}', lang.tr('referral_rewards_claimed')),
           Container(
               width: 1,
               height: 32,
               color: AppStyles.adaptiveBorder(context)),
-          _statItem('${stats.pendingRewards}', 'Ожидают',
+          _statItem('${stats.pendingRewards}', lang.tr('referral_pending'),
               color: stats.pendingRewards > 0 ? AppStyles.warning : null),
         ],
       ),
@@ -231,6 +239,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
       );
 
   Widget _buildClaimButton() {
+    final lang = context.read<LanguageProvider>();
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -242,13 +251,14 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2))
             : const Icon(Icons.card_giftcard, size: 18),
-        label: Text(_claiming ? 'Получение...' : 'Получить награды'),
+        label: Text(_claiming ? lang.tr('referral_claiming') : lang.tr('referral_claim_button')),
         style: AppStyles.goldButton,
       ),
     );
   }
 
   Widget _buildReferralsList() {
+    final lang = context.read<LanguageProvider>();
     if (_referrals.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -259,7 +269,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 size: 40, color: AppStyles.adaptiveTextMuted(context)),
             const SizedBox(height: 12),
             Text(
-              'Вы ещё никого не пригласили',
+              lang.tr('referral_empty_title'),
               style: TextStyle(
                 color: AppStyles.adaptiveTextSecondary(context),
                 fontSize: 14,
@@ -268,7 +278,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Поделитесь кодом с друзьями, чтобы получить награды',
+              lang.tr('referral_empty_subtitle'),
               style: TextStyle(
                 color: AppStyles.adaptiveTextMuted(context),
                 fontSize: 12,
@@ -284,7 +294,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Приглашённые друзья',
+          lang.tr('referral_list_title'),
           style: TextStyle(
             color: AppStyles.adaptiveTextSecondary(context),
             fontSize: 11,
@@ -324,7 +334,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          DateFormat('d MMM yyyy', 'ru').format(r.createdAt),
+                          DateFormat('d MMM yyyy', lang.langCode).format(r.createdAt),
                           style: TextStyle(
                             fontSize: 11,
                             color: AppStyles.adaptiveTextSecondary(context),
@@ -343,7 +353,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      r.rewardClaimed ? 'Получено' : 'Ожидает',
+                      r.rewardClaimed ? lang.tr('referral_reward_claimed') : lang.tr('referral_reward_pending'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
