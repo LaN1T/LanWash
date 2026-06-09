@@ -7,7 +7,7 @@ from core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_, and_
 from database import get_db
-from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest, QrScanRequest
+from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest, QrScanRequest, LateReportRequest, CancelReasonRequest
 from db_models import (
     Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
     ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
@@ -922,6 +922,124 @@ async def scan_appointment_qr(
                 ))
 
     await db.refresh(appt)
+    return appt
+
+
+@router.post("/{appointment_id}/late", response_model=AppointmentResponse)
+@limiter.limit("10/minute")
+async def report_late(
+    request: Request,
+    appointment_id: str,
+    req: LateReportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt.ownerUsername:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только владелец может сообщить об опоздании.")
+    if appt.status != 'scheduled':
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно сообщить об опоздании только для запланированной записи.")
+
+    appt.late_minutes = req.minutes
+    await db.commit()
+    await db.refresh(appt)
+
+    # Логирование
+    db.add(LogEntry(
+        username=current_user.username,
+        action="report_late",
+        details=f"Клиент сообщил об опоздании на {req.minutes} мин для записи {appt.id}",
+        timestamp=datetime.now().isoformat(),
+    ))
+    await db.commit()
+
+    # FCM-уведомление админам (не блокируем ответ)
+    admin_tokens_res = await db.execute(
+        select(FcmToken.token).join(User, FcmToken.username == User.username).where(User.role == 'admin')
+    )
+    encrypted_tokens = admin_tokens_res.scalars().all()
+    if encrypted_tokens:
+        tokens = []
+        for t in encrypted_tokens:
+            try:
+                tokens.append(decrypt_token(t))
+            except Exception:
+                pass
+        if tokens:
+            asyncio.create_task(_send_fcm_bg(
+                tokens,
+                title="Оповещение об опоздании",
+                body=f"Клиент {appt.clientName} опаздывает на {req.minutes} мин",
+                data={"type": "appointment_updated", "id": appt.id},
+            ))
+
+    return appt
+
+
+@router.post("/{appointment_id}/cancel-reason", response_model=AppointmentResponse)
+@limiter.limit("10/minute")
+async def cancel_with_reason(
+    request: Request,
+    appointment_id: str,
+    req: CancelReasonRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+    if current_user.username != appt.ownerUsername:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только владелец может отменить запись с указанием причины.")
+    if appt.status not in ('scheduled', 'in_progress'):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно отменить только запланированную или текущую запись.")
+
+    appt.cancel_reason = req.reason
+    appt.status = 'cancelled'
+    await db.commit()
+    await db.refresh(appt)
+    appointments_total.labels(status='cancelled').inc()
+
+    # Логирование
+    db.add(LogEntry(
+        username=current_user.username,
+        action="cancel_with_reason",
+        details=f"Запись {appt.id} отменена. Причина: {req.reason}",
+        timestamp=datetime.now().isoformat(),
+    ))
+    await db.commit()
+
+    # FCM-уведомление назначенным мойщикам и админам (не блокируем ответ)
+    try:
+        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    except json.JSONDecodeError:
+        assigned_washers = []
+
+    target_usernames = set(assigned_washers)
+    target_usernames.add('admin')
+
+    tokens_res = await db.execute(
+        select(FcmToken.token).where(FcmToken.username.in_(list(target_usernames)))
+    )
+    encrypted_tokens = tokens_res.scalars().all()
+    if encrypted_tokens:
+        tokens = []
+        for t in encrypted_tokens:
+            try:
+                tokens.append(decrypt_token(t))
+            except Exception:
+                pass
+        if tokens:
+            asyncio.create_task(_send_fcm_bg(
+                tokens,
+                title="Запись отменена",
+                body=f"Запись отменена: {req.reason}",
+                data={"type": "appointment_updated", "id": appt.id},
+            ))
+
     return appt
 
 

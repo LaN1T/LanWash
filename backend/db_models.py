@@ -64,6 +64,8 @@ class Appointment(Base):
     assignedWasher = Column(String, nullable=False, default='[]')
     promoId = Column(String, ForeignKey('promos.id'), nullable=True)
     box_index = Column(Integer, nullable=False, default=0)
+    late_minutes = Column(Integer, nullable=False, default=0)
+    cancel_reason = Column(String, nullable=False, default='')
 
 class Service(Base):
     __tablename__ = 'services'

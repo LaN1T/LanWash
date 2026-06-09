@@ -154,6 +154,36 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
               const SizedBox(height: 20),
             ],
             if (a.status == 'scheduled') ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text('Опаздываю на',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [15, 30, 60].map((minutes) {
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: minutes == 60 ? 0 : 8),
+                        child: ActionChip(
+                          avatar: const Icon(Icons.timer, size: 18),
+                          label: Text('$minutes мин'),
+                          onPressed: () => _confirmLate(
+                              context, appointmentProvider, auth, a.id, minutes),
+                          backgroundColor:
+                              AppStyles.warning.withValues(alpha: 0.15),
+                          side: BorderSide(
+                              color: AppStyles.warning.withValues(alpha: 0.4)),
+                          labelStyle: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: SizedBox(
@@ -179,7 +209,7 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () => _confirmCancel(
+                    onPressed: () => _showCancelBottomSheet(
                         context, appointmentProvider, auth, a.id),
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Отменить запись',
@@ -265,35 +295,130 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
     );
   }
 
-  void _confirmCancel(BuildContext context, AppointmentProvider provider,
-      AuthProvider auth, String id) {
+  void _confirmLate(BuildContext context, AppointmentProvider provider,
+      AuthProvider auth, String id, int minutes) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Отменить запись?'),
-        content: const Text('Это действие нельзя будет отменить.'),
+        title: const Text('Сообщить об опоздании?'),
+        content: Text('Вы уверены, что опаздываете на $minutes минут?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx), child: const Text('Назад')),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final ok = await provider.cancelAppointment(id, auth);
+              final ok = await provider.reportLate(id, minutes, auth);
               if (ok && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Запись отменена'),
+                  SnackBar(
+                      content: Text('Администратор уведомлён об опоздании на $minutes мин'),
                       backgroundColor: AppStyles.success),
+                );
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Не удалось сообщить об опоздании'),
+                      backgroundColor: AppStyles.danger),
                 );
               }
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.danger,
+                backgroundColor: AppStyles.warning,
                 foregroundColor: Colors.white),
-            child: const Text('Отменить'),
+            child: const Text('Подтвердить'),
           ),
         ],
       ),
+    );
+  }
+
+  void _showCancelBottomSheet(BuildContext context,
+      AppointmentProvider provider, AuthProvider auth, String id) {
+    final controller = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottom),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Отмена записи',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Укажите причину отмены (до 500 символов):',
+                      style: TextStyle(fontSize: 14)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    maxLines: 3,
+                    maxLength: 500,
+                    decoration: InputDecoration(
+                      hintText: 'Причина отмены',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.all(12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Подтвердить отмену'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppStyles.danger,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        final reason = controller.text.trim();
+                        if (reason.isEmpty) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('Укажите причину отмены')),
+                          );
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        final ok =
+                            await provider.cancelWithReason(id, reason, auth);
+                        if (ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Запись отменена'),
+                                backgroundColor: AppStyles.success),
+                          );
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Не удалось отменить запись'),
+                                backgroundColor: AppStyles.danger),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
