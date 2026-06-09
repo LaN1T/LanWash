@@ -24,10 +24,15 @@ async def get_all(request: Request, limit: int = Query(default=200, ge=1, le=100
 
 @router.get("/by-user/{username}", response_model=list[LogResponse])
 @limiter.limit("60/minute")
-async def get_by_user(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_user(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к логам этого пользователя.")
-    result = await db.execute(select(LogEntry).where(LogEntry.username == username.lower()).order_by(LogEntry.timestamp.desc()))
+    result = await db.execute(
+        select(LogEntry)
+        .where(LogEntry.username == username.lower())
+        .order_by(LogEntry.timestamp.desc())
+        .limit(limit)
+    )
     return result.scalars().all()
 
 @router.post("/", response_model=LogResponse)

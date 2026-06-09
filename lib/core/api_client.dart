@@ -73,7 +73,7 @@ class ApiClient {
       }
     }
     if (status != null) buf.write(' | status: $status');
-    debugPrint(buf.toString());
+    if (kDebugMode) debugPrint(buf.toString());
   }
 
   // ─── HTTP Methods ──────────────────────────────────────────────────────────

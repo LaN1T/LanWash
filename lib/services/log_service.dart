@@ -29,7 +29,7 @@ class LogService {
     try {
       await _api.createLog(username.toLowerCase(), action, details);
     } catch (e) {
-      debugPrint('[LogService] Ошибка записи лога: $e');
+      if (kDebugMode) debugPrint('[LogService] Ошибка записи лога: $e');
     }
   }
 
