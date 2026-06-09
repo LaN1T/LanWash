@@ -1,5 +1,7 @@
 import pytest
 import json
+from sqlalchemy import select
+from db_models import User
 
 
 class TestQrScanner:
@@ -187,3 +189,30 @@ class TestQrScanner:
             json={"qrData": "qr_appt_9"},
         )
         assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_qr_endpoint_shift_washer(self, async_client, admin_token, washer_token, db_session):
+        """Мойщик с сменой, покрывающей время записи, может получить QR."""
+        await self._create_appointment(
+            async_client, admin_token, "qr_appt_shift", "2099-05-10T10:00:00",
+            owner="client_test", assigned_washer=None
+        )
+        result = await db_session.execute(select(User).where(User.username == "washer_test"))
+        washer_user = result.scalar_one()
+        shift_resp = await async_client.post(
+            "/api/shifts/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "userId": washer_user.id,
+                "date": "2099-05-10",
+                "startTime": "09:00",
+                "endTime": "11:00",
+            },
+        )
+        assert shift_resp.status_code == 201
+        resp = await async_client.get(
+            "/api/appointments/qr_appt_shift/qr",
+            headers={"Authorization": f"Bearer {washer_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["qrData"] == "qr_appt_shift"
