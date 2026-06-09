@@ -4,6 +4,7 @@ import '../../app_styles.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
+import '../../providers/support_provider.dart';
 import '../shared/profile_screen.dart';
 import 'appointments_screen.dart';
 import 'services_screen.dart';
@@ -21,6 +22,7 @@ import 'reviews_moderation_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'client_search_screen.dart';
 import 'inventory_forecast_screen.dart';
+import 'support_tickets_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -290,6 +292,32 @@ class _HomeShellState extends State<HomeShell> {
                       ctx,
                       MaterialPageRoute(
                           builder: (_) => const ReviewsModerationScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          // Поддержка
+          if (auth.isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: Badge(
+                  isLabelVisible: context.watch<SupportProvider>().unreadAdminCount > 0,
+                  label: Text('${context.watch<SupportProvider>().unreadAdminCount}'),
+                  backgroundColor: AppStyles.danger,
+                  child: Icon(Icons.support_agent,
+                      color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                ),
+                title: Text('Поддержка',
+                    style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const SupportTicketsScreen()));
                 },
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),

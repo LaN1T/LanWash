@@ -6,12 +6,14 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../providers/support_provider.dart';
 import '../../services/notification_service.dart'; // Add this
 import '../shared/profile_screen.dart';
 import 'settings_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
+import 'support_chats_screen.dart';
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
@@ -224,6 +226,29 @@ class _ClientShellState extends State<ClientShell> {
 
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
+          // Чат с поддержкой
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Badge(
+                isLabelVisible: context.watch<SupportProvider>().unreadClientCount > 0,
+                label: Text('${context.watch<SupportProvider>().unreadClientCount}'),
+                backgroundColor: AppStyles.danger,
+                child: Icon(Icons.support_agent_outlined,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              ),
+              title: Text('Чат с поддержкой',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const SupportChatsScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
           // Профиль
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

@@ -14,6 +14,7 @@ import 'providers/appointment_provider.dart';
 import 'providers/catalog_provider.dart';
 import 'providers/note_provider.dart';
 import 'providers/favorite_provider.dart';
+import 'providers/support_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
 import 'services/api_service.dart';
@@ -40,8 +41,10 @@ void main() async {
   // Web не поддерживает App Check без reCAPTCHA, пропускаем
   if (!kIsWeb) {
     await FirebaseAppCheck.instance.activate(
+      // ignore: deprecated_member_use
       androidProvider:
           kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+      // ignore: deprecated_member_use
       appleProvider: kReleaseMode
           ? AppleProvider.deviceCheck
           : AppleProvider.appAttestWithDeviceCheckFallback,
@@ -81,6 +84,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => FavoriteProvider(api: sl<ApiService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => SupportProvider(),
         ),
       ],
       child: const LanWashApp(),

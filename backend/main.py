@@ -288,10 +288,36 @@ from sqlalchemy import select
 from db_models import SupportChat
 import json
 
+_ws_attempts: dict[str, list[float]] = {}
+
 
 @app.websocket("/ws/support/chats/{chat_id}")
 async def support_chat_websocket(websocket: WebSocket, chat_id: int):
-    token = websocket.query_params.get("token")
+    ip = websocket.client.host if websocket.client else None
+    if ip:
+        now = time.time()
+        attempts = [t for t in _ws_attempts.get(ip, []) if now - t < 60]
+        if len(attempts) >= 20:
+            await websocket.close(code=1008)
+            return
+        attempts.append(now)
+        _ws_attempts[ip] = attempts
+
+    await websocket.accept()
+
+    token = None
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+        data = json.loads(raw)
+        if data.get("type") == "auth":
+            token = data.get("token")
+    except asyncio.TimeoutError:
+        await websocket.close(code=1008)
+        return
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
     if not token:
         await websocket.close(code=1008)
         return
@@ -325,7 +351,6 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int):
             pass
         return
 
-    await websocket.accept()
     connect(chat_id, websocket, current_user.id)
 
     heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))

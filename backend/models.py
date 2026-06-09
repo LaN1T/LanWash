@@ -614,7 +614,7 @@ class SupportMessageResponse(BaseModel):
 
 
 class SupportChatCreateRequest(BaseModel):
-    firstMessage: str
+    firstMessage: str = Field(..., min_length=1, max_length=2000, description="Первое сообщение в чате поддержки")
 
 
 class SupportChatResponse(BaseModel):
