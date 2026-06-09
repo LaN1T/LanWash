@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 import os
 
 from database import init_db
-from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews, cars, referrals, tips, subscriptions, reminders, admin, health
+from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews, cars, referrals, tips, subscriptions, reminders, admin, health, support
 from services.auth_service import check_roles, get_current_user
 
 from core.limiter import limiter
@@ -242,6 +242,7 @@ app.include_router(subscriptions.router)
 app.include_router(reminders.router)
 app.include_router(admin.router)
 app.include_router(health.router)
+app.include_router(support.router)
 
 
 # Telegram Bot Webhook endpoint
