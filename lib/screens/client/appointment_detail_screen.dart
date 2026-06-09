@@ -898,24 +898,30 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
         amount: _amount!,
         method: _method,
       );
-      if (result != null) {
-        if (_method == 'sbp') {
-          _sbpUrl = result.sbpUrl;
-        }
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _showSuccess = true;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось создать чаевые'), backgroundColor: AppStyles.danger),
-          );
-        }
-      }
+      result.when(
+        success: (tip) {
+          if (_method == 'sbp') {
+            _sbpUrl = tip.sbpUrl;
+          }
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _showSuccess = true;
+            });
+          }
+        },
+        failure: (err) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            final msg = err.message.isNotEmpty
+                ? err.message
+                : 'Не удалось создать чаевые. Возможно, вы уже оставляли чаевые на эту запись.';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(msg), backgroundColor: AppStyles.danger),
+            );
+          }
+        },
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

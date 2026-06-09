@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/api_client.dart';
+import '../core/api_result.dart';
 import '../core/config.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
@@ -1007,7 +1008,7 @@ class ApiService {
   }
 
   // ─── Tips ───────────────────────────────────────────────────────────────────
-  Future<Tip?> createTip({
+  Future<ApiResult<Tip>> createTip({
     required String appointmentId,
     required int amount,
     required String method,
@@ -1018,8 +1019,8 @@ class ApiService {
       'method': method,
     });
     return result.when(
-      success: (data) => Tip.fromMap(data),
-      failure: (_) => null,
+      success: (data) => Success(Tip.fromMap(data)),
+      failure: (err) => Failure<Tip>(err),
     );
   }
 
