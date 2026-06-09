@@ -79,7 +79,7 @@ router = APIRouter(
     summary="Вход в систему",
     
 )
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
@@ -111,7 +111,7 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     summary="Регистрация нового пользователя",
     
 )
-@limiter.limit("2/minute")
+@limiter.limit("5/minute")
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     generic_error = HTTPException(status.HTTP_400_BAD_REQUEST, "Регистрация не удалась. Проверьте введённые данные.")
 
@@ -293,6 +293,9 @@ async def link_telegram(
     if not verify_password(req.password, user.passwordHash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный логин или пароль")
 
+    user.telegramId = req.telegramId.strip()
+    await db.commit()
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
@@ -446,8 +449,9 @@ async def upload_avatar(
     filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(UPLOAD_DIR, os.path.basename(filename))
 
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    import aiofiles
+    async with aiofiles.open(filepath, "wb") as buffer:
+        await buffer.write(content)
 
     avatar_url = f"/uploads/avatars/{filename}"
 

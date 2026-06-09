@@ -116,14 +116,12 @@ class TestShifts:
 
         now = datetime.now()
         today = now.strftime("%Y-%m-%d")
-        # Create a shift that covers current time
-        start = (now - timedelta(hours=2)).strftime("%H:%M")
-        end = (now + timedelta(hours=2)).strftime("%H:%M")
+        # Create a shift that covers the entire day to avoid time-of-day flakiness
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime=start,
-            endTime=end,
+            startTime="00:00",
+            endTime="23:59",
             status="confirmed",
             createdBy="admin",
             createdAt=datetime.now().isoformat(),

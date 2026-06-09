@@ -16,8 +16,13 @@ class AppConfig {
       }
       return _apiBaseUrl;
     }
-    // Fallback для development и локального тестирования release.
+    // Fallback для development и локального тестирования.
     // Для production-сборки передайте API_BASE_URL через --dart-define.
+    if (kReleaseMode) {
+      throw StateError(
+        'API_BASE_URL must be set via --dart-define=API_BASE_URL=... in release mode',
+      );
+    }
     if (kIsWeb) {
       return 'http://localhost:8000/api';
     }
