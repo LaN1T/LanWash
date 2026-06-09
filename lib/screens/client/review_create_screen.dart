@@ -38,10 +38,10 @@ class _ReviewCreateScreenState extends State<ReviewCreateScreen> {
 
     final ok = await api.createReview(
       userId: user!.id!,
-      userName: user.displayName,
       rating: _rating,
       comment: _commentController.text.trim(),
       appointmentId: widget.appointmentId,
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
     if (!mounted) return;
@@ -87,22 +87,29 @@ class _ReviewCreateScreenState extends State<ReviewCreateScreen> {
               style: AppStyles.adaptiveHeadingMedium(context),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                final filled = index < _rating;
-                return GestureDetector(
-                  onTap: () => setState(() => _rating = index + 1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(
-                      filled ? Icons.star_rounded : Icons.star_border_rounded,
-                      size: 40,
-                      color: filled ? AppStyles.gold : AppStyles.adaptiveBorder(context),
+            Semantics(
+              label: 'Выбрано $_rating из 5 звезд',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final filled = index < _rating;
+                  return Semantics(
+                    button: true,
+                    label: 'Оценить на ${index + 1} звезд',
+                    child: GestureDetector(
+                      onTap: () => setState(() => _rating = index + 1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Icon(
+                          filled ? Icons.star_rounded : Icons.star_border_rounded,
+                          size: 40,
+                          color: filled ? AppStyles.gold : AppStyles.adaptiveBorder(context),
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
             const SizedBox(height: 24),
             Text(

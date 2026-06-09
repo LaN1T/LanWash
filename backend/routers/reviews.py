@@ -56,6 +56,24 @@ async def list_my_reviews(
     return result.scalars().all()
 
 
+@router.get("/has-review")
+@limiter.limit("60/minute")
+async def has_review(
+    request: Request,
+    appointment_id: str = Query(..., description="ID записи"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Review).where(
+            Review.userId == current_user.id,
+            Review.appointmentId == appointment_id,
+        )
+    )
+    review = result.scalar_one_or_none()
+    return {"hasReview": review is not None}
+
+
 @router.post("/", response_model=ReviewResponse)
 @limiter.limit("10/minute")
 async def create_review(
@@ -77,9 +95,19 @@ async def create_review(
         if appointment.status != 'completed':
             raise HTTPException(status_code=400, detail="Можно оставить отзыв только на завершённую мойку")
 
+        # Проверка на дублирование отзыва
+        existing = await db.execute(
+            select(Review).where(
+                Review.userId == current_user.id,
+                Review.appointmentId == data.appointmentId,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="Отзыв на эту запись уже существует")
+
     review = Review(
         userId=data.userId,
-        userName=data.userName,
+        userName=current_user.displayName,
         rating=data.rating,
         comment=data.comment,
         isPublished=0,

@@ -889,17 +889,17 @@ class ApiService {
   // ─── Reviews ───────────────────────────────────────────────────────────────
   Future<bool> createReview({
     required int userId,
-    required String userName,
     required int rating,
     required String comment,
     String? appointmentId,
+    String? idempotencyKey,
   }) async {
     final result = await ApiClient.post('/reviews/', body: {
       'userId': userId,
-      'userName': userName,
       'rating': rating,
       'comment': comment,
       if (appointmentId != null) 'appointmentId': appointmentId,
+      if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
     });
     return result.isSuccess;
   }
@@ -913,7 +913,10 @@ class ApiService {
   }
 
   Future<bool> hasReviewForAppointment(String appointmentId) async {
-    final reviews = await getMyReviews();
-    return reviews.any((r) => r.appointmentId == appointmentId);
+    final result = await ApiClient.get('/reviews/has-review?appointment_id=$appointmentId');
+    return result.when(
+      success: (data) => data['hasReview'] == true,
+      failure: (_) => false,
+    );
   }
 }
