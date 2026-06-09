@@ -23,6 +23,8 @@ import '../models/subscription.dart';
 import '../models/admin_dashboard.dart';
 import '../models/consumable_forecast.dart';
 import '../models/forecast.dart';
+import '../models/support_chat.dart';
+import '../models/support_message.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -1180,5 +1182,70 @@ class ApiService {
       success: (data) => data,
       failure: (_) => null,
     );
+  }
+
+  // ─── Support Chat ───────────────────────────────────────────────────────────
+  Future<SupportChat?> createSupportChat(String firstMessage) async {
+    final result = await ApiClient.post('/support/chats', body: {'firstMessage': firstMessage});
+    return result.when(
+      success: (data) => SupportChat.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<List<SupportChat>> getMySupportChats() async {
+    final result = await ApiClient.getList('/support/chats/my');
+    return result.when(
+      success: (list) => list.map((m) => SupportChat.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<List<SupportChat>> getAllSupportChats({String? status}) async {
+    final path = status != null ? '/support/chats?status=$status' : '/support/chats';
+    final result = await ApiClient.getList(path);
+    return result.when(
+      success: (list) => list.map((m) => SupportChat.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<List<SupportMessage>> getSupportMessages(int chatId) async {
+    final result = await ApiClient.getList('/support/chats/$chatId/messages');
+    return result.when(
+      success: (list) => list.map((m) => SupportMessage.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<SupportMessage?> sendSupportMessage(int chatId, String content) async {
+    final result = await ApiClient.post('/support/chats/$chatId/messages', body: {'content': content});
+    return result.when(
+      success: (data) => SupportMessage.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<String?> generateAiDraft(int chatId) async {
+    final result = await ApiClient.post('/support/chats/$chatId/ai-draft');
+    return result.when(
+      success: (data) => data['draft'] as String?,
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> assignSupportChat(int chatId) async {
+    final result = await ApiClient.post('/support/chats/$chatId/assign');
+    return result.when(success: (_) => true, failure: (_) => false);
+  }
+
+  Future<bool> closeSupportChat(int chatId) async {
+    final result = await ApiClient.post('/support/chats/$chatId/close');
+    return result.when(success: (_) => true, failure: (_) => false);
+  }
+
+  Future<bool> markSupportChatRead(int chatId) async {
+    final result = await ApiClient.post('/support/chats/$chatId/read');
+    return result.when(success: (_) => true, failure: (_) => false);
   }
 }

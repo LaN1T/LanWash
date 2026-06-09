@@ -22,6 +22,9 @@ class NotificationService {
   final _updateController = StreamController<String>.broadcast();
   Stream<String> get onAppointmentUpdated => _updateController.stream;
 
+  final _supportChatController = StreamController<int>.broadcast();
+  Stream<int> get onSupportChatMessage => _supportChatController.stream;
+
   FirebaseMessaging? _fcm;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -69,7 +72,9 @@ class NotificationService {
           if (_lastKnownUsername != null && newToken.isNotEmpty) {
             try {
               await _apiService.saveFcmToken(_lastKnownUsername!, newToken);
-            } catch (e) {}
+            } catch (e) {
+              if (kDebugMode) debugPrint('saveFcmToken error: $e');
+            }
           }
         });
 
@@ -111,6 +116,12 @@ class NotificationService {
     if (message.data['type'] == 'appointment_updated') {
       _updateController.add(message.data['id']);
     }
+    if (message.data['type'] == 'support_chat') {
+      final chatId = int.tryParse(message.data['chat_id']?.toString() ?? '');
+      if (chatId != null) {
+        _supportChatController.add(chatId);
+      }
+    }
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -135,7 +146,9 @@ class NotificationService {
         body: notification.body,
         notificationDetails: details,
       );
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('showLocalNotification error: $e');
+    }
   }
 
   Future<String?> getToken() async {
