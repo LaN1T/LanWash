@@ -596,7 +596,8 @@ class InventoryForecastResponse(BaseModel):
 # ─── Support Chat ────────────────────────────────────────────────────────────
 
 class SupportMessageCreateRequest(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=2000, description="Текст сообщения")
+    isAiDraft: bool = Field(default=False, description="Сообщение отправлено на основе черновика ИИ")
 
 
 class SupportMessageResponse(BaseModel):
