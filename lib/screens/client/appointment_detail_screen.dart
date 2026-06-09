@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../providers/appointment_provider.dart';
@@ -113,6 +115,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
               ]),
             ),
             if (a.status == 'completed') _buildReviewBanner(context, a.id),
+            if (a.status == 'completed' && a.assignedWashers.isNotEmpty)
+              _buildTipBanner(context, a.id),
             _InfoTile(Icons.calendar_today_rounded, 'Дата',
                 DateFormat('d MMMM yyyy', 'ru').format(a.dateTime)),
             _InfoTile(Icons.access_time_rounded, 'Время', timeStr),
@@ -335,6 +339,86 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTipBanner(BuildContext context, String appointmentId) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppStyles.success.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.volunteer_activism, color: AppStyles.success, size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Поблагодарить мойщика',
+                  style: TextStyle(
+                    color: AppStyles.success,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Оставьте чаевые за отличную работу',
+            style: TextStyle(
+              color: AppStyles.adaptiveTextSecondary(context),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _showTipBottomSheet(context, appointmentId),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.success,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: const Text('Оставить чаевые'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTipBottomSheet(BuildContext context, String appointmentId) {
+    final api = context.read<ApiService>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
+        return TipBottomSheet(
+          appointmentId: appointmentId,
+          api: api,
+          bottomPadding: bottom,
         );
       },
     );
@@ -599,4 +683,341 @@ class _InfoTile extends StatelessWidget {
                   const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         ]),
       );
+}
+
+class TipBottomSheet extends StatefulWidget {
+  final String appointmentId;
+  final dynamic api;
+  final double bottomPadding;
+
+  const TipBottomSheet({
+    super.key,
+    required this.appointmentId,
+    required this.api,
+    required this.bottomPadding,
+  });
+
+  @override
+  State<TipBottomSheet> createState() => _TipBottomSheetState();
+}
+
+class _TipBottomSheetState extends State<TipBottomSheet> {
+  int? _selectedAmount;
+  final _customController = TextEditingController();
+  String _method = 'sbp';
+  bool _isLoading = false;
+  String? _sbpUrl;
+  bool _showSuccess = false;
+
+  final List<int> _presets = [100, 200, 500, 1000];
+
+  int? get _amount {
+    if (_selectedAmount != null) return _selectedAmount;
+    final custom = int.tryParse(_customController.text.trim());
+    return custom;
+  }
+
+  bool get _isValid {
+    final a = _amount;
+    return a != null && a >= 50 && a <= 50000;
+  }
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showSuccess) {
+      return _buildSuccessView();
+    }
+    return Padding(
+      padding: EdgeInsets.only(bottom: widget.bottomPadding),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Оставить чаевые мойщику?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              const Text('Выберите сумму:', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _presets.map((amount) {
+                  final selected = _selectedAmount == amount;
+                  return Semantics(
+                    label: '$amount рублей',
+                    child: ChoiceChip(
+                      label: Text('$amount ₽'),
+                      selected: selected,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedAmount = amount;
+                          _customController.clear();
+                        });
+                      },
+                      selectedColor: AppStyles.primary,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : AppStyles.adaptiveTextPrimary(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _customController,
+                keyboardType: TextInputType.number,
+                enabled: !_isLoading,
+                decoration: InputDecoration(
+                  labelText: 'Другая сумма',
+                  hintText: 'мин. 50 ₽, макс. 50 000 ₽',
+                  prefixIcon: const Icon(Icons.edit),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onChanged: (_) => setState(() => _selectedAmount = null),
+              ),
+              const SizedBox(height: 16),
+              const Text('Способ оплаты:', style: TextStyle(fontSize: 14)),
+              const SizedBox(height: 8),
+              _MethodRadio(
+                value: 'sbp',
+                groupValue: _method,
+                label: 'СБП',
+                icon: Icons.account_balance,
+                onChanged: (v) => setState(() => _method = v),
+              ),
+              _MethodRadio(
+                value: 'cash',
+                groupValue: _method,
+                label: 'Наличные',
+                icon: Icons.money,
+                onChanged: (v) => setState(() => _method = v),
+              ),
+              _MethodRadio(
+                value: 'app',
+                groupValue: _method,
+                label: 'Через приложение',
+                icon: Icons.phone_android,
+                onChanged: (v) => setState(() => _method = v),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading || !_isValid ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppStyles.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Подтвердить', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessView() {
+    return Padding(
+      padding: EdgeInsets.only(bottom: widget.bottomPadding),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: AppStyles.success, size: 56),
+              const SizedBox(height: 16),
+              const Text('Спасибо!',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (_method == 'sbp' && _sbpUrl != null) ...[
+                Text(
+                  'Для оплаты через СБП нажмите кнопку ниже:',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppStyles.adaptiveTextSecondary(context)),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _openSbpUrl,
+                    icon: const Icon(Icons.open_in_browser),
+                    label: const Text('Открыть в банке'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppStyles.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'Передайте мойщику при встрече.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppStyles.adaptiveTextSecondary(context)),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Закрыть'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    setState(() => _isLoading = true);
+    try {
+      final result = await widget.api.createTip(
+        appointmentId: widget.appointmentId,
+        amount: _amount!,
+        method: _method,
+      );
+      result.when(
+        success: (tip) {
+          if (_method == 'sbp') {
+            _sbpUrl = tip.sbpUrl;
+          }
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _showSuccess = true;
+            });
+          }
+        },
+        failure: (err) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            final msg = err.message.isNotEmpty
+                ? err.message
+                : 'Не удалось создать чаевые. Возможно, вы уже оставляли чаевые на эту запись.';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(msg), backgroundColor: AppStyles.danger),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: AppStyles.danger),
+        );
+      }
+    }
+  }
+
+  Future<void> _openSbpUrl() async {
+    if (_sbpUrl == null) return;
+    final uri = Uri.parse(_sbpUrl!);
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        _showSbpOpenFailure(_sbpUrl!);
+      }
+    } catch (_) {
+      if (mounted) {
+        _showSbpOpenFailure(_sbpUrl!);
+      }
+    }
+  }
+
+  void _showSbpOpenFailure(String url) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Не удалось открыть банковское приложение'),
+        action: SnackBarAction(
+          label: 'Копировать ссылку',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: url));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ссылка скопирована')),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _MethodRadio extends StatelessWidget {
+  final String value;
+  final String groupValue;
+  final String label;
+  final IconData icon;
+  final ValueChanged<String> onChanged;
+
+  const _MethodRadio({
+    required this.value,
+    required this.groupValue,
+    required this.label,
+    required this.icon,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = value == groupValue;
+    return InkWell(
+      onTap: () => onChanged(value),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppStyles.primary.withValues(alpha: 0.1) : AppStyles.adaptiveCard(context),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: selected ? AppStyles.primary : AppStyles.adaptiveTextSecondary(context)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  color: AppStyles.adaptiveTextPrimary(context),
+                ),
+              ),
+            ),
+            Radio<String>(
+              value: value,
+              groupValue: groupValue,
+              onChanged: (v) => onChanged(v!),
+              activeColor: AppStyles.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

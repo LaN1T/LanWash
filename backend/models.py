@@ -408,3 +408,42 @@ class CarResponse(BaseModel):
     model: str
     number: str
     isPrimary: bool
+
+
+# ─── Tips ────────────────────────────────────────────────────────────────────
+class TipCreateRequest(BaseModel):
+    appointmentId: str = Field(..., max_length=36, description="ID записи")
+    amount: int = Field(..., ge=50, le=50000, description="Сумма чаевых в рублях")
+    method: Literal["sbp", "cash", "app"] = Field(default="sbp", description="Способ оплаты")
+
+
+class TipResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    appointmentId: str
+    washerUsername: str
+    amount: int
+    method: str
+    status: str
+    createdAt: str
+    sbpUrl: Optional[str] = None
+
+
+class TipStatsResponse(BaseModel):
+    totalTips: int
+    totalAmount: int
+    pendingAmount: int
+
+
+class TipWithAppointmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    appointmentId: str
+    washerUsername: str
+    amount: int
+    method: str
+    status: str
+    createdAt: str
+    appointment: Optional[AppointmentResponse] = None

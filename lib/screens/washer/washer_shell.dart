@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
+import '../../models/tip.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../models/service.dart';
+import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
 import '../shared/profile_screen.dart';
 import '../shared/shift_schedule_screen.dart';
@@ -27,6 +29,9 @@ class _WasherShellState extends State<WasherShell> {
   int _tabIndex = 0;
   DateTime _selectedDay = DateTime.now();
   StreamSubscription? _appointmentSub;
+  List<dynamic> _tips = [];
+  bool _tipsLoading = false;
+  dynamic _tipStats;
 
   @override
   void initState() {
@@ -68,9 +73,14 @@ class _WasherShellState extends State<WasherShell> {
               child: const Icon(Icons.local_car_wash,
                   color: Colors.white, size: 18)),
           const SizedBox(width: 10),
-          Text(_tabIndex == 0 ? 'Мои записи' : 'Мои заметки',
-              style:
-                  const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          Text(
+            _tabIndex == 0
+                ? 'Мои записи'
+                : _tabIndex == 1
+                    ? 'Мои заметки'
+                    : 'Чаевые',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
         ]),
         actions: [
           IconButton(
@@ -91,15 +101,21 @@ class _WasherShellState extends State<WasherShell> {
         children: [
           _buildAppointmentsTab(),
           const NotesScreen(isEmbedded: true),
+          _buildTipsTab(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabIndex,
-        onDestinationSelected: (i) => setState(() => _tabIndex = i),
+        onDestinationSelected: (i) {
+          setState(() => _tabIndex = i);
+          if (i == 2) _loadTips();
+        },
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.calendar_today), label: 'Записи'),
           NavigationDestination(icon: Icon(Icons.note_alt), label: 'Заметки'),
+          NavigationDestination(
+              icon: Icon(Icons.volunteer_activism), label: 'Чаевые'),
         ],
       ),
     );
@@ -389,6 +405,37 @@ class _WasherShellState extends State<WasherShell> {
               },
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(
+                  _tabIndex == 2
+                      ? Icons.volunteer_activism
+                      : Icons.volunteer_activism_outlined,
+                  color: _tabIndex == 2
+                      ? AppStyles.primary
+                      : AppStyles.adaptiveTextSecondary(ctx),
+                  size: 22),
+              title: Text('Чаевые',
+                  style: TextStyle(
+                      color: _tabIndex == 2
+                          ? AppStyles.primary
+                          : AppStyles.adaptiveTextPrimary(ctx),
+                      fontWeight: _tabIndex == 2
+                          ? FontWeight.w600
+                          : FontWeight.normal)),
+              selected: _tabIndex == 2,
+              selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              onTap: () {
+                setState(() => _tabIndex = 2);
+                _loadTips();
+                Navigator.pop(ctx);
+              },
+            ),
+          ),
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
           Padding(
@@ -468,6 +515,73 @@ class _WasherShellState extends State<WasherShell> {
     );
   }
 
+  Future<void> _loadTips() async {
+    setState(() => _tipsLoading = true);
+    final api = context.read<ApiService>();
+    final tips = await api.getMyTips();
+    final stats = await api.getTipStats();
+    if (mounted) {
+      setState(() {
+        _tips = tips;
+        _tipStats = stats;
+        _tipsLoading = false;
+      });
+    }
+  }
+
+  Widget _buildTipsTab() {
+    if (_tipsLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppStyles.primary));
+    }
+    final stats = _tipStats as TipStats?;
+    return RefreshIndicator(
+      color: AppStyles.primary,
+      onRefresh: _loadTips,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (stats != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppStyles.adaptiveCard(context),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppStyles.adaptiveBorder(context)),
+              ),
+              child: Row(
+                children: [
+                  _StatItem('Всего', stats.totalTips.toString()),
+                  const VerticalDivider(),
+                  _StatItem('Получено', '${stats.totalAmount} ₽'),
+                  const VerticalDivider(),
+                  _StatItem('Ожидает', '${stats.pendingAmount} ₽'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_tips.isEmpty)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 40),
+                  Icon(Icons.volunteer_activism,
+                      size: 56, color: AppStyles.adaptiveTextSecondary(context).withValues(alpha: 0.4)),
+                  const SizedBox(height: 12),
+                  Text('Пока нет чаевых',
+                      style: AppStyles.headingMedium.copyWith(
+                          color: AppStyles.adaptiveTextSecondary(context))),
+                ],
+              ),
+            )
+          else
+            ..._tips.map((t) => _TipCard(tip: t as Tip, onRefresh: _loadTips)),
+        ],
+      ),
+    );
+  }
+
   void _confirmLogout(BuildContext ctx) {
     showDialog(
       context: ctx,
@@ -496,6 +610,111 @@ class _WasherShellState extends State<WasherShell> {
             child: const Text('Выйти'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  const _StatItem(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+        ],
+      ),
+    );
+  }
+}
+
+class _TipCard extends StatelessWidget {
+  final Tip tip;
+  final VoidCallback onRefresh;
+  const _TipCard({required this.tip, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPending = tip.status == 'pending';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      color: AppStyles.adaptiveCard(context),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: AppStyles.adaptiveBorder(context))),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                    color: isPending
+                        ? AppStyles.warning.withValues(alpha: 0.1)
+                        : AppStyles.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6)),
+                child: Text(tip.statusLabel,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isPending ? AppStyles.warning : AppStyles.success)),
+              ),
+              const Spacer(),
+              Text('${tip.amount} ₽',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+            ]),
+            const SizedBox(height: 10),
+            Text('Способ: ${tip.methodLabel}',
+                style: TextStyle(
+                    fontSize: 13, color: AppStyles.adaptiveTextSecondary(context))),
+            const SizedBox(height: 4),
+            Text('Запись: ${tip.appointmentId}',
+                style: TextStyle(
+                    fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+            if (isPending && tip.method != 'sbp') ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final scaffold = ScaffoldMessenger.of(context);
+                    final ok = await context.read<ApiService>().markTipPaid(tip.id);
+                    if (ok) {
+                      onRefresh();
+                    } else {
+                      scaffold.showSnackBar(
+                        const SnackBar(
+                            content: Text('Не удалось отметить'),
+                            backgroundColor: AppStyles.danger),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Отметить получено'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppStyles.success,
+                    side: const BorderSide(color: AppStyles.success),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

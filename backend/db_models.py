@@ -229,3 +229,16 @@ class Referral(Base):
     referredId = Column(Integer, ForeignKey('users.id'), nullable=False)
     rewardClaimed = Column(Boolean, nullable=False, default=False)
     createdAt = Column(String, nullable=False)
+
+class Tip(Base):
+    __tablename__ = 'tips'
+    __table_args__ = (
+        UniqueConstraint('appointmentId', 'washerUsername', name='uq_tip_appointment_washer'),
+    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    appointmentId = Column(String, ForeignKey('appointments.id'), nullable=False)
+    washerUsername = Column(String, nullable=False)
+    amount = Column(Integer, nullable=False)
+    method = Column(String, nullable=False, default='sbp')
+    status = Column(String, nullable=False, default='pending')
+    createdAt = Column(String, nullable=False)

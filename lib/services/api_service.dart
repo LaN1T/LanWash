@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/api_client.dart';
+import '../core/api_result.dart';
 import '../core/config.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
@@ -17,6 +18,7 @@ import '../models/daily_report.dart';
 import '../models/review.dart';
 import '../models/car.dart';
 import '../models/referral.dart';
+import '../models/tip.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -1003,5 +1005,43 @@ class ApiService {
       },
       failure: (_) => null,
     );
+  }
+
+  // ─── Tips ───────────────────────────────────────────────────────────────────
+  Future<ApiResult<Tip>> createTip({
+    required String appointmentId,
+    required int amount,
+    required String method,
+  }) async {
+    final result = await ApiClient.post('/tips/', body: {
+      'appointmentId': appointmentId,
+      'amount': amount,
+      'method': method,
+    });
+    return result.when(
+      success: (data) => Success(Tip.fromMap(data)),
+      failure: (err) => Failure<Tip>(err),
+    );
+  }
+
+  Future<List<Tip>> getMyTips() async {
+    final result = await ApiClient.getList('/tips/my');
+    return result.when(
+      success: (list) => list.map((m) => Tip.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => <Tip>[],
+    );
+  }
+
+  Future<TipStats?> getTipStats() async {
+    final result = await ApiClient.get('/tips/stats');
+    return result.when(
+      success: (data) => TipStats.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> markTipPaid(int tipId) async {
+    final result = await ApiClient.post('/tips/$tipId/mark-paid');
+    return result.isSuccess;
   }
 }
