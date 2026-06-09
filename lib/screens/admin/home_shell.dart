@@ -4,6 +4,7 @@ import '../../app_styles.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
+import '../../providers/support_provider.dart';
 import '../shared/profile_screen.dart';
 import 'appointments_screen.dart';
 import 'services_screen.dart';

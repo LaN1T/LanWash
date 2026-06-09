@@ -72,7 +72,9 @@ class NotificationService {
           if (_lastKnownUsername != null && newToken.isNotEmpty) {
             try {
               await _apiService.saveFcmToken(_lastKnownUsername!, newToken);
-            } catch (e) {}
+            } catch (e) {
+              if (kDebugMode) debugPrint('saveFcmToken error: $e');
+            }
           }
         });
 
@@ -144,7 +146,9 @@ class NotificationService {
         body: notification.body,
         notificationDetails: details,
       );
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('showLocalNotification error: $e');
+    }
   }
 
   Future<String?> getToken() async {

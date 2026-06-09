@@ -23,13 +23,13 @@ class _SupportChatsScreenState extends State<SupportChatsScreen> {
   }
 
   Future<void> _createChat() async {
+    final provider = context.read<SupportProvider>();
     final text = await showDialog<String>(
       context: context,
       builder: (ctx) => const _NewChatDialog(),
     );
     if (text == null || text.trim().isEmpty) return;
 
-    final provider = context.read<SupportProvider>();
     final chat = await provider.createChat(text.trim());
     if (!mounted) return;
     if (chat != null) {
@@ -128,9 +128,9 @@ class _ChatTile extends StatelessWidget {
         backgroundColor: AppStyles.primary.withValues(alpha: 0.12),
         child: const Icon(Icons.support_agent, color: AppStyles.primary),
       ),
-      title: Text(
+      title: const Text(
         'Поддержка',
-        style: const TextStyle(fontWeight: FontWeight.w600),
+        style: TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,7 +198,6 @@ class _NewChatDialogState extends State<_NewChatDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return AlertDialog(
       backgroundColor: AppStyles.adaptiveCard(context),
       title: Text(

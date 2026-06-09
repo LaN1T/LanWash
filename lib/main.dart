@@ -41,8 +41,10 @@ void main() async {
   // Web не поддерживает App Check без reCAPTCHA, пропускаем
   if (!kIsWeb) {
     await FirebaseAppCheck.instance.activate(
+      // ignore: deprecated_member_use
       androidProvider:
           kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+      // ignore: deprecated_member_use
       appleProvider: kReleaseMode
           ? AppleProvider.deviceCheck
           : AppleProvider.appAttestWithDeviceCheckFallback,
