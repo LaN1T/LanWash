@@ -20,7 +20,8 @@ import '../../core/service_locator.dart';
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
   final Promo? initialPromo;
-  const BookingWizardScreen({super.key, this.initialPromo});
+  final Appointment? templateAppointment;
+  const BookingWizardScreen({super.key, this.initialPromo, this.templateAppointment});
   @override
   State<BookingWizardScreen> createState() => _BWState();
 }
@@ -235,6 +236,19 @@ class _BWState extends State<BookingWizardScreen> {
     _extras = {};
     _selectedDate = _nextValidDate();
 
+    if (widget.templateAppointment != null) {
+      final template = widget.templateAppointment!;
+      _nameCtrl.text = template.clientName;
+      final carParts = template.carModel.split(' ');
+      _brandCtrl.text = carParts.isNotEmpty ? carParts.first : '';
+      _modelCtrl.text = carParts.length > 1 ? carParts.sublist(1).join(' ') : '';
+      _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
+      _numCtrl.text = template.carNumber;
+      _washTypeId = template.washTypeId;
+      _extras = Set.from(template.additionalServices);
+      _addIncludedExtras();
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initFromProvider();
       _updateBusySlots();
@@ -243,15 +257,17 @@ class _BWState extends State<BookingWizardScreen> {
 
   void _initFromProvider() {
     final catalogProvider = context.read<CatalogProvider>();
-    if (_isPromo) {
-      _washTypeId = _promo!.washTypeId;
-      _extras = Set.from(_promo!.includedExtraIds);
-    } else {
-      final basic = catalogProvider.washTypeByCode('basic') ??
-          (catalogProvider.washTypes.isNotEmpty
-              ? catalogProvider.washTypes.first
-              : null);
-      _washTypeId = basic?.id ?? '';
+    if (widget.templateAppointment == null) {
+      if (_isPromo) {
+        _washTypeId = _promo!.washTypeId;
+        _extras = Set.from(_promo!.includedExtraIds);
+      } else {
+        final basic = catalogProvider.washTypeByCode('basic') ??
+            (catalogProvider.washTypes.isNotEmpty
+                ? catalogProvider.washTypes.first
+                : null);
+        _washTypeId = basic?.id ?? '';
+      }
     }
     _addIncludedExtras();
     if (mounted) setState(() {});

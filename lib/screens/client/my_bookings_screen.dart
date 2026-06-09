@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../models/service.dart';
 import '../shared/appointment_detail_widget.dart';
+import 'booking_wizard_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -72,7 +73,7 @@ class _State extends State<MyBookingsScreen>
       Expanded(
           child: TabBarView(controller: _tab, children: [
         _BookingsList(items: upcoming, services: catalogProvider.services),
-        _BookingsList(items: history, services: catalogProvider.services),
+        _BookingsList(items: history, services: catalogProvider.services, showBookAgain: true),
       ])),
     ]);
   }
@@ -81,7 +82,8 @@ class _State extends State<MyBookingsScreen>
 class _BookingsList extends StatelessWidget {
   final List<Appointment> items;
   final List<dynamic> services;
-  const _BookingsList({required this.items, required this.services});
+  final bool showBookAgain;
+  const _BookingsList({required this.items, required this.services, this.showBookAgain = false});
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +224,31 @@ class _BookingsList extends StatelessWidget {
                               fontSize: 15,
                               fontWeight: FontWeight.bold)),
                     ]),
+                    if (showBookAgain) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                          height: 1, color: AppStyles.adaptiveBorder(context)),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => BookingWizardScreen(templateAppointment: a),
+                            ));
+                          },
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Записаться снова'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppStyles.primary,
+                            side: const BorderSide(color: AppStyles.primary),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ),
+                    ],
                   ]),
             ),
           );
