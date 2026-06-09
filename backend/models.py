@@ -558,3 +558,17 @@ class UserListItem(BaseModel):
 class UserListResponse(BaseModel):
     items: List[UserListItem]
     total: int
+
+
+# ─── Workload Forecast ───────────────────────────────────────────────────────
+class ForecastSlot(BaseModel):
+    date: str
+    hour: int = Field(..., ge=0, le=23)
+    predicted_load: float = Field(..., ge=0)
+    capacity: int = Field(..., ge=1)
+    utilization_pct: float
+
+
+class ForecastResponse(BaseModel):
+    items: List[ForecastSlot]
+    generated_at: str
