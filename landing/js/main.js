@@ -248,7 +248,7 @@ function trackEvent(eventName, params) {
 
 function initAnalytics() {
   const gaId = window.LANWASH_GA_ID;
-  if (gaId) {
+  if (gaId && /^G-[A-Z0-9]+$/i.test(gaId)) {
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
@@ -262,15 +262,23 @@ function initAnalytics() {
   }
 
   const ymId = window.LANWASH_YM_ID;
-  if (ymId) {
+  if (ymId && /^\d+$/.test(ymId)) {
+    window.ym = window.ym || function() {
+      (window.ym.a = window.ym.a || []).push(arguments);
+    };
+    window.ym.l = 1 * new Date();
+
     const script = document.createElement('script');
-    script.innerHTML =
-      '(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};' +
-      'm[i].l=1*new Date();' +
-      'for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}' +
-      'k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})' +
-      '(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");' +
-      'ym(' + ymId + ', "init", {clickmap:true,trackLinks:true,accurateTrackBounce:true});';
+    script.async = true;
+    script.src = 'https://mc.yandex.ru/metrika/tag.js';
+    script.onload = function() {
+      window.ym(ymId, 'init', {
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true
+      });
+    };
     document.head.appendChild(script);
   }
 }
