@@ -15,6 +15,7 @@ import '../models/shift.dart';
 import '../models/consumable.dart';
 import '../models/daily_report.dart';
 import '../models/review.dart';
+import '../models/car.dart';
 
 class PaginatedAppointments {
   final List<Appointment> appointments;
@@ -916,5 +917,57 @@ class ApiService {
       success: (data) => data['hasReview'] == true,
       failure: (_) => false,
     );
+  }
+
+  // ─── Cars ───────────────────────────────────────────────────────────────────
+  Future<List<Car>> getCars() async {
+    final result = await ApiClient.getList('/cars/');
+    return result.when(
+      success: (list) => list.map((m) => Car.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => <Car>[],
+    );
+  }
+
+  Future<Car?> createCar({
+    required String brand,
+    required String model,
+    String number = '',
+    bool? isPrimary,
+  }) async {
+    final body = <String, dynamic>{
+      'brand': brand,
+      'model': model,
+      if (number.isNotEmpty) 'number': number,
+      if (isPrimary != null) 'isPrimary': isPrimary,
+    };
+    final result = await ApiClient.post('/cars/', body: body);
+    return result.when(
+      success: (data) => Car.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<Car?> updateCar(int id, {
+    required String brand,
+    required String model,
+    String number = '',
+    bool? isPrimary,
+  }) async {
+    final body = <String, dynamic>{
+      'brand': brand,
+      'model': model,
+      if (number.isNotEmpty) 'number': number,
+      if (isPrimary != null) 'isPrimary': isPrimary,
+    };
+    final result = await ApiClient.put('/cars/$id', body: body);
+    return result.when(
+      success: (data) => Car.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> deleteCar(int id) async {
+    final result = await ApiClient.delete('/cars/$id');
+    return result.isSuccess;
   }
 }
