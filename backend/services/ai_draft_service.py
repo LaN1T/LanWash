@@ -83,12 +83,13 @@ async def generate_admin_draft(
     appt_lines = [f"- {a.dateTime}: {a.carModel}, статус {a.status}" for a in appts]
     appt_info = "История записей:\n" + "\n".join(appt_lines) if appt_lines else "История записей отсутствует."
 
-    history = _build_history(messages)
+    history = _build_history(messages[-10:])
     prompt = (
         f"Ты — опытный администратор автомойки LanWash.\n"
+        f"{FAQ_TEXT}\n\n"
         f"{user_info}\n"
         f"{appt_info}\n\n"
-        f"Диалог:\n{history}\n\n"
+        f"Диалог (последние сообщения):\n{history}\n\n"
         f"Напиши вежливый, профессиональный ответ клиенту. "
         f"Будь кратким (не более 3-4 предложений). "
         f"Если не хватает информации — предложи клиенту уточнить детали."

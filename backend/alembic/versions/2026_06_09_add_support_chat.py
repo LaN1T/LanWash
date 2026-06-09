@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column("senderRole", sa.String(), nullable=False),
         sa.Column("senderId", sa.Integer(), nullable=True),
         sa.Column("content", sa.String(), nullable=False),
-        sa.Column("isAiDraft", sa.Integer(), nullable=False),
+        sa.Column("isAiDraft", sa.Integer(), nullable=False, server_default='0'),
         sa.Column("createdAt", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["chatId"], ["support_chats.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["senderId"], ["users.id"]),

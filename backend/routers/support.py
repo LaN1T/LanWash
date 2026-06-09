@@ -24,12 +24,16 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/support", tags=["support"])
 
 
-async def _admin_tokens(db: AsyncSession) -> list[str]:
+async def _admin_tokens(db: AsyncSession, exclude_user_ids: Optional[set[int]] = None) -> list[str]:
     from db_models import FcmToken
-    res = await db.execute(
-        select(FcmToken.token).join(User, FcmToken.username == User.username)
+    stmt = (
+        select(FcmToken.token)
+        .join(User, FcmToken.username == User.username)
         .where(User.role == 'admin')
     )
+    if exclude_user_ids:
+        stmt = stmt.where(User.id.not_in(exclude_user_ids))
+    res = await db.execute(stmt)
     return [r[0] for r in res.all() if r[0]]
 
 
@@ -132,7 +136,14 @@ async def create_chat(
         except Exception:
             pass
     else:
-        tokens = await _admin_tokens(db)
+        chat.status = "waiting_admin"
+        await db.commit()
+        try:
+            from main import _ws_connections
+            connected_user_ids = {uid for _, uid in _ws_connections.get(chat.id, [])}
+        except Exception:
+            connected_user_ids = set()
+        tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids or None)
         if tokens:
             try:
                 await fcm_service.send_notification_to_tokens(
@@ -343,7 +354,14 @@ async def send_message(
             except Exception:
                 pass
         else:
-            tokens = await _admin_tokens(db)
+            chat.status = "waiting_admin"
+            await db.commit()
+            try:
+                from main import _ws_connections
+                connected_user_ids = {uid for _, uid in _ws_connections.get(chat.id, [])}
+            except Exception:
+                connected_user_ids = set()
+            tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids or None)
             if tokens:
                 try:
                     await fcm_service.send_notification_to_tokens(
@@ -402,6 +420,26 @@ async def assign_chat(
         await _broadcast_to_chat(chat_id, {"type": "status_update", "data": {"assignedAdminId": current_user.id, "status": chat.status}})
     except Exception:
         pass
+
+    # Notify assigned admin
+    try:
+        client_res = await db.execute(select(User).where(User.id == chat.userId))
+        client = client_res.scalar_one_or_none()
+        client_name = client.displayName if client else "клиента"
+    except Exception:
+        client_name = "клиента"
+    tokens = await _user_tokens(db, current_user.id)
+    if tokens:
+        try:
+            await fcm_service.send_notification_to_tokens(
+                tokens,
+                title="Обращение назначено вам",
+                body=f"Обращение от {client_name}",
+                data={"type": "support_chat", "chat_id": str(chat.id)},
+            )
+        except Exception as e:
+            logger.warning("support_push_failed", error=str(e))
+
     return {"ok": True}
 
 

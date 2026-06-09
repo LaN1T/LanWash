@@ -23,7 +23,7 @@ class TestSupportChat:
         assert response.status_code == 200
         data = response.json()
         assert data["userName"]
-        assert data["status"] in ("open", "ai_handled")
+        assert data["status"] in ("open", "ai_handled", "waiting_admin")
 
     @pytest.mark.asyncio
     async def test_client_lists_own_chats(self, async_client, client_token):
