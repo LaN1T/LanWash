@@ -238,10 +238,49 @@ function initCarousel() {
 }
 
 function trackEvent(eventName, params) {
-  if (window.gtag) {
+  if (typeof gtag === 'function') {
     gtag('event', eventName, params || {});
   }
-  // Stub for future analytics integrations
+  if (typeof ym === 'function' && window.LANWASH_YM_ID) {
+    ym(window.LANWASH_YM_ID, 'reachGoal', eventName);
+  }
+}
+
+function initAnalytics() {
+  const gaId = window.LANWASH_GA_ID;
+  if (gaId && /^G-[A-Z0-9]+$/i.test(gaId)) {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag('js', new Date());
+    gtag('config', gaId);
+  }
+
+  const ymId = window.LANWASH_YM_ID;
+  if (ymId && /^\d+$/.test(ymId)) {
+    window.ym = window.ym || function() {
+      (window.ym.a = window.ym.a || []).push(arguments);
+    };
+    window.ym.l = 1 * new Date();
+
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://mc.yandex.ru/metrika/tag.js';
+    script.onload = function() {
+      window.ym(ymId, 'init', {
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true
+      });
+    };
+    document.head.appendChild(script);
+  }
 }
 
 function initMobileMenu() {
@@ -284,6 +323,7 @@ function initModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initAnalytics();
   initTheme();
   initLang();
   renderServices();
