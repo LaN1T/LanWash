@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, cast, String
 from database import get_db
 from db_models import Appointment, User, Review
-from models import DashboardResponse
+from models import DashboardResponse, BulkAssignWasherRequest, BulkCancelRequest, BulkUpdateStatusRequest, BulkResult
 from services.auth_service import check_roles
 from core.limiter import limiter
 from datetime import datetime, timedelta
@@ -217,3 +217,115 @@ async def admin_dashboard(
         topWashers=top_washers,
         topClients=top_clients,
     )
+
+
+# ─── Bulk Operations ────────────────────────────────────────────────────────
+@router.post("/bulk/assign-washer", response_model=BulkResult)
+@limiter.limit("10/minute")
+async def bulk_assign_washer(
+    request: Request,
+    req: BulkAssignWasherRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    """Assign a washer to multiple appointments at once."""
+    result = await db.execute(
+        select(Appointment).where(Appointment.id.in_(req.appointmentIds))
+    )
+    appointments = result.scalars().all()
+
+    found_ids = {a.id for a in appointments}
+    missing = [i for i in req.appointmentIds if i not in found_ids]
+    errors: list[str] = []
+    if missing:
+        errors.append(f"Не найдены записи: {', '.join(missing)}")
+
+    processed = 0
+    for appt in appointments:
+        if appt.status == "cancelled":
+            errors.append(f"{appt.id}: нельзя назначить мойщика на отменённую запись")
+            continue
+        appt.assignedWasher = json.dumps([req.washerUsername])
+        appt.isModifiedByAdmin = 1
+        processed += 1
+
+    await db.commit()
+    return BulkResult(processed=processed, failed=len(errors), errors=errors)
+
+
+@router.post("/bulk/cancel", response_model=BulkResult)
+@limiter.limit("10/minute")
+async def bulk_cancel(
+    request: Request,
+    req: BulkCancelRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    """Cancel multiple appointments at once."""
+    result = await db.execute(
+        select(Appointment).where(Appointment.id.in_(req.appointmentIds))
+    )
+    appointments = result.scalars().all()
+
+    found_ids = {a.id for a in appointments}
+    missing = [i for i in req.appointmentIds if i not in found_ids]
+    errors: list[str] = []
+    if missing:
+        errors.append(f"Не найдены записи: {', '.join(missing)}")
+
+    processed = 0
+    now = datetime.now().isoformat()
+    for appt in appointments:
+        if appt.status == "cancelled":
+            errors.append(f"{appt.id}: уже отменена")
+            continue
+        if appt.status == "completed":
+            errors.append(f"{appt.id}: нельзя отменить завершённую запись")
+            continue
+        appt.status = "cancelled"
+        if req.reason:
+            appt.notes = f"{appt.notes}\n[Отмена: {req.reason}]".strip()
+        appt.isModifiedByAdmin = 1
+        appt.updatedAt = now
+        processed += 1
+
+    await db.commit()
+    return BulkResult(processed=processed, failed=len(errors), errors=errors)
+
+
+@router.post("/bulk/update-status", response_model=BulkResult)
+@limiter.limit("10/minute")
+async def bulk_update_status(
+    request: Request,
+    req: BulkUpdateStatusRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    """Update status for multiple appointments at once."""
+    result = await db.execute(
+        select(Appointment).where(Appointment.id.in_(req.appointmentIds))
+    )
+    appointments = result.scalars().all()
+
+    found_ids = {a.id for a in appointments}
+    missing = [i for i in req.appointmentIds if i not in found_ids]
+    errors: list[str] = []
+    if missing:
+        errors.append(f"Не найдены записи: {', '.join(missing)}")
+
+    processed = 0
+    now = datetime.now().isoformat()
+    for appt in appointments:
+        if appt.status == req.status:
+            errors.append(f"{appt.id}: уже имеет статус {req.status}")
+            continue
+        if req.status == "cancelled" and appt.status == "completed":
+            errors.append(f"{appt.id}: нельзя отменить завершённую запись")
+            continue
+        appt.status = req.status
+        appt.isModifiedByAdmin = 1
+        appt.updatedAt = now
+        processed += 1
+
+    await db.commit()
+    return BulkResult(processed=processed, failed=len(errors), errors=errors)
