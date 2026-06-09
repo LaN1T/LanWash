@@ -31,13 +31,15 @@ class SupportProvider extends ChangeNotifier {
   int? _activeChatId;
 
   String? _lastStatus;
-  bool _lastIsAdmin = false;
+  bool? _lastIsAdmin;
 
   StreamSubscription<int>? _pushSub;
 
   SupportProvider() {
     _pushSub = NotificationService().onSupportChatMessage.listen((chatId) {
-      loadChats(status: _lastStatus, isAdmin: _lastIsAdmin);
+      if (_lastIsAdmin != null) {
+        loadChats(status: _lastStatus, isAdmin: _lastIsAdmin!);
+      }
       if (_activeChatId == chatId) {
         loadMessages(chatId);
       }
@@ -116,9 +118,10 @@ class SupportProvider extends ChangeNotifier {
       final idx = _chats.indexWhere((c) => c.id == chatId);
       if (idx >= 0) {
         final old = _chats[idx];
+        final isAdmin = _lastIsAdmin ?? false;
         _chats[idx] = old.copyWith(
-          unreadByAdmin: _lastIsAdmin ? 0 : old.unreadByAdmin,
-          unreadByUser: !_lastIsAdmin ? 0 : old.unreadByUser,
+          unreadByAdmin: isAdmin ? 0 : old.unreadByAdmin,
+          unreadByUser: !isAdmin ? 0 : old.unreadByUser,
         );
         notifyListeners();
       }
@@ -153,7 +156,9 @@ class SupportProvider extends ChangeNotifier {
                 notifyListeners();
               }
             } else if (type == 'status_update') {
-              loadChats(status: _lastStatus, isAdmin: _lastIsAdmin);
+              if (_lastIsAdmin != null) {
+                loadChats(status: _lastStatus, isAdmin: _lastIsAdmin!);
+              }
             }
           } catch (_) {}
         },
