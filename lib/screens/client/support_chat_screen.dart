@@ -78,7 +78,7 @@ class _ClientSupportChatScreenState extends State<ClientSupportChatScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: provider.messages.length,
               itemBuilder: (context, index) {
-                return _MessageBubble(provider.messages[index]);
+                return _MessageBubble(message: provider.messages[index]);
               },
             ),
           ),

@@ -125,7 +125,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: provider.messages.length,
               itemBuilder: (context, index) {
-                return _MessageBubble(provider.messages[index]);
+                return _MessageBubble(message: provider.messages[index]);
               },
             ),
           ),
@@ -154,7 +154,6 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isClient = message.senderRole == 'client';
     final isAdmin = message.senderRole == 'admin';
     final isAi = message.senderRole == 'ai';
     final align = isAdmin ? CrossAxisAlignment.end : CrossAxisAlignment.start;
@@ -240,10 +239,10 @@ class _AiDraftCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.auto_awesome, size: 16, color: AppStyles.inProgress),
-              const SizedBox(width: 6),
+              Icon(Icons.auto_awesome, size: 16, color: AppStyles.inProgress),
+              SizedBox(width: 6),
               Text(
                 'Черновик AI',
                 style: TextStyle(
