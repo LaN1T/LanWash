@@ -242,7 +242,7 @@ class _BookingsList extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppStyles.primary,
                             side: const BorderSide(color: AppStyles.primary),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                           ),
