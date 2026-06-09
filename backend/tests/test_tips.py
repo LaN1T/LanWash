@@ -291,6 +291,39 @@ class TestTips:
         assert "уже отмечены" in mark2.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_create_tip_concurrent_race(self, async_client, client_token, admin_token):
+        """Симулирует состояние гонки, когда IntegrityError возникает на commit."""
+        from sqlalchemy.exc import IntegrityError
+        from sqlalchemy.ext.asyncio import AsyncSession
+
+        appt_resp = await self._create_appointment_as_admin(
+            async_client, admin_token, "appt_race", "2099-05-20T10:00:00",
+            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+        )
+        assert appt_resp.status_code == 200
+
+        original_commit = AsyncSession.commit
+
+        async def fake_commit(self):
+            raise IntegrityError("insert", {}, Exception("UNIQUE constraint failed: tips.appointmentId"))
+
+        AsyncSession.commit = fake_commit
+        try:
+            resp = await async_client.post(
+                "/api/tips/",
+                headers={"Authorization": f"Bearer {client_token}"},
+                json={
+                    "appointmentId": "appt_race",
+                    "amount": 100,
+                    "method": "cash",
+                },
+            )
+            assert resp.status_code == 409
+            assert "уже оставлены" in resp.json()["detail"]
+        finally:
+            AsyncSession.commit = original_commit
+
+    @pytest.mark.asyncio
     async def test_create_tip_amount_too_high(self, async_client, client_token, admin_token):
         appt_resp = await self._create_appointment_as_admin(
             async_client, admin_token, "appt_tip_10", "2099-05-10T10:00:00",

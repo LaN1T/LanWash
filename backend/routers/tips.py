@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
+from sqlalchemy.exc import IntegrityError
 
 from database import get_db
 from db_models import Tip, Appointment, User
@@ -69,7 +70,11 @@ async def create_tip(
         createdAt=datetime.now(timezone.utc).isoformat(),
     )
     db.add(tip)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Чаевые на эту запись уже оставлены")
     await db.refresh(tip)
 
     resp_data = {
