@@ -21,7 +21,7 @@ class TestInventoryForecastModels:
             days_until_low=20.0,
             days_until_empty=30.0,
             recommended_order_amount=0.0,
-            status="warning",
+            status="ok",
         )
         response = InventoryForecastResponse(
             items=[item],
@@ -29,7 +29,7 @@ class TestInventoryForecastModels:
         )
         assert response.items[0].consumable_id == "c_forecast_test"
         assert response.items[0].avg_daily_usage == 10.0
-        assert response.items[0].status == "warning"
+        assert response.items[0].status == "ok"
 
 
 class TestInventoryForecastService:
@@ -67,7 +67,7 @@ class TestInventoryForecastService:
         assert item.avg_daily_usage == 10.0
         assert item.days_until_low == 20.0
         assert item.days_until_empty == 30.0
-        assert item.status == "warning"
+        assert item.status == "ok"
 
 
 class TestInventoryForecastEndpoint:
