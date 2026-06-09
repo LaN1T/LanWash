@@ -127,6 +127,53 @@ class TestCars:
         assert len(cars) == 2
 
     @pytest.mark.asyncio
+    async def test_delete_last_car(self, async_client, client_token):
+        # Create one car
+        r1 = await async_client.post(
+            "/api/cars/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={"brand": "BMW", "model": "X5", "number": "А111БВ777"},
+        )
+        car_id = r1.json()["id"]
+        assert r1.json()["isPrimary"] is True
+
+        # Delete the only car
+        response = await async_client.delete(
+            f"/api/cars/{car_id}",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 200
+
+        # No cars should remain
+        response = await async_client.get(
+            "/api/cars/",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    @pytest.mark.asyncio
+    async def test_unset_primary_on_only_car(self, async_client, client_token):
+        # Create one car (auto primary)
+        r1 = await async_client.post(
+            "/api/cars/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={"brand": "BMW", "model": "X5", "number": "А111БВ777"},
+        )
+        car_id = r1.json()["id"]
+        assert r1.json()["isPrimary"] is True
+
+        # Unset primary on the only car
+        response = await async_client.put(
+            f"/api/cars/{car_id}",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={"brand": "BMW", "model": "X5", "number": "А111БВ777", "isPrimary": False},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["isPrimary"] is False
+
+    @pytest.mark.asyncio
     async def test_cannot_access_other_users_car(self, async_client, client_token, db_session):
         # Create another user
         from services.auth_service import get_password_hash
@@ -207,3 +254,50 @@ class TestCars:
             },
         )
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_admin_create_appointment_with_client_car(self, async_client, admin_token, db_session):
+        # Create a client user directly in DB
+        from services.auth_service import get_password_hash
+        client_user = User(
+            username="target_client",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="Target Client",
+            createdAt=datetime.now().isoformat(),
+        )
+        db_session.add(client_user)
+        await db_session.commit()
+
+        # Create a car for the client directly
+        client_car = Car(
+            userId=client_user.id,
+            brand="Audi",
+            model="A6",
+            number="А123БВ777",
+            isPrimary=True,
+        )
+        db_session.add(client_car)
+        await db_session.commit()
+
+        # Admin creates appointment for client using client's car
+        response = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "id": "test-admin-appt-car",
+                "clientName": "Target Client",
+                "carModel": "",
+                "carNumber": "",
+                "carId": client_car.id,
+                "dateTime": "2026-06-10T11:00:00",
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "ownerUsername": "target_client",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["carModel"] == "Audi A6"
+        assert data["carNumber"] == "А123БВ777"
+        assert data["ownerUsername"] == "target_client"

@@ -434,6 +434,7 @@ class _CarEditSheetState extends State<_CarEditSheet> {
               ),
               decoration: _plateDecoration(),
               inputFormatters: [PlateInputFormatter()],
+              validator: validatePlate,
             ),
             const SizedBox(height: 12),
             Container(

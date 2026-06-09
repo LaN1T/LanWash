@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, UniqueConstraint
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, Index, UniqueConstraint
+from sqlalchemy.orm import declarative_base, relationship, declared_attr
 
 Base = declarative_base()
 
@@ -27,6 +27,12 @@ class Car(Base):
     model = Column(String, nullable=False, default='')
     number = Column(String, nullable=False, default='')
     isPrimary = Column(Boolean, nullable=False, default=False)
+
+    @declared_attr.directive
+    def __table_args__(cls):
+        return (
+            Index('uq_user_primary_car', 'userId', unique=True, sqlite_where=(cls.isPrimary == True), postgresql_where=(cls.isPrimary == True)),
+        )
 
 class WashType(Base):
     __tablename__ = 'wash_types'
