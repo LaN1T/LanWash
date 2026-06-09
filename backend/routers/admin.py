@@ -3,7 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, cast, String
 from database import get_db
 from db_models import Appointment, User, Review
-from models import DashboardResponse, BulkAssignWasherRequest, BulkCancelRequest, BulkUpdateStatusRequest, BulkResult
+from models import (
+    DashboardResponse, BulkAssignWasherRequest, BulkCancelRequest,
+    BulkUpdateStatusRequest, BulkResult, UserListResponse, UserListItem,
+)
+from typing import Optional
 from services.auth_service import check_roles
 from core.limiter import limiter
 from datetime import datetime, timedelta
@@ -329,3 +333,64 @@ async def bulk_update_status(
 
     await db.commit()
     return BulkResult(processed=processed, failed=len(errors), errors=errors)
+
+
+@router.get("/users", response_model=UserListResponse)
+@limiter.limit("30/minute")
+async def search_users(
+    request: Request,
+    q: Optional[str] = None,
+    role: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    """Search and filter users (admin only)."""
+    from sqlalchemy import or_
+
+    stmt = select(User)
+    filters = []
+
+    if q:
+        safe_q = f"%{q}%"
+        filters.append(
+            or_(
+                User.displayName.ilike(safe_q),
+                User.username.ilike(safe_q),
+                User.phone.ilike(safe_q),
+                User.carModel.ilike(safe_q),
+                User.carNumber.ilike(safe_q),
+            )
+        )
+
+    if role:
+        filters.append(User.role == role)
+
+    if from_date:
+        filters.append(User.createdAt >= from_date)
+    if to_date:
+        # Include full last day
+        filters.append(User.createdAt < to_date + "T23:59:59")
+
+    if filters:
+        stmt = stmt.where(and_(*filters))
+
+    # Count total
+    count_stmt = select(func.count(User.id))
+    if filters:
+        count_stmt = count_stmt.where(and_(*filters))
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    # Fetch items
+    stmt = stmt.order_by(User.createdAt.desc()).limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+
+    return UserListResponse(
+        items=[UserListItem.model_validate(u) for u in items],
+        total=total,
+    )
