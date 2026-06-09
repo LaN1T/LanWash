@@ -79,7 +79,7 @@ router = APIRouter(
     summary="Вход в систему",
     
 )
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == req.username.lower().strip()))
     user = result.scalar_one_or_none()
@@ -111,7 +111,7 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     summary="Регистрация нового пользователя",
     
 )
-@limiter.limit("2/minute")
+@limiter.limit("5/minute")
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     generic_error = HTTPException(status.HTTP_400_BAD_REQUEST, "Регистрация не удалась. Проверьте введённые данные.")
 

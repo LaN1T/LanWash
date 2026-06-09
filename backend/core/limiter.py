@@ -38,4 +38,5 @@ else:
     limiter = Limiter(
         key_func=get_proxy_aware_remote_address,
         storage_uri=_storage_uri,
+        default_limits=["200/minute"],
     )
