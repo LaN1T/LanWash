@@ -11,9 +11,23 @@ import '../../models/service.dart';
 import '../../services/api_service.dart';
 import 'review_create_screen.dart';
 
-class ClientAppointmentDetailScreen extends StatelessWidget {
+class ClientAppointmentDetailScreen extends StatefulWidget {
   final Appointment appointment;
   const ClientAppointmentDetailScreen({super.key, required this.appointment});
+
+  @override
+  State<ClientAppointmentDetailScreen> createState() => _ClientAppointmentDetailScreenState();
+}
+
+class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailScreen> {
+  late Future<bool> _hasReviewFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final api = context.read<ApiService>();
+    _hasReviewFuture = api.hasReviewForAppointment(widget.appointment.id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +36,8 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
     final auth = context.read<AuthProvider>();
     final services = catalogProvider.services;
     final a = appointmentProvider.appointments.firstWhere(
-      (x) => x.id == appointment.id,
-      orElse: () => appointment,
+      (x) => x.id == widget.appointment.id,
+      orElse: () => widget.appointment,
     );
     final washType = catalogProvider.washTypeById(a.washTypeId);
 
@@ -238,9 +252,8 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
   }
 
   Widget _buildReviewBanner(BuildContext context, String appointmentId) {
-    final api = context.read<ApiService>();
     return FutureBuilder<bool>(
-      future: api.hasReviewForAppointment(appointmentId),
+      future: _hasReviewFuture,
       builder: (ctx, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const SizedBox.shrink();

@@ -224,3 +224,149 @@ class TestReviews:
         assert isinstance(data, list)
         for r in data:
             assert r["isPublished"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_duplicate_review(self, async_client, client_token):
+        user = await self._get_client_user(async_client, client_token)
+        appt_resp = await self._create_appointment(
+            async_client, client_token, "appt_review_dup", "2099-05-04T10:00:00", status="scheduled", owner="client_test"
+        )
+        assert appt_resp.status_code == 200
+
+        # Обновляем статус на completed
+        update_resp = await async_client.put(
+            "/api/appointments/appt_review_dup",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "id": "appt_review_dup",
+                "clientName": "Тест Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": "2099-05-04T10:00:00",
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "status": "completed",
+                "notes": "Тестовые заметки",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 1000,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 1000,
+                "assignedWasher": "[]",
+                "promoId": None,
+                "box_index": 0,
+            },
+        )
+        assert update_resp.status_code == 200
+
+        resp = await async_client.post(
+            "/api/reviews/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "userId": user["id"],
+                "rating": 5,
+                "comment": "Отличная мойка!",
+                "appointmentId": "appt_review_dup",
+            },
+        )
+        assert resp.status_code == 200
+
+        resp2 = await async_client.post(
+            "/api/reviews/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "userId": user["id"],
+                "rating": 4,
+                "comment": "Повторный отзыв",
+                "appointmentId": "appt_review_dup",
+            },
+        )
+        assert resp2.status_code == 409
+        assert "уже существует" in resp2.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_review_user_name_from_auth(self, async_client, client_token):
+        user = await self._get_client_user(async_client, client_token)
+        resp = await async_client.post(
+            "/api/reviews/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "userId": user["id"],
+                "userName": "Spoofed Name",
+                "rating": 5,
+                "comment": "Тест подмены имени",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["userName"] == user["displayName"]
+        assert data["userName"] != "Spoofed Name"
+
+    @pytest.mark.asyncio
+    async def test_has_review_endpoint(self, async_client, client_token):
+        user = await self._get_client_user(async_client, client_token)
+        appt_resp = await self._create_appointment(
+            async_client, client_token, "appt_review_has", "2099-05-05T10:00:00", status="scheduled", owner="client_test"
+        )
+        assert appt_resp.status_code == 200
+
+        # Обновляем статус на completed
+        update_resp = await async_client.put(
+            "/api/appointments/appt_review_has",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "id": "appt_review_has",
+                "clientName": "Тест Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": "2099-05-05T10:00:00",
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "status": "completed",
+                "notes": "Тестовые заметки",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 1000,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 1000,
+                "assignedWasher": "[]",
+                "promoId": None,
+                "box_index": 0,
+            },
+        )
+        assert update_resp.status_code == 200
+
+        # До создания отзыва — false
+        resp_before = await async_client.get(
+            "/api/reviews/has-review?appointment_id=appt_review_has",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert resp_before.status_code == 200
+        assert resp_before.json()["hasReview"] is False
+
+        # Создаём отзыв
+        resp_create = await async_client.post(
+            "/api/reviews/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "userId": user["id"],
+                "rating": 5,
+                "comment": "Тест has-review",
+                "appointmentId": "appt_review_has",
+            },
+        )
+        assert resp_create.status_code == 200
+
+        # После создания отзыва — true
+        resp_after = await async_client.get(
+            "/api/reviews/has-review?appointment_id=appt_review_has",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert resp_after.status_code == 200
+        assert resp_after.json()["hasReview"] is True
