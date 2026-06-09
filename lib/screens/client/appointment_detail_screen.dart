@@ -204,6 +204,8 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+            ],
+            if (a.status == 'scheduled' || a.status == 'in_progress') ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: SizedBox(
@@ -299,37 +301,58 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
       AuthProvider auth, String id, int minutes) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Сообщить об опоздании?'),
-        content: Text('Вы уверены, что опаздываете на $minutes минут?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Назад')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final ok = await provider.reportLate(id, minutes, auth);
-              if (ok && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('Администратор уведомлён об опоздании на $minutes мин'),
-                      backgroundColor: AppStyles.success),
-                );
-              } else if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Не удалось сообщить об опоздании'),
-                      backgroundColor: AppStyles.danger),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.warning,
-                foregroundColor: Colors.white),
-            child: const Text('Подтвердить'),
+      builder: (ctx) {
+        var isLoading = false;
+        String? errorText;
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Сообщить об опоздании?'),
+            content: isLoading
+                ? const SizedBox(
+                    height: 60,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Text(errorText ?? 'Вы уверены, что опаздываете на $minutes минут?'),
+            actions: isLoading
+                ? []
+                : [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Назад')),
+                    ElevatedButton(
+                      onPressed: () async {
+                        setState(() {
+                          isLoading = true;
+                          errorText = null;
+                        });
+                        final ok = await provider.reportLate(id, minutes, auth);
+                        if (!ctx.mounted) return;
+                        if (ok) {
+                          Navigator.pop(ctx);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Администратор уведомлён об опоздании на $minutes мин'),
+                                  backgroundColor: AppStyles.success),
+                            );
+                          }
+                        } else {
+                          setState(() {
+                            isLoading = false;
+                            errorText = 'Не удалось сообщить об опоздании';
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppStyles.warning,
+                          foregroundColor: Colors.white),
+                      child: const Text('Подтвердить'),
+                    ),
+                  ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -344,79 +367,105 @@ class ClientAppointmentDetailScreen extends StatelessWidget {
       ),
       builder: (ctx) {
         final bottom = MediaQuery.of(ctx).viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.only(bottom: bottom),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Отмена записи',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text('Укажите причину отмены (до 500 символов):',
-                      style: TextStyle(fontSize: 14)),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller,
-                    maxLines: 3,
-                    maxLength: 500,
-                    decoration: InputDecoration(
-                      hintText: 'Причина отмены',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.all(12),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.cancel_outlined),
-                      label: const Text('Подтвердить отмену'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.danger,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+        var isLoading = false;
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottom),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Отмена записи',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      const Text('Укажите причину отмены (до 500 символов):',
+                          style: TextStyle(fontSize: 14)),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: controller,
+                        maxLines: 3,
+                        maxLength: 500,
+                        enabled: !isLoading,
+                        decoration: InputDecoration(
+                          hintText: 'Причина отмены',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.all(12),
+                        ),
                       ),
-                      onPressed: () async {
-                        final reason = controller.text.trim();
-                        if (reason.isEmpty) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text('Укажите причину отмены')),
-                          );
-                          return;
-                        }
-                        Navigator.pop(ctx);
-                        final ok =
-                            await provider.cancelWithReason(id, reason, auth);
-                        if (ok && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Запись отменена'),
-                                backgroundColor: AppStyles.success),
-                          );
-                        } else if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Не удалось отменить запись'),
-                                backgroundColor: AppStyles.danger),
-                          );
-                        }
-                      },
-                    ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.cancel_outlined),
+                          label: Text(isLoading ? 'Отмена...' : 'Подтвердить отмену'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.danger,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  final reason = controller.text.trim();
+                                  if (reason.isEmpty) {
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Укажите причину отмены')),
+                                    );
+                                    return;
+                                  }
+                                  setState(() {
+                                    isLoading = true;
+                                  });
+                                  final ok = await provider.cancelWithReason(
+                                      id, reason, auth);
+                                  if (!ctx.mounted) return;
+                                  if (ok) {
+                                    Navigator.pop(ctx);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text('Запись отменена'),
+                                            backgroundColor: AppStyles.success),
+                                      );
+                                    }
+                                  } else {
+                                    setState(() {
+                                      isLoading = false;
+                                    });
+                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                      const SnackBar(
+                                          content:
+                                              Text('Не удалось отменить запись'),
+                                          backgroundColor: AppStyles.danger),
+                                    );
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

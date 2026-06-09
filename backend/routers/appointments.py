@@ -934,7 +934,7 @@ async def report_late(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id).with_for_update())
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
@@ -943,18 +943,21 @@ async def report_late(
     if appt.status != 'scheduled':
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно сообщить об опоздании только для запланированной записи.")
 
-    appt.late_minutes = req.minutes
-    await db.commit()
-    await db.refresh(appt)
+    # Idempotency: if the value is already the same, return without mutating or notifying
+    if appt.late_minutes == req.minutes:
+        return appt
 
-    # Логирование
+    appt.late_minutes = req.minutes
+
     db.add(LogEntry(
         username=current_user.username,
         action="report_late",
         details=f"Клиент сообщил об опоздании на {req.minutes} мин для записи {appt.id}",
         timestamp=datetime.now().isoformat(),
     ))
+
     await db.commit()
+    await db.refresh(appt)
 
     # FCM-уведомление админам (не блокируем ответ)
     admin_tokens_res = await db.execute(
@@ -988,7 +991,7 @@ async def cancel_with_reason(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id).with_for_update())
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
@@ -999,18 +1002,17 @@ async def cancel_with_reason(
 
     appt.cancel_reason = req.reason
     appt.status = 'cancelled'
-    await db.commit()
-    await db.refresh(appt)
-    appointments_total.labels(status='cancelled').inc()
 
-    # Логирование
     db.add(LogEntry(
         username=current_user.username,
         action="cancel_with_reason",
         details=f"Запись {appt.id} отменена. Причина: {req.reason}",
         timestamp=datetime.now().isoformat(),
     ))
+
     await db.commit()
+    await db.refresh(appt)
+    appointments_total.labels(status='cancelled').inc()
 
     # FCM-уведомление назначенным мойщикам и админам (не блокируем ответ)
     try:
