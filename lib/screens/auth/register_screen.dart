@@ -250,8 +250,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: TextStyle(
                           color: AppStyles.adaptiveTextPrimary(context)),
                       decoration: AppStyles.inputDecorationFor(
-                          context, 'Реферальный код (необязательно)',
-                          hint: 'Например: LANWASH1',
+                          context, lang.tr('register_field_referral'),
+                          hint: lang.tr('register_field_referral_hint'),
                           icon: Icons.card_giftcard_outlined),
                       textCapitalization: TextCapitalization.characters,
                     ),

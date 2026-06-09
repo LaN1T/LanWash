@@ -6,6 +6,7 @@ import re
 from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, and_
+from sqlalchemy.exc import IntegrityError
 from database import get_db
 from models import (
     LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest,
@@ -143,8 +144,6 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     if result.scalar_one_or_none():
         raise generic_error
 
-    referral_code = await _ensure_unique_referral_code(db)
-
     new_user = User(
         username=req.username.lower().strip(),
         passwordHash=get_password_hash(req.password),
@@ -155,11 +154,20 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         carNumber=req.carNumber.strip(),
         createdAt=datetime.now().isoformat(),
         isFavoriteAdmin=0,
-        referralCode=referral_code,
     )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+
+    for _ in range(10):
+        code = _generate_referral_code()
+        new_user.referralCode = code
+        try:
+            db.add(new_user)
+            await db.flush()
+            break
+        except IntegrityError:
+            await db.rollback()
+            continue
+    else:
+        raise HTTPException(500, "Could not generate unique referral code")
 
     # Create referral record if referrer exists
     if referrer is not None:
@@ -170,7 +178,9 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
             createdAt=datetime.now().isoformat(),
         )
         db.add(referral_row)
-        await db.commit()
+
+    await db.commit()
+    await db.refresh(new_user)
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -219,7 +229,6 @@ async def telegram_auth(
         else:
             # Create new user
             random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
-            referral_code = await _ensure_unique_referral_code(db)
             new_user = User(
                 username=username.lower().strip(),
                 passwordHash=get_password_hash(random_password),
@@ -232,9 +241,21 @@ async def telegram_auth(
                 createdAt=datetime.now().isoformat(),
                 isFavoriteAdmin=0,
                 telegramId=telegram_id,
-                referralCode=referral_code,
             )
-            db.add(new_user)
+
+            for _ in range(10):
+                code = _generate_referral_code()
+                new_user.referralCode = code
+                try:
+                    db.add(new_user)
+                    await db.flush()
+                    break
+                except IntegrityError:
+                    await db.rollback()
+                    continue
+            else:
+                raise HTTPException(500, "Could not generate unique referral code")
+
             await db.commit()
             await db.refresh(new_user)
             user = new_user
