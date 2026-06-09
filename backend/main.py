@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 import os
 
 from database import init_db
-from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews, cars, referrals, tips, subscriptions, reminders, admin
+from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews, cars, referrals, tips, subscriptions, reminders, admin, health
 from services.auth_service import check_roles, get_current_user
 
 from core.limiter import limiter
@@ -212,19 +212,6 @@ async def log_requests(request, call_next):
     return response
 
 
-# Health check endpoint
-@app.get("/health", tags=["health"])
-async def health_check():
-    uptime = (datetime.now(timezone.utc) - _start_time).total_seconds()
-    return {
-        "status": "healthy",
-        "service": "LanWash API",
-        "version": "1.0.0",
-        "environment": settings.environment,
-        "uptime_seconds": int(uptime),
-    }
-
-
 # Debug routes only in development
 if settings.debug:
     @app.get("/debug/routes", dependencies=[Depends(check_roles(["admin"]))])
@@ -249,6 +236,7 @@ app.include_router(tips.router)
 app.include_router(subscriptions.router)
 app.include_router(reminders.router)
 app.include_router(admin.router)
+app.include_router(health.router)
 
 
 # Telegram Bot Webhook endpoint
