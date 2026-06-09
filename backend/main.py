@@ -17,6 +17,8 @@ from core.limiter import limiter
 from core.config import get_settings
 from core.logging import configure_logging
 from core.metrics import update_business_metrics
+from core.request_id import RequestIdMiddleware, get_request_id
+from core.security_headers import SecurityHeadersMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -162,16 +164,8 @@ else:
         expose_headers=_EXPOSED_HEADERS,
     )
 
-# Security headers middleware
-@app.middleware("http")
-async def add_security_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    return response
-
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestIdMiddleware)
 
 # App Check middleware (optional, disabled by default)
 # Set APP_CHECK_ENFORCED=true to enable in production
@@ -210,6 +204,7 @@ async def log_requests(request, call_next):
             path=request.url.path,
             duration_ms=round(duration_ms, 2),
             error=str(exc),
+            request_id=get_request_id(),
         )
         raise
     duration_ms = (time.time() - start) * 1000
@@ -219,6 +214,7 @@ async def log_requests(request, call_next):
         path=request.url.path,
         status_code=response.status_code,
         duration_ms=round(duration_ms, 2),
+        request_id=get_request_id(),
     )
     return response
 
