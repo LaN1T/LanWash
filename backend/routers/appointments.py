@@ -27,6 +27,60 @@ import structlog
 logger = structlog.get_logger()
 
 
+async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]:
+    """Find the washer on shift for the given date with the fewest assignments."""
+    date_str = date_time[:10] if len(date_time) >= 10 else date_time
+
+    # Find washers on confirmed shift for this date
+    shift_result = await db.execute(
+        select(Shift.userId).where(
+            and_(Shift.date == date_str, Shift.status == "confirmed")
+        )
+    )
+    washer_ids = [row[0] for row in shift_result.all()]
+    if not washer_ids:
+        return None
+
+    # Get usernames for these washers
+    user_result = await db.execute(
+        select(User.id, User.username).where(User.id.in_(washer_ids))
+    )
+    id_to_username = {row[0]: row[1] for row in user_result.all()}
+
+    # Count appointments per washer on this date
+    appt_result = await db.execute(
+        select(Appointment.assignedWasher)
+        .where(
+            and_(
+                Appointment.dateTime.like(f"{date_str}%"),
+                Appointment.status != "cancelled",
+            )
+        )
+    )
+    counts: dict[str, int] = defaultdict(int)
+    for (assigned_json,) in appt_result.all():
+        try:
+            usernames = json.loads(assigned_json or "[]")
+        except Exception:
+            usernames = []
+        for u in usernames:
+            counts[u] += 1
+
+    # Pick washer with fewest assignments
+    best_washer = None
+    best_count = float('inf')
+    for uid in washer_ids:
+        username = id_to_username.get(uid)
+        if username is None:
+            continue
+        c = counts.get(username, 0)
+        if c < best_count:
+            best_count = c
+            best_washer = username
+
+    return best_washer
+
+
 async def _send_fcm_bg(tokens: list[str], title: str, body: str, data: dict):
     try:
         await fcm_service.send_notification_to_tokens(tokens, title=title, body=body, data=data)
@@ -368,20 +422,29 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     }
 
     if current_user.role == 'admin':
+        assigned = req.assignedWasher
+        if not assigned or assigned == "[]":
+            auto_washer = await _auto_assign_washer(db, req.dateTime)
+            if auto_washer:
+                assigned = json.dumps([auto_washer])
         appt_data.update({
             "isModifiedByAdmin": int(req.isModifiedByAdmin),
             "isModifiedByWasher": int(req.isModifiedByWasher),
             "isSeenByClient": 1 if not (req.isModifiedByAdmin or req.isModifiedByWasher) else 0,
             "originalPrice": req.originalPrice,
-            "assignedWasher": req.assignedWasher,
+            "assignedWasher": assigned,
         })
     else:
+        assigned = "[]"
+        auto_washer = await _auto_assign_washer(db, req.dateTime)
+        if auto_washer:
+            assigned = json.dumps([auto_washer])
         appt_data.update({
             "isModifiedByAdmin": 0,
             "isModifiedByWasher": 0,
             "isSeenByClient": 1,
             "originalPrice": req.paidPrice if req.originalPrice == 0 else req.originalPrice,
-            "assignedWasher": "[]",
+            "assignedWasher": assigned,
         })
 
     appt = Appointment(**appt_data)
