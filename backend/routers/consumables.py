@@ -9,10 +9,11 @@ from sqlalchemy import select, update, delete, func
 from database import get_db
 from models import (
     ConsumableRequest, ConsumableResponse, ServiceConsumableRequest,
-    ServiceConsumableResponse, RefillRequest,
+    ServiceConsumableResponse, RefillRequest, InventoryForecastResponse,
 )
 from db_models import Consumable, ServiceConsumable, Service, User, ConsumableRefillLog, ConsumableUsageLog
 from services.auth_service import get_current_user, check_roles
+from services.inventory_forecast_service import generate_inventory_forecast
 
 try:
     import openpyxl
@@ -54,6 +55,16 @@ async def get_low_stock_alerts(request: Request, db: AsyncSession = Depends(get_
         select(Consumable).where(Consumable.currentStock < Consumable.minStock).order_by(Consumable.name.asc())
     )
     return result.scalars().all()
+
+
+@router.get("/forecast", response_model=InventoryForecastResponse)
+@limiter.limit("60/minute")
+async def get_inventory_forecast(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin", "washer"])),
+):
+    return await generate_inventory_forecast(db)
 
 
 # ========== Excel экспорт / импорт (статичные пути — до динамических) ==========
