@@ -20,7 +20,8 @@ import '../../core/service_locator.dart';
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
   final Promo? initialPromo;
-  const BookingWizardScreen({super.key, this.initialPromo});
+  final Appointment? templateAppointment;
+  const BookingWizardScreen({super.key, this.initialPromo, this.templateAppointment});
   @override
   State<BookingWizardScreen> createState() => _BWState();
 }
@@ -43,7 +44,7 @@ class _BWState extends State<BookingWizardScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
 
-  Promo? get _promo => widget.initialPromo;
+  Promo? get _promo => widget.templateAppointment != null ? null : widget.initialPromo;
   bool get _isPromo => _promo != null;
 
   bool get _weekendOnly => _promo?.weekendOnly ?? false;
@@ -225,7 +226,11 @@ class _BWState extends State<BookingWizardScreen> {
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
     final existingCar = user?.carModel ?? '';
-    final parts = existingCar.split(' ');
+    final parts = existingCar
+        .trim()
+        .split(' ')
+        .where((s) => s.isNotEmpty)
+        .toList();
     _brandCtrl =
         TextEditingController(text: parts.isNotEmpty ? parts.first : '');
     _modelCtrl = TextEditingController(
@@ -235,6 +240,24 @@ class _BWState extends State<BookingWizardScreen> {
     _extras = {};
     _selectedDate = _nextValidDate();
 
+    if (widget.templateAppointment != null) {
+      final template = widget.templateAppointment!;
+      _nameCtrl.text = template.clientName;
+      final carParts = template.carModel
+          .trim()
+          .split(' ')
+          .where((s) => s.isNotEmpty)
+          .toList();
+      _brandCtrl.text = carParts.isNotEmpty ? carParts.first : '';
+      _modelCtrl.text = carParts.length > 1 ? carParts.sublist(1).join(' ') : '';
+      _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
+      _numCtrl.text = template.carNumber;
+      final catalogProvider = context.read<CatalogProvider>();
+      final wtExists = catalogProvider.washTypeById(template.washTypeId) != null;
+      _washTypeId = wtExists ? template.washTypeId : '';
+      _extras = Set.from(template.additionalServices);
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initFromProvider();
       _updateBusySlots();
@@ -242,6 +265,7 @@ class _BWState extends State<BookingWizardScreen> {
   }
 
   void _initFromProvider() {
+    if (widget.templateAppointment != null) return;
     final catalogProvider = context.read<CatalogProvider>();
     if (_isPromo) {
       _washTypeId = _promo!.washTypeId;
@@ -358,11 +382,10 @@ class _BWState extends State<BookingWizardScreen> {
     final washTypes = [...catalogProvider.washTypes]
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-    if (_washTypeId.isEmpty && washTypes.isNotEmpty) {
-      _washTypeId = _isPromo
-          ? _promo!.washTypeId
-          : (catalogProvider.washTypeByCode('basic')?.id ?? washTypes.first.id);
-      _addIncludedExtras();
+    if (_washTypeId.isEmpty && washTypes.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
