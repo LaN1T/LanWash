@@ -19,6 +19,15 @@ class User(Base):
     passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
 
+class Car(Base):
+    __tablename__ = 'cars'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    brand = Column(String, nullable=False, default='')
+    model = Column(String, nullable=False, default='')
+    number = Column(String, nullable=False, default='')
+    isPrimary = Column(Boolean, nullable=False, default=False)
+
 class WashType(Base):
     __tablename__ = 'wash_types'
     id = Column(String, primary_key=True)           # w1..w4
