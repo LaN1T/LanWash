@@ -4,8 +4,6 @@ import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
 import '../../models/promo.dart';
-import '../../models/service.dart';
-import '../../models/wash_type.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
@@ -19,6 +17,7 @@ import 'booking/datetime_step.dart';
 import 'booking/service_step.dart';
 import 'booking/confirmation_step.dart';
 import 'booking/bottom_bar.dart';
+import '../../usecases/booking_price_calculator.dart';
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
@@ -56,6 +55,16 @@ class _BWState extends State<BookingWizardScreen> {
   bool get _isPromo => _promo != null;
 
   bool get _weekendOnly => _promo?.weekendOnly ?? false;
+
+  BookingPriceCalculator get _calculator {
+    final catalog = context.read<CatalogProvider>();
+    return BookingPriceCalculator(
+      washType: catalog.washTypeById(_washTypeId),
+      extras: _extras,
+      promo: _promo,
+      services: catalog.services,
+    );
+  }
 
   DateTime _nextValidDate() {
     DateTime d = DateTime.now();
@@ -108,125 +117,7 @@ class _BWState extends State<BookingWizardScreen> {
     return false;
   }
 
-  int _getDuration() {
-    final catalogProvider = context.read<CatalogProvider>();
-    final wt = catalogProvider.washTypeById(_washTypeId);
-    int duration = wt?.durationMinutes ?? 30;
-
-    final locked = _lockedExtras();
-    for (final id in _extras) {
-      if (!locked.contains(id)) {
-        final svc = catalogProvider.services.firstWhere((s) => s.id == id,
-            orElse: () => Service(
-                id: id,
-                name: id,
-                description: '',
-                price: 0,
-                durationMinutes: 0,
-                category: ''));
-        duration += svc.durationMinutes;
-      }
-    }
-    return duration;
-  }
-
-  Set<String> _lockedExtras() {
-    final locked = <String>{...?_washType?.includedExtraIds};
-    if (_isPromo) locked.addAll(_promo!.includedExtraIds);
-    return locked;
-  }
-
-  WashType? get _washType =>
-      context.read<CatalogProvider>().washTypeById(_washTypeId);
-
-  int _extraPrice(String id) {
-    final svc = context.read<CatalogProvider>().services.firstWhere(
-          (s) => s.id == id,
-          orElse: () => Service(
-              id: id,
-              name: id,
-              description: '',
-              price: 0,
-              durationMinutes: 0,
-              category: ''),
-        );
-    return svc.price;
-  }
-
-  int _extraDuration(String id) {
-    final svc = context.read<CatalogProvider>().services.firstWhere(
-          (s) => s.id == id,
-          orElse: () => Service(
-              id: id,
-              name: id,
-              description: '',
-              price: 0,
-              durationMinutes: 0,
-              category: ''),
-        );
-    return svc.durationMinutes;
-  }
-
-  int get _regularPrice {
-    final wt = _washType;
-    int p = wt?.basePrice ?? 0;
-    final washIncluded = wt?.includedExtraIds.toSet() ?? <String>{};
-    for (final id in _extras) {
-      if (!washIncluded.contains(id)) p += _extraPrice(id);
-    }
-    return p;
-  }
-
-  int get _extrasPrice {
-    int p = 0;
-    final locked = _lockedExtras();
-    for (final id in _extras) {
-      if (!locked.contains(id)) p += _extraPrice(id);
-    }
-    return p;
-  }
-
-  int get _promoBasePrice {
-    if (!_isPromo) return 0;
-    if (_promo!.discountPercent > 0) {
-      final base = _washType?.basePrice ?? 0;
-      return base * (100 - _promo!.discountPercent) ~/ 100;
-    }
-    return _promo!.price;
-  }
-
-  int get _finalPrice =>
-      _isPromo ? _promoBasePrice + _extrasPrice : _regularPrice;
-  bool get _hasDiscount => _isPromo && _finalPrice < _regularPrice;
-
-  DateTime get _finalDateTime {
-    if (_selectedSlotIndex == -1) return DateTime.now(); // Should not happen
-    final hour = 8 + (_selectedSlotIndex ~/ 2);
-    final minute = (_selectedSlotIndex % 2) * 30;
-    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
-        hour, minute);
-  }
-
-  String get _totalDurationLabel {
-    final wt = _washType;
-    int total = wt?.durationMinutes ?? 0;
-    final washIncluded = wt?.includedExtraIds.toSet() ?? <String>{};
-    for (final id in _extras) {
-      if (washIncluded.contains(id)) continue;
-      total += _extraDuration(id);
-    }
-
-    final d = total ~/ (24 * 60);
-    final h = (total % (24 * 60)) ~/ 60;
-    final m = total % 60;
-
-    final parts = <String>[];
-    if (d > 0) parts.add('$d д');
-    if (h > 0) parts.add('$h ч');
-    if (m > 0) parts.add('$m мин');
-
-    return parts.isEmpty ? '0 мин' : parts.join(' ');
-  }
+  int _getDuration() => _calculator.duration;
 
   @override
   void initState() {
@@ -382,9 +273,9 @@ class _BWState extends State<BookingWizardScreen> {
           notes: _isPromo ? 'Акция: ${_promo!.name}' : '',
           ownerUsername: login,
           promoPrice: _isPromo
-              ? (_promo!.price > 0 ? _promo!.price : _promoBasePrice)
+              ? (_promo!.price > 0 ? _promo!.price : _calculator.promoBasePrice)
               : 0,
-          paidPrice: _finalPrice,
+          paidPrice: _calculator.finalPrice,
           promoId: _promo?.id,
         ),
         auth);
@@ -409,6 +300,14 @@ class _BWState extends State<BookingWizardScreen> {
         ));
       }
     }
+  }
+
+  DateTime get _finalDateTime {
+    if (_selectedSlotIndex == -1) return DateTime.now(); // Should not happen
+    final hour = 8 + (_selectedSlotIndex ~/ 2);
+    final minute = (_selectedSlotIndex % 2) * 30;
+    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
+        hour, minute);
   }
 
   @override
@@ -472,7 +371,7 @@ class _BWState extends State<BookingWizardScreen> {
                 washTypes: washTypes,
                 washTypeId: _washTypeId,
                 extras: _extras,
-                lockedExtras: _lockedExtras(),
+                lockedExtras: _calculator.lockedExtras,
                 nameCtrl: _nameCtrl,
                 brandCtrl: _brandCtrl,
                 modelCtrl: _modelCtrl,
@@ -504,7 +403,7 @@ class _BWState extends State<BookingWizardScreen> {
                   _extras.addAll(wt.includedExtraIds);
                 }),
                 onExtrasChanged: (id, v) => setState(() {
-                  if (!v && _lockedExtras().contains(id)) return;
+                  if (!v && _calculator.lockedExtras.contains(id)) return;
                   v ? _extras.add(id) : _extras.remove(id);
                 }),
               ),
@@ -528,17 +427,17 @@ class _BWState extends State<BookingWizardScreen> {
               ConfirmationStep(
                 date: DateFormat('d MMMM yyyy, HH:mm', 'ru')
                     .format(_finalDateTime),
-                washType: _washType,
+                washType: catalogProvider.washTypeById(_washTypeId),
                 extras: _extras.toList(),
                 services: catalogProvider.services,
                 name: _nameCtrl.text,
                 car: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
                 number: _numCtrl.text,
-                finalPrice: _finalPrice,
-                regularPrice: _regularPrice,
-                hasDiscount: _hasDiscount,
+                finalPrice: _calculator.finalPrice,
+                regularPrice: _calculator.regularPrice,
+                hasDiscount: _calculator.hasDiscount,
                 promoName: _isPromo ? _promo!.name : null,
-                totalDurationLabel: _totalDurationLabel,
+                totalDurationLabel: _calculator.durationLabel,
               ),
             ],
           ),
