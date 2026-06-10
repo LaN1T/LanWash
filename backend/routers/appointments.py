@@ -22,16 +22,12 @@ from db_models import (
     DeletedNotification,
     FcmToken,
     LogEntry,
-    Promo,
-    PromoIncludedExtra,
-    Service,
     ServiceConsumable,
     Shift,
     Subscription,
     User,
     WashType,
     WashTypeConsumable,
-    WashTypeIncludedExtra,
 )
 from models import (
     AppointmentRequest,
@@ -323,12 +319,8 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
     res_wt = await db.execute(select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service).where(WashTypeConsumable.washTypeId == wash_type_id))
     usage_map = {row[0]: float(row[1]) for row in res_wt.all()}
 
-    # 2. Сбор расходников из промо
-    if promo_id:
-        res_promo = await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
-        # Здесь мы полагаем, что логика промо тоже требует расходников,
-        # но для простоты добавим только расходники самих доп.услуг ниже.
-        pass
+    # 2. Сбор расходников из промо (упрощённо — пока не учитываем)
+    # При необходимости: await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
 
     # 3. Сбор расходников из доп.услуг
     if additional_services:
@@ -520,7 +512,6 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     return appt
 
 
-from datetime import datetime
 
 
 def format_date(dt_str):

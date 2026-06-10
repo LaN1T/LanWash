@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
 from database import get_db
 from db_models import User
-from services.auth_service import check_roles, get_current_user
+from services.auth_service import check_roles
 from services.reminders_service import RemindersService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])

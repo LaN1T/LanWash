@@ -15,7 +15,6 @@ from db_models import (
     PromoIncludedExtra,
     Service,
     ServiceConsumable,
-    Shift,
     User,
     WashType,
     WashTypeConsumable,

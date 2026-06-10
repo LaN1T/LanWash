@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 
 import structlog
-from sqlalchemy import and_, or_, select, text
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db_models import (
@@ -247,8 +247,6 @@ class WorkloadService:
             total = base + sum(svc_durations.get(eid, 0) for eid in filtered)
             return total
         # --- End batch preload ---
-
-        box_occupancy = [False] * NUM_BOXES
 
         # Для каждого бокса проверяем, свободен ли он в интервале [start_dt, end_dt]
         for box_idx in range(NUM_BOXES):

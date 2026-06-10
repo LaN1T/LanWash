@@ -13,13 +13,12 @@ os.environ["INITIAL_ADMIN_PASSWORD"] = "TestPass123!"
 # Добавляем backend в PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from sqlalchemy.ext.asyncio import create_async_engine
 
 # Отключаем rate limiting для тестов
 from core.limiter import limiter
 from database import AsyncSessionLocal, init_db
 from db_models import Base, User
-from main import app, lifespan
+from main import app
 
 limiter.enabled = False
 
