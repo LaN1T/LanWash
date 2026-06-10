@@ -5,6 +5,9 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = 'users'
+    __table_args__ = (
+        Index('ix_users_role', 'role'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, nullable=False, unique=True)
     passwordHash = Column(String, nullable=False)
@@ -23,6 +26,9 @@ class User(Base):
 
 class Car(Base):
     __tablename__ = 'cars'
+    __table_args__ = (
+        Index('ix_cars_user', 'userId'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     brand = Column(String, nullable=False, default='')
@@ -59,6 +65,9 @@ class WashTypeConsumable(Base):
 
 class Subscription(Base):
     __tablename__ = 'subscriptions'
+    __table_args__ = (
+        Index('ix_subscriptions_user', 'userId'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     name = Column(String, nullable=False)  # e.g., "Пакет 5 комплексных"
@@ -77,6 +86,11 @@ class Appointment(Base):
         Index('ix_appointments_owner', 'ownerUsername'),
         Index('ix_appointments_status', 'status'),
         Index('ix_appointments_owner_status', 'ownerUsername', 'status'),
+        Index('ix_appointments_user', 'userId'),
+        Index('ix_appointments_wash_type', 'washTypeId'),
+        Index('ix_appointments_promo', 'promoId'),
+        Index('ix_appointments_subscription', 'subscriptionId'),
+        Index('ix_appointments_box', 'box_index'),
     )
     id = Column(String, primary_key=True)
     userId = Column(Integer, ForeignKey('users.id'), nullable=True)
@@ -106,6 +120,9 @@ class Appointment(Base):
 
 class Service(Base):
     __tablename__ = 'services'
+    __table_args__ = (
+        Index('ix_services_category', 'category'),
+    )
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=False, default='')
@@ -118,6 +135,9 @@ class Service(Base):
 
 class Promo(Base):
     __tablename__ = 'promos'
+    __table_args__ = (
+        Index('ix_promos_wash_type', 'washTypeId'),
+    )
     id = Column(String, primary_key=True)
     washTypeId = Column(String, ForeignKey('wash_types.id'), nullable=False)
     name = Column(String, nullable=False)
@@ -157,6 +177,9 @@ class ExtraFavorite(Base):
 
 class WasherNote(Base):
     __tablename__ = 'washer_notes'
+    __table_args__ = (
+        Index('ix_washer_notes_username', 'username'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, nullable=False)
     title = Column(String, nullable=False)
@@ -242,6 +265,9 @@ class Review(Base):
     __tablename__ = 'reviews'
     __table_args__ = (
         UniqueConstraint('userId', 'appointmentId', name='uq_review_user_appointment'),
+        Index('ix_reviews_user', 'userId'),
+        Index('ix_reviews_appointment', 'appointmentId'),
+        Index('ix_reviews_published', 'isPublished'),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id'), nullable=False)
@@ -256,6 +282,8 @@ class Referral(Base):
     __tablename__ = 'referrals'
     __table_args__ = (
         UniqueConstraint('referrerId', 'referredId', name='uq_referral_referrer_referred'),
+        Index('ix_referrals_referrer', 'referrerId'),
+        Index('ix_referrals_referred', 'referredId'),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     referrerId = Column(Integer, ForeignKey('users.id'), nullable=False)
@@ -267,6 +295,8 @@ class Tip(Base):
     __tablename__ = 'tips'
     __table_args__ = (
         UniqueConstraint('appointmentId', 'washerUsername', name='uq_tip_appointment_washer'),
+        Index('ix_tips_appointment', 'appointmentId'),
+        Index('ix_tips_washer', 'washerUsername'),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     appointmentId = Column(String, ForeignKey('appointments.id'), nullable=False)
@@ -279,6 +309,12 @@ class Tip(Base):
 
 class SupportChat(Base):
     __tablename__ = 'support_chats'
+    __table_args__ = (
+        Index('ix_support_chats_user', 'userId'),
+        Index('ix_support_chats_admin', 'assignedAdminId'),
+        Index('ix_support_chats_status', 'status'),
+        Index('ix_support_chats_last_message', 'lastMessageAt'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     status = Column(String, nullable=False, default='open')
@@ -292,6 +328,11 @@ class SupportChat(Base):
 
 class SupportMessage(Base):
     __tablename__ = 'support_messages'
+    __table_args__ = (
+        Index('ix_support_messages_chat', 'chatId'),
+        Index('ix_support_messages_sender', 'senderId'),
+        Index('ix_support_messages_created', 'createdAt'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     chatId = Column(Integer, ForeignKey('support_chats.id', ondelete='CASCADE'), nullable=False)
     senderRole = Column(String, nullable=False)
