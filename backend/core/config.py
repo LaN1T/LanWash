@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # AI providers (optional)
     gemini_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
-    ai_provider: Literal["gemini", "groq"] = "gemini"
+    ai_provider: Literal["gemini", "groq"] = "groq"
 
     @property
     def cors_origins(self) -> List[str]:
