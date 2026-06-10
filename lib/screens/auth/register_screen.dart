@@ -63,6 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+  AppLanguage? _errorLanguage;
 
   @override
   void dispose() {
@@ -94,9 +95,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (!mounted) return;
     if (err != null) {
+      final currentLang = context.read<LanguageProvider>().language;
       setState(() {
         _loading = false;
         _error = err;
+        _errorLanguage = currentLang;
       });
       return;
     }
@@ -145,6 +148,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    if (_error != null && _errorLanguage != lang.language) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _error = null);
+      });
+    }
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
