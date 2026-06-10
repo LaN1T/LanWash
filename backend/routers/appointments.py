@@ -724,12 +724,21 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     added_washers = [w for w in new_assigned_washers if w not in old_assigned_washers]
     removed_washers = [w for w in old_assigned_washers if w not in new_assigned_washers]
 
+    # Batch FCM token queries to avoid N+1
+    all_washer_usernames = list(set(added_washers + removed_washers))
+    tokens_map: dict[str, list[str]] = {}
+    if all_washer_usernames:
+        tokens_res = await db.execute(
+            select(FcmToken.username, FcmToken.token).where(FcmToken.username.in_(all_washer_usernames))
+        )
+        for username, token in tokens_res.all():
+            tokens_map.setdefault(username, []).append(token)
+
+    dt_str = format_date(appt.dateTime)
     for washer_username in added_washers:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
-        encrypted_tokens = tokens_res.scalars().all()
+        encrypted_tokens = tokens_map.get(washer_username, [])
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
-            dt_str = format_date(appt.dateTime)
             asyncio.create_task(_send_fcm_bg(
                 tokens,
                 "Новая запись",
@@ -737,11 +746,9 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
                 {}
             ))
     for washer_username in removed_washers:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == washer_username))
-        encrypted_tokens = tokens_res.scalars().all()
+        encrypted_tokens = tokens_map.get(washer_username, [])
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
-            dt_str = format_date(appt.dateTime)
             asyncio.create_task(_send_fcm_bg(
                 tokens,
                 "Назначение отменено",
@@ -849,12 +856,14 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             raise HTTPException(400, "Некорректная дата записи")
         appt_duration = await workload_service.get_appointment_duration(db, appt.washTypeId, appt.additionalServices, appt.promoId)
         appt_end = appt_start + timedelta(minutes=appt_duration)
-        for other in conflict_res.scalars().all():
+        conflict_appts = list(conflict_res.scalars().all())
+        durations = await workload_service.get_appointment_durations_batch(db, conflict_appts + [appt])
+        for other in conflict_appts:
             try:
                 other_start = workload_service._safe_parse_iso(other.dateTime)
             except ValueError:
                 continue
-            other_duration = await workload_service.get_appointment_duration(db, other.washTypeId, other.additionalServices, other.promoId)
+            other_duration = durations.get(other.id, 30)
             other_end = other_start + timedelta(minutes=other_duration)
             if appt_start < other_end and appt_end > other_start:
                 raise HTTPException(400, f"Мойщик {username} уже назначен на пересекающееся время")
