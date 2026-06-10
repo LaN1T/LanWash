@@ -33,9 +33,11 @@ void main() async {
   setupServiceLocator();
   await sl<CarCatalogService>().load();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   // App Check: в режиме разработки — debug-провайдеры, в релизе — production
   // Web не поддерживает App Check без reCAPTCHA, пропускаем
