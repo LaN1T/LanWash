@@ -57,6 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _loginCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController(text: '+7');
   final _refCtrl = TextEditingController();
   bool _obscure = true;
@@ -68,6 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _loginCtrl.dispose();
     _passCtrl.dispose();
     _nameCtrl.dispose();
+    _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _refCtrl.dispose();
     super.dispose();
@@ -85,6 +87,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       username: _loginCtrl.text.trim(),
       password: _passCtrl.text,
       displayName: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
       referralCode: _refCtrl.text.trim().isEmpty ? null : _refCtrl.text.trim().toUpperCase(),
     );
@@ -203,6 +206,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? lang.tr('validation_required')
                           : null,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _emailCtrl,
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_email'),
+                          hint: lang.tr('register_field_email_hint'),
+                          icon: Icons.email_outlined),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        return AppValidators.validateEmail(v.trim());
+                      },
                     ),
                     const SizedBox(height: 14),
                     TextFormField(

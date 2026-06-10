@@ -129,6 +129,12 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     if not req.displayName.strip():
         raise generic_error
 
+    # Validate email format if provided
+    if req.email.strip():
+        import re
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', req.email.strip()):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Некорректный email адрес.")
+
     # Handle referral code if provided (before duplicate check so we can return specific error)
     referrer = None
     if req.referralCode is not None and req.referralCode.strip():
@@ -149,6 +155,7 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         passwordHash=get_password_hash(req.password),
         role="client",
         displayName=req.displayName.strip(),
+        email=req.email.strip().lower(),
         phone=req.phone.strip(),
         carModel=req.carModel.strip(),
         carNumber=req.carNumber.strip(),

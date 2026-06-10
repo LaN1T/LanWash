@@ -10,6 +10,7 @@ class User(Base):
     passwordHash = Column(String, nullable=False)
     role = Column(String, nullable=False, default='client')
     displayName = Column(String, nullable=False)
+    email = Column(String, nullable=True, default='')
     phone = Column(String, nullable=False, default='')
     carModel = Column(String, nullable=False, default='')
     carNumber = Column(String, nullable=False, default='')
