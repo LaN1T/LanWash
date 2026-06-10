@@ -8,6 +8,7 @@ from core.config import get_settings
 from core.redis_client import get_redis
 from core.limiter import limiter
 from database import get_db
+from services.ai_resilience import ai_health
 
 settings = get_settings()
 _start_time = datetime.now(timezone.utc)
@@ -53,6 +54,13 @@ async def health_check_deep(request: Request, db: AsyncSession = Depends(get_db)
             overall = "degraded"
     except Exception as exc:
         checks["redis"] = {"status": "error", "error": str(exc)}
+        overall = "degraded"
+
+    # AI subsystem check
+    try:
+        checks["ai"] = await ai_health()
+    except Exception as exc:
+        checks["ai"] = {"status": "error", "error": str(exc)}
         overall = "degraded"
 
     return {
