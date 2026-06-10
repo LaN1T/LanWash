@@ -40,7 +40,7 @@ class TestSecurityHeaders:
         assert response.status_code == 200
         hsts = response.headers.get("Strict-Transport-Security")
         assert hsts is not None
-        assert "max-age=31536000" in hsts
+        assert "max-age=63072000" in hsts
 
     @pytest.mark.asyncio
     async def test_permissions_policy(self, client):
