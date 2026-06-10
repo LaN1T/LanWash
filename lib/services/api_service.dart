@@ -98,7 +98,7 @@ class ApiService {
             err.statusCode! < 500) {
           return {'error': err.message};
         }
-        return {'error': 'Нет связи с сервером'};
+        return {'error': 'error_network'};
       },
     );
   }
