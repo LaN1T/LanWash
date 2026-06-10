@@ -1,7 +1,6 @@
 """ARQ background tasks."""
 
 import structlog
-from arq import create_pool
 
 from core.background import REDIS_SETTINGS
 from core.metrics import update_business_metrics

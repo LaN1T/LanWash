@@ -12,7 +12,6 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError as JWTError
 from passlib.context import CryptContext
 from sqlalchemy import and_, func, select, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings

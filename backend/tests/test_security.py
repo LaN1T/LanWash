@@ -3,7 +3,6 @@ import pytest
 
 from services.auth_service import (
     create_access_token,
-    get_current_user,
     validate_password_strength,
 )
 

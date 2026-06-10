@@ -16,7 +16,6 @@ Usage:
 
 from functools import wraps
 
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def atomic(func):

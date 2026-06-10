@@ -99,7 +99,7 @@ class TestCars:
             headers={"Authorization": f"Bearer {client_token}"},
             json={"brand": "BMW", "model": "X5", "number": "А111БВ777"},
         )
-        r2 = await async_client.post(
+        _ = await async_client.post(
             "/api/cars/",
             headers={"Authorization": f"Bearer {client_token}"},
             json={"brand": "Audi", "model": "A6", "number": "А222БВ777"},
@@ -178,7 +178,6 @@ class TestCars:
     @pytest.mark.asyncio
     async def test_cannot_access_other_users_car(self, async_client, client_token, db_session):
         # Create another user
-        from services.auth_service import get_password_hash
         other = User(
             username="other_client",
             passwordHash=get_password_hash("TestPass123!"),
@@ -260,7 +259,6 @@ class TestCars:
     @pytest.mark.asyncio
     async def test_admin_create_appointment_with_client_car(self, async_client, admin_token, db_session):
         # Create a client user directly in DB
-        from services.auth_service import get_password_hash
         client_user = User(
             username="target_client",
             passwordHash=get_password_hash("TestPass123!"),

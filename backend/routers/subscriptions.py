@@ -1,9 +1,6 @@
-import uuid
-from datetime import datetime, timedelta
-from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
