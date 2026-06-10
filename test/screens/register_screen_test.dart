@@ -27,7 +27,8 @@ void main() {
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
-          ChangeNotifierProvider<AppointmentProvider>.value(value: mockAppointment),
+          ChangeNotifierProvider<AppointmentProvider>.value(
+              value: mockAppointment),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ],
@@ -42,7 +43,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Регистрация'), findsOneWidget);
-      expect(find.byType(TextFormField), findsNWidgets(4));
+      expect(find.byType(TextFormField), findsNWidgets(6));
       expect(find.text('Зарегистрироваться'), findsOneWidget);
     });
 
@@ -60,7 +61,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(1), 'ab');
+      await tester.enterText(find.byType(TextFormField).at(2), 'ab');
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
@@ -71,7 +72,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextFormField).at(2), '123');
+      await tester.enterText(find.byType(TextFormField).at(3), '123');
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
@@ -80,19 +81,25 @@ void main() {
 
     testWidgets('calls register and shows error', (tester) async {
       when(() => mockAuth.register(
-            username: any(named: 'username'),
-            password: any(named: 'password'),
-            displayName: any(named: 'displayName'),
-            phone: any(named: 'phone'),
-          )).thenAnswer((_) async => 'Регистрация не удалась. Проверьте введённые данные.');
+                username: any(named: 'username'),
+                password: any(named: 'password'),
+                displayName: any(named: 'displayName'),
+                email: any(named: 'email'),
+                phone: any(named: 'phone'),
+              ))
+          .thenAnswer((_) async =>
+              'Регистрация не удалась. Проверьте введённые данные.');
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Иван');
-      await tester.enterText(find.byType(TextFormField).at(1), 'ivan123');
-      await tester.enterText(find.byType(TextFormField).at(2), 'TestPass123!');
-      await tester.enterText(find.byType(TextFormField).at(3), '+7 (999) 000-00-00');
+      await tester.enterText(
+          find.byType(TextFormField).at(1), 'test@example.com');
+      await tester.enterText(find.byType(TextFormField).at(2), 'ivan123');
+      await tester.enterText(find.byType(TextFormField).at(3), 'TestPass123!');
+      await tester.enterText(
+          find.byType(TextFormField).at(5), '+7 (999) 000-00-00');
 
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
@@ -101,16 +108,20 @@ void main() {
             username: 'ivan123',
             password: 'TestPass123!',
             displayName: 'Иван',
+            email: 'test@example.com',
             phone: '+7 (999) 000-00-00',
           )).called(1);
-      expect(find.text('Регистрация не удалась. Проверьте введённые данные.'), findsOneWidget);
+      expect(find.text('Регистрация не удалась. Проверьте введённые данные.'),
+          findsOneWidget);
     });
 
-    testWidgets('successful registration reloads data and pops', (tester) async {
+    testWidgets('successful registration reloads data and pops',
+        (tester) async {
       when(() => mockAuth.register(
             username: any(named: 'username'),
             password: any(named: 'password'),
             displayName: any(named: 'displayName'),
+            email: any(named: 'email'),
             phone: any(named: 'phone'),
           )).thenAnswer((_) async => null);
       when(() => mockAuth.userLogin).thenReturn('ivan123');
@@ -121,9 +132,12 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(0), 'Иван');
-      await tester.enterText(find.byType(TextFormField).at(1), 'ivan123');
-      await tester.enterText(find.byType(TextFormField).at(2), 'TestPass123!');
-      await tester.enterText(find.byType(TextFormField).at(3), '+7 (999) 000-00-00');
+      await tester.enterText(
+          find.byType(TextFormField).at(1), 'test@example.com');
+      await tester.enterText(find.byType(TextFormField).at(2), 'ivan123');
+      await tester.enterText(find.byType(TextFormField).at(3), 'TestPass123!');
+      await tester.enterText(
+          find.byType(TextFormField).at(5), '+7 (999) 000-00-00');
 
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle(); // loading starts
@@ -131,7 +145,8 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 100));
 
-      verify(() => mockAppointment.reloadForUser('ivan123', mockAuth)).called(1);
+      verify(() => mockAppointment.reloadForUser('ivan123', mockAuth))
+          .called(1);
     });
 
     testWidgets('toggles password visibility', (tester) async {
@@ -151,7 +166,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      final phoneField = find.byType(TextFormField).at(3);
+      final phoneField = find.byType(TextFormField).at(5);
       await tester.enterText(phoneField, '9990000000');
       await tester.pumpAndSettle();
 

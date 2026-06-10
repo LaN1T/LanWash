@@ -71,7 +71,8 @@ void main() {
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
-          ChangeNotifierProvider<AppointmentProvider>.value(value: mockAppointment),
+          ChangeNotifierProvider<AppointmentProvider>.value(
+              value: mockAppointment),
           ChangeNotifierProvider<CatalogProvider>.value(value: mockCatalog),
         ],
         child: const Scaffold(
@@ -170,8 +171,10 @@ void main() {
 
     testWidgets('searches appointments by client name', (tester) async {
       final appointments = [
-        createAppointment(id: 'a1', clientName: 'Иван Петров', status: 'scheduled'),
-        createAppointment(id: 'a2', clientName: 'Мария Сидорова', status: 'scheduled'),
+        createAppointment(
+            id: 'a1', clientName: 'Иван Петров', status: 'scheduled'),
+        createAppointment(
+            id: 'a2', clientName: 'Мария Сидорова', status: 'scheduled'),
       ];
 
       when(() => mockAppointment.loading).thenReturn(false);

@@ -57,19 +57,52 @@ void main() {
     });
 
     test('durationLabel formats minutes', () {
-      expect(Service(id: '', name: '', description: '', price: 0, durationMinutes: 45, category: '').durationLabel, equals('45 мин'));
+      expect(
+          Service(
+                  id: '',
+                  name: '',
+                  description: '',
+                  price: 0,
+                  durationMinutes: 45,
+                  category: '')
+              .durationLabel,
+          equals('45 мин'));
     });
 
     test('durationLabel formats hours and minutes', () {
-      expect(Service(id: '', name: '', description: '', price: 0, durationMinutes: 90, category: '').durationLabel, equals('1 ч 30 мин'));
+      expect(
+          Service(
+                  id: '',
+                  name: '',
+                  description: '',
+                  price: 0,
+                  durationMinutes: 90,
+                  category: '')
+              .durationLabel,
+          equals('1 ч 30 мин'));
     });
 
     test('durationLabel formats whole hours', () {
-      expect(Service(id: '', name: '', description: '', price: 0, durationMinutes: 120, category: '').durationLabel, equals('2 ч'));
+      expect(
+          Service(
+                  id: '',
+                  name: '',
+                  description: '',
+                  price: 0,
+                  durationMinutes: 120,
+                  category: '')
+              .durationLabel,
+          equals('2 ч'));
     });
 
     test('copyWith updates fields', () {
-      final s = Service(id: 'x', name: 'Old', description: '', price: 100, durationMinutes: 30, category: '');
+      final s = Service(
+          id: 'x',
+          name: 'Old',
+          description: '',
+          price: 100,
+          durationMinutes: 30,
+          category: '');
       final updated = s.copyWith(name: 'New', price: 200);
       expect(updated.name, equals('New'));
       expect(updated.price, equals(200));

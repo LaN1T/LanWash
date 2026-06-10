@@ -31,61 +31,29 @@ class CarAutocompleteField extends StatefulWidget {
 }
 
 class _CarAutocompleteFieldState extends State<CarAutocompleteField> {
-  late final TextEditingController _innerController;
-
-  @override
-  void initState() {
-    super.initState();
-    _innerController = TextEditingController(text: widget.controller.text);
-    widget.controller.addListener(_onExternalChanged);
-    _innerController.addListener(_onInnerChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant CarAutocompleteField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onExternalChanged);
-      widget.controller.addListener(_onExternalChanged);
-      _syncFromExternal();
-    }
-  }
+  TextEditingController? _autoController;
 
   @override
   void dispose() {
     widget.controller.removeListener(_onExternalChanged);
-    _innerController.removeListener(_onInnerChanged);
-    _innerController.dispose();
     super.dispose();
   }
 
   void _onExternalChanged() {
-    if (_innerController.text != widget.controller.text) {
-      _innerController.text = widget.controller.text;
-      // Keep cursor at the end when text is set programmatically.
-      _innerController.selection = TextSelection.collapsed(
-        offset: _innerController.text.length,
-      );
+    final auto = _autoController;
+    if (auto == null) return;
+    if (auto.text != widget.controller.text) {
+      auto.text = widget.controller.text;
     }
-  }
-
-  void _onInnerChanged() {
-    if (widget.controller.text != _innerController.text) {
-      widget.controller.text = _innerController.text;
-    }
-  }
-
-  void _syncFromExternal() {
-    _innerController.text = widget.controller.text;
-    _innerController.selection = TextSelection.collapsed(
-      offset: _innerController.text.length,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    widget.controller.removeListener(_onExternalChanged);
+    widget.controller.addListener(_onExternalChanged);
+
     return Autocomplete<String>(
-      initialValue: TextEditingValue(text: _innerController.text),
+      initialValue: TextEditingValue(text: widget.controller.text),
       optionsBuilder: (textEditingValue) {
         if (textEditingValue.text.isEmpty) {
           return const Iterable<String>.empty();
@@ -93,7 +61,7 @@ class _CarAutocompleteFieldState extends State<CarAutocompleteField> {
         return widget.optionsBuilder(textEditingValue.text);
       },
       onSelected: (selection) {
-        _innerController.text = selection;
+        widget.controller.text = selection;
         widget.onSelected?.call(selection);
       },
       fieldViewBuilder: (
@@ -102,12 +70,12 @@ class _CarAutocompleteFieldState extends State<CarAutocompleteField> {
         focusNode,
         onFieldSubmitted,
       ) {
-        // Use the inner controller so Autocomplete stays in sync with us.
-        if (textController != _innerController) {
-          textController.text = _innerController.text;
+        _autoController = textController;
+        if (textController.text != widget.controller.text) {
+          textController.text = widget.controller.text;
         }
         return TextFormField(
-          controller: _innerController,
+          controller: textController,
           focusNode: focusNode,
           enabled: widget.enabled,
           validator: widget.validator,
@@ -118,6 +86,7 @@ class _CarAutocompleteFieldState extends State<CarAutocompleteField> {
             icon: widget.icon,
           ),
           textCapitalization: TextCapitalization.words,
+          onChanged: (v) => widget.controller.text = v,
           onFieldSubmitted: (_) => onFieldSubmitted(),
         );
       },

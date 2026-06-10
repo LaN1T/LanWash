@@ -100,11 +100,11 @@ void main() {
       );
 
       await tester.tap(find.text('Войти'));
-      await tester.pumpAndSettle(); // loading starts
+      await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      // After success _loading stays true (navigation handled by router)
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
       verify(() => mockAuth.login('admin', 'password')).called(1);
     });
 
@@ -129,7 +129,10 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Нет аккаунта? Зарегистрироваться'));
+      final registerButton = find.text('Нет аккаунта? Зарегистрироваться');
+      expect(registerButton, findsOneWidget);
+      await tester.ensureVisible(registerButton);
+      await tester.tap(registerButton);
       await tester.pumpAndSettle();
 
       expect(find.byType(RegisterScreen), findsOneWidget);
