@@ -2,8 +2,8 @@ import asyncio
 import json
 from typing import Dict, List, Set, Tuple
 
-from fastapi import WebSocket, WebSocketDisconnect
 import structlog
+from fastapi import WebSocket, WebSocketDisconnect
 
 logger = structlog.get_logger()
 

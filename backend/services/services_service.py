@@ -1,8 +1,10 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, distinct, func
-from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-from db_models import Service, ServiceFavorite, ExtraFavorite, Promo, PromoIncludedExtra
+
+from sqlalchemy import delete, distinct, func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import ExtraFavorite, Promo, PromoIncludedExtra, Service, ServiceFavorite
 from models import ServiceRequest
 
 

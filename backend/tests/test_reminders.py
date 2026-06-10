@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta
-from db_models import User, Appointment, FcmToken
+
+from db_models import Appointment, FcmToken, User
 from services.reminder_service import check_and_send_reminders
 
 

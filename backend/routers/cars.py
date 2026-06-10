@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
-from database import get_db
-from models import CarRequest, CarResponse
-from db_models import User
-from services.auth_service import get_current_user, check_roles
-from services.cars_service import CarsService, CarNotFoundError, CarAccessDeniedError
-from core.limiter import limiter
 import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.limiter import limiter
+from database import get_db
+from db_models import User
+from models import CarRequest, CarResponse
+from services.auth_service import check_roles, get_current_user
+from services.cars_service import CarAccessDeniedError, CarNotFoundError, CarsService
 
 logger = structlog.get_logger()
 

@@ -1,10 +1,12 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
-from sqlalchemy.exc import IntegrityError
+import json
 from datetime import datetime, timezone
 from typing import Optional
-import json
-from db_models import Tip, Appointment
+
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import Appointment, Tip
 from models import TipCreateRequest
 
 

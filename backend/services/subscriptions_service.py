@@ -1,9 +1,11 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
-from db_models import Subscription, User, Appointment
-from models import SubscriptionCreateRequest
 from datetime import datetime
+
 import structlog
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import Appointment, Subscription, User
+from models import SubscriptionCreateRequest
 
 logger = structlog.get_logger()
 

@@ -1,35 +1,52 @@
 import asyncio
+import os
 import re
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Depends, HTTPException, Header, Request, status
+import sentry_sdk
+import structlog
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
-import os
-
-from database import init_db, get_db
-from routers import auth, appointments, services, logs, notes, reports, consumables, wash_types, shifts, reviews, cars, referrals, tips, subscriptions, reminders, admin, health, support
-from services.auth_service import check_roles, get_current_user
-from services.websocket_manager import connect, disconnect, broadcast
-
-from core.limiter import limiter
-from core.config import get_settings
-from core.logging import configure_logging
-from core.metrics import update_business_metrics
-from core.background import get_arq_pool, close_arq_pool
-from tasks import check_inventory_forecast
-from core.request_id import RequestIdMiddleware, get_request_id
-from core.security_headers import SecurityHeadersMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from prometheus_fastapi_instrumentator import Instrumentator
-
-import structlog
-import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from core.background import close_arq_pool, get_arq_pool
+from core.config import get_settings
+from core.limiter import limiter
+from core.logging import configure_logging
+from core.metrics import update_business_metrics
+from core.request_id import RequestIdMiddleware, get_request_id
+from core.security_headers import SecurityHeadersMiddleware
+from database import get_db, init_db
+from routers import (
+    admin,
+    appointments,
+    auth,
+    cars,
+    consumables,
+    health,
+    logs,
+    notes,
+    referrals,
+    reminders,
+    reports,
+    reviews,
+    services,
+    shifts,
+    subscriptions,
+    support,
+    tips,
+    wash_types,
+)
+from services.auth_service import check_roles, get_current_user
+from services.websocket_manager import broadcast, connect, disconnect
+from tasks import check_inventory_forecast
 
 # Configure structured logging
 configure_logging()
@@ -277,16 +294,13 @@ else:
     logger.warning("miniapp_static_dir_not_found", path=miniapp_dir)
 
 
-@app.on_event("startup")
-async def startup_event():
-    pass
-
-
 # ─── Support Chat WebSocket ─────────────────────────────────────────────────
+import json
+
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy import select
+
 from db_models import SupportChat
-import json
 
 _ws_attempts: dict[str, list[float]] = {}
 

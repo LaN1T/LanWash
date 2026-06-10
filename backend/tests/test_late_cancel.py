@@ -1,5 +1,6 @@
 import pytest
 from sqlalchemy import select
+
 from db_models import LogEntry
 
 

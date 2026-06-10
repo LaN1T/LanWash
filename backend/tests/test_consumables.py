@@ -192,6 +192,7 @@ class TestConsumables:
     @pytest.mark.asyncio
     async def test_import_refills(self, async_client, admin_token):
         import io
+
         from openpyxl import Workbook
 
         wb = Workbook()
@@ -215,6 +216,7 @@ class TestConsumables:
     @pytest.mark.asyncio
     async def test_import_refills_invalid(self, async_client, admin_token):
         import io
+
         from openpyxl import Workbook
 
         wb = Workbook()

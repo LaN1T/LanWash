@@ -1,6 +1,8 @@
-import pytest
 from datetime import datetime
-from db_models import User, Appointment
+
+import pytest
+
+from db_models import Appointment, User
 
 
 class TestBulkOperations:

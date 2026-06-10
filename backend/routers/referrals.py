@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.limiter import limiter
 from database import get_db
 from db_models import User
 from models import ReferralResponse, ReferralStatsResponse
-from pydantic import BaseModel
 from services.auth_service import get_current_user
 from services.referrals_service import ReferralsService
-from core.limiter import limiter
 
 
 class ClaimResponse(BaseModel):

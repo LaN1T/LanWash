@@ -1,9 +1,11 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
 from typing import Optional
-from db_models import Review, Appointment
+
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import Appointment, Review
 from models import ReviewCreateRequest, ReviewModerateRequest
 
 

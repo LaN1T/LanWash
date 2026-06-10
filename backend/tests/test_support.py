@@ -1,6 +1,7 @@
 import os
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 
 
 @pytest.fixture(autouse=True)
@@ -134,6 +135,7 @@ class TestSupportChat:
 class TestSupportWebSocket:
     def test_websocket_broadcast(self):
         from starlette.testclient import TestClient
+
         from main import app
 
         with TestClient(app) as client:

@@ -2,28 +2,28 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.limiter import limiter
 from database import get_db
 from db_models import User
 from models import (
+    AppointmentResponse,
     TipCreateRequest,
     TipResponse,
     TipStatsResponse,
     TipWithAppointmentResponse,
-    AppointmentResponse,
 )
-from services.auth_service import get_current_user, check_roles
+from services.auth_service import check_roles, get_current_user
+from services.sbp_service import generate_sbp_url
 from services.tips_service import (
-    TipsService,
-    TipNotFoundError,
-    TipAccessDeniedError,
     AppointmentNotFoundError,
     DuplicateTipError,
+    TipAccessDeniedError,
+    TipNotFoundError,
+    TipsService,
 )
-from services.sbp_service import generate_sbp_url
-from core.limiter import limiter
 
 router = APIRouter(prefix="/api/tips", tags=["tips"])
 

@@ -1,19 +1,25 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
-from core.limiter import limiter
+
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.limiter import limiter
 from database import get_db
-from models import SubscriptionCreateRequest, SubscriptionResponse, SubscriptionStatsResponse
 from db_models import User
-from services.auth_service import get_current_user, check_roles
+from models import (
+    SubscriptionCreateRequest,
+    SubscriptionResponse,
+    SubscriptionStatsResponse,
+)
+from services.auth_service import check_roles, get_current_user
 from services.subscriptions_service import (
-    SubscriptionsService,
     SubscriptionNotFoundError,
+    SubscriptionsService,
     UserNotFoundError,
 )
-import structlog
 
 logger = structlog.get_logger()
 

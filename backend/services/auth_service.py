@@ -1,23 +1,25 @@
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
-import re
-from typing import Optional, List
+from typing import List, Optional
+
 import jwt
-from jwt import PyJWTError as JWTError
-from passlib.context import CryptContext
+import redis
+import structlog
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func, and_
+from jwt import PyJWTError as JWTError
+from passlib.context import CryptContext
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.exc import IntegrityError
-from database import get_db
-from db_models import User, FcmToken, Referral
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.config import get_settings
 from core.redis_client import get_redis
 from core.transaction import atomic
-import redis
-import structlog
+from database import get_db
+from db_models import FcmToken, Referral, User
 
 logger = structlog.get_logger()
 
@@ -479,7 +481,7 @@ class AuthService:
         return user
 
     async def get_user_stats(self, username: str, current_user: User) -> dict:
-        from db_models import Appointment, WashType, Shift
+        from db_models import Appointment, Shift, WashType
 
         if current_user.username != username.lower() and current_user.role != "admin":
             raise StatsAccessDeniedError("Нет доступа к статистике")

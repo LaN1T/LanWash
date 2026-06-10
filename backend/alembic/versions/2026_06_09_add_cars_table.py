@@ -7,9 +7,9 @@ Create Date: 2026-06-09 14:00:00.000000
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '2026_06_09_add_cars_table'
@@ -38,13 +38,13 @@ def upgrade() -> None:
         # SQLite approach
         conn.execute(sa.text("""
             INSERT INTO cars (userId, brand, model, number, isPrimary)
-            SELECT 
+            SELECT
                 id,
-                CASE 
+                CASE
                     WHEN instr(carModel, ' ') > 0 THEN substr(carModel, 1, instr(carModel, ' ') - 1)
                     ELSE carModel
                 END,
-                CASE 
+                CASE
                     WHEN instr(carModel, ' ') > 0 THEN substr(carModel, instr(carModel, ' ') + 1)
                     ELSE ''
                 END,
@@ -57,13 +57,13 @@ def upgrade() -> None:
         # PostgreSQL/MySQL approach
         conn.execute(sa.text("""
             INSERT INTO cars (userId, brand, model, number, isPrimary)
-            SELECT 
+            SELECT
                 id,
-                CASE 
+                CASE
                     WHEN POSITION(' ' IN carModel) > 0 THEN SPLIT_PART(carModel, ' ', 1)
                     ELSE carModel
                 END,
-                CASE 
+                CASE
                     WHEN POSITION(' ' IN carModel) > 0 THEN SUBSTRING(carModel FROM POSITION(' ' IN carModel) + 1)
                     ELSE ''
                 END,

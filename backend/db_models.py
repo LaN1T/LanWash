@@ -1,5 +1,14 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, Index, UniqueConstraint
-from sqlalchemy.orm import declarative_base, relationship, declared_attr
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import declarative_base, declared_attr, relationship
 
 Base = declarative_base()
 

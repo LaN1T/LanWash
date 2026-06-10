@@ -1,8 +1,10 @@
+from datetime import datetime
+
+from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, delete
+
 from db_models import Shift, User
 from models import ShiftRequest
-from datetime import datetime
 
 
 class ShiftNotFoundError(Exception):

@@ -1,15 +1,29 @@
-import uuid
 import io
+import uuid
 from datetime import datetime, timedelta
+
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func
-from db_models import Consumable, ServiceConsumable, Service, ConsumableRefillLog, ConsumableUsageLog
-from models import ConsumableResponse, ServiceConsumableResponse, ConsumableRequest, ServiceConsumableRequest, RefillRequest
+
+from db_models import (
+    Consumable,
+    ConsumableRefillLog,
+    ConsumableUsageLog,
+    Service,
+    ServiceConsumable,
+)
+from models import (
+    ConsumableRequest,
+    ConsumableResponse,
+    RefillRequest,
+    ServiceConsumableRequest,
+    ServiceConsumableResponse,
+)
 from services.inventory_forecast_service import generate_inventory_forecast
 
 try:
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.styles import Alignment, Font, PatternFill
     HAS_OPENPYXL = True
 except ImportError:
     HAS_OPENPYXL = False

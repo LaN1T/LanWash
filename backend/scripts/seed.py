@@ -13,12 +13,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from faker import Faker
 from passlib.context import CryptContext
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from database import AsyncSessionLocal, init_db
 from db_models import (
-    User, Appointment, Shift, Review, LogEntry,
-    WashType, Service, Consumable, Promo,
+    Appointment,
+    Consumable,
+    LogEntry,
+    Promo,
+    Review,
+    Service,
+    Shift,
+    User,
+    WashType,
 )
 
 fake = Faker("ru_RU")

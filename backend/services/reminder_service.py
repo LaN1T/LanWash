@@ -1,11 +1,13 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import List, Optional
-from collections import defaultdict
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from db_models import User, Appointment, FcmToken, WashType
-from services.fcm_service import fcm_service
+
 import structlog
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import Appointment, FcmToken, User, WashType
+from services.fcm_service import fcm_service
 
 logger = structlog.get_logger()
 
