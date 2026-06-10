@@ -24,6 +24,7 @@ from services.auth_service import (
     FcmTokenAccessDeniedError,
 )
 from core.limiter import limiter
+from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
 import structlog
 
 logger = structlog.get_logger()
@@ -46,10 +47,22 @@ router = APIRouter(
 )
 @limiter.limit("10/minute")
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    identifier = f"{client_ip}:{req.username.lower().strip()}"
+
+    if await is_locked_out(identifier):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Слишком много неудачных попыток. Попробуйте позже."
+        )
+
     svc = AuthService(db)
     try:
-        return await svc.login(req.username.lower().strip(), req.password)
+        result = await svc.login(req.username.lower().strip(), req.password)
+        await reset_attempts(identifier)
+        return result
     except InvalidCredentialsError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
 
 
