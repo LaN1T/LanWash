@@ -56,6 +56,83 @@ class WorkloadService:
         return total_duration
 
     @staticmethod
+    async def get_appointment_durations_batch(
+        db: AsyncSession, appointments: list[Appointment]
+    ) -> dict[str, int]:
+        """Batch-compute durations for multiple appointments to avoid N+1 queries."""
+        if not appointments:
+            return {}
+
+        wash_type_ids = {a.washTypeId for a in appointments}
+        promo_ids = {a.promoId for a in appointments if a.promoId}
+        all_service_ids: set = set()
+        for a in appointments:
+            try:
+                all_service_ids.update(json.loads(a.additionalServices))
+            except Exception:
+                pass
+
+        # Wash type durations
+        wt_durations = {}
+        if wash_type_ids:
+            wt_res = await db.execute(
+                select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids))
+            )
+            wt_durations = {row[0]: row[1] for row in wt_res.all()}
+
+        # Wash type included extras
+        wt_included: dict[str, set] = {}
+        if wash_type_ids:
+            wti_res = await db.execute(
+                select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
+                .where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
+            )
+            for wt_id, svc_id in wti_res.all():
+                wt_included.setdefault(wt_id, set()).add(svc_id)
+
+        # Promo durations and included extras
+        promo_durations = {}
+        promo_included: dict[str, set] = {}
+        if promo_ids:
+            pr_res = await db.execute(
+                select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids))
+            )
+            promo_durations = {row[0]: row[1] for row in pr_res.all()}
+            pri_res = await db.execute(
+                select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
+                .where(PromoIncludedExtra.promoId.in_(promo_ids))
+            )
+            for pr_id, svc_id in pri_res.all():
+                promo_included.setdefault(pr_id, set()).add(svc_id)
+
+        # Service durations
+        svc_durations = {}
+        if all_service_ids:
+            svc_res = await db.execute(
+                select(Service.id, Service.durationMinutes).where(Service.id.in_(all_service_ids))
+            )
+            svc_durations = {row[0]: row[1] for row in svc_res.all()}
+
+        result = {}
+        for a in appointments:
+            base = wt_durations.get(a.washTypeId, 30)
+            included = set(wt_included.get(a.washTypeId, []))
+            if a.promoId and a.promoId in promo_durations:
+                p_dur = promo_durations[a.promoId]
+                if p_dur and p_dur > 0:
+                    base = p_dur
+                included.update(promo_included.get(a.promoId, []))
+            try:
+                extra_ids = json.loads(a.additionalServices)
+            except Exception:
+                extra_ids = []
+            filtered = [eid for eid in extra_ids if eid not in included]
+            total = base + sum(svc_durations.get(eid, 0) for eid in filtered)
+            result[a.id] = total
+
+        return result
+
+    @staticmethod
     def _safe_parse_iso(dt_str: str) -> datetime:
         try:
             dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
