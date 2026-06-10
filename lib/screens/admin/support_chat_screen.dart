@@ -150,7 +150,31 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final myId = auth.user?.id;
     final isMine = myId != null && _chat.assignedAdminId == myId;
     if (isMine) {
-      await _close();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Закрыть чат?'),
+          content: const Text(
+              'После закрытия AI-ассистент будет отвечать на новые сообщения клиента.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.success,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Закрыть'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) await _close();
     } else {
       await _assign();
     }
