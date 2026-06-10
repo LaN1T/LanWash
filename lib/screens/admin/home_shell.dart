@@ -490,23 +490,6 @@ class _HomeShellState extends State<HomeShell> {
                   borderRadius: BorderRadius.circular(10)),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(Icons.logout_outlined,
-                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              title: Text('Сменить профиль',
-                  style:
-                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
-              onTap: () {
-                Navigator.pop(ctx);
-                ctx.read<AuthProvider>().logout();
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
           const SizedBox(height: 16),
         ]),
       ),

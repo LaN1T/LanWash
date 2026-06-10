@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/config.dart';
 import '../core/api_client.dart';
@@ -30,6 +31,7 @@ class SupportProvider extends ChangeNotifier {
   WebSocketChannel? _wsChannel;
   StreamSubscription? _wsSubscription;
   Timer? _reconnectTimer;
+  Timer? _pollingTimer;
   int? _activeChatId;
   bool _shouldReconnect = false;
   int _reconnectAttempt = 0;
@@ -69,19 +71,27 @@ class SupportProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadMessages(int chatId) async {
-    _loading = true;
+  Future<void> loadMessages(int chatId, {bool silent = false}) async {
+    if (!silent) {
+      _loading = true;
+      notifyListeners();
+    }
     _error = null;
-    notifyListeners();
     try {
       final loaded = await _api.getSupportMessages(chatId);
-      _messages = _dedupeAndSortMessages(loaded);
+      // Merge with any messages already received via WebSocket while loading
+      final merged = [..._messages, ...loaded];
+      _messages = _dedupeAndSortMessages(merged);
       await _api.markSupportChatRead(chatId);
+      notifyListeners();
     } catch (e) {
       _error = _mapError(e, 'Не удалось загрузить сообщения. Проверьте подключение.');
+      if (!silent) notifyListeners();
     }
-    _loading = false;
-    notifyListeners();
+    if (!silent) {
+      _loading = false;
+      notifyListeners();
+    }
   }
 
   Future<SupportChat?> createChat(String firstMessage) async {
@@ -141,7 +151,18 @@ class SupportProvider extends ChangeNotifier {
     _activeChatId = chatId;
     _shouldReconnect = true;
     _reconnectAttempt = 0;
+    _messages = [];
     _connectWs(chatId);
+    _startPolling(chatId);
+  }
+
+  void _startPolling(int chatId) {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (_activeChatId == chatId) {
+        loadMessages(chatId, silent: true);
+      }
+    });
   }
 
   Future<void> _connectWs(int chatId) async {
@@ -151,18 +172,22 @@ class SupportProvider extends ChangeNotifier {
     try {
       final token = await ApiClient.getToken();
       if (token == null || token.isEmpty) {
+        debugPrint('[SupportProvider] WebSocket skipped: no token');
         isConnected.value = false;
         return;
       }
       final base = AppConfig.baseUrl;
       final host = base.endsWith('/api') ? base.substring(0, base.length - 4) : base;
       final wsUrl = '${host.replaceFirst('http', 'ws')}/ws/support/chats/$chatId';
+      debugPrint('[SupportProvider] WebSocket connecting to $wsUrl');
       _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _wsChannel!.sink.add(jsonEncode({'type': 'auth', 'token': token}));
       isConnected.value = true;
       _reconnectAttempt = 0;
+      debugPrint('[SupportProvider] WebSocket connected, auth sent');
       _wsSubscription = _wsChannel!.stream.listen(
         (event) {
+          debugPrint('[SupportProvider] WebSocket event: $event');
           try {
             final data = jsonDecode(event as String) as Map<String, dynamic>;
             final type = data['type'] as String?;
@@ -172,24 +197,30 @@ class SupportProvider extends ChangeNotifier {
                 _messages.add(msg);
                 _bumpChat(chatId, msg.content);
                 notifyListeners();
+                debugPrint('[SupportProvider] WebSocket new_message added: ${msg.content}');
               }
             } else if (type == 'status_update') {
               if (_lastIsAdmin != null) {
                 loadChats(status: _lastStatus, isAdmin: _lastIsAdmin!);
               }
             }
-          } catch (_) {}
+          } catch (e, st) {
+            debugPrint('[SupportProvider] WebSocket event handling error: $e\n$st');
+          }
         },
-        onError: (_) {
+        onError: (e) {
+          debugPrint('[SupportProvider] WebSocket onError: $e');
           isConnected.value = false;
           _scheduleReconnect(chatId);
         },
         onDone: () {
+          debugPrint('[SupportProvider] WebSocket onDone');
           isConnected.value = false;
           _scheduleReconnect(chatId);
         },
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SupportProvider] WebSocket connect exception: $e');
       isConnected.value = false;
       _scheduleReconnect(chatId);
     }
@@ -211,6 +242,8 @@ class SupportProvider extends ChangeNotifier {
     _shouldReconnect = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
     try {
       _wsSubscription?.cancel();
     } catch (_) {}
