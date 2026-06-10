@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 
 import sentry_sdk
 import structlog
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -45,8 +45,7 @@ from routers import (
     wash_types,
 )
 from services.auth_service import check_roles, get_current_user
-from services.websocket_manager import broadcast, connect, disconnect
-from tasks import check_inventory_forecast
+from services.websocket_manager import connect, disconnect
 
 # Configure structured logging
 configure_logging()

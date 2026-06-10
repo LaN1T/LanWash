@@ -1,4 +1,3 @@
-from datetime import datetime
 
 import pytest
 
@@ -104,7 +103,6 @@ class TestTips:
             "password": "TestPass123!",
         })
         assert login_resp.status_code == 200
-        other_token = login_resp.json()["access_token"]
 
         appt_resp = await self._create_appointment_as_admin(
             async_client, admin_token, "appt_tip_3", "2099-05-03T10:00:00",

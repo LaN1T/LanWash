@@ -286,7 +286,7 @@ class TestAppointments:
     @pytest.mark.asyncio
     async def test_auto_assign_washer_on_create(self, async_client, db_session, admin_token):
         """When creating an appointment without washer, auto-assign from shift."""
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         from db_models import Shift, User
 

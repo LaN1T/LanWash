@@ -36,10 +36,6 @@ class TestReviews:
 
     async def _get_client_user(self, async_client, token):
         """Получает текущего пользователя по токену."""
-        resp = await async_client.get(
-            "/api/auth/washers",
-            headers={"Authorization": f"Bearer {token}"},
-        )
         # Используем /auth/me если есть, иначе получаем через профиль
         # Но в данном проекте нет /auth/me, поэтому получаем из контекста login
         # client_token фикстура не возвращает user_id, так что залогинимся заново
@@ -141,7 +137,6 @@ class TestReviews:
             session.add(other_user)
             await session.commit()
             await session.refresh(other_user)
-            other_user_id = other_user.id
 
         login_resp = await async_client.post("/api/auth/login", json={
             "username": "other_client",

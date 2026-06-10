@@ -21,7 +21,7 @@ def get_admin_url():
         if "@" in rest:
             auth_host, db_part = rest.rsplit("/", 1)
             # Remove query params if any
-            db_name = db_part.split("?")[0]
+            _ = db_part.split("?")[0]
             return f"{scheme}://{auth_host}/postgres"
     return "postgresql+asyncpg://lanwash_user:password@localhost:5432/postgres"
 

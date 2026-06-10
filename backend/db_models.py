@@ -8,7 +8,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, declared_attr, relationship
+from sqlalchemy.orm import declarative_base, declared_attr
 
 Base = declarative_base()
 
@@ -35,9 +35,6 @@ class User(Base):
 
 class Car(Base):
     __tablename__ = 'cars'
-    __table_args__ = (
-        Index('ix_cars_user', 'userId'),
-    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     brand = Column(String, nullable=False, default='')
@@ -48,6 +45,7 @@ class Car(Base):
     @declared_attr.directive
     def __table_args__(cls):
         return (
+            Index('ix_cars_user', 'userId'),
             Index('uq_user_primary_car', 'userId', unique=True, sqlite_where=(cls.isPrimary == True), postgresql_where=(cls.isPrimary == True)),
         )
 

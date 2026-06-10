@@ -18,9 +18,7 @@ from sqlalchemy import func, select
 from database import AsyncSessionLocal, init_db
 from db_models import (
     Appointment,
-    Consumable,
     LogEntry,
-    Promo,
     Review,
     Service,
     Shift,

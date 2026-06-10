@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
@@ -15,7 +14,7 @@ from models import (
     TipStatsResponse,
     TipWithAppointmentResponse,
 )
-from services.auth_service import check_roles, get_current_user
+from services.auth_service import get_current_user
 from services.sbp_service import generate_sbp_url
 from services.tips_service import (
     AppointmentNotFoundError,

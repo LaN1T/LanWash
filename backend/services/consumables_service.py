@@ -14,10 +14,8 @@ from db_models import (
 )
 from models import (
     ConsumableRequest,
-    ConsumableResponse,
     RefillRequest,
     ServiceConsumableRequest,
-    ServiceConsumableResponse,
 )
 from services.inventory_forecast_service import generate_inventory_forecast
 
