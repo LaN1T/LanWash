@@ -18,10 +18,12 @@ class ClientAppointmentDetailScreen extends StatefulWidget {
   const ClientAppointmentDetailScreen({super.key, required this.appointment});
 
   @override
-  State<ClientAppointmentDetailScreen> createState() => _ClientAppointmentDetailScreenState();
+  State<ClientAppointmentDetailScreen> createState() =>
+      _ClientAppointmentDetailScreenState();
 }
 
-class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailScreen> {
+class _ClientAppointmentDetailScreenState
+    extends State<ClientAppointmentDetailScreen> {
   late Future<bool> _hasReviewFuture;
 
   @override
@@ -178,7 +180,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Text('Опаздываю на',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -190,8 +193,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                         child: ActionChip(
                           avatar: const Icon(Icons.timer, size: 18),
                           label: Text('$minutes мин'),
-                          onPressed: () => _confirmLate(
-                              context, appointmentProvider, auth, a.id, minutes),
+                          onPressed: () => _confirmLate(context,
+                              appointmentProvider, auth, a.id, minutes),
                           backgroundColor:
                               AppStyles.warning.withValues(alpha: 0.15),
                           side: BorderSide(
@@ -211,9 +214,12 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () => _showQrCode(context, a.id),
-                    icon: const Icon(Icons.qr_code, size: 18, color: AppStyles.primary),
+                    icon: const Icon(Icons.qr_code,
+                        size: 18, color: AppStyles.primary),
                     label: const Text('Показать QR-код',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppStyles.primary)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppStyles.primary,
                       side: const BorderSide(color: AppStyles.primary),
@@ -313,12 +319,15 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ReviewCreateScreen(appointmentId: appointmentId),
+                        builder: (_) =>
+                            ReviewCreateScreen(appointmentId: appointmentId),
                       ),
                     );
                     if (mounted) {
                       setState(() {
-                        _hasReviewFuture = context.read<ApiService>().hasReviewForAppointment(appointmentId);
+                        _hasReviewFuture = context
+                            .read<ApiService>()
+                            .hasReviewForAppointment(appointmentId);
                       });
                     }
                   },
@@ -358,7 +367,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
         children: [
           Row(
             children: [
-              Icon(Icons.volunteer_activism, color: AppStyles.success, size: 24),
+              Icon(Icons.volunteer_activism,
+                  color: AppStyles.success, size: 24),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -473,7 +483,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppStyles.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: () => Navigator.pop(ctx),
@@ -502,7 +513,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                     height: 60,
                     child: Center(child: CircularProgressIndicator()),
                   )
-                : Text(errorText ?? 'Вы уверены, что опаздываете на $minutes минут?'),
+                : Text(errorText ??
+                    'Вы уверены, что опаздываете на $minutes минут?'),
             actions: isLoading
                 ? []
                 : [
@@ -602,7 +614,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                                   ),
                                 )
                               : const Icon(Icons.cancel_outlined),
-                          label: Text(isLoading ? 'Отмена...' : 'Подтвердить отмену'),
+                          label: Text(
+                              isLoading ? 'Отмена...' : 'Подтвердить отмену'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppStyles.danger,
                             foregroundColor: Colors.white,
@@ -617,7 +630,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                                   if (reason.isEmpty) {
                                     ScaffoldMessenger.of(ctx).showSnackBar(
                                       const SnackBar(
-                                          content: Text('Укажите причину отмены')),
+                                          content:
+                                              Text('Укажите причину отмены')),
                                     );
                                     return;
                                   }
@@ -630,7 +644,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                                   if (ok) {
                                     Navigator.pop(ctx);
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
                                             content: Text('Запись отменена'),
                                             backgroundColor: AppStyles.success),
@@ -642,8 +657,8 @@ class _ClientAppointmentDetailScreenState extends State<ClientAppointmentDetailS
                                     });
                                     ScaffoldMessenger.of(ctx).showSnackBar(
                                       const SnackBar(
-                                          content:
-                                              Text('Не удалось отменить запись'),
+                                          content: Text(
+                                              'Не удалось отменить запись'),
                                           backgroundColor: AppStyles.danger),
                                     );
                                   }
@@ -765,7 +780,9 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                       },
                       selectedColor: AppStyles.primary,
                       labelStyle: TextStyle(
-                        color: selected ? Colors.white : AppStyles.adaptiveTextPrimary(context),
+                        color: selected
+                            ? Colors.white
+                            : AppStyles.adaptiveTextPrimary(context),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -781,7 +798,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                   labelText: 'Другая сумма',
                   hintText: 'мин. 50 ₽, макс. 50 000 ₽',
                   prefixIcon: const Icon(Icons.edit),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onChanged: (_) => setState(() => _selectedAmount = null),
               ),
@@ -818,15 +836,19 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                     backgroundColor: AppStyles.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text('Подтвердить', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      : const Text('Подтвердить',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],
@@ -845,7 +867,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: AppStyles.success, size: 56),
+              const Icon(Icons.check_circle,
+                  color: AppStyles.success, size: 56),
               const SizedBox(height: 16),
               const Text('Спасибо!',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -854,7 +877,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                 Text(
                   'Для оплаты через СБП нажмите кнопку ниже:',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppStyles.adaptiveTextSecondary(context)),
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextSecondary(context)),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -867,7 +891,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                       backgroundColor: AppStyles.success,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),
@@ -875,7 +900,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
                 Text(
                   'Передайте мойщику при встрече.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppStyles.adaptiveTextSecondary(context)),
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextSecondary(context)),
                 ),
               ],
               const SizedBox(height: 12),
@@ -926,7 +952,8 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e'), backgroundColor: AppStyles.danger),
+          SnackBar(
+              content: Text('Ошибка: $e'), backgroundColor: AppStyles.danger),
         );
       }
     }
@@ -990,15 +1017,23 @@ class _MethodRadio extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         margin: const EdgeInsets.only(bottom: 6),
         decoration: BoxDecoration(
-          color: selected ? AppStyles.primary.withValues(alpha: 0.1) : AppStyles.adaptiveCard(context),
+          color: selected
+              ? AppStyles.primary.withValues(alpha: 0.1)
+              : AppStyles.adaptiveCard(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+            color: selected
+                ? AppStyles.primary
+                : AppStyles.adaptiveBorder(context),
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: selected ? AppStyles.primary : AppStyles.adaptiveTextSecondary(context)),
+            Icon(icon,
+                size: 20,
+                color: selected
+                    ? AppStyles.primary
+                    : AppStyles.adaptiveTextSecondary(context)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

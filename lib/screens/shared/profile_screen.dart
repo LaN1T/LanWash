@@ -606,8 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w600)),
         subtitle: Text('Приглашайте друзей и получайте награды',
             style: TextStyle(
-                color: AppStyles.adaptiveTextSecondary(context),
-                fontSize: 12)),
+                color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
         trailing: Icon(Icons.arrow_forward_ios_rounded,
             size: 14, color: AppStyles.adaptiveTextMuted(context)),
         onTap: () {

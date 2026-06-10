@@ -371,7 +371,8 @@ class ApiService {
   }
 
   Future<Appointment?> scanQrCode(String qrData) async {
-    final result = await ApiClient.post('/appointments/scan-qr', body: {'qrData': qrData});
+    final result =
+        await ApiClient.post('/appointments/scan-qr', body: {'qrData': qrData});
     return result.when(
       success: (data) => Appointment.fromMap(data),
       failure: (err) => null,
@@ -908,7 +909,9 @@ class ApiService {
   Future<List<Shift>> getTodayShifts() async {
     final result = await ApiClient.get('/shifts/today');
     return result.when(
-      success: (data) => (data as List<dynamic>).map((e) => Shift.fromMap(e as Map<String, dynamic>)).toList(),
+      success: (data) => (data as List<dynamic>)
+          .map((e) => Shift.fromMap(e as Map<String, dynamic>))
+          .toList(),
       failure: (_) => [],
     );
   }
@@ -931,8 +934,10 @@ class ApiService {
   }
 
   // ─── Admin Dashboard ───────────────────────────────────────────────────────
-  Future<AdminDashboard?> getAdminDashboard(String fromDate, String toDate) async {
-    final result = await ApiClient.get('/admin/dashboard?from_date=$fromDate&to_date=$toDate');
+  Future<AdminDashboard?> getAdminDashboard(
+      String fromDate, String toDate) async {
+    final result = await ApiClient.get(
+        '/admin/dashboard?from_date=$fromDate&to_date=$toDate');
     return result.when(
       success: (data) => AdminDashboard.fromJson(data),
       failure: (_) => null,
@@ -947,7 +952,8 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>?> bulkAssignWasher(List<String> appointmentIds, String washerUsername) async {
+  Future<Map<String, dynamic>?> bulkAssignWasher(
+      List<String> appointmentIds, String washerUsername) async {
     final result = await ApiClient.post('/admin/bulk/assign-washer', body: {
       'appointmentIds': appointmentIds,
       'washerUsername': washerUsername,
@@ -958,7 +964,8 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>?> bulkCancel(List<String> appointmentIds, {String reason = ''}) async {
+  Future<Map<String, dynamic>?> bulkCancel(List<String> appointmentIds,
+      {String reason = ''}) async {
     final result = await ApiClient.post('/admin/bulk/cancel', body: {
       'appointmentIds': appointmentIds,
       'reason': reason,
@@ -969,7 +976,8 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>?> bulkUpdateStatus(List<String> appointmentIds, String status) async {
+  Future<Map<String, dynamic>?> bulkUpdateStatus(
+      List<String> appointmentIds, String status) async {
     final result = await ApiClient.post('/admin/bulk/update-status', body: {
       'appointmentIds': appointmentIds,
       'status': status,
@@ -999,13 +1007,15 @@ class ApiService {
   Future<List<Review>> getMyReviews() async {
     final result = await ApiClient.getList('/reviews/my');
     return result.when(
-      success: (list) => list.map((m) => Review.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) =>
+          list.map((m) => Review.fromMap(m as Map<String, dynamic>)).toList(),
       failure: (_) => <Review>[],
     );
   }
 
   Future<bool> hasReviewForAppointment(String appointmentId) async {
-    final result = await ApiClient.get('/reviews/has-review?appointment_id=$appointmentId');
+    final result = await ApiClient.get(
+        '/reviews/has-review?appointment_id=$appointmentId');
     return result.when(
       success: (data) => data['hasReview'] == true,
       failure: (_) => false,
@@ -1016,7 +1026,8 @@ class ApiService {
   Future<List<Car>> getCars() async {
     final result = await ApiClient.getList('/cars/');
     return result.when(
-      success: (list) => list.map((m) => Car.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) =>
+          list.map((m) => Car.fromMap(m as Map<String, dynamic>)).toList(),
       failure: (_) => <Car>[],
     );
   }
@@ -1024,7 +1035,8 @@ class ApiService {
   Future<List<Car>> getCarsForUser(int userId) async {
     final result = await ApiClient.getList('/cars/user/$userId');
     return result.when(
-      success: (list) => list.map((m) => Car.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) =>
+          list.map((m) => Car.fromMap(m as Map<String, dynamic>)).toList(),
       failure: (_) => <Car>[],
     );
   }
@@ -1048,7 +1060,8 @@ class ApiService {
     );
   }
 
-  Future<Car?> updateCar(int id, {
+  Future<Car?> updateCar(
+    int id, {
     required String brand,
     required String model,
     String number = '',
@@ -1121,7 +1134,8 @@ class ApiService {
   Future<List<Tip>> getMyTips() async {
     final result = await ApiClient.getList('/tips/my');
     return result.when(
-      success: (list) => list.map((m) => Tip.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) =>
+          list.map((m) => Tip.fromMap(m as Map<String, dynamic>)).toList(),
       failure: (_) => <Tip>[],
     );
   }
@@ -1134,14 +1148,17 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>?> searchUsers({String? q, String? role, int limit = 20, int offset = 0}) async {
+  Future<Map<String, dynamic>?> searchUsers(
+      {String? q, String? role, int limit = 20, int offset = 0}) async {
     final params = <String, String>{
       'limit': '$limit',
       'offset': '$offset',
     };
     if (q != null && q.isNotEmpty) params['q'] = q;
     if (role != null && role.isNotEmpty) params['role'] = role;
-    final query = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    final query = params.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
     final result = await ApiClient.get('/admin/users?$query');
     return result.when(
       success: (data) => data,
@@ -1158,7 +1175,9 @@ class ApiService {
   Future<List<Subscription>> getMySubscriptions() async {
     final result = await ApiClient.getList('/subscriptions/my');
     return result.when(
-      success: (list) => list.map((m) => Subscription.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) => list
+          .map((m) => Subscription.fromMap(m as Map<String, dynamic>))
+          .toList(),
       failure: (_) => <Subscription>[],
     );
   }
@@ -1196,7 +1215,8 @@ class ApiService {
 
   // ─── Support Chat ───────────────────────────────────────────────────────────
   Future<SupportChat?> createSupportChat(String firstMessage) async {
-    final result = await ApiClient.post('/support/chats', body: {'firstMessage': firstMessage});
+    final result = await ApiClient.post('/support/chats',
+        body: {'firstMessage': firstMessage});
     return result.when(
       success: (data) => SupportChat.fromMap(data),
       failure: (_) => null,
@@ -1206,16 +1226,21 @@ class ApiService {
   Future<List<SupportChat>> getMySupportChats() async {
     final result = await ApiClient.getList('/support/chats/my');
     return result.when(
-      success: (list) => list.map((m) => SupportChat.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) => list
+          .map((m) => SupportChat.fromMap(m as Map<String, dynamic>))
+          .toList(),
       failure: (_) => [],
     );
   }
 
   Future<List<SupportChat>> getAllSupportChats({String? status}) async {
-    final path = status != null ? '/support/chats?status=$status' : '/support/chats';
+    final path =
+        status != null ? '/support/chats?status=$status' : '/support/chats';
     final result = await ApiClient.getList(path);
     return result.when(
-      success: (list) => list.map((m) => SupportChat.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) => list
+          .map((m) => SupportChat.fromMap(m as Map<String, dynamic>))
+          .toList(),
       failure: (_) => [],
     );
   }
@@ -1223,13 +1248,16 @@ class ApiService {
   Future<List<SupportMessage>> getSupportMessages(int chatId) async {
     final result = await ApiClient.getList('/support/chats/$chatId/messages');
     return result.when(
-      success: (list) => list.map((m) => SupportMessage.fromMap(m as Map<String, dynamic>)).toList(),
+      success: (list) => list
+          .map((m) => SupportMessage.fromMap(m as Map<String, dynamic>))
+          .toList(),
       failure: (_) => [],
     );
   }
 
   Future<SupportMessage?> sendSupportMessage(int chatId, String content) async {
-    final result = await ApiClient.post('/support/chats/$chatId/messages', body: {'content': content});
+    final result = await ApiClient.post('/support/chats/$chatId/messages',
+        body: {'content': content});
     return result.when(
       success: (data) => SupportMessage.fromMap(data),
       failure: (_) => null,

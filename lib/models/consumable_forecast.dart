@@ -40,8 +40,7 @@ class ConsumableForecastItem {
       daysUntilEmpty: m['days_until_empty'] != null
           ? (m['days_until_empty'] as num).toDouble()
           : null,
-      recommendedOrderAmount:
-          (m['recommended_order_amount'] as num).toDouble(),
+      recommendedOrderAmount: (m['recommended_order_amount'] as num).toDouble(),
       status: m['status'] as String,
     );
   }
@@ -63,8 +62,7 @@ class InventoryForecastResponse {
   factory InventoryForecastResponse.fromMap(Map<String, dynamic> m) {
     return InventoryForecastResponse(
       items: (m['items'] as List<dynamic>)
-          .map((e) =>
-              ConsumableForecastItem.fromMap(e as Map<String, dynamic>))
+          .map((e) => ConsumableForecastItem.fromMap(e as Map<String, dynamic>))
           .toList(),
       generatedAt: m['generated_at'] as String,
     );

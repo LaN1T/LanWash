@@ -231,8 +231,10 @@ class _ClientShellState extends State<ClientShell> {
             child: ListTile(
               minLeadingWidth: 24,
               leading: Badge(
-                isLabelVisible: context.watch<SupportProvider>().unreadClientCount > 0,
-                label: Text('${context.watch<SupportProvider>().unreadClientCount}'),
+                isLabelVisible:
+                    context.watch<SupportProvider>().unreadClientCount > 0,
+                label: Text(
+                    '${context.watch<SupportProvider>().unreadClientCount}'),
                 backgroundColor: AppStyles.danger,
                 child: Icon(Icons.support_agent_outlined,
                     color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
@@ -241,8 +243,10 @@ class _ClientShellState extends State<ClientShell> {
                   style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
                 Navigator.pop(ctx);
-                Navigator.push(ctx,
-                    MaterialPageRoute(builder: (_) => const SupportChatsScreen()));
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const SupportChatsScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -266,7 +270,6 @@ class _ClientShellState extends State<ClientShell> {
                   borderRadius: BorderRadius.circular(10)),
             ),
           ),
-
         ]),
       ),
     );
@@ -313,5 +316,4 @@ class _ClientShellState extends State<ClientShell> {
       ),
     );
   }
-
 }

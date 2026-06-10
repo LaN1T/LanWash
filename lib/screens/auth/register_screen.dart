@@ -90,7 +90,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       displayName: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
-      referralCode: _refCtrl.text.trim().isEmpty ? null : _refCtrl.text.trim().toUpperCase(),
+      referralCode: _refCtrl.text.trim().isEmpty
+          ? null
+          : _refCtrl.text.trim().toUpperCase(),
     );
 
     if (!mounted) return;

@@ -209,7 +209,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                 decoration: BoxDecoration(
                   color: AppStyles.successBg,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppStyles.success.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppStyles.success.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   'На смене: $_currentOnDuty',

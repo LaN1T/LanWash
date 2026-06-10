@@ -531,7 +531,8 @@ class _WasherShellState extends State<WasherShell> {
 
   Widget _buildTipsTab() {
     if (_tipsLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppStyles.primary));
+      return const Center(
+          child: CircularProgressIndicator(color: AppStyles.primary));
     }
     final stats = _tipStats as TipStats?;
     return RefreshIndicator(
@@ -567,7 +568,9 @@ class _WasherShellState extends State<WasherShell> {
                 children: [
                   const SizedBox(height: 40),
                   Icon(Icons.volunteer_activism,
-                      size: 56, color: AppStyles.adaptiveTextSecondary(context).withValues(alpha: 0.4)),
+                      size: 56,
+                      color: AppStyles.adaptiveTextSecondary(context)
+                          .withValues(alpha: 0.4)),
                   const SizedBox(height: 12),
                   Text('Пока нет чаевых',
                       style: AppStyles.headingMedium.copyWith(
@@ -627,11 +630,14 @@ class _StatItem extends StatelessWidget {
         children: [
           Text(value,
               style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppStyles.primary)),
           const SizedBox(height: 4),
           Text(label,
               style: TextStyle(
-                  fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+                  fontSize: 12,
+                  color: AppStyles.adaptiveTextSecondary(context))),
         ],
       ),
     );
@@ -670,21 +676,26 @@ class _TipCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isPending ? AppStyles.warning : AppStyles.success)),
+                        color:
+                            isPending ? AppStyles.warning : AppStyles.success)),
               ),
               const Spacer(),
               Text('${tip.amount} ₽',
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppStyles.primary)),
             ]),
             const SizedBox(height: 10),
             Text('Способ: ${tip.methodLabel}',
                 style: TextStyle(
-                    fontSize: 13, color: AppStyles.adaptiveTextSecondary(context))),
+                    fontSize: 13,
+                    color: AppStyles.adaptiveTextSecondary(context))),
             const SizedBox(height: 4),
             Text('Запись: ${tip.appointmentId}',
                 style: TextStyle(
-                    fontSize: 12, color: AppStyles.adaptiveTextSecondary(context))),
+                    fontSize: 12,
+                    color: AppStyles.adaptiveTextSecondary(context))),
             if (isPending && tip.method != 'sbp') ...[
               const SizedBox(height: 10),
               SizedBox(
@@ -692,7 +703,8 @@ class _TipCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final scaffold = ScaffoldMessenger.of(context);
-                    final ok = await context.read<ApiService>().markTipPaid(tip.id);
+                    final ok =
+                        await context.read<ApiService>().markTipPaid(tip.id);
                     if (ok) {
                       onRefresh();
                     } else {
@@ -708,7 +720,8 @@ class _TipCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppStyles.success,
                     side: const BorderSide(color: AppStyles.success),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ),

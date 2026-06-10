@@ -281,14 +281,16 @@ class ApiClient {
 
   static Future<ApiResult<http.Response>> _rawRequest({
     required String path,
-    required Future<http.Response> Function(Uri url, Map<String, String> headers)
+    required Future<http.Response> Function(
+            Uri url, Map<String, String> headers)
         requestFn,
     int retryCount = 0,
   }) async {
     final url = Uri.parse('${AppConfig.baseUrl}$path');
     final headers = await _headers();
     try {
-      final resp = await requestFn(url, headers).timeout(AppConfig.requestTimeout);
+      final resp =
+          await requestFn(url, headers).timeout(AppConfig.requestTimeout);
       if (resp.statusCode >= 200 && resp.statusCode < 300) return Success(resp);
 
       if (resp.statusCode == 401) {
