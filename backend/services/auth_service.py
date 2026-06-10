@@ -15,6 +15,7 @@ from database import get_db
 from db_models import User, FcmToken, Referral
 from core.config import get_settings
 from core.redis_client import get_redis
+from core.transaction import atomic
 import redis
 import structlog
 
@@ -234,6 +235,7 @@ class AuthService:
         )
         return {"user": user, "access_token": access_token, "token_type": "bearer"}
 
+    @atomic
     async def register(self, req) -> dict:
         from models import RegisterRequest
         if not isinstance(req, RegisterRequest):
@@ -256,6 +258,8 @@ class AuthService:
         if result.scalar_one_or_none():
             raise UsernameAlreadyExistsError("Регистрация не удалась. Проверьте введённые данные.")
 
+        referral_code = await _ensure_unique_referral_code(self._db)
+
         new_user = User(
             username=username,
             passwordHash=get_password_hash(req.password),
@@ -267,20 +271,10 @@ class AuthService:
             carNumber=req.carNumber.strip(),
             createdAt=datetime.now().isoformat(),
             isFavoriteAdmin=0,
+            referralCode=referral_code,
         )
-
-        for _ in range(10):
-            code = _generate_referral_code()
-            new_user.referralCode = code
-            try:
-                self._db.add(new_user)
-                await self._db.flush()
-                break
-            except IntegrityError:
-                await self._db.rollback()
-                continue
-        else:
-            raise RuntimeError("Could not generate unique referral code")
+        self._db.add(new_user)
+        await self._db.flush()
 
         if referrer is not None:
             referral_row = Referral(
@@ -291,7 +285,6 @@ class AuthService:
             )
             self._db.add(referral_row)
 
-        await self._db.commit()
         await self._db.refresh(new_user)
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -302,10 +295,39 @@ class AuthService:
 
         return {"user": new_user, "access_token": access_token, "token_type": "bearer"}
 
-    async def telegram_auth(self, init_data: str) -> dict:
-        from services.telegram_auth_service import verify_telegram_init_data
+    @atomic
+    async def _create_telegram_user(
+        self, username: str, display_name: str, photo_url: str, telegram_id: str
+    ) -> User:
+        """Atomic helper: create a new user coming from Telegram auth."""
         import secrets
         import string
+
+        referral_code = await _ensure_unique_referral_code(self._db)
+        random_password = ''.join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(16)
+        )
+        new_user = User(
+            username=username.lower().strip(),
+            passwordHash=get_password_hash(random_password),
+            role="client",
+            displayName=display_name,
+            phone="",
+            carModel="",
+            carNumber="",
+            avatarUrl=photo_url,
+            createdAt=datetime.now().isoformat(),
+            isFavoriteAdmin=0,
+            telegramId=telegram_id,
+            referralCode=referral_code,
+        )
+        self._db.add(new_user)
+        await self._db.flush()
+        await self._db.refresh(new_user)
+        return new_user
+
+    async def telegram_auth(self, init_data: str) -> dict:
+        from services.telegram_auth_service import verify_telegram_init_data
 
         user_data = verify_telegram_init_data(init_data)
         if not user_data:
@@ -320,44 +342,18 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         if not user:
-            result = await self._db.execute(select(User).where(User.username == username.lower().strip()))
+            result = await self._db.execute(
+                select(User).where(User.username == username.lower().strip())
+            )
             user = result.scalar_one_or_none()
             if user:
                 user.telegramId = telegram_id
                 await self._db.commit()
                 await self._db.refresh(user)
             else:
-                random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
-                new_user = User(
-                    username=username.lower().strip(),
-                    passwordHash=get_password_hash(random_password),
-                    role="client",
-                    displayName=display_name,
-                    phone="",
-                    carModel="",
-                    carNumber="",
-                    avatarUrl=photo_url,
-                    createdAt=datetime.now().isoformat(),
-                    isFavoriteAdmin=0,
-                    telegramId=telegram_id,
+                user = await self._create_telegram_user(
+                    username, display_name, photo_url, telegram_id
                 )
-
-                for _ in range(10):
-                    code = _generate_referral_code()
-                    new_user.referralCode = code
-                    try:
-                        self._db.add(new_user)
-                        await self._db.flush()
-                        break
-                    except IntegrityError:
-                        await self._db.rollback()
-                        continue
-                else:
-                    raise RuntimeError("Could not generate unique referral code")
-
-                await self._db.commit()
-                await self._db.refresh(new_user)
-                user = new_user
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
