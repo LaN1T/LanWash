@@ -348,9 +348,8 @@ async def send_message(
                 logger.warning("support_push_failed", error=str(e))
     else:
         # Client sent new message
-        if chat.assignedAdminId is not None or chat.status == "admin_assigned":
-            # Human admin is already handling this chat — do not auto-reply
-            chat.status = "admin_assigned"
+        if chat.status == "admin_assigned":
+            # Human admin is actively handling this chat — do not auto-reply
             await db.commit()
             tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
             if tokens:
@@ -491,6 +490,7 @@ async def close_chat(
     if not chat:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chat not found")
     chat.status = "closed"
+    chat.assignedAdminId = None
     chat.updatedAt = datetime.now().isoformat()
     await db.commit()
     try:
