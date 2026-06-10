@@ -247,6 +247,9 @@ class ApiClient {
       return Failure(AppError.network(e));
     } on FormatException catch (e) {
       return Failure(AppError.unknown(e));
+    } on StateError catch (e) {
+      // Ошибки конфигурации (например, не задан API_BASE_URL) не маскируем под сеть
+      return Failure(AppError.unknown(Exception(e.message)));
     } on Exception catch (e) {
       return Failure(AppError.network(e));
     }

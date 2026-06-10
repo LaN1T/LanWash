@@ -17,8 +17,15 @@ class AppConfig {
       return _apiBaseUrl;
     }
     // Fallback для development и локального тестирования.
-    // Для production-сборки передайте API_BASE_URL через --dart-define.
+    // Для production-сборки (mobile/web) передайте API_BASE_URL через --dart-define.
     if (kReleaseMode) {
+      // Desktop-сборки допускают локальный HTTP fallback для dev-тестирования.
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.macOS ||
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux)) {
+        return 'http://127.0.0.1:8000/api';
+      }
       throw StateError(
         'API_BASE_URL must be set via --dart-define=API_BASE_URL=... in release mode',
       );
