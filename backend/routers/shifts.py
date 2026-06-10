@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, delete
 from database import get_db
-from db_models import Shift, User
+from db_models import User
 from models import ShiftRequest, ShiftResponse
 from datetime import datetime
 from services.auth_service import get_current_user
+from services.shifts_service import ShiftsService, ShiftNotFoundError, ShiftAccessDeniedError
 from core.limiter import limiter
-from typing import List, Optional
+from typing import List
 
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 
@@ -43,14 +43,14 @@ async def list_shifts(
     current_user: User = Depends(get_current_user),
 ):
     if not _parse_date(start_date) or not _parse_date(end_date):
-        raise HTTPException(status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD")
+        raise HTTPException(
+            status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
+        )
 
-    stmt = select(Shift).where(and_(Shift.date >= start_date, Shift.date <= end_date))
-    if current_user.role != 'admin':
-        stmt = stmt.where(Shift.userId == current_user.id)
-    result = await db.execute(stmt)
-    shifts = result.scalars().all()
-    return shifts
+    svc = ShiftsService(db)
+    return await svc.list_shifts(
+        start_date, end_date, current_user.id, current_user.role == "admin"
+    )
 
 
 @router.get("/today", response_model=List[ShiftResponse])
@@ -62,13 +62,10 @@ async def list_today_shifts(
 ):
     """List confirmed shifts for today."""
     today = datetime.now().strftime("%Y-%m-%d")
-    stmt = select(Shift).where(
-        and_(Shift.date == today, Shift.status == "confirmed")
-    ).order_by(Shift.startTime.asc())
-    if current_user.role != 'admin':
-        stmt = stmt.where(Shift.userId == current_user.id)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    svc = ShiftsService(db)
+    return await svc.list_today_shifts(
+        today, current_user.id, current_user.role == "admin"
+    )
 
 
 @router.get("/current", response_model=List[dict])
@@ -81,33 +78,12 @@ async def list_current_shifts(
     """List washers currently on shift (confirmed, today, within time range)."""
     now = datetime.now()
     today = now.strftime("%Y-%m-%d")
-    current_time = now.strftime("%H:%M")
-    current_minutes = _time_to_minutes(current_time)
+    current_minutes = _time_to_minutes(now.strftime("%H:%M"))
 
-    stmt = select(Shift, User).join(User, Shift.userId == User.id).where(
-        and_(
-            Shift.date == today,
-            Shift.status == "confirmed",
-        )
+    svc = ShiftsService(db)
+    return await svc.list_current_shifts(
+        today, current_minutes, current_user.id, current_user.role == "admin"
     )
-    if current_user.role != 'admin':
-        stmt = stmt.where(Shift.userId == current_user.id)
-
-    result = await db.execute(stmt)
-    on_duty = []
-    for shift, user in result.all():
-        start_m = _time_to_minutes(shift.startTime)
-        end_m = _time_to_minutes(shift.endTime)
-        if start_m <= current_minutes <= end_m:
-            on_duty.append({
-                "shiftId": shift.id,
-                "userId": user.id,
-                "name": user.displayName,
-                "phone": user.phone,
-                "start": shift.startTime,
-                "end": shift.endTime,
-            })
-    return on_duty
 
 
 @router.get("/my", response_model=List[ShiftResponse])
@@ -118,14 +94,8 @@ async def list_my_shifts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    stmt = (
-        select(Shift)
-        .where(Shift.userId == current_user.id)
-        .order_by(Shift.date.asc())
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    svc = ShiftsService(db)
+    return await svc.list_my_shifts(current_user.id, limit)
 
 
 @router.post("/", response_model=ShiftResponse, status_code=status.HTTP_201_CREATED)
@@ -139,61 +109,24 @@ async def create_shift(
     if not _parse_date(req.date):
         raise HTTPException(status_code=400, detail="Неверный формат даты")
     if not _parse_time(req.startTime) or not _parse_time(req.endTime):
-        raise HTTPException(status_code=400, detail="Неверный формат времени. Ожидается HH:MM")
+        raise HTTPException(
+            status_code=400, detail="Неверный формат времени. Ожидается HH:MM"
+        )
     if _time_to_minutes(req.startTime) >= _time_to_minutes(req.endTime):
-        raise HTTPException(status_code=400, detail="Время начала должно быть раньше времени окончания")
+        raise HTTPException(
+            status_code=400,
+            detail="Время начала должно быть раньше времени окончания",
+        )
 
-    user_res = await db.execute(select(User).where(User.id == req.userId))
-    target_user = user_res.scalar_one_or_none()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-    is_admin = current_user.role == "admin"
-    caller = current_user.username
-
-    if not is_admin:
-        if target_user.username != caller:
-            raise HTTPException(status_code=403, detail="Можно редактировать только свои смены")
-
-    now = datetime.now().isoformat()
-    status_val = "confirmed" if is_admin else "pending"
-
-    # Upsert: если смена на эту дату для этого пользователя уже есть — обновляем
-    existing_res = await db.execute(
-        select(Shift).where(and_(Shift.userId == req.userId, Shift.date == req.date))
-    )
-    existing = existing_res.scalar_one_or_none()
-
-    if existing:
-        if not is_admin and existing.status == "confirmed":
-            # Мойщик не может редактировать подтверждённую смену напрямую
-            raise HTTPException(
-                status_code=403,
-                detail="Подтверждённую смену может изменить только администратор",
-            )
-        existing.startTime = req.startTime
-        existing.endTime = req.endTime
-        existing.status = status_val
-        existing.createdBy = caller
-        existing.updatedAt = now
-        await db.commit()
-        await db.refresh(existing)
-        return existing
-
-    shift = Shift(
-        userId=req.userId,
-        date=req.date,
-        startTime=req.startTime,
-        endTime=req.endTime,
-        status=status_val,
-        createdBy=caller,
-        createdAt=now,
-        updatedAt=now,
-    )
-    db.add(shift)
-    await db.commit()
-    await db.refresh(shift)
-    return shift
+    svc = ShiftsService(db)
+    try:
+        return await svc.create_shift(
+            req, current_user.username, current_user.role == "admin"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 
 @router.put("/{shift_id}/approve", response_model=ShiftResponse)
@@ -205,18 +138,15 @@ async def approve_shift(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Только администратор может одобрять смены")
+        raise HTTPException(
+            status_code=403, detail="Только администратор может одобрять смены"
+        )
 
-    res = await db.execute(select(Shift).where(Shift.id == shift_id))
-    shift = res.scalar_one_or_none()
-    if not shift:
+    svc = ShiftsService(db)
+    try:
+        return await svc.approve_shift(shift_id)
+    except ShiftNotFoundError:
         raise HTTPException(status_code=404, detail="Смена не найдена")
-
-    shift.status = "confirmed"
-    shift.updatedAt = datetime.now().isoformat()
-    await db.commit()
-    await db.refresh(shift)
-    return shift
 
 
 @router.put("/{shift_id}/reject", response_model=ShiftResponse)
@@ -228,18 +158,15 @@ async def reject_shift(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Только администратор может отклонять смены")
+        raise HTTPException(
+            status_code=403, detail="Только администратор может отклонять смены"
+        )
 
-    res = await db.execute(select(Shift).where(Shift.id == shift_id))
-    shift = res.scalar_one_or_none()
-    if not shift:
+    svc = ShiftsService(db)
+    try:
+        return await svc.reject_shift(shift_id)
+    except ShiftNotFoundError:
         raise HTTPException(status_code=404, detail="Смена не найдена")
-
-    shift.status = "rejected"
-    shift.updatedAt = datetime.now().isoformat()
-    await db.commit()
-    await db.refresh(shift)
-    return shift
 
 
 @router.delete("/{shift_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -250,22 +177,13 @@ async def delete_shift(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    is_admin = current_user.role == "admin"
-    caller = current_user.username
-
-    res = await db.execute(select(Shift).where(Shift.id == shift_id))
-    shift = res.scalar_one_or_none()
-    if not shift:
+    svc = ShiftsService(db)
+    try:
+        await svc.delete_shift(
+            shift_id, current_user.username, current_user.role == "admin"
+        )
+    except ShiftNotFoundError:
         raise HTTPException(status_code=404, detail="Смена не найдена")
-
-    if not is_admin:
-        user_res = await db.execute(select(User).where(User.id == shift.userId))
-        target_user = user_res.scalar_one_or_none()
-        if not target_user or target_user.username != caller:
-            raise HTTPException(status_code=403, detail="Можно удалять только свои смены")
-        if shift.status == "confirmed":
-            raise HTTPException(status_code=403, detail="Нельзя удалить подтверждённую смену")
-
-    await db.execute(delete(Shift).where(Shift.id == shift_id))
-    await db.commit()
+    except ShiftAccessDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     return None
