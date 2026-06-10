@@ -1,6 +1,6 @@
+import json
 from collections import Counter
 from datetime import datetime, timedelta
-import json
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession

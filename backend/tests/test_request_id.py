@@ -45,6 +45,7 @@ async def test_request_id_preserved(client):
 @pytest.mark.asyncio
 async def test_request_id_in_logs(client, caplog):
     import logging
+
     import structlog
 
     # Ensure structlog/stdio logs are captured

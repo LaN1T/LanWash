@@ -1,5 +1,6 @@
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 
 from db_models import Consumable, ConsumableUsageLog
 from models import ConsumableForecastItem, InventoryForecastResponse
@@ -73,9 +74,10 @@ class TestInventoryForecastService:
 class TestInventoryForecastTask:
     @pytest.mark.asyncio
     async def test_check_inventory_forecast_task(self, db_session):
-        from tasks import check_inventory_forecast
-        from db_models import Consumable, ConsumableUsageLog
         from datetime import datetime, timedelta
+
+        from db_models import Consumable, ConsumableUsageLog
+        from tasks import check_inventory_forecast
 
         # Create critical consumable: 30 stock, 100 minStock, high usage
         shampoo = Consumable(

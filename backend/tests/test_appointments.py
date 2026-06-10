@@ -287,7 +287,8 @@ class TestAppointments:
     async def test_auto_assign_washer_on_create(self, async_client, db_session, admin_token):
         """When creating an appointment without washer, auto-assign from shift."""
         from datetime import datetime, timedelta
-        from db_models import User, Shift
+
+        from db_models import Shift, User
 
         # Create a washer with a confirmed shift for today
         washer = User(
@@ -349,7 +350,8 @@ class TestAppointments:
     async def test_auto_assign_respects_admin_override(self, async_client, db_session, admin_token):
         """Admin-specified washer is not overwritten by auto-assign."""
         from datetime import datetime, timedelta
-        from db_models import User, Shift
+
+        from db_models import Shift, User
 
         washer = User(
             username="auto_washer2",

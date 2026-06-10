@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
+from datetime import datetime
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.limiter import limiter
 from database import get_db
 from db_models import User
 from models import ShiftRequest, ShiftResponse
-from datetime import datetime
 from services.auth_service import get_current_user
-from services.shifts_service import ShiftsService, ShiftNotFoundError, ShiftAccessDeniedError
-from core.limiter import limiter
-from typing import List
+from services.shifts_service import (
+    ShiftAccessDeniedError,
+    ShiftNotFoundError,
+    ShiftsService,
+)
 
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 

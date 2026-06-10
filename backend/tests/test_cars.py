@@ -1,6 +1,8 @@
-import pytest
 from datetime import datetime
-from db_models import User, Car
+
+import pytest
+
+from db_models import Car, User
 from services.auth_service import get_password_hash
 
 

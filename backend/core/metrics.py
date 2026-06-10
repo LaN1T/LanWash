@@ -1,8 +1,10 @@
 """Business metrics exposed to Prometheus."""
 
 from datetime import datetime, timedelta
-from sqlalchemy import select, func, and_
-from prometheus_client import Gauge, Counter
+
+from prometheus_client import Counter, Gauge
+from sqlalchemy import and_, func, select
+
 from database import AsyncSessionLocal
 from db_models import Appointment, Shift, User
 

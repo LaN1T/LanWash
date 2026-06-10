@@ -1,7 +1,8 @@
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
-from core.config import get_settings
+
 from bot.handlers import router as handlers_router
+from core.config import get_settings
 
 settings = get_settings()
 

@@ -1,6 +1,8 @@
-import pytest
 from datetime import datetime, timedelta
-from db_models import User, Shift
+
+import pytest
+
+from db_models import Shift, User
 
 
 class TestShifts:

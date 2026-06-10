@@ -2,13 +2,22 @@ import json
 import random
 from collections import defaultdict
 from datetime import datetime, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
-from db_models import (
-    Appointment, Consumable, ConsumableUsageLog, Service, ServiceConsumable,
-    Promo, WashType, WashTypeConsumable, Shift, User,
-)
 
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import (
+    Appointment,
+    Consumable,
+    ConsumableUsageLog,
+    Promo,
+    Service,
+    ServiceConsumable,
+    Shift,
+    User,
+    WashType,
+    WashTypeConsumable,
+)
 
 WASH_CATEGORY = "Мойка кузова"
 

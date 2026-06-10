@@ -1,7 +1,9 @@
 import asyncio
+
 from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
 from core.config import get_settings
 from services.notification_service import get_pending_notifications, mark_sent
 

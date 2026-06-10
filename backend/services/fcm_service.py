@@ -1,8 +1,9 @@
-import firebase_admin
-from firebase_admin import credentials, messaging
-from typing import List, Dict, Any
 import os
+from typing import Any, Dict, List
+
+import firebase_admin
 import structlog
+from firebase_admin import credentials, messaging
 
 logger = structlog.get_logger()
 
@@ -67,7 +68,7 @@ class FCMService:
         if not firebase_admin._apps:
             logger.warning("fcm_not_initialized")
             return
-        
+
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
             data=data,

@@ -1,6 +1,7 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from services.reminder_service import check_and_send_reminders
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.reminder_service import check_and_send_reminders
 
 logger = structlog.get_logger()
 

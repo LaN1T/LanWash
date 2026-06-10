@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
 from collections import defaultdict
+from datetime import datetime, timedelta
+
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 
 from db_models import Appointment
-from models import ForecastSlot, ForecastResponse
+from models import ForecastResponse, ForecastSlot
 from services.workload_service import NUM_BOXES
 
 _WEEKS_HISTORY = 8

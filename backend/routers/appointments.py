@@ -1,28 +1,50 @@
 import asyncio
 import json
 import uuid
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Query, status, Response, Request
-from core.limiter import limiter
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, or_, and_
-from database import get_db
-from models import AppointmentRequest, AppointmentResponse, AssignWasherRequest, QrScanRequest, LateReportRequest, CancelReasonRequest
-from db_models import (
-    Appointment, DeletedNotification, Service, ServiceConsumable, FcmToken,
-    ConsumableUsageLog, WashTypeConsumable, Promo, PromoIncludedExtra,
-    WashTypeIncludedExtra, User, Consumable, Shift, LogEntry, Car, Subscription,
-    WashType,
-)
-from datetime import datetime, timedelta
 from collections import defaultdict
-from services.fcm_service import fcm_service
-from services.workload_service import workload_service
-from services.notification_service import add_notification
-from services.auth_service import get_current_user, check_roles
-from core.security import decrypt_token
-from core.metrics import appointments_total
+from datetime import datetime, timedelta
+from typing import Optional
+
 import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.limiter import limiter
+from core.metrics import appointments_total
+from core.security import decrypt_token
+from database import get_db
+from db_models import (
+    Appointment,
+    Car,
+    Consumable,
+    ConsumableUsageLog,
+    DeletedNotification,
+    FcmToken,
+    LogEntry,
+    Promo,
+    PromoIncludedExtra,
+    Service,
+    ServiceConsumable,
+    Shift,
+    Subscription,
+    User,
+    WashType,
+    WashTypeConsumable,
+    WashTypeIncludedExtra,
+)
+from models import (
+    AppointmentRequest,
+    AppointmentResponse,
+    AssignWasherRequest,
+    CancelReasonRequest,
+    LateReportRequest,
+    QrScanRequest,
+)
+from services.auth_service import check_roles, get_current_user
+from services.fcm_service import fcm_service
+from services.notification_service import add_notification
+from services.workload_service import workload_service
 
 logger = structlog.get_logger()
 
@@ -90,14 +112,14 @@ async def _send_fcm_bg(tokens: list[str], title: str, body: str, data: dict):
 router = APIRouter(
     prefix="/api/appointments",
     tags=["appointments"],
-    
+
 )
 
 @router.get(
     "/busy-slots",
     response_model=dict,
     summary="Занятые слоты",
-    
+
 )
 @limiter.limit("30/minute")
 async def get_busy_slots(request: Request, date: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -114,7 +136,7 @@ async def get_last_updated(request: Request, db: AsyncSession = Depends(get_db),
     "/",
     response_model=list[AppointmentResponse],
     summary="Список записей (с пагинацией)",
-    
+
 )
 @limiter.limit("60/minute")
 async def get_all(
@@ -345,7 +367,7 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
     "/",
     response_model=AppointmentResponse,
     summary="Создание записи",
-    
+
 )
 @limiter.limit("10/minute")
 async def create(request: Request, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -500,6 +522,7 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
 
 from datetime import datetime
 
+
 def format_date(dt_str):
     if not dt_str:
         return "неизвестное время"
@@ -518,7 +541,7 @@ def format_date(dt_str):
     "/{appt_id}",
     response_model=AppointmentResponse,
     summary="Редактирование записи",
-    
+
 )
 @limiter.limit("10/minute")
 async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -544,7 +567,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     original_assignedWasher = appt.assignedWasher
     original_promoId = appt.promoId
     original_box_index = appt.box_index
-    
+
     # Логирование для отладки прав доступа
     logger.debug("updating_appointment", appt_id=appt_id, username=current_user.username, role=current_user.role)
     logger.debug("appointment_owner", owner=appt.ownerUsername)
@@ -599,7 +622,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     # Проверка доступности бокса, если время или услуги изменились
     duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
     box_idx = await workload_service.find_available_box(db, req.dateTime, duration, exclude_appt_id=appt_id)
-    
+
     if box_idx == -1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
 
@@ -660,7 +683,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         if old_status != req.status:
             appt.isModifiedByWasher = 1
             appt.isSeenByClient = 0
-    
+
     await db.commit()
 
     # Send Telegram notification if status changed to in_progress or completed
@@ -685,7 +708,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     if appt.ownerUsername:
         tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
         encrypted_tokens = tokens_res.scalars().all()
-        
+
         if encrypted_tokens:
             client_tokens = []
             for t in encrypted_tokens:
@@ -693,7 +716,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
                     client_tokens.append(decrypt_token(t))
                 except Exception:
                     pass
-            
+
             # Всегда уведомляем, если что-то изменилось, чтобы клиент обновил данные
             title, body = "Обновление записи", "Ваша запись была обновлена."
             if old_status != appt.status:
@@ -706,7 +729,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
                     title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
                 elif appt.status == "scheduled":
                     title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}."
-            
+
             asyncio.create_task(_send_fcm_bg(client_tokens, title, body, {"type": "appointment_updated", "id": appt.id}))
 
             if old_datetime != appt.dateTime:
@@ -762,7 +785,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
 @router.delete(
     "/{appt_id}",
     summary="Удаление записи",
-    
+
 )
 @limiter.limit("10/minute")
 async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -813,7 +836,7 @@ async def toggle_favorite(request: Request, appt_id: str, db: AsyncSession = Dep
 @router.post(
     "/{appt_id}/assign-washer",
     summary="Назначение мойщика",
-    
+
 )
 @limiter.limit("10/minute")
 async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
@@ -837,10 +860,10 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
         target_user = user_res.scalar_one_or_none()
         if not target_user or target_user.role != 'washer':
             raise HTTPException(400, f"Пользователь {username} не является мойщиком")
-            
+
         if len(current) >= 3:
             raise HTTPException(400, "Максимум 3 мойщика")
-        
+
         # Проверка на пересечение времени с другими назначенными записями
         safe_username = username.replace('%', r'\%').replace('_', r'\_')
         conflict_res = await db.execute(
@@ -867,7 +890,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             other_end = other_start + timedelta(minutes=other_duration)
             if appt_start < other_end and appt_end > other_start:
                 raise HTTPException(400, f"Мойщик {username} уже назначен на пересекающееся время")
-        
+
         current.append(username)
 
     appt.assignedWasher = json.dumps(current)
@@ -885,7 +908,7 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
                 tokens.append(decrypted)
             except Exception as e:
                 logger.warning("token_decrypt_failed", username=username, error=str(e))
-        
+
         if tokens:
             dt_str = format_date(appt.dateTime)
             if username in current:

@@ -4,20 +4,20 @@ import os
 from typing import List, Optional
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import SupportChat, SupportMessage, User
 from core.config import get_settings
+from db_models import SupportChat, SupportMessage, User
 from services.ai_resilience import (
-    ai_rate_limit_ok,
     ai_cache_get,
     ai_cache_set,
     ai_circuit_breaker_ok,
-    ai_record_success,
+    ai_rate_limit_ok,
     ai_record_failure,
+    ai_record_success,
 )
-import structlog
 
 settings = get_settings()
 logger = structlog.get_logger()

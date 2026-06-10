@@ -1,7 +1,9 @@
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from sqlalchemy import select
-from db_models import User, Subscription
+
+from db_models import Subscription, User
 
 
 class TestSubscriptions:

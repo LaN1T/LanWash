@@ -1,17 +1,23 @@
 import io
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.limiter import limiter
 from database import get_db
-from models import (
-    ConsumableRequest, ConsumableResponse, ServiceConsumableRequest,
-    ServiceConsumableResponse, RefillRequest, InventoryForecastResponse,
-)
 from db_models import User
+from models import (
+    ConsumableRequest,
+    ConsumableResponse,
+    InventoryForecastResponse,
+    RefillRequest,
+    ServiceConsumableRequest,
+    ServiceConsumableResponse,
+)
 from services.auth_service import check_roles
-from services.consumables_service import ConsumablesService, ConsumableNotFoundError
+from services.consumables_service import ConsumableNotFoundError, ConsumablesService
 
 router = APIRouter(
     prefix="/api/consumables",

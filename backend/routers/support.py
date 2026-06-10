@@ -1,25 +1,25 @@
 from datetime import datetime
 from typing import Optional
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
 
 from core.limiter import limiter
 from database import get_db
 from db_models import SupportChat, SupportMessage, User
 from models import (
+    AiDraftResponse,
     SupportChatCreateRequest,
     SupportChatResponse,
     SupportMessageCreateRequest,
     SupportMessageResponse,
-    AiDraftResponse,
 )
-from services.auth_service import get_current_user, check_roles
 from services.ai_draft_service import classify_and_reply, generate_admin_draft
+from services.auth_service import check_roles, get_current_user
 from services.fcm_service import fcm_service
 from services.websocket_manager import broadcast, connected_user_ids
-import structlog
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/support", tags=["support"])

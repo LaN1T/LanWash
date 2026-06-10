@@ -1,6 +1,8 @@
-import pytest
 import json
+
+import pytest
 from sqlalchemy import select
+
 from db_models import User
 
 

@@ -1,16 +1,26 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select, func
-from sqlalchemy.dialects.postgresql import insert
-from db_models import (
-    Base, User, Service, Consumable, ServiceConsumable, Promo,
-    WashType, WashTypeIncludedExtra, WashTypeConsumable, PromoIncludedExtra,
-    Shift,
-)
 from datetime import datetime
-from passlib.context import CryptContext
-from core.config import get_settings
+
 import structlog
+from passlib.context import CryptContext
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+from core.config import get_settings
+from db_models import (
+    Base,
+    Consumable,
+    Promo,
+    PromoIncludedExtra,
+    Service,
+    ServiceConsumable,
+    Shift,
+    User,
+    WashType,
+    WashTypeConsumable,
+    WashTypeIncludedExtra,
+)
 
 logger = structlog.get_logger()
 
@@ -40,7 +50,7 @@ async def init_db():
 async def seed_data():
     async with AsyncSessionLocal() as session:
         now = datetime.now().isoformat()
-        
+
         admin_pass = settings.initial_admin_password
 
         if not admin_pass or admin_pass == "change_me_to_something_secure":
