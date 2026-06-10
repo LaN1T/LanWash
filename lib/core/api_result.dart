@@ -56,8 +56,12 @@ class AppError {
     return AppError(message: msg, statusCode: code, originalError: original);
   }
 
-  factory AppError.unknown([dynamic original]) =>
-      AppError(message: 'Неизвестная ошибка.', originalError: original);
+  factory AppError.unknown([dynamic original]) {
+    final msg = original is Error
+        ? original.toString()
+        : original?.toString() ?? 'Неизвестная ошибка.';
+    return AppError(message: msg, originalError: original);
+  }
 
   factory AppError.validation(String msg) =>
       AppError(message: msg, statusCode: 400);
