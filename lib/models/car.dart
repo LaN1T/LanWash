@@ -14,7 +14,8 @@ class Car {
   });
 
   String get displayName => '$brand $model'.trim();
-  String get fullDisplay => number.isNotEmpty ? '$displayName · $number' : displayName;
+  String get fullDisplay =>
+      number.isNotEmpty ? '$displayName · $number' : displayName;
 
   Map<String, dynamic> toMap() => {
         'id': id,

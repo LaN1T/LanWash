@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/support_chat.dart';
@@ -10,22 +11,37 @@ class ClientSupportChatScreen extends StatefulWidget {
   const ClientSupportChatScreen({super.key, required this.chat});
 
   @override
-  State<ClientSupportChatScreen> createState() => _ClientSupportChatScreenState();
+  State<ClientSupportChatScreen> createState() =>
+      _ClientSupportChatScreenState();
 }
 
 class _ClientSupportChatScreenState extends State<ClientSupportChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  late SupportProvider _provider;
+  int _lastMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
-    final provider = context.read<SupportProvider>();
-    provider.loadMessages(widget.chat.id).then((_) {
-      provider.connectToChat(widget.chat.id);
-      provider.markChatRead(widget.chat.id);
+    _provider = context.read<SupportProvider>();
+    _lastMessageCount = _provider.messages.length;
+    _provider.addListener(_onProviderChanged);
+    _provider.connectToChat(widget.chat.id);
+    _provider.loadMessages(widget.chat.id).then((_) {
+      if (!mounted) return;
+      _provider.markChatRead(widget.chat.id);
       _scrollToBottom();
     });
+  }
+
+  void _onProviderChanged() {
+    if (!mounted) return;
+    final newCount = _provider.messages.length;
+    if (newCount > _lastMessageCount) {
+      _lastMessageCount = newCount;
+      _scrollToBottom();
+    }
   }
 
   @override
@@ -36,7 +52,8 @@ class _ClientSupportChatScreenState extends State<ClientSupportChatScreen> {
 
   @override
   void dispose() {
-    context.read<SupportProvider>().disconnect();
+    _provider.removeListener(_onProviderChanged);
+    _provider.disconnect();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -45,7 +62,7 @@ class _ClientSupportChatScreenState extends State<ClientSupportChatScreen> {
   Future<void> _send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    await context.read<SupportProvider>().sendMessage(widget.chat.id, trimmed);
+    await _provider.sendMessage(widget.chat.id, trimmed);
     _controller.clear();
     _scrollToBottom();
   }
@@ -78,7 +95,20 @@ class _ClientSupportChatScreenState extends State<ClientSupportChatScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: provider.messages.length,
               itemBuilder: (context, index) {
-                return _MessageBubble(message: provider.messages[index]);
+                final msg = provider.messages[index];
+                final prev = index > 0 ? provider.messages[index - 1] : null;
+                final showDate = prev == null ||
+                    !_isSameDay(
+                      DateTime.tryParse(msg.createdAt) ?? DateTime(1970),
+                      DateTime.tryParse(prev.createdAt) ?? DateTime(1970),
+                    );
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showDate) _DateSeparator(date: msg.createdAt),
+                    _MessageBubble(message: msg),
+                  ],
+                );
               },
             ),
           ),
@@ -144,10 +174,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              isAi
-                  ? 'Ассистент'
-                  : (message.senderName ??
-                      (isAdmin ? 'Администратор' : 'Вы')),
+              '${_formatMessageTime(message.createdAt)} · ${isAi ? 'Ассистент' : (message.senderName ?? (isAdmin ? 'Администратор' : 'Вы'))}',
               style: TextStyle(
                 fontSize: 11,
                 color: AppStyles.adaptiveTextMuted(context),
@@ -208,6 +235,50 @@ class _InputBar extends StatelessWidget {
               color: AppStyles.primary,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+bool _isSameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+String _formatMessageTime(String iso) {
+  try {
+    return DateFormat('HH:mm', 'ru').format(DateTime.parse(iso));
+  } catch (_) {
+    return iso;
+  }
+}
+
+class _DateSeparator extends StatelessWidget {
+  final String date;
+  const _DateSeparator({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final dt = DateTime.tryParse(date);
+    final label =
+        dt == null ? date : DateFormat('d MMMM yyyy', 'ru').format(dt);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppStyles.adaptiveTextSecondary(context),
+            ),
+          ),
         ),
       ),
     );

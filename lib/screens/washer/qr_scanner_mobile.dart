@@ -37,7 +37,8 @@ class _QrScannerBodyState extends State<QrScannerBody> {
 
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => AppointmentDetailWidget(appointment: appointment, isClient: false),
+          builder: (_) => AppointmentDetailWidget(
+              appointment: appointment, isClient: false),
         ),
       );
     } catch (e) {
@@ -76,7 +77,8 @@ class _QrScannerBodyState extends State<QrScannerBody> {
             _processCode(code);
           },
           errorBuilder: (context, error, child) {
-            final isPermission = error.errorCode == MobileScannerErrorCode.permissionDenied;
+            final isPermission =
+                error.errorCode == MobileScannerErrorCode.permissionDenied;
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -84,13 +86,18 @@ class _QrScannerBodyState extends State<QrScannerBody> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isPermission ? Icons.camera_alt_outlined : Icons.error_outline,
+                      isPermission
+                          ? Icons.camera_alt_outlined
+                          : Icons.error_outline,
                       size: 64,
-                      color: AppStyles.adaptiveTextSecondary(context).withValues(alpha: 0.4),
+                      color: AppStyles.adaptiveTextSecondary(context)
+                          .withValues(alpha: 0.4),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      isPermission ? 'Доступ к камере запрещён' : 'Ошибка камеры',
+                      isPermission
+                          ? 'Доступ к камере запрещён'
+                          : 'Ошибка камеры',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

@@ -626,7 +626,7 @@ class SupportMessageResponse(BaseModel):
 
 
 class SupportChatCreateRequest(BaseModel):
-    firstMessage: str = Field(..., min_length=1, max_length=2000, description="Первое сообщение в чате поддержки")
+    firstMessage: str = Field(default="", max_length=2000, description="Первое сообщение в чате поддержки")
 
 
 class SupportChatResponse(BaseModel):
@@ -647,4 +647,4 @@ class SupportChatResponse(BaseModel):
 
 
 class AiDraftResponse(BaseModel):
-    draft: str
+    draft: Optional[str] = None

@@ -89,11 +89,13 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
                 fillColor: AppStyles.adaptiveCard(context),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppStyles.adaptiveBorder(context)),
+                  borderSide:
+                      BorderSide(color: AppStyles.adaptiveBorder(context)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppStyles.adaptiveBorder(context)),
+                  borderSide:
+                      BorderSide(color: AppStyles.adaptiveBorder(context)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -120,14 +122,18 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: _loading && _users.isEmpty
-                ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppStyles.primary))
                 : _error != null
-                    ? Center(child: Text(_error!, style: const TextStyle(color: AppStyles.danger)))
+                    ? Center(
+                        child: Text(_error!,
+                            style: const TextStyle(color: AppStyles.danger)))
                     : _users.isEmpty
                         ? const Center(child: Text('Ничего не найдено'))
                         : ListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            itemCount: _users.length + (_users.length < _total ? 1 : 0),
+                            itemCount: _users.length +
+                                (_users.length < _total ? 1 : 0),
                             itemBuilder: (ctx, i) {
                               if (i >= _users.length) {
                                 if (!_loading) {
@@ -137,7 +143,8 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
                                 return const Padding(
                                   padding: EdgeInsets.all(16),
                                   child: Center(
-                                      child: CircularProgressIndicator(color: AppStyles.primary)),
+                                      child: CircularProgressIndicator(
+                                          color: AppStyles.primary)),
                                 );
                               }
                               final u = _users[i];
@@ -223,7 +230,8 @@ class _UserCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: _roleColor(user.role).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _roleColor(user.role).withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: _roleColor(user.role).withValues(alpha: 0.3)),
             ),
             child: Text(
               _roleLabel(user.role),

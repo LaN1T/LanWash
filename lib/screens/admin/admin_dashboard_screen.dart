@@ -122,7 +122,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final critical = _inventoryForecast?.criticalItems ?? [];
     if (_inventoryLoading || critical.isEmpty) return const SizedBox.shrink();
 
-    final label = _pluralize(critical.length, 'расходник', 'расходника', 'расходников');
+    final label =
+        _pluralize(critical.length, 'расходник', 'расходника', 'расходников');
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -363,7 +364,9 @@ class _PeriodSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: sel ? Colors.white : AppStyles.adaptiveTextSecondary(context),
+                    color: sel
+                        ? Colors.white
+                        : AppStyles.adaptiveTextSecondary(context),
                   ),
                 ),
               ),
@@ -474,7 +477,9 @@ class _KpiCard extends StatelessWidget {
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context),
+          color: dark
+              ? const Color(0xFF334155)
+              : AppStyles.adaptiveBorder(context),
         ),
         boxShadow: [
           if (!dark)
@@ -549,7 +554,8 @@ class _RevenueChart extends StatelessWidget {
       return FlSpot(e.key.toDouble(), e.value.revenue.toDouble());
     }).toList();
 
-    final maxY = data.map((d) => d.revenue).reduce((a, b) => a > b ? a : b).toDouble();
+    final maxY =
+        data.map((d) => d.revenue).reduce((a, b) => a > b ? a : b).toDouble();
 
     return _SectionCard(
       title: 'Выручка по дням',
@@ -570,16 +576,20 @@ class _RevenueChart extends StatelessWidget {
             ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
-              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   interval: data.length > 10 ? 5 : 1,
                   getTitlesWidget: (value, meta) {
                     final idx = value.toInt();
-                    if (idx < 0 || idx >= data.length) return const SizedBox.shrink();
+                    if (idx < 0 || idx >= data.length)
+                      return const SizedBox.shrink();
                     final d = data[idx];
                     return Text(
                       DateFormat('dd.MM').format(DateTime.parse(d.date)),
@@ -663,11 +673,15 @@ class _TopWashers extends StatelessWidget {
                         fontSize: 13)),
               ),
             ),
-            title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(w.name,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text('${w.appointments} записей',
-                style: TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
+                style: TextStyle(
+                    color: AppStyles.adaptiveTextSecondary(context),
+                    fontSize: 12)),
             trailing: Text(_formatCurrency(w.revenue),
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: AppStyles.primary)),
           );
         }).toList(),
       ),
@@ -675,7 +689,11 @@ class _TopWashers extends StatelessWidget {
   }
 
   Color _rankColor(int index, BuildContext context) {
-    final colors = [const Color(0xFFF59E0B), const Color(0xFF94A3B8), const Color(0xFFCD7F32)];
+    final colors = [
+      const Color(0xFFF59E0B),
+      const Color(0xFF94A3B8),
+      const Color(0xFFCD7F32)
+    ];
     return index < 3 ? colors[index] : AppStyles.adaptiveTextMuted(context);
   }
 
@@ -720,11 +738,15 @@ class _TopClients extends StatelessWidget {
               ),
               child: const Icon(Icons.person, color: Colors.white, size: 18),
             ),
-            title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(c.name,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text('${c.visits} визитов',
-                style: TextStyle(color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
+                style: TextStyle(
+                    color: AppStyles.adaptiveTextSecondary(context),
+                    fontSize: 12)),
             trailing: Text(_formatCurrency(c.totalSpent),
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppStyles.primary)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: AppStyles.primary)),
           );
         }).toList(),
       ),
@@ -742,7 +764,8 @@ class _SectionCard extends StatelessWidget {
   final IconData icon;
   final Widget child;
 
-  const _SectionCard({required this.title, required this.icon, required this.child});
+  const _SectionCard(
+      {required this.title, required this.icon, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -752,7 +775,10 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: dark ? const Color(0xFF334155) : AppStyles.adaptiveBorder(context)),
+        border: Border.all(
+            color: dark
+                ? const Color(0xFF334155)
+                : AppStyles.adaptiveBorder(context)),
         boxShadow: [
           if (!dark)
             BoxShadow(
@@ -807,7 +833,8 @@ class _ForecastChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxY = slots.isEmpty
         ? 1.0
-        : slots.map((s) => s.predictedLoad).reduce((a, b) => a > b ? a : b) * 1.2;
+        : slots.map((s) => s.predictedLoad).reduce((a, b) => a > b ? a : b) *
+            1.2;
     final safeMaxY = maxY < 0.1 ? 1.0 : maxY;
 
     return BarChart(

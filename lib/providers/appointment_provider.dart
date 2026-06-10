@@ -264,7 +264,8 @@ class AppointmentProvider extends ChangeNotifier {
       if (success) {
         final i = _appointmentList.indexWhere((a) => a.id == id);
         if (i != -1) {
-          _appointmentList[i] = _appointmentList[i].copyWith(lateMinutes: minutes);
+          _appointmentList[i] =
+              _appointmentList[i].copyWith(lateMinutes: minutes);
           notifyListeners();
         }
         await reloadAppointments(auth);
@@ -277,7 +278,8 @@ class AppointmentProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> cancelWithReason(String id, String reason, AuthProvider auth) async {
+  Future<bool> cancelWithReason(
+      String id, String reason, AuthProvider auth) async {
     clearError();
     try {
       final success = await _api.cancelWithReason(id, reason);

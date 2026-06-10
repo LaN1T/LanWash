@@ -100,9 +100,13 @@ class _ReviewCreateScreenState extends State<ReviewCreateScreen> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         child: Icon(
-                          filled ? Icons.star_rounded : Icons.star_border_rounded,
+                          filled
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
                           size: 40,
-                          color: filled ? AppStyles.gold : AppStyles.adaptiveBorder(context),
+                          color: filled
+                              ? AppStyles.gold
+                              : AppStyles.adaptiveBorder(context),
                         ),
                       ),
                     ),

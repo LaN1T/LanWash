@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from database import get_db
 from models import CarRequest, CarResponse
 from db_models import Car, User
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, check_roles
 from core.limiter import limiter
 import structlog
 
@@ -22,6 +22,18 @@ router = APIRouter(
 @limiter.limit("60/minute")
 async def get_cars(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Car).where(Car.userId == current_user.id).order_by(Car.id.asc()))
+    return result.scalars().all()
+
+
+@router.get("/user/{user_id}", response_model=list[CarResponse])
+@limiter.limit("60/minute")
+async def get_user_cars(
+    request: Request,
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    result = await db.execute(select(Car).where(Car.userId == user_id).order_by(Car.id.asc()))
     return result.scalars().all()
 
 

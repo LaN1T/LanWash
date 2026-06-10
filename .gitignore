@@ -90,6 +90,21 @@ devtools_options.yaml
 # Python build
 backend/build/
 
+# Build artifacts (platform level)
+android/build/
+macos/build/
+ios/build/
+
+# Landing build output
+landing/assets/index-*.js
+landing/assets/index-*.css
+
+# AI plans
+/docs/superpowers/plans/
+
+# pytest
+.pytest_cache/
+
 # Unused platforms
 /linux/
 /macos/

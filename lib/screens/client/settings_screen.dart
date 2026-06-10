@@ -226,7 +226,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 _primaryCar!.number,
                                 style: TextStyle(
-                                  color: AppStyles.adaptiveTextSecondary(context),
+                                  color:
+                                      AppStyles.adaptiveTextSecondary(context),
                                   fontSize: 13,
                                   letterSpacing: 1.2,
                                   fontWeight: FontWeight.w600,
@@ -272,8 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () async {
                     await Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const CarListScreen()),
+                      MaterialPageRoute(builder: (_) => const CarListScreen()),
                     );
                     _loadPrimaryCar();
                   },

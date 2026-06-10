@@ -16,7 +16,8 @@
     "models": [
       "M5",
       "M7",
-      "M9"
+      "M9",
+      "M8"
     ]
   },
   {
@@ -49,6 +50,17 @@
       "Alpha S5",
       "Alpha T5",
       "Kaola"
+    ]
+  },
+  {
+    "brand": "Aston Martin",
+    "models": [
+      "DB11",
+      "DB12",
+      "DBS",
+      "Vantage",
+      "Valkyrie",
+      "DBX"
     ]
   },
   {
@@ -94,7 +106,8 @@
       "BJ80",
       "BJ90",
       "魔方",
-      "绅宝D50"
+      "绅宝D50",
+      "BJ30"
     ]
   },
   {
@@ -104,7 +117,17 @@
       "Yunduo",
       "Yep",
       "Yunhai",
-      "KiWi EV Plus"
+      "KiWi EV Plus",
+      "Cloud",
+      "Yixin"
+    ]
+  },
+  {
+    "brand": "Bentley",
+    "models": [
+      "Continental GT",
+      "Flying Spur",
+      "Bentayga"
     ]
   },
   {
@@ -181,7 +204,11 @@
       "e3",
       "Destroyer 05",
       "Seagull",
-      "Sealion 7"
+      "Sealion 7",
+      "Sealion 5",
+      "Shark",
+      "Song L DM-i",
+      "Seal 06 GT"
     ]
   },
   {
@@ -216,7 +243,10 @@
       "Raeton",
       "Oshan X7",
       "Deepal SL03",
-      "Deepal S7"
+      "Deepal S7",
+      "CS55 Plus",
+      "Deepal S07",
+      "Nevo"
     ]
   },
   {
@@ -241,7 +271,11 @@
       "Tiggo 9",
       "Fulwin",
       "eQ1",
-      "eQ7"
+      "eQ7",
+      "Tiggo 7 Pro Max",
+      "Tiggo 8 Pro Max",
+      "Omoda 5",
+      "Omoda E5"
     ]
   },
   {
@@ -299,6 +333,17 @@
     ]
   },
   {
+    "brand": "Cupra",
+    "models": [
+      "Formentor",
+      "Leon",
+      "Ateca",
+      "Born",
+      "Tavascan",
+      "Terramar"
+    ]
+  },
+  {
     "brand": "Daewoo",
     "models": [
       "Gentra",
@@ -308,6 +353,16 @@
       "Matiz",
       "Nexia",
       "Nubira"
+    ]
+  },
+  {
+    "brand": "Daihatsu",
+    "models": [
+      "Terios",
+      "Sirion",
+      "Ayla",
+      "Rocky",
+      "Xenia"
     ]
   },
   {
@@ -325,7 +380,8 @@
       "D9",
       "N7",
       "N8",
-      "Z9 GT"
+      "Z9 GT",
+      "Z9"
     ]
   },
   {
@@ -353,7 +409,11 @@
       "M-Hero M50",
       "M-Hero M70",
       "Fengon 580",
-      "Fengon ix5"
+      "Fengon ix5",
+      "Aeolus Huge",
+      "Aeolus Shine",
+      "Fengshen AX7",
+      "Mengshi"
     ]
   },
   {
@@ -364,14 +424,29 @@
       "Yaoguang",
       "RX",
       "Sterra ES",
-      "Sterra ET"
+      "Sterra ET",
+      "Lanyue"
     ]
   },
   {
     "brand": "Fangchengbao",
     "models": [
       "Bao 5",
-      "Bao 8"
+      "Bao 8",
+      "Tai 7"
+    ]
+  },
+  {
+    "brand": "Ferrari",
+    "models": [
+      "296",
+      "488",
+      "F8",
+      "SF90",
+      "Roma",
+      "Portofino",
+      "812",
+      "Purosangue"
     ]
   },
   {
@@ -413,6 +488,22 @@
     ]
   },
   {
+    "brand": "Forthing",
+    "models": [
+      "T5 EVO",
+      "Yacht",
+      "U-Tour"
+    ]
+  },
+  {
+    "brand": "Foton",
+    "models": [
+      "Sauvana",
+      "Tunland",
+      "View"
+    ]
+  },
+  {
     "brand": "GAC",
     "models": [
       "GS3",
@@ -428,7 +519,8 @@
       "Aion V",
       "Aion LX",
       "Empow",
-      "M8"
+      "M8",
+      "Trumpchi E8"
     ]
   },
   {
@@ -466,7 +558,10 @@
       "Galaxy L7",
       "Preface",
       "Boyue",
-      "Xingrui"
+      "Xingrui",
+      "Galaxy E8",
+      "Galaxy Starship 7",
+      "Cityray"
     ]
   },
   {
@@ -490,7 +585,18 @@
       "Sailor",
       "Sing",
       "Socool",
-      "Wingle"
+      "Wingle",
+      "Poer",
+      "Wingle 7",
+      "Cannon"
+    ]
+  },
+  {
+    "brand": "Haima",
+    "models": [
+      "8S",
+      "7X",
+      "Freema"
     ]
   },
   {
@@ -510,7 +616,9 @@
       "Big Dog",
       "Cool Dog",
       "Dragon",
-      "Squirrel"
+      "Squirrel",
+      "H6 GT",
+      "H7"
     ]
   },
   {
@@ -543,7 +651,8 @@
       "E-QM5",
       "LS7",
       "L5",
-      "S9"
+      "S9",
+      "EH7"
     ]
   },
   {
@@ -614,6 +723,13 @@
     ]
   },
   {
+    "brand": "Isuzu",
+    "models": [
+      "D-Max",
+      "MU-X"
+    ]
+  },
+  {
     "brand": "JAC",
     "models": [
       "S2",
@@ -626,7 +742,11 @@
       "Yiwei 3",
       "Yiwei Hua",
       "T6",
-      "T8"
+      "T8",
+      "JS4",
+      "JS6",
+      "JS8",
+      "E-JS4"
     ]
   },
   {
@@ -673,7 +793,9 @@
       "Traveller",
       "T2",
       "L6",
-      "L9"
+      "L9",
+      "T1",
+      "T5"
     ]
   },
   {
@@ -714,6 +836,15 @@
       "Priora",
       "Vesta",
       "XRAY"
+    ]
+  },
+  {
+    "brand": "Lamborghini",
+    "models": [
+      "Huracan",
+      "Urus",
+      "Revuelto",
+      "Temerario"
     ]
   },
   {
@@ -785,6 +916,23 @@
     ]
   },
   {
+    "brand": "Livan",
+    "models": [
+      "7",
+      "8",
+      "9"
+    ]
+  },
+  {
+    "brand": "Lotus",
+    "models": [
+      "Emira",
+      "Eletre",
+      "Emeya",
+      "Evora"
+    ]
+  },
+  {
     "brand": "Lynk & Co",
     "models": [
       "01",
@@ -799,6 +947,17 @@
     ]
   },
   {
+    "brand": "Maserati",
+    "models": [
+      "Ghibli",
+      "Levante",
+      "Quattroporte",
+      "MC20",
+      "Grecale",
+      "GranTurismo"
+    ]
+  },
+  {
     "brand": "Maxus",
     "models": [
       "D60",
@@ -810,7 +969,9 @@
       "MIFA 9",
       "MIFA 6",
       "V80",
-      "V90"
+      "V90",
+      "Mifa 7",
+      "Mifa 9"
     ]
   },
   {
@@ -827,6 +988,15 @@
       "MX-30",
       "MX-5",
       "RX-8"
+    ]
+  },
+  {
+    "brand": "McLaren",
+    "models": [
+      "720S",
+      "750S",
+      "Artura",
+      "GT"
     ]
   },
   {
@@ -870,7 +1040,10 @@
       "Cyberster",
       "4 EV",
       "5 EV",
-      "ZS EV"
+      "ZS EV",
+      "MG4",
+      "MG5",
+      "MG7"
     ]
   },
   {
@@ -903,6 +1076,14 @@
     ]
   },
   {
+    "brand": "Moskvich",
+    "models": [
+      "3",
+      "3e",
+      "6"
+    ]
+  },
+  {
     "brand": "Neta",
     "models": [
       "V",
@@ -910,7 +1091,8 @@
       "S",
       "Aya",
       "X",
-      "L"
+      "L",
+      "GT"
     ]
   },
   {
@@ -962,6 +1144,14 @@
     ]
   },
   {
+    "brand": "Onvo",
+    "models": [
+      "L60",
+      "L80",
+      "L90"
+    ]
+  },
+  {
     "brand": "Opel",
     "models": [
       "Astra",
@@ -1002,6 +1192,16 @@
     ]
   },
   {
+    "brand": "Polestar",
+    "models": [
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ]
+  },
+  {
     "brand": "Porsche",
     "models": [
       "911",
@@ -1012,6 +1212,13 @@
       "Macan",
       "Panamera",
       "Taycan"
+    ]
+  },
+  {
+    "brand": "Radar",
+    "models": [
+      "RD6",
+      "Horizon"
     ]
   },
   {
@@ -1068,6 +1275,17 @@
     ]
   },
   {
+    "brand": "Rolls-Royce",
+    "models": [
+      "Cullinan",
+      "Ghost",
+      "Phantom",
+      "Spectre",
+      "Wraith",
+      "Dawn"
+    ]
+  },
+  {
     "brand": "SEAT",
     "models": [
       "Alhambra",
@@ -1094,6 +1312,14 @@
     ]
   },
   {
+    "brand": "Skywell",
+    "models": [
+      "ET5",
+      "EVA 5",
+      "HT-i"
+    ]
+  },
+  {
     "brand": "Skyworth",
     "models": [
       "EV6",
@@ -1117,7 +1343,17 @@
       "DX5",
       "DX7",
       "DX8",
-      "A5"
+      "A5",
+      "S06"
+    ]
+  },
+  {
+    "brand": "SsangYong",
+    "models": [
+      "Rexton",
+      "Korando",
+      "Tivoli",
+      "Musso"
     ]
   },
   {
@@ -1150,12 +1386,23 @@
     ]
   },
   {
+    "brand": "SWM",
+    "models": [
+      "G01",
+      "G05",
+      "Tiger"
+    ]
+  },
+  {
     "brand": "Tank",
     "models": [
       "300",
       "400",
       "500",
-      "700"
+      "700",
+      "Tank 400",
+      "Tank 700",
+      "Tank 500"
     ]
   },
   {
@@ -1260,7 +1507,8 @@
     "models": [
       "Free",
       "Dreamer",
-      "Passion"
+      "Passion",
+      "Dream"
     ]
   },
   {
@@ -1269,7 +1517,9 @@
       "EX5",
       "EX6",
       "W6",
-      "E5"
+      "E5",
+      "W5",
+      "E.5"
     ]
   },
   {
@@ -1281,7 +1531,8 @@
       "Mocha",
       "VV5",
       "VV6",
-      "VV7"
+      "VV7",
+      "Lan Shan"
     ]
   },
   {
@@ -1293,7 +1544,19 @@
       "Nebula",
       "JiaChen",
       "Kaijie",
-      "Yangguang"
+      "Yangguang",
+      "Hongguang Mini",
+      "Bingo",
+      "Xingchi",
+      "Asta"
+    ]
+  },
+  {
+    "brand": "Xiaomi",
+    "models": [
+      "SU7",
+      "SU7 Ultra",
+      "YU7"
     ]
   },
   {
@@ -1307,14 +1570,25 @@
       "P7",
       "P7 Wing",
       "X9",
-      "Mona M03"
+      "Mona M03",
+      "P7+"
     ]
   },
   {
     "brand": "Yangwang",
     "models": [
       "U8",
-      "U9"
+      "U9",
+      "U7"
+    ]
+  },
+  {
+    "brand": "ZAZ",
+    "models": [
+      "Vida",
+      "Sens",
+      "Chance",
+      "Forza"
     ]
   },
   {
@@ -1325,7 +1599,9 @@
       "007",
       "009",
       "X",
-      "7X"
+      "7X",
+      "9X",
+      "MIX"
     ]
   }
 ]

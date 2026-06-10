@@ -9,7 +9,9 @@ import '../../services/api_service.dart';
 import '../../models/appointment.dart';
 import '../../models/user_stats.dart';
 import '../../models/review.dart';
+import '../../models/car.dart';
 import '../client/referral_screen.dart';
+import '../client/settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,6 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _historyLoading = true;
   List<Review> _reviews = [];
   bool _reviewsLoading = true;
+  Car? _primaryCar;
+  bool _carsLoading = true;
 
   @override
   void initState() {
@@ -33,6 +37,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadStats();
     _loadHistory();
     _loadReviews();
+    _loadPrimaryCar();
+  }
+
+  Future<void> _loadPrimaryCar() async {
+    final cars = await context.read<ApiService>().getCars();
+    if (mounted) {
+      setState(() {
+        _primaryCar = cars.where((c) => c.isPrimary).firstOrNull ??
+            (cars.isNotEmpty ? cars.first : null);
+        _carsLoading = false;
+      });
+    }
   }
 
   Future<void> _loadStats() async {
@@ -254,12 +270,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (!isAdmin) ...[
             _sectionLabel('Данные автомобиля'),
             const SizedBox(height: 10),
-            _infoTile(Icons.directions_car_outlined, 'Марка и модель',
-                (user?.carModel ?? '').isEmpty ? '—' : user!.carModel),
-            _infoTile(Icons.pin_outlined, 'Гос. номер',
-                (user?.carNumber ?? '').isEmpty ? '—' : user!.carNumber),
+            if (_carsLoading)
+              const Center(
+                  child: CircularProgressIndicator(color: AppStyles.primary))
+            else ...[
+              _infoTile(
+                  Icons.directions_car_outlined,
+                  'Марка и модель',
+                  (_primaryCar?.displayName ?? '').isEmpty
+                      ? '—'
+                      : _primaryCar!.displayName),
+              _infoTile(
+                  Icons.pin_outlined,
+                  'Гос. номер',
+                  (_primaryCar?.number ?? '').isEmpty
+                      ? '—'
+                      : _primaryCar!.number),
+            ],
             const SizedBox(height: 24),
           ],
+
+          // ─── Настройки профиля ───────────────────────────────────────────
+          _sectionLabel('Настройки профиля'),
+          const SizedBox(height: 10),
+          Container(
+            decoration: AppStyles.cardDecorationFor(context),
+            child: ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppStyles.adaptivePrimaryBg(context),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.settings_outlined,
+                    color: AppStyles.primary, size: 20),
+              ),
+              title: Text('Настройки',
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextPrimary(context),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+              subtitle: Text('Пароль, тема и выход из аккаунта',
+                  style: TextStyle(
+                      color: AppStyles.adaptiveTextSecondary(context),
+                      fontSize: 12)),
+              trailing: Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: AppStyles.adaptiveTextMuted(context)),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -542,8 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w600)),
         subtitle: Text('Приглашайте друзей и получайте награды',
             style: TextStyle(
-                color: AppStyles.adaptiveTextSecondary(context),
-                fontSize: 12)),
+                color: AppStyles.adaptiveTextSecondary(context), fontSize: 12)),
         trailing: Icon(Icons.arrow_forward_ios_rounded,
             size: 14, color: AppStyles.adaptiveTextMuted(context)),
         onTap: () {

@@ -73,7 +73,10 @@ class _State extends State<MyBookingsScreen>
       Expanded(
           child: TabBarView(controller: _tab, children: [
         _BookingsList(items: upcoming, services: catalogProvider.services),
-        _BookingsList(items: history, services: catalogProvider.services, showBookAgain: true),
+        _BookingsList(
+            items: history,
+            services: catalogProvider.services,
+            showBookAgain: true),
       ])),
     ]);
   }
@@ -83,7 +86,10 @@ class _BookingsList extends StatelessWidget {
   final List<Appointment> items;
   final List<dynamic> services;
   final bool showBookAgain;
-  const _BookingsList({required this.items, required this.services, this.showBookAgain = false});
+  const _BookingsList(
+      {required this.items,
+      required this.services,
+      this.showBookAgain = false});
 
   @override
   Widget build(BuildContext context) {
@@ -233,18 +239,24 @@ class _BookingsList extends StatelessWidget {
                         alignment: Alignment.centerRight,
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => BookingWizardScreen(templateAppointment: a),
-                            ));
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BookingWizardScreen(
+                                      templateAppointment: a),
+                                ));
                           },
                           icon: const Icon(Icons.refresh, size: 16),
                           label: const Text('Записаться снова'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppStyles.primary,
                             side: const BorderSide(color: AppStyles.primary),
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            textStyle: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                         ),
                       ),

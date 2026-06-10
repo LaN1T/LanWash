@@ -59,7 +59,8 @@ class AppStrings {
     'referral_claiming': 'Получение...',
     'referral_share_text': 'Запишись на мойку в LanWash! Мой код: {code}',
     'referral_empty_title': 'Вы ещё никого не пригласили',
-    'referral_empty_subtitle': 'Поделитесь кодом с друзьями, чтобы получить награды',
+    'referral_empty_subtitle':
+        'Поделитесь кодом с друзьями, чтобы получить награды',
     'referral_list_title': 'Приглашённые друзья',
     'referral_reward_claimed': 'Получено',
     'referral_reward_pending': 'Ожидает',

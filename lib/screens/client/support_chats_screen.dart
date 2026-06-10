@@ -24,13 +24,7 @@ class _SupportChatsScreenState extends State<SupportChatsScreen> {
 
   Future<void> _createChat() async {
     final provider = context.read<SupportProvider>();
-    final text = await showDialog<String>(
-      context: context,
-      builder: (ctx) => const _NewChatDialog(),
-    );
-    if (text == null || text.trim().isEmpty) return;
-
-    final chat = await provider.createChat(text.trim());
+    final chat = await provider.createChat('');
     if (!mounted) return;
     if (chat != null) {
       Navigator.push(
@@ -51,13 +45,6 @@ class _SupportChatsScreenState extends State<SupportChatsScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Чат с поддержкой'),
-        actions: [
-          TextButton.icon(
-            onPressed: _createChat,
-            icon: const Icon(Icons.edit_note, color: Colors.white),
-            label: const Text('Написать', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
       body: Consumer<SupportProvider>(
         builder: (context, provider, _) {
@@ -98,16 +85,15 @@ class _SupportChatsScreenState extends State<SupportChatsScreen> {
               ),
             );
           }
+          final chat = provider.chats.first;
           return RefreshIndicator(
             color: AppStyles.primary,
             onRefresh: () => provider.loadChats(isAdmin: false),
-            child: ListView.builder(
+            child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: provider.chats.length,
-              itemBuilder: (context, index) {
-                final chat = provider.chats[index];
-                return _ChatTile(chat: chat);
-              },
+              children: [
+                _ChatTile(chat: chat),
+              ],
             ),
           );
         },
@@ -177,62 +163,5 @@ class _ChatTile extends StatelessWidget {
     } catch (_) {
       return iso;
     }
-  }
-}
-
-class _NewChatDialog extends StatefulWidget {
-  const _NewChatDialog();
-
-  @override
-  State<_NewChatDialog> createState() => _NewChatDialogState();
-}
-
-class _NewChatDialogState extends State<_NewChatDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppStyles.adaptiveCard(context),
-      title: Text(
-        'Новое обращение',
-        style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-      ),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        maxLines: 4,
-        decoration: InputDecoration(
-          hintText: 'Опишите ваш вопрос...',
-          filled: true,
-          fillColor: AppStyles.adaptiveBgMuted(context),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Отмена'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, _controller.text),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppStyles.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Отправить'),
-        ),
-      ],
-    );
   }
 }
