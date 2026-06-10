@@ -46,7 +46,7 @@ class AuthProvider extends ChangeNotifier {
         _notifications.updateTokenOnServer(_user!.username);
       }
     } catch (_) {
-      _errorMessage = 'Ошибка загрузки сессии';
+      _errorMessage = 'error_session_load';
     }
     _initialized = true;
     notifyListeners();
@@ -79,7 +79,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         await _api.createLog(
             username, 'Неудачная попытка входа', 'Логин: $username');
-        return 'Неверный логин или пароль';
+        return 'error_invalid_credentials';
       }
 
       _user = user;
@@ -92,7 +92,7 @@ class AuthProvider extends ChangeNotifier {
       return null;
     } catch (_) {
       _loading = false;
-      _errorMessage = 'Ошибка сети. Проверьте подключение.';
+      _errorMessage = 'error_network';
       notifyListeners();
       return _errorMessage;
     }
@@ -103,6 +103,7 @@ class AuthProvider extends ChangeNotifier {
     required String username,
     required String password,
     required String displayName,
+    String email = '',
     String phone = '',
     String carModel = '',
     String carNumber = '',
@@ -117,6 +118,7 @@ class AuthProvider extends ChangeNotifier {
         username: username,
         password: password,
         displayName: displayName,
+        email: email,
         phone: phone,
         carModel: carModel,
         carNumber: carNumber,
@@ -126,7 +128,7 @@ class AuthProvider extends ChangeNotifier {
       _loading = false;
       if (result == null || result.containsKey('error')) {
         notifyListeners();
-        return result?['error'] ?? 'Ошибка регистрации';
+        return result?['error'] ?? 'error_register';
       }
 
       // Автологин после регистрации
@@ -138,7 +140,7 @@ class AuthProvider extends ChangeNotifier {
       return null;
     } catch (_) {
       _loading = false;
-      _errorMessage = 'Ошибка сети. Проверьте подключение.';
+      _errorMessage = 'error_network';
       notifyListeners();
       return _errorMessage;
     }
@@ -171,9 +173,9 @@ class AuthProvider extends ChangeNotifier {
             'Имя: ${updated.displayName}');
         return null;
       }
-      return 'Ошибка обновления профиля';
+      return 'error_update_profile';
     } catch (_) {
-      _errorMessage = 'Ошибка сети. Проверьте подключение.';
+      _errorMessage = 'error_network';
       notifyListeners();
       return _errorMessage;
     }

@@ -6,6 +6,7 @@ class User {
   final String passwordHash;
   final UserRole role;
   final String displayName;
+  final String email;
   final String phone;
   final String carModel;
   final String carNumber;
@@ -19,6 +20,7 @@ class User {
     required this.passwordHash,
     required this.role,
     required this.displayName,
+    this.email = '',
     this.phone = '',
     this.carModel = '',
     this.carNumber = '',
@@ -33,6 +35,7 @@ class User {
         // Безопасность: никогда не храним хеш пароля на клиенте
         'role': role.name,
         'displayName': displayName,
+        'email': email,
         'phone': phone,
         'carModel': carModel,
         'carNumber': carNumber,
@@ -48,6 +51,7 @@ class User {
         role: UserRole.values.firstWhere((r) => r.name == m['role'],
             orElse: () => UserRole.client),
         displayName: m['displayName'] ?? m['username'] ?? '',
+        email: m['email'] ?? '',
         phone: m['phone'] ?? '',
         carModel: m['carModel'] ?? '',
         carNumber: m['carNumber'] ?? '',
@@ -60,6 +64,7 @@ class User {
 
   User copyWith({
     String? displayName,
+    String? email,
     String? phone,
     String? carModel,
     String? carNumber,
@@ -73,6 +78,7 @@ class User {
         passwordHash: passwordHash ?? this.passwordHash,
         role: role,
         displayName: displayName ?? this.displayName,
+        email: email ?? this.email,
         phone: phone ?? this.phone,
         carModel: carModel ?? this.carModel,
         carNumber: carNumber ?? this.carNumber,

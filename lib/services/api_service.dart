@@ -69,6 +69,7 @@ class ApiService {
     required String username,
     required String password,
     required String displayName,
+    String email = '',
     String phone = '',
     String carModel = '',
     String carNumber = '',
@@ -78,6 +79,7 @@ class ApiService {
       'username': username,
       'password': password,
       'displayName': displayName,
+      if (email.isNotEmpty) 'email': email,
       'phone': phone,
       'carModel': carModel,
       'carNumber': carNumber,
@@ -96,7 +98,7 @@ class ApiService {
             err.statusCode! < 500) {
           return {'error': err.message};
         }
-        return {'error': 'Нет связи с сервером'};
+        return {'error': 'error_network'};
       },
     );
   }

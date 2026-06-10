@@ -1,3 +1,4 @@
+import re
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 import json
 from typing import Optional, List, Literal
@@ -24,10 +25,20 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="Уникальный логин (латиница и цифры)")
     password: str = Field(..., min_length=8, max_length=128, description="Пароль, минимум 4 символа")
     displayName: str = Field(..., min_length=1, max_length=100, description="Отображаемое имя")
+    email: str = Field(default="", max_length=100, description="Email адрес")
     phone: str = Field(default="", max_length=20, description="Номер телефона")
     carModel: str = Field(default="", max_length=50, description="Марка и модель автомобиля")
     carNumber: str = Field(default="", max_length=50, description="Госномер автомобиля")
     referralCode: Optional[str] = Field(default=None, max_length=20, description="Реферальный код пригласившего")
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not v:
+            return v
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
+            raise ValueError('Некорректный email адрес')
+        return v.lower()
 
 
 class UserResponse(BaseModel):
@@ -37,6 +48,7 @@ class UserResponse(BaseModel):
     username: str
     role: str
     displayName: str
+    email: str = ""
     phone: str
     carModel: str
     carNumber: str

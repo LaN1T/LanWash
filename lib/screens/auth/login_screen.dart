@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+  AppLanguage? _errorLanguage;
 
   late AnimationController _animCtrl;
   late Animation<double> _fade;
@@ -66,9 +67,11 @@ class _LoginScreenState extends State<LoginScreen>
       // Сбрасываем _loading чтобы кнопка не оставалась заблокированной.
       setState(() => _loading = false);
     } else {
+      final currentLang = context.read<LanguageProvider>().language;
       setState(() {
         _loading = false;
         _error = err;
+        _errorLanguage = currentLang;
       });
     }
   }
@@ -110,6 +113,11 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    if (_error != null && _errorLanguage != lang.language) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _error = null);
+      });
+    }
     return Scaffold(
         backgroundColor: AppStyles.adaptiveBgPage(context),
         body: Stack(
@@ -338,7 +346,7 @@ class _LoginScreenState extends State<LoginScreen>
                                                     color: AppStyles.danger,
                                                     size: 18),
                                                 const SizedBox(width: 8),
-                                                Text(_error!,
+                                                Text(lang.tr(_error!),
                                                     style: const TextStyle(
                                                         color: AppStyles.danger,
                                                         fontSize: 13)),

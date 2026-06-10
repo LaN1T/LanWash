@@ -57,17 +57,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _loginCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController(text: '+7');
   final _refCtrl = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
   String? _error;
+  AppLanguage? _errorLanguage;
 
   @override
   void dispose() {
     _loginCtrl.dispose();
     _passCtrl.dispose();
     _nameCtrl.dispose();
+    _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _refCtrl.dispose();
     super.dispose();
@@ -85,15 +88,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       username: _loginCtrl.text.trim(),
       password: _passCtrl.text,
       displayName: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
       referralCode: _refCtrl.text.trim().isEmpty ? null : _refCtrl.text.trim().toUpperCase(),
     );
 
     if (!mounted) return;
     if (err != null) {
+      final currentLang = context.read<LanguageProvider>().language;
       setState(() {
         _loading = false;
         _error = err;
+        _errorLanguage = currentLang;
       });
       return;
     }
@@ -142,6 +148,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
+    if (_error != null && _errorLanguage != lang.language) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _error = null);
+      });
+    }
     return Scaffold(
       backgroundColor: AppStyles.adaptiveBgPage(context),
       appBar: AppBar(
@@ -203,6 +214,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? lang.tr('validation_required')
                           : null,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _emailCtrl,
+                      style: TextStyle(
+                          color: AppStyles.adaptiveTextPrimary(context)),
+                      decoration: AppStyles.inputDecorationFor(
+                          context, lang.tr('register_field_email'),
+                          hint: lang.tr('register_field_email_hint'),
+                          icon: Icons.email_outlined),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        return AppValidators.validateEmail(v.trim());
+                      },
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -292,7 +318,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: AppStyles.danger, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
-                              child: Text(_error!,
+                              child: Text(lang.tr(_error!),
                                   style: const TextStyle(
                                       color: AppStyles.danger, fontSize: 13))),
                         ]),
