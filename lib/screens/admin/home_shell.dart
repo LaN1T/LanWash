@@ -304,14 +304,17 @@ class _HomeShellState extends State<HomeShell> {
               child: ListTile(
                 minLeadingWidth: 24,
                 leading: Badge(
-                  isLabelVisible: context.watch<SupportProvider>().unreadAdminCount > 0,
-                  label: Text('${context.watch<SupportProvider>().unreadAdminCount}'),
+                  isLabelVisible:
+                      context.watch<SupportProvider>().unreadAdminCount > 0,
+                  label: Text(
+                      '${context.watch<SupportProvider>().unreadAdminCount}'),
                   backgroundColor: AppStyles.danger,
                   child: Icon(Icons.support_agent,
                       color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
                 ),
                 title: Text('Поддержка',
-                    style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -332,7 +335,8 @@ class _HomeShellState extends State<HomeShell> {
                 leading: Icon(Icons.dashboard_rounded,
                     color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
                 title: Text('Дашборд',
-                    style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -353,7 +357,8 @@ class _HomeShellState extends State<HomeShell> {
                 leading: Icon(Icons.inventory_2_outlined,
                     color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
                 title: Text('Расходники',
-                    style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
@@ -374,7 +379,8 @@ class _HomeShellState extends State<HomeShell> {
                 leading: Icon(Icons.people_alt_outlined,
                     color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
                 title: Text('Клиенты',
-                    style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(

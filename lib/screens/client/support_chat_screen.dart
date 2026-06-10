@@ -11,7 +11,8 @@ class ClientSupportChatScreen extends StatefulWidget {
   const ClientSupportChatScreen({super.key, required this.chat});
 
   @override
-  State<ClientSupportChatScreen> createState() => _ClientSupportChatScreenState();
+  State<ClientSupportChatScreen> createState() =>
+      _ClientSupportChatScreenState();
 }
 
 class _ClientSupportChatScreenState extends State<ClientSupportChatScreen> {
@@ -173,10 +174,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              '${_formatMessageTime(message.createdAt)} · ${isAi
-                  ? 'Ассистент'
-                  : (message.senderName ??
-                      (isAdmin ? 'Администратор' : 'Вы'))}',
+              '${_formatMessageTime(message.createdAt)} · ${isAi ? 'Ассистент' : (message.senderName ?? (isAdmin ? 'Администратор' : 'Вы'))}',
               style: TextStyle(
                 fontSize: 11,
                 color: AppStyles.adaptiveTextMuted(context),
@@ -262,9 +260,8 @@ class _DateSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dt = DateTime.tryParse(date);
-    final label = dt == null
-        ? date
-        : DateFormat('d MMMM yyyy', 'ru').format(dt);
+    final label =
+        dt == null ? date : DateFormat('d MMMM yyyy', 'ru').format(dt);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(

@@ -49,7 +49,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
 
     final lang = context.read<LanguageProvider>();
     if (claimed != null && claimed > 0) {
-      _showSnack(lang.tr('referral_snack_rewards').replaceAll('{count}', '$claimed'));
+      _showSnack(
+          lang.tr('referral_snack_rewards').replaceAll('{count}', '$claimed'));
       await _loadData();
     } else if (claimed == 0) {
       _showSnack(lang.tr('referral_snack_no_rewards'));
@@ -205,14 +206,11 @@ class _ReferralScreenState extends State<ReferralScreen> {
         children: [
           _statItem('${stats.totalReferrals}', lang.tr('referral_invited')),
           Container(
-              width: 1,
-              height: 32,
-              color: AppStyles.adaptiveBorder(context)),
-          _statItem('${stats.claimedRewards}', lang.tr('referral_rewards_claimed')),
+              width: 1, height: 32, color: AppStyles.adaptiveBorder(context)),
+          _statItem(
+              '${stats.claimedRewards}', lang.tr('referral_rewards_claimed')),
           Container(
-              width: 1,
-              height: 32,
-              color: AppStyles.adaptiveBorder(context)),
+              width: 1, height: 32, color: AppStyles.adaptiveBorder(context)),
           _statItem('${stats.pendingRewards}', lang.tr('referral_pending'),
               color: stats.pendingRewards > 0 ? AppStyles.warning : null),
         ],
@@ -251,7 +249,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2))
             : const Icon(Icons.card_giftcard, size: 18),
-        label: Text(_claiming ? lang.tr('referral_claiming') : lang.tr('referral_claim_button')),
+        label: Text(_claiming
+            ? lang.tr('referral_claiming')
+            : lang.tr('referral_claim_button')),
         style: AppStyles.goldButton,
       ),
     );
@@ -334,7 +334,8 @@ class _ReferralScreenState extends State<ReferralScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          DateFormat('d MMM yyyy', lang.langCode).format(r.createdAt),
+                          DateFormat('d MMM yyyy', lang.langCode)
+                              .format(r.createdAt),
                           style: TextStyle(
                             fontSize: 11,
                             color: AppStyles.adaptiveTextSecondary(context),
@@ -353,7 +354,9 @@ class _ReferralScreenState extends State<ReferralScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      r.rewardClaimed ? lang.tr('referral_reward_claimed') : lang.tr('referral_reward_pending'),
+                      r.rewardClaimed
+                          ? lang.tr('referral_reward_claimed')
+                          : lang.tr('referral_reward_pending'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,

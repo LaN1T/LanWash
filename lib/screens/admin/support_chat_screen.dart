@@ -75,7 +75,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   Future<void> _generateDraft() async {
     setState(() => _aiLoading = true);
-    final draft = await context.read<SupportProvider>().generateAiDraft(_chat.id);
+    final draft =
+        await context.read<SupportProvider>().generateAiDraft(_chat.id);
     if (mounted) {
       setState(() {
         _aiDraft = draft;
@@ -131,7 +132,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok ? 'Чат взят в работу' : 'Не удалось взять чат в работу'),
+        content:
+            Text(ok ? 'Чат взят в работу' : 'Не удалось взять чат в работу'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -333,10 +335,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              '${_formatMessageTime(message.createdAt)} · ${isAi
-                  ? 'Ассистент'
-                  : (message.senderName ??
-                      (isAdmin ? 'Администратор' : 'Клиент'))}',
+              '${_formatMessageTime(message.createdAt)} · ${isAi ? 'Ассистент' : (message.senderName ?? (isAdmin ? 'Администратор' : 'Клиент'))}',
               style: TextStyle(
                 fontSize: 11,
                 color: AppStyles.adaptiveTextMuted(context),
@@ -379,7 +378,8 @@ class _AiDraftCardState extends State<_AiDraftCard> {
     super.didUpdateWidget(oldWidget);
     if (widget.draft != _controller.text) {
       _controller.text = widget.draft;
-      _controller.selection = TextSelection.collapsed(offset: widget.draft.length);
+      _controller.selection =
+          TextSelection.collapsed(offset: widget.draft.length);
     }
   }
 
@@ -586,9 +586,8 @@ class _DateSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dt = DateTime.tryParse(date);
-    final label = dt == null
-        ? date
-        : DateFormat('d MMMM yyyy', 'ru').format(dt);
+    final label =
+        dt == null ? date : DateFormat('d MMMM yyyy', 'ru').format(dt);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(

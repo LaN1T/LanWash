@@ -227,8 +227,7 @@ class _CarCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color:
-                                    AppStyles.primary.withValues(alpha: 0.1),
+                                color: AppStyles.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text('Основное',
@@ -344,9 +343,8 @@ class _CarEditSheetState extends State<_CarEditSheet> {
         Navigator.pop(context);
         widget.onSaved();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isEditing
-              ? 'Автомобиль обновлён'
-              : 'Автомобиль добавлен'),
+          content:
+              Text(_isEditing ? 'Автомобиль обновлён' : 'Автомобиль добавлен'),
           backgroundColor: AppStyles.success,
         ));
       } else {

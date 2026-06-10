@@ -60,7 +60,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         onRefresh: _load,
         color: AppStyles.primary,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppStyles.primary))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppStyles.primary))
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -73,7 +74,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_history.isNotEmpty) ...[
                     _sectionLabel('История'),
                     const SizedBox(height: 12),
-                    ..._history.take(5).map((s) => _buildSubscriptionCard(s, false)),
+                    ..._history
+                        .take(5)
+                        .map((s) => _buildSubscriptionCard(s, false)),
                   ],
                   if (_active.isEmpty && _history.isEmpty)
                     Center(
@@ -82,7 +85,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         children: [
                           const SizedBox(height: 80),
                           Icon(Icons.card_membership_outlined,
-                              size: 56, color: AppStyles.adaptiveTextMuted(context)),
+                              size: 56,
+                              color: AppStyles.adaptiveTextMuted(context)),
                           const SizedBox(height: 16),
                           Text(
                             'У вас пока нет абонементов',
@@ -134,7 +138,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: isActive ? AppStyles.primary : AppStyles.adaptiveTextMuted(context),
+                    color: isActive
+                        ? AppStyles.primary
+                        : AppStyles.adaptiveTextMuted(context),
                   ),
                 ),
               ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'qr_scanner_mobile.dart'
-    if (dart.library.html) 'qr_scanner_web.dart';
+import 'qr_scanner_mobile.dart' if (dart.library.html) 'qr_scanner_web.dart';
 
 class QrScannerScreen extends StatelessWidget {
   const QrScannerScreen({super.key});

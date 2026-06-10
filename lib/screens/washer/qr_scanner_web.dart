@@ -36,7 +36,8 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
       }
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => AppointmentDetailWidget(appointment: appointment, isClient: false),
+          builder: (_) => AppointmentDetailWidget(
+              appointment: appointment, isClient: false),
         ),
       );
     } catch (e) {
@@ -72,7 +73,8 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
               Icon(
                 Icons.qr_code_scanner,
                 size: 80,
-                color: AppStyles.adaptiveTextSecondary(context).withValues(alpha: 0.4),
+                color: AppStyles.adaptiveTextSecondary(context)
+                    .withValues(alpha: 0.4),
               ),
               const SizedBox(height: 24),
               Text(
@@ -101,8 +103,10 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
                 onSubmitted: (_) => _onSearch(),
                 decoration: InputDecoration(
                   hintText: 'ID записи',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
               const SizedBox(height: 16),
@@ -113,14 +117,16 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
                     backgroundColor: AppStyles.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isLoading ? null : _onSearch,
                   child: _isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Найти'),
                 ),

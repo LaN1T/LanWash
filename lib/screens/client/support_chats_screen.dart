@@ -165,5 +165,3 @@ class _ChatTile extends StatelessWidget {
     }
   }
 }
-
-
