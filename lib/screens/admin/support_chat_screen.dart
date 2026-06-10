@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/support_chat.dart';
 import '../../models/support_message.dart';
+import '../../models/car.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/support_provider.dart';
+import '../../services/api_service.dart';
 
 class SupportChatScreen extends StatefulWidget {
   final SupportChat chat;
@@ -31,9 +34,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     _provider = context.read<SupportProvider>();
     _lastMessageCount = _provider.messages.length;
     _provider.addListener(_onProviderChanged);
+    _provider.connectToChat(_chat.id);
     _provider.loadMessages(_chat.id).then((_) {
       if (!mounted) return;
-      _provider.connectToChat(_chat.id);
       _provider.markChatRead(_chat.id);
       _scrollToBottom();
     });
@@ -48,7 +51,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         break;
       }
     }
-    if (updated != null && !identical(updated, _chat)) {
+    if (updated != null &&
+        (updated.status != _chat.status ||
+            updated.assignedAdminId != _chat.assignedAdminId ||
+            updated.assignedAdminName != _chat.assignedAdminName)) {
       setState(() => _chat = updated!);
     }
     final newCount = _provider.messages.length;
@@ -75,6 +81,14 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         _aiDraft = draft;
         _aiLoading = false;
       });
+      if (draft == null || draft.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ИИ не подготовил черновик для этого обращения'),
+            backgroundColor: AppStyles.inProgress,
+          ),
+        );
+      }
     }
   }
 
@@ -117,7 +131,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok ? 'Чат назначен на вас' : 'Не удалось назначить чат'),
+        content: Text(ok ? 'Чат взят в работу' : 'Не удалось взять чат в работу'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -129,6 +143,35 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     if (ok) Navigator.pop(context);
   }
 
+  Future<void> _handleWorkAction() async {
+    final auth = context.read<AuthProvider>();
+    final myId = auth.user?.id;
+    final isMine = myId != null && _chat.assignedAdminId == myId;
+    if (isMine) {
+      await _close();
+    } else {
+      await _assign();
+    }
+  }
+
+  Widget _buildWorkButton(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final myId = auth.user?.id;
+    final isMine = myId != null && _chat.assignedAdminId == myId;
+    final label = isMine ? 'В работе' : 'Взять в работу';
+    final color = isMine ? AppStyles.success : AppStyles.primary;
+    return TextButton(
+      onPressed: _handleWorkAction,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   void _showClientInfo() {
     final theme = Theme.of(context);
     showModalBottomSheet(
@@ -136,23 +179,42 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Клиент', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: Text(_chat.userName),
-                subtitle: Text(_chat.userPhone ?? 'Телефон не указан'),
-              ),
-              const ListTile(
-                leading: Icon(Icons.directions_car),
-                title: Text('Модель авто'),
-                subtitle: Text('—'),
-              ),
-            ],
+          child: FutureBuilder<List<Car>>(
+            future: context.read<ApiService>().getCarsForUser(_chat.userId),
+            builder: (context, snapshot) {
+              final cars = snapshot.data ?? [];
+              final primary = cars.where((c) => c.isPrimary).firstOrNull ??
+                  (cars.isNotEmpty ? cars.first : null);
+              final carText = primary != null
+                  ? '${primary.brand} ${primary.model}'
+                  : 'Не указана';
+              final numberText = primary != null && primary.number.isNotEmpty
+                  ? primary.number
+                  : '—';
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Клиент', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: const Icon(Icons.person),
+                    title: Text(_chat.userName),
+                    subtitle: Text(_chat.userPhone ?? 'Телефон не указан'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.directions_car),
+                    title: const Text('Модель авто'),
+                    subtitle: Text(carText),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.pin),
+                    title: const Text('Гос. номер'),
+                    subtitle: Text(numberText),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -173,16 +235,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             tooltip: 'Клиент',
             onPressed: _showClientInfo,
           ),
-          if (_chat.status != 'closed')
-            TextButton(
-              onPressed: _assign,
-              child: const Text('Назначить', style: TextStyle(color: Colors.white)),
-            ),
-          if (_chat.status != 'closed')
-            TextButton(
-              onPressed: _close,
-              child: const Text('Закрыть', style: TextStyle(color: Colors.white)),
-            ),
+          if (_chat.status != 'closed') _buildWorkButton(context),
         ],
       ),
       body: Column(
@@ -193,7 +246,20 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: provider.messages.length,
               itemBuilder: (context, index) {
-                return _MessageBubble(message: provider.messages[index]);
+                final msg = provider.messages[index];
+                final prev = index > 0 ? provider.messages[index - 1] : null;
+                final showDate = prev == null ||
+                    !_isSameDay(
+                      DateTime.tryParse(msg.createdAt) ?? DateTime(1970),
+                      DateTime.tryParse(prev.createdAt) ?? DateTime(1970),
+                    );
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showDate) _DateSeparator(date: msg.createdAt),
+                    _MessageBubble(message: msg),
+                  ],
+                );
               },
             ),
           ),
@@ -267,10 +333,10 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              isAi
+              '${_formatMessageTime(message.createdAt)} · ${isAi
                   ? 'Ассистент'
                   : (message.senderName ??
-                      (isAdmin ? 'Администратор' : 'Клиент')),
+                      (isAdmin ? 'Администратор' : 'Клиент'))}',
               style: TextStyle(
                 fontSize: 11,
                 color: AppStyles.adaptiveTextMuted(context),
@@ -494,6 +560,51 @@ class _InputBar extends StatelessWidget {
                       },
                     ))
                 .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+bool _isSameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+String _formatMessageTime(String iso) {
+  try {
+    return DateFormat('HH:mm', 'ru').format(DateTime.parse(iso));
+  } catch (_) {
+    return iso;
+  }
+}
+
+class _DateSeparator extends StatelessWidget {
+  final String date;
+  const _DateSeparator({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final dt = DateTime.tryParse(date);
+    final label = dt == null
+        ? date
+        : DateFormat('d MMMM yyyy', 'ru').format(dt);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppStyles.adaptiveTextSecondary(context),
+            ),
           ),
         ),
       ),

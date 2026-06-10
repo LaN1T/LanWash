@@ -1021,6 +1021,14 @@ class ApiService {
     );
   }
 
+  Future<List<Car>> getCarsForUser(int userId) async {
+    final result = await ApiClient.getList('/cars/user/$userId');
+    return result.when(
+      success: (list) => list.map((m) => Car.fromMap(m as Map<String, dynamic>)).toList(),
+      failure: (_) => <Car>[],
+    );
+  }
+
   Future<Car?> createCar({
     required String brand,
     required String model,

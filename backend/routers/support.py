@@ -102,56 +102,62 @@ async def create_chat(
     db.add(chat)
     await db.flush()
 
-    msg = SupportMessage(
-        chatId=chat.id,
-        senderRole="client",
-        senderId=current_user.id,
-        content=req.firstMessage.strip(),
-        createdAt=now,
-    )
-    db.add(msg)
-    await db.commit()
-
-    # Try auto-reply
-    ai_text = await classify_and_reply(db, chat, [msg])
-    if ai_text:
-        ai_msg = SupportMessage(
+    first_msg_text = req.firstMessage.strip()
+    if first_msg_text:
+        msg = SupportMessage(
             chatId=chat.id,
-            senderRole="ai",
-            content=ai_text,
-            createdAt=datetime.now().isoformat(),
+            senderRole="client",
+            senderId=current_user.id,
+            content=first_msg_text,
+            createdAt=now,
         )
-        db.add(ai_msg)
-        chat.status = "ai_handled"
-        chat.unreadByAdmin = 0
-        chat.unreadByUser += 1
-        chat.lastMessageAt = ai_msg.createdAt
+        db.add(msg)
         await db.commit()
-        users_map = {current_user.id: current_user}
-        try:
-            await broadcast(chat.id, {
-                "type": "new_message",
-                "data": _to_message_response(ai_msg, users_map).model_dump(),
-            })
-        except Exception as e:
-            logger.warning("support_broadcast_failed", error=str(e))
-    else:
-        chat.status = "waiting_admin"
-        await db.commit()
-        tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
-        if tokens:
+
+        # Try auto-reply
+        ai_text = await classify_and_reply(db, chat, [msg])
+        if ai_text:
+            ai_msg = SupportMessage(
+                chatId=chat.id,
+                senderRole="ai",
+                content=ai_text,
+                createdAt=datetime.now().isoformat(),
+            )
+            db.add(ai_msg)
+            chat.status = "ai_handled"
+            chat.unreadByAdmin = 0
+            chat.unreadByUser += 1
+            chat.lastMessageAt = ai_msg.createdAt
+            await db.commit()
+            users_map = {current_user.id: current_user}
             try:
-                await fcm_service.send_notification_to_tokens(
-                    tokens,
-                    title="Новое обращение",
-                    body=f"Сообщение от {current_user.displayName}",
-                    data={"type": "support_chat", "chat_id": str(chat.id)},
-                )
+                await broadcast(chat.id, {
+                    "type": "new_message",
+                    "data": _to_message_response(ai_msg, users_map).model_dump(),
+                })
             except Exception as e:
-                logger.warning("support_push_failed", error=str(e))
+                logger.warning("support_broadcast_failed", error=str(e))
+        else:
+            chat.status = "waiting_admin"
+            await db.commit()
+            tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
+            if tokens:
+                try:
+                    await fcm_service.send_notification_to_tokens(
+                        tokens,
+                        title="Новое обращение",
+                        body=f"Сообщение от {current_user.displayName}",
+                        data={"type": "support_chat", "chat_id": str(chat.id)},
+                    )
+                except Exception as e:
+                    logger.warning("support_push_failed", error=str(e))
+    else:
+        chat.status = "open"
+        chat.unreadByAdmin = 0
+        await db.commit()
 
     users = {current_user.id: current_user}
-    return _to_chat_response(chat, users, req.firstMessage)
+    return _to_chat_response(chat, users, first_msg_text or None)
 
 
 @router.get("/chats/my", response_model=list[SupportChatResponse])
@@ -299,8 +305,12 @@ async def send_message(
 
     chat.lastMessageAt = now
     chat.updatedAt = now
+    auto_assigned = False
     if is_admin:
         chat.unreadByUser += 1
+        if chat.assignedAdminId is None:
+            chat.assignedAdminId = current_user.id
+            auto_assigned = True
         if chat.status != "closed":
             chat.status = "admin_assigned"
     else:
@@ -315,6 +325,11 @@ async def send_message(
             "type": "new_message",
             "data": _to_message_response(msg, users).model_dump(),
         })
+        if auto_assigned:
+            await broadcast(chat_id, {
+                "type": "status_update",
+                "data": {"assignedAdminId": current_user.id, "status": chat.status},
+            })
     except Exception as e:
         logger.warning("support_broadcast_failed", error=str(e))
 
@@ -332,49 +347,66 @@ async def send_message(
             except Exception as e:
                 logger.warning("support_push_failed", error=str(e))
     else:
-        # Client sent new message — try auto-reply for FAQ (last 50 messages only)
-        msgs_res = await db.execute(
-            select(SupportMessage)
-            .where(SupportMessage.chatId == chat_id)
-            .order_by(SupportMessage.createdAt.desc())
-            .limit(50)
-        )
-        msgs = list(reversed(msgs_res.scalars().all()))
-        ai_text = await classify_and_reply(db, chat, msgs)
-        if ai_text:
-            ai_msg = SupportMessage(
-                chatId=chat_id,
-                senderRole="ai",
-                content=ai_text,
-                createdAt=datetime.now().isoformat(),
-            )
-            db.add(ai_msg)
-            chat.status = "ai_handled"
-            chat.unreadByAdmin = 0
-            chat.unreadByUser += 1
-            chat.lastMessageAt = ai_msg.createdAt
-            await db.commit()
-            try:
-                await broadcast(chat_id, {
-                    "type": "new_message",
-                    "data": _to_message_response(ai_msg, users).model_dump(),
-                })
-            except Exception as e:
-                logger.warning("support_broadcast_failed", error=str(e))
-        else:
-            chat.status = "waiting_admin"
+        # Client sent new message
+        if chat.assignedAdminId is not None or chat.status == "admin_assigned":
+            # Human admin is already handling this chat — do not auto-reply
+            chat.status = "admin_assigned"
             await db.commit()
             tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
             if tokens:
                 try:
                     await fcm_service.send_notification_to_tokens(
                         tokens,
-                        title="Новое обращение",
+                        title="Новое сообщение от клиента",
                         body=f"Сообщение от {current_user.displayName}",
                         data={"type": "support_chat", "chat_id": str(chat.id)},
                     )
                 except Exception as e:
                     logger.warning("support_push_failed", error=str(e))
+        else:
+            # Try auto-reply for FAQ (last 50 messages only)
+            msgs_res = await db.execute(
+                select(SupportMessage)
+                .where(SupportMessage.chatId == chat_id)
+                .order_by(SupportMessage.createdAt.desc())
+                .limit(50)
+            )
+            msgs = list(reversed(msgs_res.scalars().all()))
+            ai_text = await classify_and_reply(db, chat, msgs)
+            if ai_text:
+                ai_msg = SupportMessage(
+                    chatId=chat_id,
+                    senderRole="ai",
+                    content=ai_text,
+                    createdAt=datetime.now().isoformat(),
+                )
+                db.add(ai_msg)
+                chat.status = "ai_handled"
+                chat.unreadByAdmin = 0
+                chat.unreadByUser += 1
+                chat.lastMessageAt = ai_msg.createdAt
+                await db.commit()
+                try:
+                    await broadcast(chat_id, {
+                        "type": "new_message",
+                        "data": _to_message_response(ai_msg, users).model_dump(),
+                    })
+                except Exception as e:
+                    logger.warning("support_broadcast_failed", error=str(e))
+            else:
+                chat.status = "waiting_admin"
+                await db.commit()
+                tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
+                if tokens:
+                    try:
+                        await fcm_service.send_notification_to_tokens(
+                            tokens,
+                            title="Новое обращение",
+                            body=f"Сообщение от {current_user.displayName}",
+                            data={"type": "support_chat", "chat_id": str(chat.id)},
+                        )
+                    except Exception as e:
+                        logger.warning("support_push_failed", error=str(e))
 
     return _to_message_response(msg, users)
 
