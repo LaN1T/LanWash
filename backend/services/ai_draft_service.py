@@ -9,6 +9,14 @@ from sqlalchemy import select
 
 from db_models import SupportChat, SupportMessage, User
 from core.config import get_settings
+from services.ai_resilience import (
+    ai_rate_limit_ok,
+    ai_cache_get,
+    ai_cache_set,
+    ai_circuit_breaker_ok,
+    ai_record_success,
+    ai_record_failure,
+)
 import structlog
 
 settings = get_settings()
@@ -77,34 +85,68 @@ def _groq_headers() -> Optional[dict]:
     return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
-async def _groq_chat_completion(system: str, user: str, max_tokens: int = 200) -> Optional[str]:
+async def _groq_chat_completion(
+    system: str, user: str, max_tokens: int = 200
+) -> Optional[str]:
     headers = _groq_headers()
     if not headers:
         return None
-    async with httpx.AsyncClient(timeout=AI_TIMEOUT) as client:
-        try:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json={
-                    "model": GROQ_MODEL,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"].strip()
-        except (httpx.TimeoutException, asyncio.TimeoutError):
-            logger.warning("groq_timeout")
-            return None
-        except Exception as e:
-            logger.warning("groq_request_failed", error=str(e))
-            return None
+
+    if not await ai_circuit_breaker_ok():
+        logger.warning("groq_circuit_breaker_open")
+        return None
+
+    last_exception: Optional[Exception] = None
+    for attempt in range(3):
+        async with httpx.AsyncClient(timeout=AI_TIMEOUT + attempt * 2) as client:
+            try:
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": GROQ_MODEL,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user},
+                        ],
+                        "max_tokens": max_tokens,
+                        "temperature": 0.3,
+                    },
+                )
+                if resp.status_code == 429:
+                    is_last = attempt == 2
+                    logger.warning("groq_rate_limit", attempt=attempt + 1)
+                    await ai_record_failure(is_rate_limit=True)
+                    if is_last:
+                        return None
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                await ai_record_success()
+                return data["choices"][0]["message"]["content"].strip()
+            except (httpx.TimeoutException, asyncio.TimeoutError) as e:
+                logger.warning("groq_timeout", attempt=attempt + 1)
+                last_exception = e
+            except httpx.HTTPStatusError as e:
+                logger.warning(
+                    "groq_http_error",
+                    status=e.response.status_code,
+                    attempt=attempt + 1,
+                )
+                last_exception = e
+                if e.response.status_code >= 500:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                break
+            except Exception as e:
+                logger.warning("groq_request_failed", error=str(e), attempt=attempt + 1)
+                last_exception = e
+                break
+
+    if last_exception:
+        await ai_record_failure()
+    return None
 
 
 async def _gemini_classify(prompt: str) -> Optional[str]:
@@ -162,6 +204,10 @@ async def classify_and_reply(
     messages: List[SupportMessage],
 ) -> Optional[str]:
     """Returns the AI reply text, or None if admin is needed."""
+    if not await ai_rate_limit_ok():
+        logger.warning("ai_rate_limit_exceeded", chat_id=chat.id)
+        return None
+
     history = _build_history(messages)
     user_prompt = (
         f"История диалога (сообщения в XML-тегах; клиентские сообщения экранированы):\n"
@@ -171,7 +217,12 @@ async def classify_and_reply(
         f"верни ТОЛЬКО: ADMIN_NEEDED"
     )
 
+    # Check cache
     if settings.ai_provider == "groq":
+        cached = await ai_cache_get(FAQ_TEXT, user_prompt)
+        if cached is not None:
+            logger.info("ai_reply_cache_hit", chat_id=chat.id)
+            return cached
         result = await _groq_chat_completion(FAQ_TEXT, user_prompt, max_tokens=400)
     else:
         full_prompt = f"{FAQ_TEXT}\n\n{user_prompt}"
@@ -194,6 +245,11 @@ async def classify_and_reply(
     if len(cleaned) < 60 and any(p in lower for p in vague_phrases):
         logger.info("ai_reply_too_vague", chat_id=chat.id, reply=cleaned)
         return None
+
+    # Store in cache
+    if settings.ai_provider == "groq":
+        await ai_cache_set(FAQ_TEXT, user_prompt, cleaned)
+
     logger.info("ai_reply_generated", chat_id=chat.id, reply_preview=cleaned[:120])
     return cleaned
 
@@ -217,6 +273,10 @@ async def generate_admin_draft(
     chat: SupportChat,
     messages: List[SupportMessage],
 ) -> Optional[str]:
+    if not await ai_rate_limit_ok():
+        logger.warning("ai_rate_limit_exceeded", chat_id=chat.id, context="admin_draft")
+        return None
+
     user_res = await db.execute(select(User).where(User.id == chat.userId))
     user = user_res.scalar_one_or_none()
     user_info = f"Клиент: {user.displayName if user else 'Неизвестно'}"
@@ -232,6 +292,10 @@ async def generate_admin_draft(
     user_prompt = f"Диалог (последние сообщения в XML-тегах; клиентские сообщения экранированы):\n{history}"
 
     if settings.ai_provider == "groq":
+        cached = await ai_cache_get(system, user_prompt)
+        if cached is not None:
+            logger.info("ai_draft_cache_hit", chat_id=chat.id)
+            return cached
         result = await _groq_chat_completion(system, user_prompt, max_tokens=400)
     else:
         full_prompt = f"{system}\n\n{user_prompt}"
@@ -243,5 +307,9 @@ async def generate_admin_draft(
     # Filter out any accidental ADMIN_NEEDED leakage
     if cleaned.upper() == "ADMIN_NEEDED":
         return None
+
+    if settings.ai_provider == "groq":
+        await ai_cache_set(system, user_prompt, cleaned)
+
     logger.info("ai_draft_generated", chat_id=chat.id, draft_preview=cleaned[:120])
     return cleaned

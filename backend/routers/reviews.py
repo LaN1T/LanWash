@@ -1,19 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from typing import List, Optional
-from datetime import datetime, timezone
 
 from database import get_db
-from db_models import Review, User, Appointment
+from db_models import User
 from models import ReviewCreateRequest, ReviewResponse, ReviewModerateRequest
 from services.auth_service import get_current_user
+from services.reviews_service import (
+    ReviewsService,
+    ReviewNotFoundError,
+    ReviewDuplicateError,
+    ReviewPermissionError,
+    ReviewBadRequestError,
+)
 from core.limiter import limiter
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 _optional_oauth2 = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+
 
 async def get_current_user_optional(
     token: Optional[str] = Depends(_optional_oauth2),
@@ -36,12 +42,9 @@ async def list_reviews(
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    stmt = select(Review)
-    if published or (current_user is None or current_user.role != 'admin'):
-        stmt = stmt.where(Review.isPublished == 1)
-    stmt = stmt.order_by(Review.createdAt.desc()).limit(limit)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    svc = ReviewsService(db)
+    published_only = published or (current_user is None or current_user.role != 'admin')
+    return await svc.list_reviews(published_only, limit)
 
 
 @router.get("/my", response_model=List[ReviewResponse])
@@ -52,9 +55,8 @@ async def list_my_reviews(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    stmt = select(Review).where(Review.userId == current_user.id).order_by(Review.createdAt.desc()).limit(limit)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    svc = ReviewsService(db)
+    return await svc.list_my_reviews(current_user.id, limit)
 
 
 @router.get("/has-review")
@@ -65,14 +67,9 @@ async def has_review(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Review).where(
-            Review.userId == current_user.id,
-            Review.appointmentId == appointment_id,
-        )
-    )
-    review = result.scalar_one_or_none()
-    return {"hasReview": review is not None}
+    svc = ReviewsService(db)
+    has = await svc.has_review(current_user.id, appointment_id)
+    return {"hasReview": has}
 
 
 @router.post("/", response_model=ReviewResponse)
@@ -86,39 +83,17 @@ async def create_review(
     if current_user.id != data.userId and current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Можно оставлять отзыв только от своего имени")
 
-    if data.appointmentId is not None:
-        result = await db.execute(select(Appointment).where(Appointment.id == data.appointmentId))
-        appointment = result.scalar_one_or_none()
-        if not appointment:
-            raise HTTPException(status_code=400, detail="Запись не найдена")
-        if appointment.ownerUsername != current_user.username:
-            raise HTTPException(status_code=403, detail="Нельзя оставить отзыв на чужую запись")
-        if appointment.status != 'completed':
-            raise HTTPException(status_code=400, detail="Можно оставить отзыв только на завершённую мойку")
-
-        # Проверка на дублирование отзыва
-        existing = await db.execute(
-            select(Review).where(
-                Review.userId == current_user.id,
-                Review.appointmentId == data.appointmentId,
-            )
+    svc = ReviewsService(db)
+    try:
+        return await svc.create_review(
+            data, current_user.id, current_user.username, current_user.displayName
         )
-        if existing.scalar_one_or_none() is not None:
-            raise HTTPException(status_code=409, detail="Отзыв на эту запись уже существует")
-
-    review = Review(
-        userId=data.userId,
-        userName=current_user.displayName,
-        rating=data.rating,
-        comment=data.comment,
-        isPublished=0,
-        createdAt=datetime.now(timezone.utc).isoformat(),
-        appointmentId=data.appointmentId,
-    )
-    db.add(review)
-    await db.commit()
-    await db.refresh(review)
-    return review
+    except ReviewBadRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ReviewPermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ReviewDuplicateError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 # ─── Admin endpoints ─────────────────────────────────────────────────────────
@@ -133,9 +108,8 @@ async def list_all_reviews(
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    stmt = select(Review).order_by(Review.createdAt.desc()).limit(limit)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    svc = ReviewsService(db)
+    return await svc.list_all_reviews(limit)
 
 
 @router.patch("/admin/{review_id}", response_model=ReviewResponse)
@@ -149,14 +123,11 @@ async def moderate_review(
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    result = await db.execute(select(Review).where(Review.id == review_id))
-    review = result.scalar_one_or_none()
-    if not review:
+    svc = ReviewsService(db)
+    try:
+        return await svc.moderate_review(review_id, data)
+    except ReviewNotFoundError:
         raise HTTPException(status_code=404, detail="Review not found")
-    review.isPublished = 1 if data.isPublished else 0
-    await db.commit()
-    await db.refresh(review)
-    return review
 
 
 @router.delete("/admin/{review_id}")
@@ -169,10 +140,9 @@ async def delete_review(
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
-    result = await db.execute(select(Review).where(Review.id == review_id))
-    review = result.scalar_one_or_none()
-    if not review:
+    svc = ReviewsService(db)
+    try:
+        await svc.delete_review(review_id)
+    except ReviewNotFoundError:
         raise HTTPException(status_code=404, detail="Review not found")
-    await db.delete(review)
-    await db.commit()
     return {"ok": True}
