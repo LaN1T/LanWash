@@ -33,10 +33,12 @@ void main() async {
   setupServiceLocator();
   await sl<CarCatalogService>().load();
 
-  if (Firebase.apps.isEmpty) {
+  try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+  } on FirebaseException catch (e) {
+    if (e.code != 'duplicate-app') rethrow;
   }
 
   // App Check: в режиме разработки — debug-провайдеры, в релизе — production
