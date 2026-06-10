@@ -64,7 +64,8 @@ void main() {
 
     test('returns Failure on 500 with detail message', () async {
       when(() => mockClient.get(any(), headers: any(named: 'headers')))
-          .thenAnswer((_) async => http.Response('{"detail":"Server down"}', 500));
+          .thenAnswer(
+              (_) async => http.Response('{"detail":"Server down"}', 500));
 
       final result = await ApiClient.get('/test');
 
@@ -99,10 +100,12 @@ void main() {
 
     test('returns Failure on 400 validation error', () async {
       when(() => mockClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          )).thenAnswer((_) async => http.Response('{"detail":"Invalid input"}', 400));
+                any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ))
+          .thenAnswer(
+              (_) async => http.Response('{"detail":"Invalid input"}', 400));
 
       final result = await ApiClient.post('/create', body: {'bad': 'data'});
 
