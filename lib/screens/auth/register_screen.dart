@@ -318,7 +318,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               color: AppStyles.danger, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
-                              child: Text(_error!,
+                              child: Text(lang.tr(_error!),
                                   style: const TextStyle(
                                       color: AppStyles.danger, fontSize: 13))),
                         ]),
