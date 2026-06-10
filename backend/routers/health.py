@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from core.redis_client import get_redis
 from core.limiter import limiter
+from core.redis_client import get_redis
 from database import get_db
 from services.ai_resilience import ai_health
 

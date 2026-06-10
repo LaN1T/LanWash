@@ -1,6 +1,8 @@
-import pytest
 from datetime import datetime, timedelta
-from db_models import User, Appointment, Review
+
+import pytest
+
+from db_models import Appointment, Review, User
 
 
 class TestAdminDashboard:

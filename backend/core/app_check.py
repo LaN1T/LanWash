@@ -7,10 +7,10 @@ Enforcement is controlled by APP_CHECK_ENFORCED env variable.
 In development, App Check uses debug providers and verification can be skipped.
 """
 
-from fastapi import Request, HTTPException, status
 import firebase_admin
-from firebase_admin import app_check as firebase_app_check
 import structlog
+from fastapi import HTTPException, Request, status
+from firebase_admin import app_check as firebase_app_check
 
 from core.config import get_settings
 

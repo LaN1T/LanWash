@@ -6,9 +6,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aiogram import Bot, Dispatcher
-from core.config import get_settings
+
 from bot.handlers import router as handlers_router
 from bot.notifications import poll_notifications
+from core.config import get_settings
 
 settings = get_settings()
 

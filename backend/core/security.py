@@ -1,5 +1,7 @@
 import os
+
 from cryptography.fernet import Fernet
+
 from core.config import get_settings
 
 settings = get_settings()

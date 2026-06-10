@@ -1,12 +1,19 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from core.limiter import limiter
 from database import get_db
-from models import ServiceRequest, ServiceResponse, ToggleFavoriteRequest, ToggleExtraFavoriteRequest, PromoResponse
 from db_models import User
-from services.auth_service import get_current_user, check_roles
-from services.services_service import ServicesService, ServiceNotFoundError
-import structlog
+from models import (
+    PromoResponse,
+    ServiceRequest,
+    ServiceResponse,
+    ToggleExtraFavoriteRequest,
+    ToggleFavoriteRequest,
+)
+from services.auth_service import check_roles, get_current_user
+from services.services_service import ServiceNotFoundError, ServicesService
 
 logger = structlog.get_logger()
 

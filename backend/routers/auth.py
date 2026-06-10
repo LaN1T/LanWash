@@ -1,31 +1,40 @@
 import os
 import re
-from fastapi import APIRouter, HTTPException, Depends, status, Request, UploadFile, File
-from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
-from models import (
-    LoginRequest, RegisterRequest, UserResponse, UpdateProfileRequest,
-    FcmTokenRequest, LoginResponse, UserStatsResponse,
-    TelegramAuthRequest, TelegramLinkRequest, TelegramAuthResponse
-)
-from db_models import User
-from services.auth_service import (
-    get_current_user,
-    validate_password_strength,
-    oauth2_scheme,
-    AuthService,
-    InvalidCredentialsError,
-    UserNotFoundError,
-    UsernameAlreadyExistsError,
-    InvalidReferralCodeError,
-    SelfReferralError,
-    ProfileAccessDeniedError,
-    StatsAccessDeniedError,
-    FcmTokenAccessDeniedError,
-)
-from core.limiter import limiter
-from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
+
 import structlog
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
+from core.limiter import limiter
+from database import get_db
+from db_models import User
+from models import (
+    FcmTokenRequest,
+    LoginRequest,
+    LoginResponse,
+    RegisterRequest,
+    TelegramAuthRequest,
+    TelegramAuthResponse,
+    TelegramLinkRequest,
+    UpdateProfileRequest,
+    UserResponse,
+    UserStatsResponse,
+)
+from services.auth_service import (
+    AuthService,
+    FcmTokenAccessDeniedError,
+    InvalidCredentialsError,
+    InvalidReferralCodeError,
+    ProfileAccessDeniedError,
+    SelfReferralError,
+    StatsAccessDeniedError,
+    UsernameAlreadyExistsError,
+    UserNotFoundError,
+    get_current_user,
+    oauth2_scheme,
+    validate_password_strength,
+)
 
 logger = structlog.get_logger()
 

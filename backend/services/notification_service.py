@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from db_models import NotificationQueue
 
 

@@ -1,7 +1,6 @@
 """ARQ background tasks."""
 
 import structlog
-
 from arq import create_pool
 
 from core.background import REDIS_SETTINGS
@@ -30,8 +29,8 @@ async def update_metrics(ctx):
 
 async def check_inventory_forecast(ctx, db=None):
     """Check inventory forecast and log alerts for critical items."""
-    from services.inventory_forecast_service import generate_inventory_forecast
     from database import AsyncSessionLocal
+    from services.inventory_forecast_service import generate_inventory_forecast
 
     session = db
     opened_session = False

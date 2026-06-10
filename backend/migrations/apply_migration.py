@@ -2,9 +2,11 @@
 """Применить SQL миграцию через asyncpg."""
 
 import asyncio
-import asyncpg
 import os
 import sys
+
+import asyncpg
+
 
 async def main(sql_file: str):
     url = os.environ.get("DATABASE_URL")
@@ -12,20 +14,20 @@ async def main(sql_file: str):
         raise RuntimeError("DATABASE_URL environment variable is not set")
     # asyncpg не понимает +asyncpg драйвер
     url = url.replace("postgresql+asyncpg://", "postgresql://")
-    
+
     conn = await asyncpg.connect(url)
-    
+
     sql_path = os.path.join(os.path.dirname(__file__), sql_file)
     with open(sql_path) as f:
         sql = f.read()
-    
+
     # Разбиваем по точке с запятой и выполняем каждую команду
     for stmt in sql.split(";"):
         stmt = stmt.strip()
         if stmt and not stmt.startswith("--"):
             print(f"Executing: {stmt[:60]}...")
             await conn.execute(stmt)
-    
+
     await conn.close()
     print(f"Migration {sql_file} applied successfully.")
 

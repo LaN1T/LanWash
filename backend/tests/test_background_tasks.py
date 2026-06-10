@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from tasks import send_notification, update_metrics
 
@@ -32,7 +33,7 @@ def _redis_available():
 @pytest.mark.asyncio
 @pytest.mark.skipif(not _redis_available(), reason="Redis not available")
 async def test_arq_pool_enqueue_job():
-    from core.background import get_arq_pool, close_arq_pool
+    from core.background import close_arq_pool, get_arq_pool
 
     pool = await get_arq_pool()
     job = await pool.enqueue_job("send_notification", 1, "integration test")

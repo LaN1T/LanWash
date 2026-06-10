@@ -1,13 +1,14 @@
-import pytest
 from datetime import datetime
+
+import pytest
 
 
 class TestReferralRegistration:
     @pytest.mark.asyncio
     async def test_register_with_referral_code(self, async_client, db_session):
         # Create referrer user directly in DB with a known referral code
-        from services.auth_service import get_password_hash
         from db_models import User
+        from services.auth_service import get_password_hash
 
         referrer = User(
             username="referrer_user",
@@ -32,8 +33,9 @@ class TestReferralRegistration:
         assert data["user"]["referralCode"] is not None
 
         # Verify referral row was created
-        from db_models import Referral
         from sqlalchemy import select
+
+        from db_models import Referral
         result = await db_session.execute(
             select(Referral).where(Referral.referrerId == referrer.id)
         )
@@ -56,8 +58,8 @@ class TestReferralRegistration:
     @pytest.mark.asyncio
     async def test_cannot_self_refer(self, async_client, db_session):
         # Create user with referral code
-        from services.auth_service import get_password_hash
         from db_models import User
+        from services.auth_service import get_password_hash
 
         referrer = User(
             username="self_ref_user",
@@ -108,8 +110,8 @@ class TestReferralStats:
 
     @pytest.mark.asyncio
     async def test_referral_list(self, async_client, db_session):
+        from db_models import Referral, User
         from services.auth_service import get_password_hash
-        from db_models import User, Referral
 
         # Create referrer
         referrer = User(
@@ -166,8 +168,8 @@ class TestReferralStats:
 class TestClaimReward:
     @pytest.mark.asyncio
     async def test_claim_reward(self, async_client, db_session):
+        from db_models import Referral, User
         from services.auth_service import get_password_hash
-        from db_models import User, Referral
 
         # Create referrer
         referrer = User(

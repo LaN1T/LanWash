@@ -1,11 +1,20 @@
-import json
 import hashlib
+import json
 import os
 from datetime import datetime, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, text
-from db_models import Appointment, WashType, Service, Promo, WashTypeIncludedExtra, PromoIncludedExtra
+
 import structlog
+from sqlalchemy import and_, or_, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from db_models import (
+    Appointment,
+    Promo,
+    PromoIncludedExtra,
+    Service,
+    WashType,
+    WashTypeIncludedExtra,
+)
 
 logger = structlog.get_logger()
 
@@ -23,7 +32,7 @@ class WorkloadService:
         # 1. Базовая длительность типа мойки
         res_wt = await db.execute(select(WashType.durationMinutes).where(WashType.id == wash_type_id))
         base_duration = res_wt.scalar() or 30
-        
+
         # 2. Получаем услуги, уже включённые в этот тип мойки
         res_included = await db.execute(select(WashTypeIncludedExtra.extraServiceId).where(WashTypeIncludedExtra.washTypeId == wash_type_id))
         included_ids = {row[0] for row in res_included.all()}
@@ -34,7 +43,7 @@ class WorkloadService:
             p_dur = res_promo.scalar()
             if p_dur and p_dur > 0:
                 base_duration = p_dur
-            
+
             # Также получаем услуги, включённые в промо, чтобы исключить их
             res_promo_inc = await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
             included_ids.update({row[0] for row in res_promo_inc.all()})
@@ -45,7 +54,7 @@ class WorkloadService:
             extra_ids = json.loads(additional_services_json)
         except:
             extra_ids = []
-            
+
         if extra_ids:
             # Исключаем уже включённые услуги
             filtered_ids = [eid for eid in extra_ids if eid not in included_ids]
@@ -148,13 +157,13 @@ class WorkloadService:
         """
         start_dt = WorkloadService._safe_parse_iso(dt_str)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
-        
+
         # Проверяем все записи, которые могут пересекаться.
         # Так как end_time не хранится, вычисляем его для каждой записи.
         # Для оптимизации загружаем все записи за этот день.
         day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         day_end = start_dt.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
-        
+
         # Advisory lock на уровне дня для предотвращения race condition при бронировании
         # Работает только на PostgreSQL; на SQLite пропускаем
         if not _DISABLE_ADVISORY_LOCK:
@@ -179,10 +188,10 @@ class WorkloadService:
         )
         if exclude_appt_id:
             query = query.where(Appointment.id != exclude_appt_id)
-            
+
         res = await db.execute(query)
         day_appointments = res.scalars().all()
-        
+
         # --- Batch preload all duration data to avoid N+1 queries ---
         wash_type_ids = {a.washTypeId for a in day_appointments}
         promo_ids = {a.promoId for a in day_appointments if a.promoId}
@@ -238,31 +247,31 @@ class WorkloadService:
             total = base + sum(svc_durations.get(eid, 0) for eid in filtered)
             return total
         # --- End batch preload ---
-        
+
         box_occupancy = [False] * NUM_BOXES
-        
+
         # Для каждого бокса проверяем, свободен ли он в интервале [start_dt, end_dt]
         for box_idx in range(NUM_BOXES):
             is_free = True
             for appt in day_appointments:
                 if appt.box_index != box_idx:
                     continue
-                
+
                 # Вычисляем длительность записи (локально, без N+1 запросов)
                 appt_duration = _compute_duration(appt)
                 appt_start = WorkloadService._safe_parse_iso(appt.dateTime)
                 appt_end = appt_start + timedelta(minutes=appt_duration)
-                
+
                 # Проверка пересечения
                 if start_dt < appt_end and end_dt > appt_start:
                     logger.debug("box_conflict", box=box_idx + 1, appt_id=appt.id, appt_start=appt_start.isoformat(), appt_end=appt_end.isoformat())
                     is_free = False
                     break
-            
+
             if is_free:
                 logger.debug("box_found", box=box_idx + 1, dt_str=dt_str, duration=duration_minutes)
                 return box_idx
-        
+
         logger.debug("no_free_box", dt_str=dt_str, duration=duration_minutes)
         return -1
 
@@ -275,7 +284,7 @@ class WorkloadService:
         """
         day_start = f"{date_str}T00:00:00"
         day_end = f"{date_str}T23:59:59"
-        
+
         # Load appointments for the date
         res = await db.execute(
             select(Appointment).where(
@@ -287,18 +296,18 @@ class WorkloadService:
             )
         )
         appts = res.scalars().all()
-        
+
         if not appts:
             return {"num_boxes": NUM_BOXES, "busy_slots": [[] for _ in range(NUM_BOXES)]}
-        
+
         # Collect all IDs needed
         wash_type_ids = {a.washTypeId for a in appts}
         promo_ids = {a.promoId for a in appts if a.promoId}
-        
+
         # Bulk load wash types
         wt_res = await db.execute(select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids)))
         wt_durations = {row[0]: row[1] for row in wt_res.all()}
-        
+
         # Bulk load wash type included extras
         wtie_res = await db.execute(
             select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
@@ -307,57 +316,57 @@ class WorkloadService:
         wt_included = {}
         for wtid, esid in wtie_res.all():
             wt_included.setdefault(wtid, set()).add(esid)
-        
+
         # Bulk load promo durations
         promo_durations = {}
         promo_included = {}
         if promo_ids:
             pr_res = await db.execute(select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids)))
             promo_durations = {row[0]: row[1] for row in pr_res.all()}
-            
+
             pie_res = await db.execute(
                 select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
                 .where(PromoIncludedExtra.promoId.in_(promo_ids))
             )
             for pid, esid in pie_res.all():
                 promo_included.setdefault(pid, set()).add(esid)
-        
+
         # Bulk load all services durations (small table, just load all)
         svc_res = await db.execute(select(Service.id, Service.durationMinutes))
         svc_durations = {row[0]: row[1] for row in svc_res.all()}
-        
+
         busy_by_box = [[] for _ in range(NUM_BOXES)]
-        
+
         for appt in appts:
             # Compute duration without DB calls
             base_duration = wt_durations.get(appt.washTypeId, 30)
             included = set(wt_included.get(appt.washTypeId, []))
-            
+
             if appt.promoId and appt.promoId in promo_durations:
                 p_dur = promo_durations[appt.promoId]
                 if p_dur and p_dur > 0:
                     base_duration = p_dur
                 included.update(promo_included.get(appt.promoId, []))
-            
+
             total_duration = base_duration
             try:
                 extra_ids = json.loads(appt.additionalServices) if appt.additionalServices else []
             except:
                 extra_ids = []
-            
+
             for eid in extra_ids:
                 if eid not in included:
                     total_duration += svc_durations.get(eid, 0)
-            
+
             start = WorkloadService._safe_parse_iso(appt.dateTime)
             end = start + timedelta(minutes=total_duration)
-            
+
             if 0 <= appt.box_index < NUM_BOXES:
                 busy_by_box[appt.box_index].append({
                     "start": start.isoformat(),
                     "end": end.isoformat()
                 })
-                
+
         return {
             "num_boxes": NUM_BOXES,
             "busy_slots": busy_by_box

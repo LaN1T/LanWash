@@ -1,13 +1,15 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, cast, String, or_
-from db_models import Appointment, User, Review
-from datetime import datetime, timedelta
-from collections import defaultdict
 import json
-from services.forecast_service import generate_forecast
-from core.redis_client import get_redis
 import json as _json
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+from sqlalchemy import String, and_, cast, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.redis_client import get_redis
+from db_models import Appointment, Review, User
 from models import ForecastResponse
+from services.forecast_service import generate_forecast
 
 
 class AdminService:
