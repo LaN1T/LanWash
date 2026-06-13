@@ -16,7 +16,7 @@ router = APIRouter(
 
 @router.get("/", response_model=list[NoteResponse])
 @limiter.limit("60/minute")
-async def get_all(request: Request, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
+async def get_all(request: Request, limit: int = Query(default=1000, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
     """Все заметки (для админа)."""
     svc = NotesService(db)
     return await svc.get_all(limit)
@@ -24,7 +24,7 @@ async def get_all(request: Request, limit: int = Query(default=1000, ge=1, le=50
 
 @router.get("/by-user/{username}", response_model=list[NoteResponse])
 @limiter.limit("60/minute")
-async def get_by_user(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_user(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Заметки конкретного мойщика."""
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к чужим заметкам")

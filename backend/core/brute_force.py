@@ -75,6 +75,8 @@ async def is_locked_out(identifier: str) -> bool:
     attempts = _IN_MEMORY.get(key, [])
     cutoff = now - WINDOW_SECONDS
     attempts[:] = [t for t in attempts if t > cutoff]
+    if not attempts:
+        _IN_MEMORY.pop(key, None)
     return len(attempts) >= MAX_ATTEMPTS
 
 

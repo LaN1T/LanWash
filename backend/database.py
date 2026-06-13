@@ -34,6 +34,10 @@ if settings.database_url.startswith("postgresql"):
         "max_overflow": 20,
         "pool_recycle": 3600,
     })
+elif settings.database_url.startswith("sqlite"):
+    _engine_kwargs.update({
+        "connect_args": {"check_same_thread": False},
+    })
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

@@ -3,7 +3,7 @@ import json as _json
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import String, and_, cast, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
@@ -98,13 +98,12 @@ class AdminService:
 
         day_result = await self._db.execute(
             select(
-                cast(Appointment.dateTime, String),
+                Appointment.date,
                 Appointment.status,
                 Appointment.paidPrice,
             ).where(base_filter)
         )
-        for dt_str, status, paid in day_result.all():
-            day = dt_str[:10]
+        for day, status, paid in day_result.all():
             daily_apps[day] += 1
             if status == "completed":
                 daily_completed[day] += 1
@@ -315,14 +314,15 @@ class AdminService:
         filters = []
 
         if q:
-            safe_q = f"%{q}%"
+            escaped_q = q.replace('%', r'\%').replace('_', r'\_')
+            safe_q = f"%{escaped_q}%"
             filters.append(
                 or_(
-                    User.displayName.ilike(safe_q),
-                    User.username.ilike(safe_q),
-                    User.phone.ilike(safe_q),
-                    User.carModel.ilike(safe_q),
-                    User.carNumber.ilike(safe_q),
+                    User.displayName.ilike(safe_q, escape='\\'),
+                    User.username.ilike(safe_q, escape='\\'),
+                    User.phone.ilike(safe_q, escape='\\'),
+                    User.carModel.ilike(safe_q, escape='\\'),
+                    User.carNumber.ilike(safe_q, escape='\\'),
                 )
             )
 

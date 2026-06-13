@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import Any, Dict, List
 
@@ -54,13 +55,18 @@ class FCMService:
             tokens=tokens,
         )
         try:
-            response = messaging.send_each_for_multicast(message)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(messaging.send_each_for_multicast, message),
+                timeout=10.0,
+            )
             logger.info("fcm_message_sent", success=response.success_count, failure=response.failure_count)
             if response.failure_count > 0:
                 for resp in response.responses:
                     if not resp.success:
                         logger.warning("fcm_token_failed", error=str(resp.exception))
             return response
+        except asyncio.TimeoutError:
+            logger.error("fcm_send_timeout")
         except Exception as e:
             logger.error("fcm_send_error", error=str(e))
 
@@ -75,9 +81,14 @@ class FCMService:
             topic=topic,
         )
         try:
-            response = messaging.send(message)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(messaging.send, message),
+                timeout=10.0,
+            )
             logger.info("fcm_topic_sent", topic=topic, response=str(response))
             return response
+        except asyncio.TimeoutError:
+            logger.error("fcm_topic_timeout", topic=topic)
         except Exception as e:
             logger.error("fcm_topic_error", topic=topic, error=str(e))
 

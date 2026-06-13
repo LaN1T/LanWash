@@ -1,5 +1,6 @@
 """Business metrics exposed to Prometheus."""
 
+import time
 from datetime import datetime, timedelta
 
 from prometheus_client import Counter, Gauge
@@ -7,6 +8,10 @@ from sqlalchemy import and_, func, select
 
 from database import AsyncSessionLocal
 from db_models import Appointment, Shift, User
+
+# Cache business metrics to avoid hitting the DB on every Prometheus scrape.
+_METRICS_CACHE_TTL_SECONDS = 30.0
+_metrics_last_updated = 0.0
 
 # ─── Appointments ────────────────────────────────────────────────────────────
 appointments_total = Counter(
@@ -61,6 +66,10 @@ def _today_range():
 
 async def update_business_metrics():
     """Recalculate business gauges from the database."""
+    global _metrics_last_updated
+    now_ts = time.monotonic()
+    if now_ts - _metrics_last_updated < _METRICS_CACHE_TTL_SECONDS:
+        return
     async with AsyncSessionLocal() as session:
         now = datetime.now()
         today_start, today_end = _today_range()
@@ -140,3 +149,5 @@ async def update_business_metrics():
             if minutes < 0:
                 minutes += 24 * 60
             shift_hours.labels(washer=name).set(minutes / 60.0)
+
+    _metrics_last_updated = time.monotonic()
