@@ -344,7 +344,31 @@ void main() {
       expect(actions.first.retryCount, 2);
     });
 
-    test('increment retry on missing action completes without throwing', () async {
+    test('getPendingCount returns number of queued actions', () async {
+      expect(await repository.getPendingCount(), 0);
+
+      await repository.queueAction(
+        id: 'action-1',
+        action: 'create_appointment',
+        endpoint: '/appointments',
+        method: 'POST',
+        payload: '{}',
+      );
+      await repository.queueAction(
+        id: 'action-2',
+        action: 'delete_shift',
+        endpoint: '/shifts/1',
+        method: 'DELETE',
+        payload: '{}',
+      );
+
+      expect(await repository.getPendingCount(), 2);
+      await repository.removePendingAction('action-1');
+      expect(await repository.getPendingCount(), 1);
+    });
+
+    test('increment retry on missing action completes without throwing',
+        () async {
       await expectLater(
         repository.incrementRetry('missing-action'),
         completes,

@@ -5,6 +5,7 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../providers/support_provider.dart';
+import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
 import 'appointments_screen.dart';
 import 'services_screen.dart';
@@ -84,21 +85,21 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ]),
         // Кнопка выхода убрана из appBar — только в drawer
-        actions: _index == 2
-            ? null
-            : [
-                IconButton(
-                  icon: const Icon(Icons.add, color: AppStyles.primary),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => _index == 0
-                          ? const AddEditAppointmentScreen()
-                          : const AddEditServiceScreen(),
-                    ),
-                  ),
+        actions: [
+          const OfflineStatusIndicator(),
+          if (_index != 2)
+            IconButton(
+              icon: const Icon(Icons.add, color: AppStyles.primary),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _index == 0
+                      ? const AddEditAppointmentScreen()
+                      : const AddEditServiceScreen(),
                 ),
-              ],
+              ),
+            ),
+        ],
       ),
       drawer: _buildDrawer(context, favCount),
       body: IndexedStack(
