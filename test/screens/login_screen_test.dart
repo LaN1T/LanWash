@@ -23,14 +23,14 @@ void main() {
   });
 
   Widget buildTestWidget({bool isResume = false}) {
-    return MaterialApp(
-      home: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
-          ChangeNotifierProvider(create: (_) => ThemeProvider()),
-          ChangeNotifierProvider(create: (_) => LanguageProvider()),
-        ],
-        child: LoginScreen(isResume: isResume),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+      ],
+      child: MaterialApp(
+        home: LoginScreen(isResume: isResume),
       ),
     );
   }
@@ -87,7 +87,8 @@ void main() {
     testWidgets('calls login on submit and clears loading on success',
         (tester) async {
       when(() => mockAuth.userLogin).thenReturn('');
-      when(() => mockAuth.login(any(), any())).thenAnswer((_) async => null);
+      when(() => mockAuth.login(any(), any())).thenAnswer(
+          (_) => Future.delayed(const Duration(milliseconds: 100), () => null));
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
