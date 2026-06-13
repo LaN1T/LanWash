@@ -16,7 +16,7 @@ dependencies:
   file_saver: ^0.3.1
   firebase_app_check: ^0.4.4+1
   firebase_core: ^4.7.0
-  firebase_messaging: ^16.2.0
+  firebase_messaging: ^16.3.0
   fl_chart: ^0.68.0
   flutter:
     sdk: flutter
