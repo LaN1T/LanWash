@@ -23,7 +23,7 @@ from core.logging import configure_logging
 from core.metrics import update_business_metrics
 from core.request_id import RequestIdMiddleware, get_request_id
 from core.security_headers import SecurityHeadersMiddleware
-from database import get_db, init_db
+from database import engine, get_db, init_db
 from routers import (
     admin,
     appointments,
@@ -114,8 +114,17 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    await close_arq_pool()
     logger.info("app_shutting_down")
+    await close_arq_pool()
+    try:
+        from core.redis_client import get_redis
+        r = await get_redis()
+        if r:
+            await r.aclose()
+    except Exception as e:
+        logger.warning("redis_close_failed", error=str(e))
+    await engine.dispose()
+    logger.info("app_shutdown_complete")
 
 
 app = FastAPI(
