@@ -88,29 +88,49 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     generic_error = HTTPException(status.HTTP_400_BAD_REQUEST, "Регистрация не удалась. Проверьте введённые данные.")
 
+    # Honeypot: bots often fill hidden fields
+    if req.website:
+        raise generic_error
+
+    client_ip = request.client.host if request.client else "unknown"
+    identifier = f"register:{client_ip}"
+
+    if await is_locked_out(identifier):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Слишком много попыток регистрации. Попробуйте позже.")
+
     if not req.username.strip():
+        await record_failed_attempt(identifier)
         raise generic_error
 
     if not USERNAME_PATTERN.match(req.username.lower().strip()):
+        await record_failed_attempt(identifier)
         raise generic_error
 
     password_error = validate_password_strength(req.password)
     if password_error:
+        await record_failed_attempt(identifier)
         raise generic_error
 
     if not req.displayName.strip():
+        await record_failed_attempt(identifier)
         raise generic_error
 
     svc = AuthService(db)
     try:
-        return await svc.register(req)
+        result = await svc.register(req)
+        await reset_attempts(identifier)
+        return result
     except UsernameAlreadyExistsError:
+        await record_failed_attempt(identifier)
         raise generic_error
     except InvalidReferralCodeError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except SelfReferralError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except RuntimeError:
+        await record_failed_attempt(identifier)
         raise HTTPException(500, "Internal server error")
 
 
