@@ -47,6 +47,108 @@ void main() {
       expect(result, containsAll(items));
     });
 
+    test('save and get users', () async {
+      final items = [
+        {
+          'id': 1,
+          'username': 'alice',
+          'displayName': 'Alice',
+          'role': 'admin',
+          'avatarUrl': 'https://example.com/a.png',
+        },
+        {
+          'id': 2,
+          'username': 'bob',
+          'displayName': 'Bob',
+          'role': 'washer',
+          'avatarUrl': null,
+        },
+      ];
+
+      await repository.saveUsers(items);
+      final result = await repository.getUsers();
+
+      expect(result.length, 2);
+      expect(result, containsAll(items));
+    });
+
+    test('save and get appointments', () async {
+      final items = [
+        {
+          'id': 'appt-1',
+          'userId': 1,
+          'ownerUsername': 'alice',
+          'dateTimeStr': '2026-06-13T10:00:00.000Z',
+          'status': 'confirmed',
+          'extraField': 'preserved',
+        },
+      ];
+
+      await repository.saveAppointments(items);
+      final result = await repository.getAppointments();
+
+      expect(result.length, 1);
+      expect(result.first, items.first);
+    });
+
+    test('save and get shifts', () async {
+      final items = [
+        {
+          'id': 1,
+          'userId': 1,
+          'date': '2026-06-13',
+          'startTime': '08:00',
+          'endTime': '16:00',
+          'status': 'active',
+        },
+        {
+          'id': 2,
+          'userId': 2,
+          'date': '2026-06-14',
+          'startTime': '09:00',
+          'endTime': '17:00',
+          'status': 'draft',
+        },
+      ];
+
+      await repository.saveShifts(items);
+      final result = await repository.getShifts();
+
+      expect(result.length, 2);
+      expect(result, containsAll(items));
+    });
+
+    test('upsert updates existing row', () async {
+      await repository.saveWashTypes([
+        {
+          'id': 'wt-1',
+          'code': 'basic',
+          'name': 'Basic Wash',
+          'basePrice': 500,
+          'durationMinutes': 30,
+          'sortOrder': 1,
+        },
+      ]);
+      await repository.saveWashTypes([
+        {
+          'id': 'wt-1',
+          'code': 'basic',
+          'name': 'Updated Basic Wash',
+          'basePrice': 600,
+          'durationMinutes': 45,
+          'sortOrder': 2,
+        },
+      ]);
+
+      final result = await repository.getWashTypes();
+
+      expect(result.length, 1);
+      expect(result.first['name'], 'Updated Basic Wash');
+      expect(result.first['basePrice'], 600);
+      expect(result.first['durationMinutes'], 45);
+      expect(result.first['sortOrder'], 2);
+    });
+
     test('queue pending action and retrieve it', () async {
       await repository.queueAction(
         id: 'action-1',

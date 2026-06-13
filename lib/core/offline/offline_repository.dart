@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 
 import 'database.dart';
 
+/// Repository that abstracts reads and writes to the local offline cache
+/// and the pending-actions queue.
 class OfflineRepository {
   final AppDatabase _db;
 
@@ -12,20 +14,21 @@ class OfflineRepository {
   //region Wash types
 
   Future<void> saveWashTypes(List<Map<String, dynamic>> items) async {
-    await _db.transaction(() async {
-      for (final item in items) {
-        await _db.into(_db.cachedWashTypes).insertOnConflictUpdate(
-              CachedWashTypesCompanion.insert(
-                id: _asString(item['id'])!,
-                code: _asString(item['code'])!,
-                name: _asString(item['name'])!,
-                description: Value(_asString(item['description']) ?? ''),
-                basePrice: Value(_asInt(item['basePrice']) ?? 0),
-                durationMinutes: Value(_asInt(item['durationMinutes']) ?? 30),
-                sortOrder: Value(_asInt(item['sortOrder']) ?? 0),
-              ),
-            );
-      }
+    await _db.batch((b) {
+      b.insertAllOnConflictUpdate(
+        _db.cachedWashTypes,
+        items.map((item) {
+          return CachedWashTypesCompanion.insert(
+            id: _requireString(item, 'id'),
+            code: _requireString(item, 'code'),
+            name: _requireString(item, 'name'),
+            description: Value(_asString(item['description']) ?? ''),
+            basePrice: Value(_asInt(item['basePrice']) ?? 0),
+            durationMinutes: Value(_asInt(item['durationMinutes']) ?? 30),
+            sortOrder: Value(_asInt(item['sortOrder']) ?? 0),
+          );
+        }).toList(),
+      );
     });
   }
 
@@ -39,18 +42,19 @@ class OfflineRepository {
   //region Users
 
   Future<void> saveUsers(List<Map<String, dynamic>> items) async {
-    await _db.transaction(() async {
-      for (final item in items) {
-        await _db.into(_db.cachedUsers).insertOnConflictUpdate(
-              CachedUsersCompanion.insert(
-                id: Value(_asInt(item['id']) ?? 0),
-                username: _asString(item['username'])!,
-                displayName: _asString(item['displayName'])!,
-                role: _asString(item['role'])!,
-                avatarUrl: Value(_asString(item['avatarUrl'])),
-              ),
-            );
-      }
+    await _db.batch((b) {
+      b.insertAllOnConflictUpdate(
+        _db.cachedUsers,
+        items.map((item) {
+          return CachedUsersCompanion.insert(
+            id: Value(_requireInt(item, 'id')),
+            username: _requireString(item, 'username'),
+            displayName: _requireString(item, 'displayName'),
+            role: _requireString(item, 'role'),
+            avatarUrl: Value(_asString(item['avatarUrl'])),
+          );
+        }).toList(),
+      );
     });
   }
 
@@ -64,21 +68,20 @@ class OfflineRepository {
   //region Appointments
 
   Future<void> saveAppointments(List<Map<String, dynamic>> items) async {
-    await _db.transaction(() async {
-      for (final item in items) {
-        await _db.into(_db.cachedAppointments).insertOnConflictUpdate(
-              CachedAppointmentsCompanion.insert(
-                id: _asString(item['id'])!,
-                userId: _asInt(item['userId']) ?? 0,
-                ownerUsername: _asString(item['ownerUsername']) ?? '',
-                dateTimeStr: _asString(item['dateTimeStr']) ??
-                    _asString(item['dateTime']) ??
-                    '',
-                status: _asString(item['status']) ?? '',
-                dataJson: jsonEncode(item),
-              ),
-            );
-      }
+    await _db.batch((b) {
+      b.insertAllOnConflictUpdate(
+        _db.cachedAppointments,
+        items.map((item) {
+          return CachedAppointmentsCompanion.insert(
+            id: _requireString(item, 'id'),
+            userId: _requireInt(item, 'userId'),
+            ownerUsername: _requireString(item, 'ownerUsername'),
+            dateTimeStr: _requireDateTimeStr(item),
+            status: _requireString(item, 'status'),
+            dataJson: jsonEncode(item),
+          );
+        }).toList(),
+      );
     });
   }
 
@@ -94,19 +97,20 @@ class OfflineRepository {
   //region Shifts
 
   Future<void> saveShifts(List<Map<String, dynamic>> items) async {
-    await _db.transaction(() async {
-      for (final item in items) {
-        await _db.into(_db.cachedShifts).insertOnConflictUpdate(
-              CachedShiftsCompanion.insert(
-                id: Value(_asInt(item['id']) ?? 0),
-                userId: _asInt(item['userId']) ?? 0,
-                date: _asString(item['date'])!,
-                startTime: _asString(item['startTime'])!,
-                endTime: _asString(item['endTime'])!,
-                status: _asString(item['status'])!,
-              ),
-            );
-      }
+    await _db.batch((b) {
+      b.insertAllOnConflictUpdate(
+        _db.cachedShifts,
+        items.map((item) {
+          return CachedShiftsCompanion.insert(
+            id: Value(_requireInt(item, 'id')),
+            userId: _requireInt(item, 'userId'),
+            date: _requireString(item, 'date'),
+            startTime: _requireString(item, 'startTime'),
+            endTime: _requireString(item, 'endTime'),
+            status: _requireString(item, 'status'),
+          );
+        }).toList(),
+      );
     });
   }
 
@@ -119,6 +123,9 @@ class OfflineRepository {
 
   //region Pending actions
 
+  /// Queues an action for later synchronization. The [id] must be unique;
+  /// calling this again with the same [id] will overwrite the existing action.
+  /// Actions are returned by [getPendingActions] in FIFO order by creation time.
   Future<void> queueAction({
     required String id,
     required String action,
@@ -149,10 +156,13 @@ class OfflineRepository {
   }
 
   Future<void> incrementRetry(String id) async {
-    await _db.customStatement(
-      'UPDATE pending_actions SET retry_count = retry_count + 1 WHERE id = ?',
-      [id],
-    );
+    final action =
+        await (_db.select(_db.pendingActions)..where((t) => t.id.equals(id)))
+            .getSingleOrNull();
+    if (action == null) return;
+    await _db.update(_db.pendingActions).replace(
+          action.copyWith(retryCount: action.retryCount + 1),
+        );
   }
 
   //endregion
@@ -179,5 +189,30 @@ class OfflineRepository {
     if (value is double) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  int _requireInt(Map<String, dynamic> item, String key) {
+    final value = _asInt(item[key]);
+    if (value == null) {
+      throw ArgumentError('Missing required int field "$key" in $item');
+    }
+    return value;
+  }
+
+  String _requireString(Map<String, dynamic> item, String key) {
+    final value = _asString(item[key]);
+    if (value == null || value.isEmpty) {
+      throw ArgumentError('Missing required string field "$key" in $item');
+    }
+    return value;
+  }
+
+  String _requireDateTimeStr(Map<String, dynamic> item) {
+    final value = _asString(item['dateTimeStr']) ?? _asString(item['dateTime']);
+    if (value == null || value.isEmpty) {
+      throw ArgumentError(
+          'Missing required string field "dateTimeStr" in $item');
+    }
+    return value;
   }
 }
