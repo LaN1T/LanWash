@@ -117,11 +117,12 @@ class ReportsService:
                 Appointment.dateTime < end,
             )
         )
-        rows = (await self._db.execute(query)).all()
 
         service_counts: dict[str, int] = defaultdict(int)
 
-        for add_services_json, promo_id, wash_type_id in rows:
+        stream = await self._db.stream(query)
+        async for row in stream:
+            add_services_json, promo_id, wash_type_id = row
             is_promo = promo_id is not None
 
             if wash_type_id in wt_id_to_name:
@@ -185,7 +186,7 @@ class ReportsService:
                 Consumable.unit,
                 ConsumableUsageLog.quantityUsed,
                 ConsumableUsageLog.appointmentId,
-                Appointment.dateTime,
+                Appointment.promoId,
             )
             .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
             .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id)
@@ -197,22 +198,14 @@ class ReportsService:
                 )
             )
         )
-        logs = (await self._db.execute(query)).all()
-
-        appt_ids = list({r[4] for r in logs})
-        app_is_promo: dict[str, bool] = {}
-        if appt_ids:
-            apps = (await self._db.execute(
-                select(Appointment.id, Appointment.promoId).where(Appointment.id.in_(appt_ids))
-            )).all()
-            app_is_promo = {a.id: (a.promoId is not None) for a in apps}
 
         sums: dict[str, float] = defaultdict(float)
         units: dict[str, str] = {}
 
-        for c_id, name, unit, qty, app_id, _ in logs:
+        stream = await self._db.stream(query)
+        async for c_id, name, unit, qty, app_id, promo_id in stream:
             cats = cons_to_cats.get(c_id, set())
-            is_promo = app_is_promo.get(app_id, False)
+            is_promo = promo_id is not None
 
             if category is None or category == "Все":
                 matches = True

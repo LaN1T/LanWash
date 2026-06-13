@@ -8,7 +8,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, declared_attr
+from sqlalchemy.orm import declarative_base, declared_attr, validates
 
 Base = declarative_base()
 
@@ -105,6 +105,7 @@ class Appointment(Base):
     carModel = Column(String, nullable=False)
     carNumber = Column(String, nullable=False)
     dateTime = Column(String, nullable=False)
+    date = Column(String, nullable=False, index=True)
     washTypeId = Column(String, ForeignKey('wash_types.id'), nullable=False)
     additionalServices = Column(String, nullable=False, default='[]')  # JSON-массив id
     status = Column(String, nullable=False, default='scheduled')
@@ -124,6 +125,11 @@ class Appointment(Base):
     box_index = Column(Integer, nullable=False, default=0)
     late_minutes = Column(Integer, nullable=False, default=0)
     cancel_reason = Column(String, nullable=False, default='')
+
+    @validates('dateTime')
+    def _set_date(self, key, value):
+        self.date = value[:10] if value else ''
+        return value
 
 class Service(Base):
     __tablename__ = 'services'

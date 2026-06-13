@@ -95,8 +95,8 @@ async def export_consumables(
     svc = ConsumablesService(db)
     try:
         data = await svc.export_consumables(date_from, date_to)
-    except RuntimeError as e:
-        raise HTTPException(500, str(e))
+    except RuntimeError:
+        raise HTTPException(500, "Internal server error")
 
     filename = f"consumables_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(
@@ -108,13 +108,13 @@ async def export_consumables(
 
 @router.get("/import-template")
 @limiter.limit("10/minute")
-async def download_import_template(request: Request):
+async def download_import_template(request: Request, current_user: User = Depends(check_roles(["admin", "washer"]))): 
     """Скачать пустой шаблон Excel для импорта пополнений."""
     svc = ConsumablesService(db=None)  # no DB needed
     try:
-        data = svc.generate_import_template()
-    except RuntimeError as e:
-        raise HTTPException(500, str(e))
+        data = await svc.generate_import_template()
+    except RuntimeError:
+        raise HTTPException(500, "Internal server error")
 
     return StreamingResponse(
         io.BytesIO(data),
@@ -148,8 +148,8 @@ async def import_refills(
         return await svc.import_refills(content, current_user.username)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    except RuntimeError as e:
-        raise HTTPException(500, str(e))
+    except RuntimeError:
+        raise HTTPException(500, "Internal server error")
 
 
 # ========== Динамические пути ==========

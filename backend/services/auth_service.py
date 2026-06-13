@@ -91,12 +91,23 @@ def validate_password_strength(password: str) -> Optional[str]:
     return None
 
 
+import asyncio
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+async def async_verify_password(plain_password: str, hashed_password: str) -> bool:
+    return await asyncio.to_thread(verify_password, plain_password, hashed_password)
+
+
+async def async_get_password_hash(password: str) -> str:
+    return await asyncio.to_thread(get_password_hash, password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -223,10 +234,10 @@ class AuthService:
         user = result.scalar_one_or_none()
         if not user:
             # Constant-time dummy verification to prevent user enumeration
-            verify_password(password, _DUMMY_ARGON2_HASH)
+            await async_verify_password(password, _DUMMY_ARGON2_HASH)
             raise InvalidCredentialsError("Неверный логин или пароль")
 
-        if not verify_password(password, user.passwordHash):
+        if not await async_verify_password(password, user.passwordHash):
             raise InvalidCredentialsError("Неверный логин или пароль")
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -263,7 +274,7 @@ class AuthService:
 
         new_user = User(
             username=username,
-            passwordHash=get_password_hash(req.password),
+            passwordHash=await async_get_password_hash(req.password),
             role="client",
             displayName=req.displayName.strip(),
             email=req.email.strip().lower(),
@@ -310,7 +321,7 @@ class AuthService:
         )
         new_user = User(
             username=username.lower().strip(),
-            passwordHash=get_password_hash(random_password),
+            passwordHash=await async_get_password_hash(random_password),
             role="client",
             displayName=display_name,
             phone="",
@@ -371,7 +382,7 @@ class AuthService:
         if not user:
             raise InvalidCredentialsError("Неверный логин или пароль")
 
-        if not verify_password(password, user.passwordHash):
+        if not await async_verify_password(password, user.passwordHash):
             raise InvalidCredentialsError("Неверный логин или пароль")
 
         user.telegramId = telegram_id.strip()
@@ -414,12 +425,12 @@ class AuthService:
         if req.avatarUrl is not None:
             updates["avatarUrl"] = req.avatarUrl
         if req.newPassword is not None:
-            if not req.currentPassword or not verify_password(req.currentPassword, user.passwordHash):
+            if not req.currentPassword or not await async_verify_password(req.currentPassword, user.passwordHash):
                 raise ProfileAccessDeniedError("Неверный текущий пароль")
             password_error = validate_password_strength(req.newPassword)
             if password_error:
                 raise ValueError(password_error)
-            updates["passwordHash"] = get_password_hash(req.newPassword)
+            updates["passwordHash"] = await async_get_password_hash(req.newPassword)
             updates["passwordVersion"] = (user.passwordVersion or 1) + 1
             # Blacklist current token after password change
             try:
@@ -501,13 +512,12 @@ class AuthService:
             explicit = list(res_explicit.scalars().all())
             explicit_ids = {a.id for a in explicit}
 
-            appt_date = func.substr(Appointment.dateTime, 1, 10)
             appt_time = func.substr(Appointment.dateTime, 12, 5)
             res_shift = await self._db.execute(
                 select(Appointment)
                 .join(Shift, and_(
                     Shift.userId == target_user.id,
-                    Shift.date == appt_date,
+                    Shift.date == Appointment.date,
                     appt_time >= Shift.startTime,
                     appt_time <= Shift.endTime,
                 ))

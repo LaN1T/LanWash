@@ -1,8 +1,11 @@
+import asyncio
 import os
 import re
+from io import BytesIO
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
@@ -20,6 +23,7 @@ from models import (
     UpdateProfileRequest,
     UserResponse,
     UserStatsResponse,
+    WasherPublicResponse,
 )
 from services.auth_service import (
     AuthService,
@@ -106,8 +110,8 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except SelfReferralError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
-    except RuntimeError as e:
-        raise HTTPException(500, str(e))
+    except RuntimeError:
+        raise HTTPException(500, "Internal server error")
 
 
 @router.post(
@@ -126,8 +130,8 @@ async def telegram_auth(
         return await svc.telegram_auth(req.initData)
     except InvalidCredentialsError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
-    except RuntimeError as e:
-        raise HTTPException(500, str(e))
+    except RuntimeError:
+        raise HTTPException(500, "Internal server error")
 
 
 @router.post(
@@ -150,7 +154,7 @@ async def link_telegram(
 
 @router.get(
     "/washers",
-    response_model=list[UserResponse],
+    response_model=list[WasherPublicResponse],
     summary="Список мойщиков",
 )
 @limiter.limit("60/minute")
@@ -239,6 +243,22 @@ async def upload_avatar(
         raise HTTPException(400, "Файл не является валидным изображением")
     if ext not in detected:
         raise HTTPException(400, "Содержимое файла не соответствует расширению")
+
+    # Validate image dimensions and integrity with Pillow
+    try:
+        img = await asyncio.to_thread(Image.open, BytesIO(content))
+        width, height = await asyncio.to_thread(lambda: img.size)
+        await asyncio.to_thread(img.close)
+        max_dimension = 4096
+        if width > max_dimension or height > max_dimension:
+            raise HTTPException(400, f"Image dimensions too large. Max {max_dimension}x{max_dimension}")
+        # Verify integrity (Pillow's verify requires a fresh image object)
+        verify_img = await asyncio.to_thread(Image.open, BytesIO(content))
+        await asyncio.to_thread(verify_img.verify)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, "Invalid image file")
 
     import uuid
     filename = f"{uuid.uuid4().hex}.{ext}"

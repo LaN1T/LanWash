@@ -15,6 +15,28 @@ router = APIRouter(
 )
 
 
+def _parse_month(date: str | None) -> str:
+    """Validate and normalize a YYYY-MM date string."""
+    if not date:
+        return datetime.now().strftime("%Y-%m")
+    try:
+        datetime.strptime(date, "%Y-%m")
+    except ValueError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid date format. Expected YYYY-MM.")
+    return date
+
+
+def _parse_day(date: str | None) -> str:
+    """Validate and normalize a YYYY-MM-DD date string."""
+    if not date:
+        return datetime.now().strftime("%Y-%m-%d")
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid date format. Expected YYYY-MM-DD.")
+    return date
+
+
 @router.get("/monthly-check-vs-price/")
 @limiter.limit("30/minute")
 async def monthly_report(
@@ -25,8 +47,7 @@ async def monthly_report(
 ):
     if current_user.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
-    if not date:
-        date = datetime.now().strftime("%Y-%m")
+    date = _parse_month(date)
     svc = ReportsService(db)
     return await svc.monthly_report(date)
 
@@ -42,8 +63,7 @@ async def get_popular_additional_services(
 ):
     if current_user.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
-    if not date:
-        date = datetime.now().strftime("%Y-%m")
+    date = _parse_month(date)
     svc = ReportsService(db)
     return await svc.popular_additional_services(date, category)
 
@@ -59,8 +79,7 @@ async def get_consumables_usage(
 ):
     if current_user.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
-    if not date:
-        date = datetime.now().strftime("%Y-%m")
+    date = _parse_month(date)
     svc = ReportsService(db)
     return await svc.consumables_usage(date, category)
 
@@ -76,7 +95,6 @@ async def daily_report(
     """Daily summary: revenue, appointments, top services, washers on shift, consumables alerts."""
     if current_user.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
-    if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+    date = _parse_day(date)
     svc = ReportsService(db)
     return await svc.daily_report(date)
