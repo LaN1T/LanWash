@@ -17,5 +17,11 @@ async def trigger_reminders(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(check_roles(["admin"]))
 ):
+    arq_pool = getattr(request.app.state, "arq_pool", None)
+    if arq_pool:
+        job = await arq_pool.enqueue_job("send_reminders_task")
+        return {"status": "queued", "job_id": job.job_id}
+
+    # Fallback: run inline when ARQ is unavailable (tests / dev without Redis)
     svc = RemindersService(db)
     return await svc.trigger_reminders(current_user.username)
