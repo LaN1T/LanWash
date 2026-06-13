@@ -4,8 +4,8 @@ class CachedWashTypes extends Table {
   TextColumn get id => text()();
   TextColumn get code => text()();
   TextColumn get name => text()();
-  TextColumn get description => text()();
-  RealColumn get basePrice => real()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  IntColumn get basePrice => integer()();
   IntColumn get durationMinutes => integer()();
   IntColumn get sortOrder => integer()();
 
@@ -23,9 +23,9 @@ class CachedUsers extends Table {
 
 class CachedAppointments extends Table {
   TextColumn get id => text()();
-  TextColumn get userId => text()();
+  IntColumn get userId => integer()();
   TextColumn get ownerUsername => text()();
-  DateTimeColumn get dateTime => super.dateTime()();
+  TextColumn get dateTime => text()();
   TextColumn get status => text()();
   TextColumn get dataJson => text()();
 
@@ -35,7 +35,7 @@ class CachedAppointments extends Table {
 
 class CachedShifts extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get userId => text()();
+  IntColumn get userId => integer()();
   TextColumn get date => text()();
   TextColumn get startTime => text()();
   TextColumn get endTime => text()();
@@ -49,7 +49,7 @@ class PendingActions extends Table {
   TextColumn get method => text()();
   TextColumn get payload => text()();
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get createdAt => text()();
 
   @override
   Set<Column> get primaryKey => {id};
