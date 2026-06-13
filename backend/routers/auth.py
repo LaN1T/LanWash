@@ -268,7 +268,6 @@ async def upload_avatar(
     try:
         img = await asyncio.to_thread(Image.open, BytesIO(content))
         width, height = await asyncio.to_thread(lambda: img.size)
-        await asyncio.to_thread(img.close)
         max_dimension = 4096
         if width > max_dimension or height > max_dimension:
             raise HTTPException(400, f"Image dimensions too large. Max {max_dimension}x{max_dimension}")
@@ -279,6 +278,22 @@ async def upload_avatar(
         raise
     except Exception:
         raise HTTPException(400, "Invalid image file")
+
+    # Optimize: resize to max 512x512 and convert to WebP
+    try:
+        img = await asyncio.to_thread(Image.open, BytesIO(content))
+        await asyncio.to_thread(img.thumbnail, (512, 512))
+        buf = BytesIO()
+        # Convert to RGB/RGBA for WebP compatibility
+        if img.mode not in ("RGB", "RGBA"):
+            img = await asyncio.to_thread(img.convert, "RGBA" if img.mode in ("P", "LA") else "RGB")
+        await asyncio.to_thread(img.save, buf, format="WEBP", quality=85)
+        content = buf.getvalue()
+        ext = "webp"
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, "Failed to optimize image")
 
     import uuid
     filename = f"{uuid.uuid4().hex}.{ext}"
