@@ -44,10 +44,11 @@ class SlidingWindowLimiter:
 
 
 class AICache:
-    """Simple in-memory cache for AI responses with TTL."""
+    """Simple in-memory cache for AI responses with TTL and bounded size."""
 
-    def __init__(self, ttl_seconds: float = 300.0) -> None:
+    def __init__(self, ttl_seconds: float = 300.0, max_size: int = 1000) -> None:
         self.ttl = ttl_seconds
+        self.max_size = max_size
         self._store: dict[str, tuple[str, float]] = {}
         self._lock = asyncio.Lock()
 
@@ -73,6 +74,14 @@ class AICache:
         key = self._key(system, user)
         async with self._lock:
             self._store[key] = (value, time.monotonic() + self.ttl)
+            # Evict oldest entries if cache exceeds max size
+            while len(self._store) > self.max_size:
+                self._store.pop(next(iter(self._store)), None)
+            # Also evict expired entries opportunistically
+            now = time.monotonic()
+            expired = [k for k, (_, expiry) in self._store.items() if expiry <= now]
+            for k in expired:
+                self._store.pop(k, None)
 
     async def clear(self) -> None:
         async with self._lock:

@@ -60,6 +60,16 @@ class UserResponse(BaseModel):
     referralCode: Optional[str] = None
 
 
+class WasherPublicResponse(BaseModel):
+    """Public washer info — minimal fields exposed to any authenticated user."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    displayName: str
+    avatarUrl: str = ""
+
+
 class UpdateProfileRequest(BaseModel):
     displayName: Optional[str] = Field(default=None, max_length=100)
     phone: Optional[str] = Field(default=None, max_length=20)
@@ -625,6 +635,14 @@ class SupportMessageResponse(BaseModel):
     isAiDraft: bool
     createdAt: str
 
+    @field_validator("content", "senderName", mode="before")
+    @classmethod
+    def _escape_html(cls, v):
+        import html
+        if isinstance(v, str):
+            return html.escape(v)
+        return v
+
 
 class SupportChatCreateRequest(BaseModel):
     firstMessage: str = Field(default="", max_length=2000, description="Первое сообщение в чате поддержки")
@@ -645,6 +663,14 @@ class SupportChatResponse(BaseModel):
     lastMessageAt: Optional[str] = None
     lastMessagePreview: Optional[str] = None
     createdAt: str
+
+    @field_validator("userName", "userPhone", "assignedAdminName", "lastMessagePreview", mode="before")
+    @classmethod
+    def _escape_html(cls, v):
+        import html
+        if isinstance(v, str):
+            return html.escape(v)
+        return v
 
 
 class AiDraftResponse(BaseModel):

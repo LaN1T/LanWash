@@ -70,7 +70,7 @@ async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]
         select(Appointment.assignedWasher)
         .where(
             and_(
-                Appointment.dateTime.like(f"{date_str}%"),
+                Appointment.date == date_str,
                 Appointment.status != "cancelled",
             )
         )
@@ -143,35 +143,37 @@ async def get_all(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Построение запроса извлечения даты — dateTime хранится как ISO-строка YYYY-MM-DDTHH:mm:ss
-    date_extract = func.substr(Appointment.dateTime, 1, 10)
-
+    # Use the indexed `date` column (YYYY-MM-DD) instead of func.substr(dateTime).
     # Cap unique dates to the last 90 days to avoid unbounded headers/memory
     cutoff_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
 
     # 1. Get unique dates (days) in descending order
     if current_user.role == 'admin':
         dates_query = (
-            select(date_extract)
+            select(Appointment.date)
             .where(
-                Appointment.dateTime != None,
-                Appointment.dateTime != '',
-                date_extract >= cutoff_date,
+                Appointment.date != None,
+                Appointment.date != '',
+                Appointment.date >= cutoff_date,
             )
             .distinct()
-            .order_by(date_extract.asc())
+            .order_by(Appointment.date.asc())
         )
     else:
+        # P0: IDOR fix — clients only see their own appointments
+        date_filters = [
+            Appointment.date != None,
+            Appointment.date != '',
+            Appointment.date >= cutoff_date,
+            or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None),
+        ]
+        if current_user.role == 'client':
+            date_filters.append(Appointment.ownerUsername == current_user.username)
         dates_query = (
-            select(date_extract)
-            .where(
-                Appointment.dateTime != None,
-                Appointment.dateTime != '',
-                date_extract >= cutoff_date,
-                or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
-            )
+            select(Appointment.date)
+            .where(and_(*date_filters))
             .distinct()
-            .order_by(date_extract.asc())
+            .order_by(Appointment.date.asc())
         )
 
     dates_res = await db.execute(dates_query)
@@ -223,16 +225,20 @@ async def get_all(
     if current_user.role == 'admin':
         result = await db.execute(
             select(Appointment)
-            .where(date_extract == target_date)
+            .where(Appointment.date == target_date)
             .order_by(Appointment.dateTime.asc())
         )
     else:
+        # P0: IDOR fix — clients only see their own appointments
+        appt_filters = [
+            Appointment.date == target_date,
+            or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None),
+        ]
+        if current_user.role == 'client':
+            appt_filters.append(Appointment.ownerUsername == current_user.username)
         result = await db.execute(
             select(Appointment)
-            .where(
-                date_extract == target_date,
-                or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None)
-            )
+            .where(and_(*appt_filters))
             .order_by(Appointment.dateTime.asc())
         )
 
@@ -247,7 +253,7 @@ async def get_all(
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_owner(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_owner(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only owner or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя.")
@@ -261,7 +267,7 @@ async def get_by_owner(request: Request, username: str, limit: int = Query(defau
 
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_washer(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=5000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_washer(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only washer or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
@@ -282,14 +288,13 @@ async def get_by_washer(request: Request, username: str, limit: int = Query(defa
     explicit_ids = {a.id for a in explicit}
 
     # 2. Записи, которые попадают в смены мойщика
-    appt_date = func.substr(Appointment.dateTime, 1, 10)
     appt_time = func.substr(Appointment.dateTime, 12, 5)
 
     result2 = await db.execute(
         select(Appointment)
         .join(Shift, and_(
             Shift.userId == user.id,
-            Shift.date == appt_date,
+            Shift.date == Appointment.date,
             appt_time >= Shift.startTime,
             appt_time <= Shift.endTime,
         ))

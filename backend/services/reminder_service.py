@@ -144,15 +144,23 @@ async def check_and_send_reminders(db: AsyncSession) -> dict:
     wash_types_result = await db.execute(select(WashType.id, WashType.name))
     wash_types = {row[0]: row[1] for row in wash_types_result.all()}
 
-    # Stream client usernames in batches
-    clients_result = await db.execute(select(User.username).where(User.role == 'client'))
-    all_usernames = [row[0] for row in clients_result.all() if row[0]]
-
-    for i in range(0, len(all_usernames), _BATCH_SIZE):
-        batch = all_usernames[i:i + _BATCH_SIZE]
+    # Stream client usernames in batches directly from the DB
+    offset = 0
+    while True:
+        clients_result = await db.execute(
+            select(User.username)
+            .where(User.role == 'client')
+            .order_by(User.id)
+            .limit(_BATCH_SIZE)
+            .offset(offset)
+        )
+        batch = [row[0] for row in clients_result.all() if row[0]]
+        if not batch:
+            break
         s, sk, e = await _process_batch(db, batch, now, wash_types)
         sent_count += s
         skipped_count += sk
         error_count += e
+        offset += _BATCH_SIZE
 
     return {"sent": sent_count, "skipped": skipped_count, "errors": error_count}

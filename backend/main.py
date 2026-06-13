@@ -9,7 +9,7 @@ import sentry_sdk
 import structlog
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -134,12 +134,13 @@ os.makedirs(uploads_dir, exist_ok=True)
 
 
 @app.get("/uploads/avatars/{filename}")
-async def get_avatar(filename: str, current_user=Depends(get_current_user)):
+@limiter.limit("60/minute")
+async def get_avatar(request: Request, filename: str, current_user=Depends(get_current_user)): 
     """Serve avatar images with auth check."""
     if not filename or re.search(r'[/\\]', filename) or filename.startswith('.'):
         raise HTTPException(400, "Invalid filename")
     filepath = os.path.join(uploads_dir, "avatars", os.path.basename(filename))
-    if not os.path.exists(filepath):
+    if not await asyncio.to_thread(os.path.exists, filepath):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(filepath)
 
@@ -149,6 +150,24 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Prometheus metrics (exposed at /metrics)
 Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
+# Simple in-memory rate limit for /metrics (Prometheus scrapes every 10-15s)
+_METRICS_RATE_LIMIT: dict[str, list[float]] = {}
+_METRICS_MAX_PER_MINUTE = 60
+
+
+@app.middleware("http")
+async def _metrics_rate_limit_middleware(request: Request, call_next):
+    if request.url.path == "/metrics":
+        now = time.time()
+        ip = request.client.host if request.client else "unknown"
+        window = _METRICS_RATE_LIMIT.get(ip, [])
+        window = [t for t in window if now - t < 60]
+        if len(window) >= _METRICS_MAX_PER_MINUTE:
+            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        window.append(now)
+        _METRICS_RATE_LIMIT[ip] = window
+    return await call_next(request)
 
 # CORS — development allows any localhost port; production uses strict whitelist
 _EXPOSED_HEADERS = [
@@ -166,7 +185,7 @@ if settings.is_production:
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
+        allow_headers=["Authorization", "Content-Type"],
         expose_headers=_EXPOSED_HEADERS,
     )
 else:
@@ -176,7 +195,7 @@ else:
         allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
+        allow_headers=["Authorization", "Content-Type"],
         expose_headers=_EXPOSED_HEADERS,
     )
 
@@ -269,7 +288,9 @@ TELEGRAM_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 @app.post("/webhook")
 @limiter.limit("20/minute")
 async def telegram_webhook(request: Request, update: dict, x_telegram_bot_api_secret_token: str = Header(None)):
-    if TELEGRAM_SECRET and x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
+    if not TELEGRAM_SECRET:
+        raise HTTPException(500, "Webhook secret not configured")
+    if x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
         raise HTTPException(403, "Invalid secret token")
     from bot.webhook import process_update
     return await process_update(update)
@@ -285,8 +306,11 @@ if os.path.exists(miniapp_dir):
             "Pragma": "no-cache",
             "Expires": "0",
         }
-        file_path = os.path.join(miniapp_dir, path)
-        if path and os.path.exists(file_path) and os.path.isfile(file_path):
+        file_path = os.path.normpath(os.path.join(miniapp_dir, path))
+        norm_miniapp = os.path.normpath(miniapp_dir)
+        if not file_path.startswith(norm_miniapp):
+            raise HTTPException(403, "Invalid path")
+        if path and await asyncio.to_thread(os.path.exists, file_path) and await asyncio.to_thread(os.path.isfile, file_path):
             return FileResponse(file_path, headers=headers)
         return FileResponse(os.path.join(miniapp_dir, "index.html"), headers=headers)
 else:
@@ -304,6 +328,13 @@ from db_models import SupportChat
 _ws_attempts: dict[str, list[float]] = {}
 
 
+def _cleanup_ws_attempts() -> None:
+    now = time.time()
+    stale = [ip for ip, attempts in _ws_attempts.items() if not any(now - t < 60 for t in attempts)]
+    for ip in stale:
+        _ws_attempts.pop(ip, None)
+
+
 @app.websocket("/ws/support/chats/{chat_id}")
 async def support_chat_websocket(websocket: WebSocket, chat_id: int):
     ip = websocket.client.host if websocket.client else None
@@ -314,7 +345,14 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int):
             await websocket.close(code=1008)
             return
         attempts.append(now)
-        _ws_attempts[ip] = attempts
+        if attempts:
+            _ws_attempts[ip] = attempts
+        else:
+            _ws_attempts.pop(ip, None)
+
+    # Opportunistically clean stale entries every ~100 connections
+    if len(_ws_attempts) > 10000:
+        _cleanup_ws_attempts()
 
     await websocket.accept()
 
@@ -371,6 +409,9 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int):
     try:
         while True:
             raw = await websocket.receive_text()
+            if len(raw) > 65536:
+                await websocket.close(code=1009)
+                break
             try:
                 data = json.loads(raw)
             except Exception:

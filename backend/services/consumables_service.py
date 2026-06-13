@@ -1,4 +1,5 @@
 import io
+import asyncio
 import uuid
 from datetime import datetime, timedelta
 
@@ -377,11 +378,11 @@ class ConsumablesService:
         self._auto_width(ws_forecast)
 
         buf = io.BytesIO()
-        wb.save(buf)
+        await asyncio.to_thread(wb.save, buf)
         buf.seek(0)
         return buf.getvalue()
 
-    def generate_import_template(self) -> bytes:
+    async def generate_import_template(self) -> bytes:
         if not HAS_OPENPYXL:
             raise RuntimeError("openpyxl не установлен")
 
@@ -397,7 +398,7 @@ class ConsumablesService:
         self._auto_width(ws)
 
         buf = io.BytesIO()
-        wb.save(buf)
+        await asyncio.to_thread(wb.save, buf)
         buf.seek(0)
         return buf.getvalue()
 
@@ -406,7 +407,7 @@ class ConsumablesService:
             raise RuntimeError("openpyxl не установлен")
 
         try:
-            wb = openpyxl.load_workbook(filename=io.BytesIO(content))
+            wb = await asyncio.to_thread(openpyxl.load_workbook, filename=io.BytesIO(content))
         except Exception as e:
             raise ValueError(f"Не удалось открыть файл: {e}")
 
