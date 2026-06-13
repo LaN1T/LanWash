@@ -36,6 +36,7 @@ from models import (
     LateReportRequest,
     QrScanRequest,
 )
+from services.audit_service import log_admin_action
 from services.auth_service import check_roles, get_current_user
 from services.fcm_service import fcm_service
 from services.notification_service import add_notification
@@ -676,6 +677,52 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
             logger.info("admin_changes_triggered", appt_id=appt.id)
             appt.isModifiedByAdmin = 1
             appt.isSeenByClient = 0
+            old_values = {
+                "clientName": original_clientName,
+                "carModel": original_carModel,
+                "carNumber": original_carNumber,
+                "dateTime": original_dateTime,
+                "washTypeId": original_washTypeId,
+                "additionalServices": original_additionalServices,
+                "status": original_status,
+                "notes": original_notes,
+                "isFavorite": original_isFavorite,
+                "ownerUsername": original_ownerUsername,
+                "promoPrice": original_promoPrice,
+                "paidPrice": original_paidPrice,
+                "originalPrice": original_originalPrice,
+                "assignedWasher": original_assignedWasher,
+                "promoId": original_promoId,
+                "box_index": original_box_index,
+            }
+            new_values = {
+                "clientName": appt.clientName,
+                "carModel": appt.carModel,
+                "carNumber": appt.carNumber,
+                "dateTime": appt.dateTime,
+                "washTypeId": appt.washTypeId,
+                "additionalServices": appt.additionalServices,
+                "status": appt.status,
+                "notes": appt.notes,
+                "isFavorite": appt.isFavorite,
+                "ownerUsername": appt.ownerUsername,
+                "promoPrice": appt.promoPrice,
+                "paidPrice": appt.paidPrice,
+                "originalPrice": appt.originalPrice,
+                "assignedWasher": appt.assignedWasher,
+                "promoId": appt.promoId,
+                "box_index": appt.box_index,
+            }
+            await log_admin_action(
+                db,
+                current_user,
+                action="update_appointment",
+                entity_type="appointment",
+                entity_id=appt.id,
+                old_values=old_values,
+                new_values=new_values,
+                request=request,
+            )
         # Если изменений нет, флаги (isModifiedByAdmin, isSeenByClient) остаются без изменений
 
     elif current_user.role == 'washer':
@@ -815,6 +862,18 @@ async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends
         )
 
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
+
+    if current_user.role == 'admin':
+        await log_admin_action(
+            db,
+            current_user,
+            action="delete_appointment",
+            entity_type="appointment",
+            entity_id=appt_id,
+            old_values={"owner": owner, "carModel": car_model, "dateTime": date_time},
+            request=request,
+        )
+
     await db.commit()
     return {"ok": True}
 
@@ -893,7 +952,20 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
 
         current.append(username)
 
+    old_assigned_washer = appt.assignedWasher
     appt.assignedWasher = json.dumps(current)
+
+    await log_admin_action(
+        db,
+        current_user,
+        action="assign_washer" if username in current else "unassign_washer",
+        entity_type="appointment",
+        entity_id=appt.id,
+        old_values={"assignedWasher": old_assigned_washer},
+        new_values={"assignedWasher": appt.assignedWasher, "washerUsername": username},
+        request=request,
+    )
+
     await db.commit()
     await db.refresh(appt)
 

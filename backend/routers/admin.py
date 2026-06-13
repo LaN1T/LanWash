@@ -16,6 +16,7 @@ from models import (
     UserListResponse,
 )
 from services.admin_service import AdminService
+from services.audit_service import log_admin_action
 from services.auth_service import check_roles
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -72,7 +73,18 @@ async def bulk_assign_washer(
 ):
     """Assign a washer to multiple appointments at once."""
     svc = AdminService(db)
-    return await svc.bulk_assign_washer(req.appointmentIds, req.washerUsername)
+    result = await svc.bulk_assign_washer(req.appointmentIds, req.washerUsername)
+    await log_admin_action(
+        db,
+        current_user,
+        action="bulk_assign_washer",
+        entity_type="appointment",
+        entity_id=",".join(req.appointmentIds),
+        new_values={"appointmentIds": req.appointmentIds, "washerUsername": req.washerUsername, "result": result.model_dump()},
+        request=request,
+    )
+    await db.commit()
+    return result
 
 
 @router.post("/bulk/cancel", response_model=BulkResult)
@@ -85,7 +97,18 @@ async def bulk_cancel(
 ):
     """Cancel multiple appointments at once."""
     svc = AdminService(db)
-    return await svc.bulk_cancel(req.appointmentIds, req.reason)
+    result = await svc.bulk_cancel(req.appointmentIds, req.reason)
+    await log_admin_action(
+        db,
+        current_user,
+        action="bulk_cancel_appointments",
+        entity_type="appointment",
+        entity_id=",".join(req.appointmentIds),
+        new_values={"appointmentIds": req.appointmentIds, "reason": req.reason, "result": result.model_dump()},
+        request=request,
+    )
+    await db.commit()
+    return result
 
 
 @router.post("/bulk/update-status", response_model=BulkResult)
@@ -98,7 +121,18 @@ async def bulk_update_status(
 ):
     """Update status for multiple appointments at once."""
     svc = AdminService(db)
-    return await svc.bulk_update_status(req.appointmentIds, req.status)
+    result = await svc.bulk_update_status(req.appointmentIds, req.status)
+    await log_admin_action(
+        db,
+        current_user,
+        action="bulk_update_status",
+        entity_type="appointment",
+        entity_id=",".join(req.appointmentIds),
+        new_values={"appointmentIds": req.appointmentIds, "status": req.status, "result": result.model_dump()},
+        request=request,
+    )
+    await db.commit()
+    return result
 
 
 @router.get("/users", response_model=UserListResponse)
