@@ -14,19 +14,6 @@ router = APIRouter(
 )
 
 
-def _to_response(wt, extras_map: dict[str, list[str]]) -> dict:
-    return {
-        "id": wt.id,
-        "code": wt.code,
-        "name": wt.name,
-        "description": wt.description,
-        "basePrice": wt.basePrice,
-        "durationMinutes": wt.durationMinutes,
-        "sortOrder": wt.sortOrder,
-        "includedExtraIds": extras_map.get(wt.id, []),
-    }
-
-
 async def _to_response_single(svc: WashTypesService, wt) -> dict:
     included = await svc.get_included_extra_ids(wt.id)
     return {
@@ -49,11 +36,7 @@ async def get_all(
     current_user: User = Depends(get_current_user),
 ):
     svc = WashTypesService(db)
-    wash_types = await svc.get_all()
-    if not wash_types:
-        return []
-    extras_map = await svc.get_extras_map([wt.id for wt in wash_types])
-    return [_to_response(wt, extras_map) for wt in wash_types]
+    return await svc.get_all()
 
 
 @router.get("/{wash_type_id}", response_model=WashTypeResponse)
