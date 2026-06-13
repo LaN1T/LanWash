@@ -46,6 +46,12 @@ jobs:
         run: |
           ruff check . --select E,W,F,I,N
 
+      - name: Security scan
+        run: |
+          pip install bandit pip-audit
+          bandit -r . -f json -o bandit-report.json || true
+          pip-audit --requirement requirements.txt
+
       - name: Run tests with pytest
         env:
           ENVIRONMENT: testing
