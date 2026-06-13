@@ -4,6 +4,7 @@ import structlog
 
 from core.background import REDIS_SETTINGS
 from core.metrics import update_business_metrics
+from tasks.notifications import send_fcm_notification
 
 logger = structlog.get_logger()
 
@@ -65,5 +66,5 @@ async def check_inventory_forecast(ctx, db=None):
 class WorkerSettings:
     """ARQ worker configuration."""
 
-    functions = [send_notification, update_metrics, check_inventory_forecast]
+    functions = [send_notification, update_metrics, check_inventory_forecast, send_fcm_notification]
     redis_settings = REDIS_SETTINGS
