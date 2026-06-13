@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../../app_styles.dart';
 import '../../models/shift.dart';
 import '../../models/user.dart';
@@ -14,12 +15,363 @@ class ShiftScheduleScreen extends StatefulWidget {
   State<ShiftScheduleScreen> createState() => _ShiftScheduleScreenState();
 }
 
+/// A single shift cell in the weekly schedule table.
+class ShiftCell extends StatelessWidget {
+  final User washer;
+  final DateTime date;
+  final Shift? shift;
+  final bool canEdit;
+  final List<Shift> dayShifts;
+  final VoidCallback? onTap;
+  final VoidCallback? onCopy;
+  final VoidCallback? onPaste;
+  final VoidCallback? onClear;
+
+  const ShiftCell({
+    super.key,
+    required this.washer,
+    required this.date,
+    this.shift,
+    required this.canEdit,
+    this.dayShifts = const [],
+    this.onTap,
+    this.onCopy,
+    this.onPaste,
+    this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isWeekend = date.weekday >= 6;
+    final hasConflict = shift != null && _hasConflict(shift!, dayShifts);
+
+    Color bgColor;
+    String timeLabel;
+    Color textColor;
+    String? badge;
+
+    if (shift == null) {
+      bgColor = Colors.transparent;
+      timeLabel = '';
+      textColor = AppStyles.adaptiveTextSecondary(context);
+    } else if (shift!.status == 'pending') {
+      bgColor = AppStyles.warning;
+      timeLabel = '${shift!.startTime}–${shift!.endTime}';
+      textColor = Colors.white;
+      badge = 'ожид.';
+    } else if (shift!.status == 'rejected') {
+      bgColor = AppStyles.danger;
+      timeLabel = 'Откл.';
+      textColor = Colors.white;
+    } else {
+      bgColor = AppStyles.primary;
+      timeLabel = '${shift!.startTime}–${shift!.endTime}';
+      textColor = Colors.white;
+    }
+
+    final child = Container(
+      height: 72,
+      margin: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasConflict
+              ? AppStyles.danger
+              : shift == null
+                  ? (isWeekend
+                      ? AppStyles.danger.withValues(alpha: 0.12)
+                      : Colors.grey.shade200)
+                  : Colors.transparent,
+          width: hasConflict ? 2 : 1,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: timeLabel.isEmpty
+          ? canEdit
+              ? Icon(Icons.add, size: 18, color: Colors.grey.shade300)
+              : const SizedBox.shrink()
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  timeLabel,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                  ),
+                ),
+                if (badge != null)
+                  Text(
+                    badge,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                if (shift != null && shift!.status == 'confirmed')
+                  Text(
+                    '${shift!.durationMinutes ~/ 60} ч',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: textColor.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+    );
+
+    Widget cell = GestureDetector(
+      onTap: onTap,
+      onLongPress: _hasMenu ? () => _showMenu(context) : null,
+      child: SizedBox(
+        height: 72,
+        child: Stack(
+          children: [
+            child,
+            if (hasConflict)
+              const Positioned(
+                top: 4,
+                right: 4,
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: 14,
+                  color: AppStyles.danger,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (shift != null) {
+      cell = Tooltip(
+        message:
+            '${shift!.startTime} – ${shift!.endTime} (${_statusLabel(shift!.status)})',
+        child: cell,
+      );
+    }
+
+    return cell;
+  }
+
+  bool get _hasMenu =>
+      (shift != null && (onCopy != null || onClear != null)) ||
+      (shift == null && onPaste != null);
+
+  void _showMenu(BuildContext context) {
+    final items = <PopupMenuEntry<VoidCallback>>[];
+    if (shift != null && onCopy != null) {
+      items.add(
+        const PopupMenuItem(
+          value: null,
+          child: Row(
+            children: [
+              Icon(Icons.copy, size: 18),
+              SizedBox(width: 8),
+              Text('Копировать'),
+            ],
+          ),
+        ),
+      );
+    }
+    if (shift == null && onPaste != null) {
+      items.add(
+        const PopupMenuItem(
+          value: null,
+          child: Row(
+            children: [
+              Icon(Icons.paste, size: 18),
+              SizedBox(width: 8),
+              Text('Вставить'),
+            ],
+          ),
+        ),
+      );
+    }
+    if (shift != null && onClear != null) {
+      items.add(
+        const PopupMenuItem(
+          value: null,
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18, color: AppStyles.danger),
+              SizedBox(width: 8),
+              Text('Удалить', style: TextStyle(color: AppStyles.danger)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: items.asMap().entries.map((e) {
+            final label = switch (e.key) {
+              0 => shift != null ? 'Копировать' : 'Вставить',
+              _ => 'Удалить',
+            };
+            final action = switch (label) {
+              'Копировать' => onCopy,
+              'Вставить' => onPaste,
+              _ => onClear,
+            };
+            return ListTile(
+              leading: Icon(
+                label == 'Копировать'
+                    ? Icons.copy
+                    : label == 'Вставить'
+                        ? Icons.paste
+                        : Icons.delete_outline,
+                color: label == 'Удалить' ? AppStyles.danger : null,
+              ),
+              title: Text(
+                label,
+                style: TextStyle(
+                  color: label == 'Удалить' ? AppStyles.danger : null,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                action?.call();
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  static String _statusLabel(String status) {
+    switch (status) {
+      case 'confirmed':
+        return 'подтверждена';
+      case 'pending':
+        return 'на рассмотрении';
+      case 'rejected':
+        return 'отклонена';
+      default:
+        return status;
+    }
+  }
+
+  static bool _hasConflict(Shift shift, List<Shift> dayShifts) {
+    final shiftStart = _minutes(shift.startTime);
+    final shiftEnd = _minutes(shift.endTime);
+    for (final other in dayShifts) {
+      if (other.id == shift.id) continue;
+      final otherStart = _minutes(other.startTime);
+      final otherEnd = _minutes(other.endTime);
+      if (shiftStart < otherEnd && shiftEnd > otherStart) return true;
+    }
+    return false;
+  }
+
+  static int _minutes(String t) {
+    final p = t.split(':');
+    return int.parse(p[0]) * 60 + int.parse(p[1]);
+  }
+}
+
+/// Horizontal list of avatar circles for washers currently on duty.
+class OnDutyAvatars extends StatelessWidget {
+  final List<Map<String, dynamic>> currentShifts;
+  final List<User> washers;
+  final ValueChanged<int>? onTap;
+
+  const OnDutyAvatars({
+    super.key,
+    required this.currentShifts,
+    required this.washers,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (currentShifts.isEmpty) return const SizedBox.shrink();
+
+    final userIds =
+        currentShifts.map((s) => s['userId'] as int?).whereType<int>().toSet();
+    final onDuty = washers.where((w) => userIds.contains(w.id)).toList();
+
+    return SizedBox(
+      height: 32,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        shrinkWrap: true,
+        itemCount: onDuty.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 4),
+        itemBuilder: (_, index) {
+          final w = onDuty[index];
+          final initial =
+              w.displayName.isNotEmpty ? w.displayName[0].toUpperCase() : '?';
+          return GestureDetector(
+            onTap: () => onTap?.call(w.id!),
+            child: CircleAvatar(
+              radius: 14,
+              backgroundColor: AppStyles.primary,
+              child: Text(
+                initial,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Popup menu for admin bulk approve/reject actions.
+class BulkActionsMenu extends StatelessWidget {
+  final VoidCallback onApproveAll;
+  final VoidCallback onRejectAll;
+
+  const BulkActionsMenu({
+    super.key,
+    required this.onApproveAll,
+    required this.onRejectAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) {
+        if (value == 'approve') onApproveAll();
+        if (value == 'reject') onRejectAll();
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'approve',
+          child: Text('Одобрить все заявки'),
+        ),
+        PopupMenuItem(
+          value: 'reject',
+          child: Text('Отклонить все заявки'),
+        ),
+      ],
+    );
+  }
+}
+
 class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   bool _loading = true;
   List<User> _washers = [];
   List<Shift> _shifts = [];
-  int _currentOnDuty = 0;
+  List<Map<String, dynamic>> _currentShifts = [];
   late DateTime _weekStart;
+  int? _highlightedWasherId;
+  Shift? _copiedShift;
+  List<Shift>? _copiedWeek;
 
   @override
   void initState() {
@@ -78,7 +430,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       setState(() {
         _washers = washers;
         _shifts = shifts;
-        _currentOnDuty = current.length;
+        _currentShifts = current;
         _loading = false;
       });
     }
@@ -115,6 +467,146 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     return me?.username == washer.username;
   }
 
+  void _copyShift(Shift shift) {
+    setState(() {
+      _copiedShift = shift;
+      _copiedWeek = null;
+    });
+    _showSnack('Смена скопирована');
+  }
+
+  void _copyWeek(int userId) {
+    final weekShifts = _shifts.where((s) => s.userId == userId).toList();
+    setState(() {
+      _copiedWeek = weekShifts;
+      _copiedShift = null;
+    });
+    _showSnack('Неделя скопирована');
+  }
+
+  Future<void> _pasteShift(User washer, DateTime date) async {
+    if (_copiedShift == null) return;
+    final fmt = DateFormat('yyyy-MM-dd');
+    final result = await context.read<ApiService>().createShift(
+          washer.id!,
+          fmt.format(date),
+          _copiedShift!.startTime,
+          _copiedShift!.endTime,
+        );
+    if (result != null && mounted) {
+      _showSnack('Смена вставлена');
+      _loadData();
+    }
+  }
+
+  Future<void> _pasteWeek(User washer) async {
+    if (_copiedWeek == null || _copiedWeek!.isEmpty) return;
+    final api = context.read<ApiService>();
+    final fmt = DateFormat('yyyy-MM-dd');
+    final baseMonday = _mondayOf(DateTime.parse(_copiedWeek!.first.date));
+    final offsetDays = _weekStart.difference(baseMonday).inDays;
+
+    for (final shift in _copiedWeek!) {
+      final originalDate = DateTime.parse(shift.date);
+      final targetDate = originalDate.add(Duration(days: offsetDays));
+      await api.createShift(
+        washer.id!,
+        fmt.format(targetDate),
+        shift.startTime,
+        shift.endTime,
+      );
+    }
+    if (mounted) {
+      _showSnack('Неделя вставлена');
+      _loadData();
+    }
+  }
+
+  Future<void> _deleteShift(Shift shift) async {
+    final ok = await context.read<ApiService>().deleteShift(shift.id);
+    if (ok && mounted) {
+      _showSnack('Смена удалена');
+      _loadData();
+    }
+  }
+
+  Future<void> _clearWeek(User washer) async {
+    final canEdit = _canEdit(washer);
+    if (!canEdit) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Удалить смены за неделю?'),
+        content: const Text(
+            'Все смены этого мойщика на текущей неделе будут удалены.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить',
+                style: TextStyle(color: AppStyles.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final api = context.read<ApiService>();
+    final toDelete = _shifts.where((s) => s.userId == washer.id).toList();
+    for (final shift in toDelete) {
+      await api.deleteShift(shift.id);
+    }
+    _showSnack('Смены удалены');
+    _loadData();
+  }
+
+  Future<void> _confirmBulkAction(String action) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(
+          action == 'approve'
+              ? 'Одобрить все заявки?'
+              : 'Отклонить все заявки?',
+        ),
+        content: const Text(
+          'Это действие применится ко всем сменам со статусом "на рассмотрении" на текущей неделе.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Применить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _applyBulkAction(action);
+  }
+
+  Future<void> _applyBulkAction(String action) async {
+    final api = context.read<ApiService>();
+    final pending = _shifts.where((s) => s.status == 'pending').toList();
+    for (final shift in pending) {
+      if (action == 'approve') {
+        await api.approveShift(shift.id);
+      } else {
+        await api.rejectShift(shift.id);
+      }
+    }
+    if (mounted) {
+      _showSnack(
+          action == 'approve' ? 'Все заявки одобрены' : 'Все заявки отклонены');
+      _loadData();
+    }
+  }
+
   Future<void> _openEditor(User washer, DateTime date, Shift? existing) async {
     final canEdit = _canEdit(washer);
     if (!canEdit && existing == null) return;
@@ -143,11 +635,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final fmt = DateFormat('yyyy-MM-dd');
 
     if (result.delete && existing != null) {
-      final ok = await api.deleteShift(existing.id);
-      if (ok && mounted) {
-        _showSnack('Смена удалена');
-        _loadData();
-      }
+      await _deleteShift(existing);
       return;
     }
 
@@ -201,26 +689,18 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Расписание смен'),
-            const SizedBox(width: 10),
-            if (_currentOnDuty > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppStyles.successBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: AppStyles.success.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  'На смене: $_currentOnDuty',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppStyles.success,
-                  ),
-                ),
+            const Expanded(
+              child: Text(
+                'Расписание смен',
+                overflow: TextOverflow.ellipsis,
               ),
+            ),
+            const SizedBox(width: 10),
+            OnDutyAvatars(
+              currentShifts: _currentShifts,
+              washers: _washers,
+              onTap: (id) => setState(() => _highlightedWasherId = id),
+            ),
           ],
         ),
         elevation: 0,
@@ -245,6 +725,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
             onPressed: () => _changeWeek(1),
           ),
           const SizedBox(width: 8),
+          if (_isAdmin)
+            BulkActionsMenu(
+              onApproveAll: () => _confirmBulkAction('approve'),
+              onRejectAll: () => _confirmBulkAction('reject'),
+            ),
         ],
       ),
       body: _loading
@@ -257,6 +742,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _buildTable() {
     final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
+    final fmt = DateFormat('yyyy-MM-dd');
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -297,20 +783,45 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
               ),
               // Rows
               ..._washers.map((w) {
+                final highlight = _highlightedWasherId == w.id;
                 var totalMinutes = 0;
                 final shiftCells = days.map((d) {
                   final shift = _findShift(w.id!, d);
                   if (shift != null && shift.status == 'confirmed') {
                     totalMinutes += shift.durationMinutes;
                   }
-                  return _shiftCell(w, d, shift);
+                  final dayShifts = _shifts
+                      .where((s) => s.userId == w.id && s.date == fmt.format(d))
+                      .toList();
+                  return _wrapHighlight(
+                    highlight,
+                    ShiftCell(
+                      washer: w,
+                      date: d,
+                      shift: shift,
+                      canEdit: _canEdit(w),
+                      dayShifts: dayShifts,
+                      onTap: () => _openEditor(w, d, shift),
+                      onCopy: shift != null ? () => _copyShift(shift) : null,
+                      onPaste: shift == null && _copiedShift != null
+                          ? () => _pasteShift(w, d)
+                          : null,
+                      onClear: shift != null ? () => _deleteShift(shift) : null,
+                    ),
+                  );
                 }).toList();
 
                 return TableRow(
                   children: [
-                    _nameCell(w),
+                    _wrapHighlight(
+                      highlight,
+                      _nameCell(w, canEdit: _canEdit(w)),
+                    ),
                     ...shiftCells,
-                    _hoursCell(totalMinutes),
+                    _wrapHighlight(
+                      highlight,
+                      _hoursCell(totalMinutes),
+                    ),
                   ],
                 );
               }),
@@ -318,6 +829,14 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _wrapHighlight(bool highlight, Widget child) {
+    if (!highlight) return child;
+    return Container(
+      color: AppStyles.primary.withValues(alpha: 0.08),
+      child: child,
     );
   }
 
@@ -349,8 +868,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     return '${names[d.weekday - 1]}\n${d.day}';
   }
 
-  Widget _nameCell(User w) {
-    return Container(
+  Widget _nameCell(User w, {required bool canEdit}) {
+    final cell = Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: Text(
         w.displayName,
@@ -363,110 +882,61 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         maxLines: 2,
       ),
     );
+
+    if (!canEdit) return cell;
+
+    return GestureDetector(
+      onLongPress: () => _showNameCellMenu(w),
+      child: cell,
+    );
   }
 
-  Widget _shiftCell(User washer, DateTime date, Shift? shift) {
-    final canEdit = _canEdit(washer);
-    final isWeekend = date.weekday >= 6;
-
-    Color bgColor;
-    String label;
-    Color textColor;
-
-    if (shift == null) {
-      bgColor = Colors.transparent;
-      label = '';
-      textColor = AppStyles.adaptiveTextSecondary(context);
-    } else if (shift.status == 'pending') {
-      bgColor = AppStyles.warning;
-      label = '${shift.startTime}→${shift.endTime}';
-      textColor = Colors.white;
-    } else if (shift.status == 'rejected') {
-      bgColor = AppStyles.danger;
-      label = 'Откл.';
-      textColor = Colors.white;
-    } else {
-      bgColor = AppStyles.primary;
-      label = '${shift.startTime}→${shift.endTime}';
-      textColor = Colors.white;
-    }
-
-    final cell = GestureDetector(
-      onTap: () => _openEditor(washer, date, shift),
-      child: Container(
-        height: 56,
-        margin: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: shift == null
-                ? (isWeekend
-                    ? AppStyles.danger.withValues(alpha: 0.12)
-                    : Colors.grey.shade200)
-                : Colors.transparent,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: label.isEmpty
-            ? canEdit
-                ? Icon(Icons.add, size: 18, color: Colors.grey.shade300)
-                : const SizedBox.shrink()
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                  ),
-                  if (shift?.status == 'pending')
-                    const Text(
-                      'ожид.',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
+  void _showNameCellMenu(User washer) {
+    final hasWeekCopy = _copiedWeek != null && _copiedWeek!.isNotEmpty;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Копировать неделю'),
+              onTap: () {
+                Navigator.pop(context);
+                _copyWeek(washer.id!);
+              },
+            ),
+            if (hasWeekCopy)
+              ListTile(
+                leading: const Icon(Icons.paste),
+                title: const Text('Вставить неделю'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pasteWeek(washer);
+                },
               ),
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_outline, color: AppStyles.danger),
+              title: const Text('Очистить неделю',
+                  style: TextStyle(color: AppStyles.danger)),
+              onTap: () {
+                Navigator.pop(context);
+                _clearWeek(washer);
+              },
+            ),
+          ],
+        ),
       ),
     );
-
-    if (shift != null) {
-      return Tooltip(
-        message:
-            '${shift.startTime} – ${shift.endTime} (${_statusLabel(shift.status)})',
-        child: cell,
-      );
-    }
-    return cell;
-  }
-
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'confirmed':
-        return 'подтверждена';
-      case 'pending':
-        return 'на рассмотрении';
-      case 'rejected':
-        return 'отклонена';
-      default:
-        return status;
-    }
   }
 
   Widget _hoursCell(int totalMinutes) {
     final hours = totalMinutes / 60;
     final hasHours = totalMinutes > 0;
     return Container(
-      height: 56,
+      height: 72,
       alignment: Alignment.center,
       child: Text(
         hours.toStringAsFixed(1),
