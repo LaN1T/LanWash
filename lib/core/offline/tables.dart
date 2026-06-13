@@ -40,12 +40,12 @@ class CachedShifts extends Table {
   IntColumn get id => integer()();
   IntColumn get userId => integer()();
   TextColumn get date => text()();
-
-  @override
-  Set<Column> get primaryKey => {id};
   TextColumn get startTime => text()();
   TextColumn get endTime => text()();
   TextColumn get status => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 class PendingActions extends Table {
