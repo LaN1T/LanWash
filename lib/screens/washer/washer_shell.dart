@@ -12,6 +12,7 @@ import '../../providers/note_provider.dart';
 import '../../models/service.dart';
 import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
+import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
@@ -83,6 +84,7 @@ class _WasherShellState extends State<WasherShell> {
           ),
         ]),
         actions: [
+          const OfflineStatusIndicator(),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner, color: AppStyles.primary),
             tooltip: 'Сканировать QR',

@@ -8,6 +8,7 @@ import '../../providers/catalog_provider.dart';
 import '../../providers/favorite_provider.dart';
 import '../../providers/support_provider.dart';
 import '../../services/notification_service.dart'; // Add this
+import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
@@ -91,6 +92,9 @@ class _ClientShellState extends State<ClientShell> {
               style:
                   const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
         ]),
+        actions: const [
+          OfflineStatusIndicator(),
+        ],
       ),
       drawer: _buildDrawer(context, favCount, auth),
       body: IndexedStack(index: _index, children: const [

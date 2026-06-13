@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../core/api_client.dart';
 import '../core/api_result.dart';
 import '../core/config.dart';
+import '../core/offline/offline_repository.dart';
 import '../models/service.dart';
 import '../models/appointment.dart';
 import '../models/log_entry.dart';
@@ -43,10 +44,36 @@ class PaginatedAppointments {
 }
 
 class ApiService {
+  final OfflineRepository? _offlineRepository;
+
+  ApiService({OfflineRepository? offlineRepository})
+      : _offlineRepository = offlineRepository;
+
   // Token management делегируется ApiClient (единая точка правды)
   static Future<String?> getToken() => ApiClient.getToken();
   static Future<void> setToken(String token) => ApiClient.setToken(token);
   static Future<void> deleteToken() => ApiClient.deleteToken();
+
+  bool _isNetworkError(AppError err) =>
+      err.message.contains('Ошибка сети') || err.originalError is http.ClientException;
+
+  Future<void> _queueMutation({
+    required String action,
+    required String endpoint,
+    required String method,
+    required Map<String, dynamic> payload,
+  }) async {
+    final repo = _offlineRepository;
+    if (repo == null) return;
+    final id = '${action}_${payload['id'] ?? payload['appointmentId'] ?? DateTime.now().millisecondsSinceEpoch}';
+    await repo.queueAction(
+      id: id,
+      action: action,
+      endpoint: endpoint,
+      method: method,
+      payload: jsonEncode(payload),
+    );
+  }
 
   // ─── Auth ───────────────────────────────────────────────────────────────────
   Future<User?> login(String username, String password) async {
@@ -226,29 +253,53 @@ class ApiService {
   Future<List<Appointment>> getAppointmentsByOwner(String username) async {
     final result = await ApiClient.getList('/appointments/by-owner/$username');
     return result.when(
-      success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
-      failure: (err) {
-        return [];
+      success: (list) {
+        final typed = list.cast<Map<String, dynamic>>();
+        _offlineRepository?.saveAppointments(typed);
+        return typed.map((m) => Appointment.fromMap(m)).toList();
+      },
+      failure: (err) async {
+        final cached = await _offlineRepository?.getAppointments() ?? [];
+        return cached.map((m) => Appointment.fromMap(m)).toList();
       },
     );
   }
 
   Future<bool> createAppointment(Appointment a) async {
-    final result = await ApiClient.post('/appointments/', body: a.toMap());
+    final body = a.toMap();
+    final result = await ApiClient.post('/appointments/', body: body);
     return result.when(
       success: (_) => true,
-      failure: (err) {
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'create_appointment',
+            endpoint: '/appointments/',
+            method: 'POST',
+            payload: body,
+          );
+          return true;
+        }
         return false;
       },
     );
   }
 
   Future<bool> updateAppointment(Appointment a) async {
-    final result =
-        await ApiClient.put('/appointments/${a.id}', body: a.toMap());
+    final body = a.toMap();
+    final result = await ApiClient.put('/appointments/${a.id}', body: body);
     return result.when(
       success: (_) => true,
-      failure: (err) {
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'update_appointment',
+            endpoint: '/appointments/${a.id}',
+            method: 'PUT',
+            payload: body,
+          );
+          return true;
+        }
         return false;
       },
     );
@@ -258,7 +309,16 @@ class ApiService {
     final result = await ApiClient.delete('/appointments/$id');
     return result.when(
       success: (_) => true,
-      failure: (err) {
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'delete_appointment',
+            endpoint: '/appointments/$id',
+            method: 'DELETE',
+            payload: {'id': id},
+          );
+          return true;
+        }
         return false;
       },
     );
@@ -343,9 +403,14 @@ class ApiService {
   Future<List<Appointment>> getAppointmentsByWasher(String username) async {
     final result = await ApiClient.getList('/appointments/by-washer/$username');
     return result.when(
-      success: (list) => list.map((m) => Appointment.fromMap(m)).toList(),
-      failure: (err) {
-        return [];
+      success: (list) {
+        final typed = list.cast<Map<String, dynamic>>();
+        _offlineRepository?.saveAppointments(typed);
+        return typed.map((m) => Appointment.fromMap(m)).toList();
+      },
+      failure: (err) async {
+        final cached = await _offlineRepository?.getAppointments() ?? [];
+        return cached.map((m) => Appointment.fromMap(m)).toList();
       },
     );
   }
@@ -404,9 +469,14 @@ class ApiService {
   Future<List<User>> getWashers() async {
     final result = await ApiClient.getList('/auth/washers');
     return result.when(
-      success: (list) => list.map((m) => User.fromMap(m)).toList(),
-      failure: (err) {
-        return [];
+      success: (list) {
+        final typed = list.cast<Map<String, dynamic>>();
+        _offlineRepository?.saveUsers(typed);
+        return typed.map((m) => User.fromMap(m)).toList();
+      },
+      failure: (err) async {
+        final cached = await _offlineRepository?.getUsers() ?? [];
+        return cached.map((m) => User.fromMap(m)).toList();
       },
     );
   }
@@ -526,9 +596,14 @@ class ApiService {
   Future<List<WashType>> getWashTypes() async {
     final result = await ApiClient.getList('/wash-types/');
     return result.when(
-      success: (list) => list.map((m) => WashType.fromMap(m)).toList(),
-      failure: (err) {
-        return [];
+      success: (list) {
+        final typed = list.cast<Map<String, dynamic>>();
+        _offlineRepository?.saveWashTypes(typed);
+        return typed.map((m) => WashType.fromMap(m)).toList();
+      },
+      failure: (err) async {
+        final cached = await _offlineRepository?.getWashTypes() ?? [];
+        return cached.map((m) => WashType.fromMap(m)).toList();
       },
     );
   }
@@ -858,30 +933,66 @@ class ApiService {
     final result = await ApiClient.getList(
         '/shifts/?start_date=$startDate&end_date=$endDate');
     return result.when(
-      success: (list) => list.map((m) => Shift.fromMap(m)).toList(),
-      failure: (_) => <Shift>[],
+      success: (list) {
+        final typed = list.cast<Map<String, dynamic>>();
+        _offlineRepository?.saveShifts(typed);
+        return typed.map((m) => Shift.fromMap(m)).toList();
+      },
+      failure: (_) async {
+        final cached = await _offlineRepository?.getShifts() ?? [];
+        return cached.map((m) => Shift.fromMap(m)).toList();
+      },
     );
   }
 
   Future<List<Shift>> getMyShifts() async {
     final result = await ApiClient.getList('/shifts/my');
     return result.when(
-      success: (list) => list.map((m) => Shift.fromMap(m)).toList(),
-      failure: (_) => <Shift>[],
+      success: (list) {
+        final typed = list.cast<Map<String, dynamic>>();
+        _offlineRepository?.saveShifts(typed);
+        return typed.map((m) => Shift.fromMap(m)).toList();
+      },
+      failure: (_) async {
+        final cached = await _offlineRepository?.getShifts() ?? [];
+        return cached.map((m) => Shift.fromMap(m)).toList();
+      },
     );
   }
 
   Future<Shift?> createShift(
       int userId, String date, String startTime, String endTime) async {
-    final result = await ApiClient.post('/shifts/', body: {
+    final body = {
       'userId': userId,
       'date': date,
       'startTime': startTime,
       'endTime': endTime,
-    });
+    };
+    final result = await ApiClient.post('/shifts/', body: body);
     return result.when(
       success: (data) => Shift.fromMap(data),
-      failure: (_) => null,
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'create_shift',
+            endpoint: '/shifts/',
+            method: 'POST',
+            payload: body,
+          );
+          return Shift(
+            id: 0,
+            userId: userId,
+            date: date,
+            startTime: startTime,
+            endTime: endTime,
+            status: 'pending',
+            createdBy: '',
+            createdAt: DateTime.now().toIso8601String(),
+            updatedAt: DateTime.now().toIso8601String(),
+          );
+        }
+        return null;
+      },
     );
   }
 
@@ -889,7 +1000,17 @@ class ApiService {
     final result = await ApiClient.put('/shifts/$shiftId/approve');
     return result.when(
       success: (data) => Shift.fromMap(data),
-      failure: (_) => null,
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'approve_shift',
+            endpoint: '/shifts/$shiftId/approve',
+            method: 'PUT',
+            payload: {'id': shiftId},
+          );
+        }
+        return null;
+      },
     );
   }
 
@@ -897,14 +1018,37 @@ class ApiService {
     final result = await ApiClient.put('/shifts/$shiftId/reject');
     return result.when(
       success: (data) => Shift.fromMap(data),
-      failure: (_) => null,
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'reject_shift',
+            endpoint: '/shifts/$shiftId/reject',
+            method: 'PUT',
+            payload: {'id': shiftId},
+          );
+        }
+        return null;
+      },
     );
   }
 
   Future<bool> deleteShift(int shiftId) async {
     final result = await ApiClient.delete('/shifts/$shiftId');
-    return result.isSuccess;
+    if (result.isSuccess) return true;
+    final err = result.error;
+    if (err != null && _isNetworkError(err)) {
+      await _queueMutation(
+        action: 'delete_shift',
+        endpoint: '/shifts/$shiftId',
+        method: 'DELETE',
+        payload: {'id': shiftId},
+      );
+      return true;
+    }
+    return false;
   }
+
+
 
   Future<List<Shift>> getTodayShifts() async {
     final result = await ApiClient.get('/shifts/today');

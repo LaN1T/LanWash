@@ -151,6 +151,13 @@ class OfflineRepository {
         .get();
   }
 
+  Future<int> getPendingCount() async {
+    final countExp = _db.pendingActions.id.count();
+    final query = _db.selectOnly(_db.pendingActions)..addColumns([countExp]);
+    final row = await query.getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
   Future<void> removePendingAction(String id) async {
     await (_db.delete(_db.pendingActions)..where((t) => t.id.equals(id))).go();
   }

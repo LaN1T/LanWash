@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'app_styles.dart';
 import 'core/service_locator.dart';
+import 'providers/offline_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/catalog_provider.dart';
@@ -31,6 +32,7 @@ void main() async {
 
   // Инициализация DI
   setupServiceLocator();
+  sl<OfflineProvider>(); // instantiate monitor + provider early
   await sl<CarCatalogService>().load();
 
   try {
@@ -66,6 +68,7 @@ void main() async {
         Provider(
           create: (_) => sl<ApiService>(),
         ),
+        ChangeNotifierProvider.value(value: sl<OfflineProvider>()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(
