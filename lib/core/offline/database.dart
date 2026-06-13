@@ -19,8 +19,8 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
-}
 
-QueryExecutor _openConnection() {
-  return driftDatabase(name: 'lanwash_offline_db');
+  static QueryExecutor _openConnection() {
+    return driftDatabase(name: 'lanwash_offline_db');
+  }
 }

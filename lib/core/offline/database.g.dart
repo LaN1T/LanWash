@@ -37,19 +37,25 @@ class $CachedWashTypesTable extends CachedWashTypes
   @override
   late final GeneratedColumn<int> basePrice = GeneratedColumn<int>(
       'base_price', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _durationMinutesMeta =
       const VerificationMeta('durationMinutes');
   @override
   late final GeneratedColumn<int> durationMinutes = GeneratedColumn<int>(
       'duration_minutes', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(30));
   static const VerificationMeta _sortOrderMeta =
       const VerificationMeta('sortOrder');
   @override
   late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
       'sort_order', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns =>
       [id, code, name, description, basePrice, durationMinutes, sortOrder];
@@ -89,22 +95,16 @@ class $CachedWashTypesTable extends CachedWashTypes
     if (data.containsKey('base_price')) {
       context.handle(_basePriceMeta,
           basePrice.isAcceptableOrUnknown(data['base_price']!, _basePriceMeta));
-    } else if (isInserting) {
-      context.missing(_basePriceMeta);
     }
     if (data.containsKey('duration_minutes')) {
       context.handle(
           _durationMinutesMeta,
           durationMinutes.isAcceptableOrUnknown(
               data['duration_minutes']!, _durationMinutesMeta));
-    } else if (isInserting) {
-      context.missing(_durationMinutesMeta);
     }
     if (data.containsKey('sort_order')) {
       context.handle(_sortOrderMeta,
           sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta));
-    } else if (isInserting) {
-      context.missing(_sortOrderMeta);
     }
     return context;
   }
@@ -292,16 +292,13 @@ class CachedWashTypesCompanion extends UpdateCompanion<CachedWashType> {
     required String code,
     required String name,
     this.description = const Value.absent(),
-    required int basePrice,
-    required int durationMinutes,
-    required int sortOrder,
+    this.basePrice = const Value.absent(),
+    this.durationMinutes = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         code = Value(code),
-        name = Value(name),
-        basePrice = Value(basePrice),
-        durationMinutes = Value(durationMinutes),
-        sortOrder = Value(sortOrder);
+        name = Value(name);
   static Insertable<CachedWashType> custom({
     Expression<String>? id,
     Expression<String>? code,
@@ -401,11 +398,7 @@ class $CachedUsersTable extends CachedUsers
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _usernameMeta =
       const VerificationMeta('username');
   @override
@@ -715,10 +708,10 @@ class $CachedAppointmentsTable extends CachedAppointments
   late final GeneratedColumn<String> ownerUsername = GeneratedColumn<String>(
       'owner_username', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _dateTimeMeta =
-      const VerificationMeta('dateTime');
+  static const VerificationMeta _dateTimeStrMeta =
+      const VerificationMeta('dateTimeStr');
   @override
-  late final GeneratedColumn<String> dateTime = GeneratedColumn<String>(
+  late final GeneratedColumn<String> dateTimeStr = GeneratedColumn<String>(
       'date_time', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
@@ -734,7 +727,7 @@ class $CachedAppointmentsTable extends CachedAppointments
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, userId, ownerUsername, dateTime, status, dataJson];
+      [id, userId, ownerUsername, dateTimeStr, status, dataJson];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -765,10 +758,12 @@ class $CachedAppointmentsTable extends CachedAppointments
       context.missing(_ownerUsernameMeta);
     }
     if (data.containsKey('date_time')) {
-      context.handle(_dateTimeMeta,
-          dateTime.isAcceptableOrUnknown(data['date_time']!, _dateTimeMeta));
+      context.handle(
+          _dateTimeStrMeta,
+          dateTimeStr.isAcceptableOrUnknown(
+              data['date_time']!, _dateTimeStrMeta));
     } else if (isInserting) {
-      context.missing(_dateTimeMeta);
+      context.missing(_dateTimeStrMeta);
     }
     if (data.containsKey('status')) {
       context.handle(_statusMeta,
@@ -797,7 +792,7 @@ class $CachedAppointmentsTable extends CachedAppointments
           .read(DriftSqlType.int, data['${effectivePrefix}user_id'])!,
       ownerUsername: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}owner_username'])!,
-      dateTime: attachedDatabase.typeMapping
+      dateTimeStr: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}date_time'])!,
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
@@ -817,14 +812,14 @@ class CachedAppointment extends DataClass
   final String id;
   final int userId;
   final String ownerUsername;
-  final String dateTime;
+  final String dateTimeStr;
   final String status;
   final String dataJson;
   const CachedAppointment(
       {required this.id,
       required this.userId,
       required this.ownerUsername,
-      required this.dateTime,
+      required this.dateTimeStr,
       required this.status,
       required this.dataJson});
   @override
@@ -833,7 +828,7 @@ class CachedAppointment extends DataClass
     map['id'] = Variable<String>(id);
     map['user_id'] = Variable<int>(userId);
     map['owner_username'] = Variable<String>(ownerUsername);
-    map['date_time'] = Variable<String>(dateTime);
+    map['date_time'] = Variable<String>(dateTimeStr);
     map['status'] = Variable<String>(status);
     map['data_json'] = Variable<String>(dataJson);
     return map;
@@ -844,7 +839,7 @@ class CachedAppointment extends DataClass
       id: Value(id),
       userId: Value(userId),
       ownerUsername: Value(ownerUsername),
-      dateTime: Value(dateTime),
+      dateTimeStr: Value(dateTimeStr),
       status: Value(status),
       dataJson: Value(dataJson),
     );
@@ -857,7 +852,7 @@ class CachedAppointment extends DataClass
       id: serializer.fromJson<String>(json['id']),
       userId: serializer.fromJson<int>(json['userId']),
       ownerUsername: serializer.fromJson<String>(json['ownerUsername']),
-      dateTime: serializer.fromJson<String>(json['dateTime']),
+      dateTimeStr: serializer.fromJson<String>(json['dateTimeStr']),
       status: serializer.fromJson<String>(json['status']),
       dataJson: serializer.fromJson<String>(json['dataJson']),
     );
@@ -869,7 +864,7 @@ class CachedAppointment extends DataClass
       'id': serializer.toJson<String>(id),
       'userId': serializer.toJson<int>(userId),
       'ownerUsername': serializer.toJson<String>(ownerUsername),
-      'dateTime': serializer.toJson<String>(dateTime),
+      'dateTimeStr': serializer.toJson<String>(dateTimeStr),
       'status': serializer.toJson<String>(status),
       'dataJson': serializer.toJson<String>(dataJson),
     };
@@ -879,14 +874,14 @@ class CachedAppointment extends DataClass
           {String? id,
           int? userId,
           String? ownerUsername,
-          String? dateTime,
+          String? dateTimeStr,
           String? status,
           String? dataJson}) =>
       CachedAppointment(
         id: id ?? this.id,
         userId: userId ?? this.userId,
         ownerUsername: ownerUsername ?? this.ownerUsername,
-        dateTime: dateTime ?? this.dateTime,
+        dateTimeStr: dateTimeStr ?? this.dateTimeStr,
         status: status ?? this.status,
         dataJson: dataJson ?? this.dataJson,
       );
@@ -897,7 +892,8 @@ class CachedAppointment extends DataClass
       ownerUsername: data.ownerUsername.present
           ? data.ownerUsername.value
           : this.ownerUsername,
-      dateTime: data.dateTime.present ? data.dateTime.value : this.dateTime,
+      dateTimeStr:
+          data.dateTimeStr.present ? data.dateTimeStr.value : this.dateTimeStr,
       status: data.status.present ? data.status.value : this.status,
       dataJson: data.dataJson.present ? data.dataJson.value : this.dataJson,
     );
@@ -909,7 +905,7 @@ class CachedAppointment extends DataClass
           ..write('id: $id, ')
           ..write('userId: $userId, ')
           ..write('ownerUsername: $ownerUsername, ')
-          ..write('dateTime: $dateTime, ')
+          ..write('dateTimeStr: $dateTimeStr, ')
           ..write('status: $status, ')
           ..write('dataJson: $dataJson')
           ..write(')'))
@@ -918,7 +914,7 @@ class CachedAppointment extends DataClass
 
   @override
   int get hashCode =>
-      Object.hash(id, userId, ownerUsername, dateTime, status, dataJson);
+      Object.hash(id, userId, ownerUsername, dateTimeStr, status, dataJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -926,7 +922,7 @@ class CachedAppointment extends DataClass
           other.id == this.id &&
           other.userId == this.userId &&
           other.ownerUsername == this.ownerUsername &&
-          other.dateTime == this.dateTime &&
+          other.dateTimeStr == this.dateTimeStr &&
           other.status == this.status &&
           other.dataJson == this.dataJson);
 }
@@ -935,7 +931,7 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
   final Value<String> id;
   final Value<int> userId;
   final Value<String> ownerUsername;
-  final Value<String> dateTime;
+  final Value<String> dateTimeStr;
   final Value<String> status;
   final Value<String> dataJson;
   final Value<int> rowid;
@@ -943,7 +939,7 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
     this.id = const Value.absent(),
     this.userId = const Value.absent(),
     this.ownerUsername = const Value.absent(),
-    this.dateTime = const Value.absent(),
+    this.dateTimeStr = const Value.absent(),
     this.status = const Value.absent(),
     this.dataJson = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -952,21 +948,21 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
     required String id,
     required int userId,
     required String ownerUsername,
-    required String dateTime,
+    required String dateTimeStr,
     required String status,
     required String dataJson,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
         ownerUsername = Value(ownerUsername),
-        dateTime = Value(dateTime),
+        dateTimeStr = Value(dateTimeStr),
         status = Value(status),
         dataJson = Value(dataJson);
   static Insertable<CachedAppointment> custom({
     Expression<String>? id,
     Expression<int>? userId,
     Expression<String>? ownerUsername,
-    Expression<String>? dateTime,
+    Expression<String>? dateTimeStr,
     Expression<String>? status,
     Expression<String>? dataJson,
     Expression<int>? rowid,
@@ -975,7 +971,7 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
       if (id != null) 'id': id,
       if (userId != null) 'user_id': userId,
       if (ownerUsername != null) 'owner_username': ownerUsername,
-      if (dateTime != null) 'date_time': dateTime,
+      if (dateTimeStr != null) 'date_time': dateTimeStr,
       if (status != null) 'status': status,
       if (dataJson != null) 'data_json': dataJson,
       if (rowid != null) 'rowid': rowid,
@@ -986,7 +982,7 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
       {Value<String>? id,
       Value<int>? userId,
       Value<String>? ownerUsername,
-      Value<String>? dateTime,
+      Value<String>? dateTimeStr,
       Value<String>? status,
       Value<String>? dataJson,
       Value<int>? rowid}) {
@@ -994,7 +990,7 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       ownerUsername: ownerUsername ?? this.ownerUsername,
-      dateTime: dateTime ?? this.dateTime,
+      dateTimeStr: dateTimeStr ?? this.dateTimeStr,
       status: status ?? this.status,
       dataJson: dataJson ?? this.dataJson,
       rowid: rowid ?? this.rowid,
@@ -1013,8 +1009,8 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
     if (ownerUsername.present) {
       map['owner_username'] = Variable<String>(ownerUsername.value);
     }
-    if (dateTime.present) {
-      map['date_time'] = Variable<String>(dateTime.value);
+    if (dateTimeStr.present) {
+      map['date_time'] = Variable<String>(dateTimeStr.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -1034,7 +1030,7 @@ class CachedAppointmentsCompanion extends UpdateCompanion<CachedAppointment> {
           ..write('id: $id, ')
           ..write('userId: $userId, ')
           ..write('ownerUsername: $ownerUsername, ')
-          ..write('dateTime: $dateTime, ')
+          ..write('dateTimeStr: $dateTimeStr, ')
           ..write('status: $status, ')
           ..write('dataJson: $dataJson, ')
           ..write('rowid: $rowid')
@@ -1053,11 +1049,7 @@ class $CachedShiftsTable extends CachedShifts
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
   late final GeneratedColumn<int> userId = GeneratedColumn<int>(
@@ -1417,15 +1409,15 @@ class $PendingActionsTable extends PendingActions
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
+  static const VerificationMeta _createdAtStrMeta =
+      const VerificationMeta('createdAtStr');
   @override
-  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+  late final GeneratedColumn<String> createdAtStr = GeneratedColumn<String>(
       'created_at', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, action, endpoint, method, payload, retryCount, createdAt];
+      [id, action, endpoint, method, payload, retryCount, createdAtStr];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1472,10 +1464,12 @@ class $PendingActionsTable extends PendingActions
               data['retry_count']!, _retryCountMeta));
     }
     if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+      context.handle(
+          _createdAtStrMeta,
+          createdAtStr.isAcceptableOrUnknown(
+              data['created_at']!, _createdAtStrMeta));
     } else if (isInserting) {
-      context.missing(_createdAtMeta);
+      context.missing(_createdAtStrMeta);
     }
     return context;
   }
@@ -1498,7 +1492,7 @@ class $PendingActionsTable extends PendingActions
           .read(DriftSqlType.string, data['${effectivePrefix}payload'])!,
       retryCount: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
-      createdAt: attachedDatabase.typeMapping
+      createdAtStr: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
     );
   }
@@ -1516,7 +1510,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
   final String method;
   final String payload;
   final int retryCount;
-  final String createdAt;
+  final String createdAtStr;
   const PendingAction(
       {required this.id,
       required this.action,
@@ -1524,7 +1518,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
       required this.method,
       required this.payload,
       required this.retryCount,
-      required this.createdAt});
+      required this.createdAtStr});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1534,7 +1528,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
     map['method'] = Variable<String>(method);
     map['payload'] = Variable<String>(payload);
     map['retry_count'] = Variable<int>(retryCount);
-    map['created_at'] = Variable<String>(createdAt);
+    map['created_at'] = Variable<String>(createdAtStr);
     return map;
   }
 
@@ -1546,7 +1540,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
       method: Value(method),
       payload: Value(payload),
       retryCount: Value(retryCount),
-      createdAt: Value(createdAt),
+      createdAtStr: Value(createdAtStr),
     );
   }
 
@@ -1560,7 +1554,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
       method: serializer.fromJson<String>(json['method']),
       payload: serializer.fromJson<String>(json['payload']),
       retryCount: serializer.fromJson<int>(json['retryCount']),
-      createdAt: serializer.fromJson<String>(json['createdAt']),
+      createdAtStr: serializer.fromJson<String>(json['createdAtStr']),
     );
   }
   @override
@@ -1573,7 +1567,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
       'method': serializer.toJson<String>(method),
       'payload': serializer.toJson<String>(payload),
       'retryCount': serializer.toJson<int>(retryCount),
-      'createdAt': serializer.toJson<String>(createdAt),
+      'createdAtStr': serializer.toJson<String>(createdAtStr),
     };
   }
 
@@ -1584,7 +1578,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
           String? method,
           String? payload,
           int? retryCount,
-          String? createdAt}) =>
+          String? createdAtStr}) =>
       PendingAction(
         id: id ?? this.id,
         action: action ?? this.action,
@@ -1592,7 +1586,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
         method: method ?? this.method,
         payload: payload ?? this.payload,
         retryCount: retryCount ?? this.retryCount,
-        createdAt: createdAt ?? this.createdAt,
+        createdAtStr: createdAtStr ?? this.createdAtStr,
       );
   PendingAction copyWithCompanion(PendingActionsCompanion data) {
     return PendingAction(
@@ -1603,7 +1597,9 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
       payload: data.payload.present ? data.payload.value : this.payload,
       retryCount:
           data.retryCount.present ? data.retryCount.value : this.retryCount,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      createdAtStr: data.createdAtStr.present
+          ? data.createdAtStr.value
+          : this.createdAtStr,
     );
   }
 
@@ -1616,14 +1612,14 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
           ..write('method: $method, ')
           ..write('payload: $payload, ')
           ..write('retryCount: $retryCount, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAtStr: $createdAtStr')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, action, endpoint, method, payload, retryCount, createdAt);
+  int get hashCode => Object.hash(
+      id, action, endpoint, method, payload, retryCount, createdAtStr);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1634,7 +1630,7 @@ class PendingAction extends DataClass implements Insertable<PendingAction> {
           other.method == this.method &&
           other.payload == this.payload &&
           other.retryCount == this.retryCount &&
-          other.createdAt == this.createdAt);
+          other.createdAtStr == this.createdAtStr);
 }
 
 class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
@@ -1644,7 +1640,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
   final Value<String> method;
   final Value<String> payload;
   final Value<int> retryCount;
-  final Value<String> createdAt;
+  final Value<String> createdAtStr;
   final Value<int> rowid;
   const PendingActionsCompanion({
     this.id = const Value.absent(),
@@ -1653,7 +1649,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
     this.method = const Value.absent(),
     this.payload = const Value.absent(),
     this.retryCount = const Value.absent(),
-    this.createdAt = const Value.absent(),
+    this.createdAtStr = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PendingActionsCompanion.insert({
@@ -1663,14 +1659,14 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
     required String method,
     required String payload,
     this.retryCount = const Value.absent(),
-    required String createdAt,
+    required String createdAtStr,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         action = Value(action),
         endpoint = Value(endpoint),
         method = Value(method),
         payload = Value(payload),
-        createdAt = Value(createdAt);
+        createdAtStr = Value(createdAtStr);
   static Insertable<PendingAction> custom({
     Expression<String>? id,
     Expression<String>? action,
@@ -1678,7 +1674,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
     Expression<String>? method,
     Expression<String>? payload,
     Expression<int>? retryCount,
-    Expression<String>? createdAt,
+    Expression<String>? createdAtStr,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1688,7 +1684,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
       if (method != null) 'method': method,
       if (payload != null) 'payload': payload,
       if (retryCount != null) 'retry_count': retryCount,
-      if (createdAt != null) 'created_at': createdAt,
+      if (createdAtStr != null) 'created_at': createdAtStr,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1700,7 +1696,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
       Value<String>? method,
       Value<String>? payload,
       Value<int>? retryCount,
-      Value<String>? createdAt,
+      Value<String>? createdAtStr,
       Value<int>? rowid}) {
     return PendingActionsCompanion(
       id: id ?? this.id,
@@ -1709,7 +1705,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
       method: method ?? this.method,
       payload: payload ?? this.payload,
       retryCount: retryCount ?? this.retryCount,
-      createdAt: createdAt ?? this.createdAt,
+      createdAtStr: createdAtStr ?? this.createdAtStr,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1735,8 +1731,8 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
     if (retryCount.present) {
       map['retry_count'] = Variable<int>(retryCount.value);
     }
-    if (createdAt.present) {
-      map['created_at'] = Variable<String>(createdAt.value);
+    if (createdAtStr.present) {
+      map['created_at'] = Variable<String>(createdAtStr.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1753,7 +1749,7 @@ class PendingActionsCompanion extends UpdateCompanion<PendingAction> {
           ..write('method: $method, ')
           ..write('payload: $payload, ')
           ..write('retryCount: $retryCount, ')
-          ..write('createdAt: $createdAt, ')
+          ..write('createdAtStr: $createdAtStr, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1789,9 +1785,9 @@ typedef $$CachedWashTypesTableCreateCompanionBuilder = CachedWashTypesCompanion
   required String code,
   required String name,
   Value<String> description,
-  required int basePrice,
-  required int durationMinutes,
-  required int sortOrder,
+  Value<int> basePrice,
+  Value<int> durationMinutes,
+  Value<int> sortOrder,
   Value<int> rowid,
 });
 typedef $$CachedWashTypesTableUpdateCompanionBuilder = CachedWashTypesCompanion
@@ -1952,9 +1948,9 @@ class $$CachedWashTypesTableTableManager extends RootTableManager<
             required String code,
             required String name,
             Value<String> description = const Value.absent(),
-            required int basePrice,
-            required int durationMinutes,
-            required int sortOrder,
+            Value<int> basePrice = const Value.absent(),
+            Value<int> durationMinutes = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               CachedWashTypesCompanion.insert(
@@ -2155,7 +2151,7 @@ typedef $$CachedAppointmentsTableCreateCompanionBuilder
   required String id,
   required int userId,
   required String ownerUsername,
-  required String dateTime,
+  required String dateTimeStr,
   required String status,
   required String dataJson,
   Value<int> rowid,
@@ -2165,7 +2161,7 @@ typedef $$CachedAppointmentsTableUpdateCompanionBuilder
   Value<String> id,
   Value<int> userId,
   Value<String> ownerUsername,
-  Value<String> dateTime,
+  Value<String> dateTimeStr,
   Value<String> status,
   Value<String> dataJson,
   Value<int> rowid,
@@ -2189,8 +2185,8 @@ class $$CachedAppointmentsTableFilterComposer
   ColumnFilters<String> get ownerUsername => $composableBuilder(
       column: $table.ownerUsername, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get dateTime => $composableBuilder(
-      column: $table.dateTime, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get dateTimeStr => $composableBuilder(
+      column: $table.dateTimeStr, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
@@ -2218,8 +2214,8 @@ class $$CachedAppointmentsTableOrderingComposer
       column: $table.ownerUsername,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get dateTime => $composableBuilder(
-      column: $table.dateTime, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get dateTimeStr => $composableBuilder(
+      column: $table.dateTimeStr, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
@@ -2246,8 +2242,8 @@ class $$CachedAppointmentsTableAnnotationComposer
   GeneratedColumn<String> get ownerUsername => $composableBuilder(
       column: $table.ownerUsername, builder: (column) => column);
 
-  GeneratedColumn<String> get dateTime =>
-      $composableBuilder(column: $table.dateTime, builder: (column) => column);
+  GeneratedColumn<String> get dateTimeStr => $composableBuilder(
+      column: $table.dateTimeStr, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -2287,7 +2283,7 @@ class $$CachedAppointmentsTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<int> userId = const Value.absent(),
             Value<String> ownerUsername = const Value.absent(),
-            Value<String> dateTime = const Value.absent(),
+            Value<String> dateTimeStr = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> dataJson = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -2296,7 +2292,7 @@ class $$CachedAppointmentsTableTableManager extends RootTableManager<
             id: id,
             userId: userId,
             ownerUsername: ownerUsername,
-            dateTime: dateTime,
+            dateTimeStr: dateTimeStr,
             status: status,
             dataJson: dataJson,
             rowid: rowid,
@@ -2305,7 +2301,7 @@ class $$CachedAppointmentsTableTableManager extends RootTableManager<
             required String id,
             required int userId,
             required String ownerUsername,
-            required String dateTime,
+            required String dateTimeStr,
             required String status,
             required String dataJson,
             Value<int> rowid = const Value.absent(),
@@ -2314,7 +2310,7 @@ class $$CachedAppointmentsTableTableManager extends RootTableManager<
             id: id,
             userId: userId,
             ownerUsername: ownerUsername,
-            dateTime: dateTime,
+            dateTimeStr: dateTimeStr,
             status: status,
             dataJson: dataJson,
             rowid: rowid,
@@ -2531,7 +2527,7 @@ typedef $$PendingActionsTableCreateCompanionBuilder = PendingActionsCompanion
   required String method,
   required String payload,
   Value<int> retryCount,
-  required String createdAt,
+  required String createdAtStr,
   Value<int> rowid,
 });
 typedef $$PendingActionsTableUpdateCompanionBuilder = PendingActionsCompanion
@@ -2542,7 +2538,7 @@ typedef $$PendingActionsTableUpdateCompanionBuilder = PendingActionsCompanion
   Value<String> method,
   Value<String> payload,
   Value<int> retryCount,
-  Value<String> createdAt,
+  Value<String> createdAtStr,
   Value<int> rowid,
 });
 
@@ -2573,8 +2569,8 @@ class $$PendingActionsTableFilterComposer
   ColumnFilters<int> get retryCount => $composableBuilder(
       column: $table.retryCount, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get createdAtStr => $composableBuilder(
+      column: $table.createdAtStr, builder: (column) => ColumnFilters(column));
 }
 
 class $$PendingActionsTableOrderingComposer
@@ -2604,8 +2600,9 @@ class $$PendingActionsTableOrderingComposer
   ColumnOrderings<int> get retryCount => $composableBuilder(
       column: $table.retryCount, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get createdAtStr => $composableBuilder(
+      column: $table.createdAtStr,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$PendingActionsTableAnnotationComposer
@@ -2635,8 +2632,8 @@ class $$PendingActionsTableAnnotationComposer
   GeneratedColumn<int> get retryCount => $composableBuilder(
       column: $table.retryCount, builder: (column) => column);
 
-  GeneratedColumn<String> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<String> get createdAtStr => $composableBuilder(
+      column: $table.createdAtStr, builder: (column) => column);
 }
 
 class $$PendingActionsTableTableManager extends RootTableManager<
@@ -2672,7 +2669,7 @@ class $$PendingActionsTableTableManager extends RootTableManager<
             Value<String> method = const Value.absent(),
             Value<String> payload = const Value.absent(),
             Value<int> retryCount = const Value.absent(),
-            Value<String> createdAt = const Value.absent(),
+            Value<String> createdAtStr = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PendingActionsCompanion(
@@ -2682,7 +2679,7 @@ class $$PendingActionsTableTableManager extends RootTableManager<
             method: method,
             payload: payload,
             retryCount: retryCount,
-            createdAt: createdAt,
+            createdAtStr: createdAtStr,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2692,7 +2689,7 @@ class $$PendingActionsTableTableManager extends RootTableManager<
             required String method,
             required String payload,
             Value<int> retryCount = const Value.absent(),
-            required String createdAt,
+            required String createdAtStr,
             Value<int> rowid = const Value.absent(),
           }) =>
               PendingActionsCompanion.insert(
@@ -2702,7 +2699,7 @@ class $$PendingActionsTableTableManager extends RootTableManager<
             method: method,
             payload: payload,
             retryCount: retryCount,
-            createdAt: createdAt,
+            createdAtStr: createdAtStr,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
