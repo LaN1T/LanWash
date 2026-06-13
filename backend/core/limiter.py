@@ -1,8 +1,15 @@
 import ipaddress
 import os
 
+import jwt
 from fastapi import Request
 from slowapi import Limiter
+
+from core.config import get_settings
+
+settings = get_settings()
+SECRET_KEY = settings.jwt_secret_key
+ALGORITHM = "HS256"
 
 
 def _is_trusted_proxy(host: str | None) -> bool:
@@ -35,6 +42,26 @@ def get_proxy_aware_remote_address(request: Request) -> str:
     return "127.0.0.1"
 
 
+def _get_username_from_request(request: Request) -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except Exception:
+        return None
+
+
+def get_user_or_ip_key(request: Request) -> str:
+    """Rate-limit key: authenticated users by username, others by IP."""
+    username = _get_username_from_request(request)
+    if username:
+        return f"user:{username}"
+    return get_proxy_aware_remote_address(request)
+
+
 # Use Redis for rate limiting in production (multi-worker safe).
 # Fallback to in-memory storage if REDIS_URL is not set.
 _redis_url = os.getenv("REDIS_URL")
@@ -55,7 +82,7 @@ if os.getenv("DISABLE_RATE_LIMIT") == "true":
     limiter = DummyLimiter()
 else:
     limiter = Limiter(
-        key_func=get_proxy_aware_remote_address,
+        key_func=get_user_or_ip_key,
         storage_uri=_storage_uri,
         default_limits=["200/minute"],
     )
