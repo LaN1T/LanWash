@@ -16,19 +16,21 @@ class NotesService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def get_all(self, limit: int) -> list[WasherNote]:
+    async def get_all(self, limit: int, offset: int = 0) -> list[WasherNote]:
         result = await self._db.execute(
             select(WasherNote)
             .order_by(WasherNote.createdAt.desc())
+            .offset(offset)
             .limit(limit)
         )
         return list(result.scalars().all())
 
-    async def get_by_user(self, username: str, limit: int) -> list[WasherNote]:
+    async def get_by_user(self, username: str, limit: int, offset: int = 0) -> list[WasherNote]:
         result = await self._db.execute(
             select(WasherNote)
             .where(WasherNote.username == username)
             .order_by(WasherNote.createdAt.desc())
+            .offset(offset)
             .limit(limit)
         )
         return list(result.scalars().all())
