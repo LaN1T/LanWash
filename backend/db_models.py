@@ -353,3 +353,23 @@ class SupportMessage(Base):
     content = Column(String, nullable=False)
     isAiDraft = Column(Integer, nullable=False, default=0)
     createdAt = Column(String, nullable=False)
+
+
+class AdminAuditLog(Base):
+    __tablename__ = 'admin_audit_logs'
+    __table_args__ = (
+        Index('ix_admin_audit_logs_admin', 'admin_id'),
+        Index('ix_admin_audit_logs_entity', 'entity_type', 'entity_id'),
+        Index('ix_admin_audit_logs_created', 'created_at'),
+    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    admin_username = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    entity_type = Column(String, nullable=False)
+    entity_id = Column(String, nullable=False)
+    old_values = Column(String, nullable=True, default='{}')
+    new_values = Column(String, nullable=True, default='{}')
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    created_at = Column(String, nullable=False)
