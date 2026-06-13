@@ -80,7 +80,7 @@ async def bulk_assign_washer(
         action="bulk_assign_washer",
         entity_type="appointment",
         entity_id=",".join(req.appointmentIds),
-        new_values={"appointmentIds": req.appointmentIds, "washerUsername": req.washerUsername, "result": result.model_dump()},
+        new_values={"appointmentIds": req.appointmentIds, "washerUsername": req.washerUsername, "result": result},
         request=request,
     )
     await db.commit()
@@ -104,7 +104,7 @@ async def bulk_cancel(
         action="bulk_cancel_appointments",
         entity_type="appointment",
         entity_id=",".join(req.appointmentIds),
-        new_values={"appointmentIds": req.appointmentIds, "reason": req.reason, "result": result.model_dump()},
+        new_values={"appointmentIds": req.appointmentIds, "reason": req.reason, "result": result},
         request=request,
     )
     await db.commit()
@@ -128,7 +128,7 @@ async def bulk_update_status(
         action="bulk_update_status",
         entity_type="appointment",
         entity_id=",".join(req.appointmentIds),
-        new_values={"appointmentIds": req.appointmentIds, "status": req.status, "result": result.model_dump()},
+        new_values={"appointmentIds": req.appointmentIds, "status": req.status, "result": result},
         request=request,
     )
     await db.commit()
