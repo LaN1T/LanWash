@@ -6,7 +6,7 @@ typedef ConnectivityChangedCallback = void Function(bool isOnline);
 
 class ConnectivityMonitor {
   final Connectivity _connectivity;
-  final ConnectivityChangedCallback onChanged;
+  ConnectivityChangedCallback onChanged;
   StreamSubscription<List<ConnectivityResult>>? _subscription;
 
   ConnectivityMonitor({
