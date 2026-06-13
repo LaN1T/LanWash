@@ -156,13 +156,11 @@ class OfflineRepository {
   }
 
   Future<void> incrementRetry(String id) async {
-    final action =
-        await (_db.select(_db.pendingActions)..where((t) => t.id.equals(id)))
-            .getSingleOrNull();
-    if (action == null) return;
-    await _db.update(_db.pendingActions).replace(
-          action.copyWith(retryCount: action.retryCount + 1),
-        );
+    await _db.customUpdate(
+      'UPDATE pending_actions SET retry_count = retry_count + 1 WHERE id = ?',
+      variables: [Variable<String>(id)],
+      updates: {_db.pendingActions},
+    );
   }
 
   //endregion
@@ -211,7 +209,7 @@ class OfflineRepository {
     final value = _asString(item['dateTimeStr']) ?? _asString(item['dateTime']);
     if (value == null || value.isEmpty) {
       throw ArgumentError(
-          'Missing required string field "dateTimeStr" in $item');
+          'Missing required string field "dateTimeStr" (or "dateTime")');
     }
     return value;
   }

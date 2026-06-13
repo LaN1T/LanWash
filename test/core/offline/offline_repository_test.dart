@@ -118,6 +118,44 @@ void main() {
       expect(result, containsAll(items));
     });
 
+    test('saveWashTypes throws when id is missing', () async {
+      expect(
+        () => repository.saveWashTypes([
+          {'code': 'basic', 'name': 'Basic Wash'},
+        ]),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('saveShifts throws when id is missing', () async {
+      expect(
+        () => repository.saveShifts([
+          {
+            'userId': 1,
+            'date': '2026-06-13',
+            'startTime': '08:00',
+            'endTime': '16:00',
+            'status': 'active',
+          },
+        ]),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('saveAppointments throws when userId is missing', () async {
+      expect(
+        () => repository.saveAppointments([
+          {
+            'id': 'appt-1',
+            'ownerUsername': 'alice',
+            'dateTimeStr': '2026-06-13T10:00:00.000Z',
+            'status': 'confirmed',
+          },
+        ]),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test('upsert updates existing row', () async {
       await repository.saveWashTypes([
         {
@@ -147,6 +185,89 @@ void main() {
       expect(result.first['basePrice'], 600);
       expect(result.first['durationMinutes'], 45);
       expect(result.first['sortOrder'], 2);
+    });
+
+    test('upsert updates existing user', () async {
+      await repository.saveUsers([
+        {
+          'id': 1,
+          'username': 'alice',
+          'displayName': 'Alice',
+          'role': 'admin',
+        },
+      ]);
+      await repository.saveUsers([
+        {
+          'id': 1,
+          'username': 'alice',
+          'displayName': 'Alice Smith',
+          'role': 'manager',
+        },
+      ]);
+
+      final result = await repository.getUsers();
+
+      expect(result.length, 1);
+      expect(result.first['displayName'], 'Alice Smith');
+      expect(result.first['role'], 'manager');
+    });
+
+    test('upsert updates existing appointment', () async {
+      await repository.saveAppointments([
+        {
+          'id': 'appt-1',
+          'userId': 1,
+          'ownerUsername': 'alice',
+          'dateTimeStr': '2026-06-13T10:00:00.000Z',
+          'status': 'confirmed',
+        },
+      ]);
+      await repository.saveAppointments([
+        {
+          'id': 'appt-1',
+          'userId': 2,
+          'ownerUsername': 'bob',
+          'dateTimeStr': '2026-06-14T11:00:00.000Z',
+          'status': 'completed',
+        },
+      ]);
+
+      final result = await repository.getAppointments();
+
+      expect(result.length, 1);
+      expect(result.first['userId'], 2);
+      expect(result.first['ownerUsername'], 'bob');
+      expect(result.first['status'], 'completed');
+    });
+
+    test('upsert updates existing shift', () async {
+      await repository.saveShifts([
+        {
+          'id': 1,
+          'userId': 1,
+          'date': '2026-06-13',
+          'startTime': '08:00',
+          'endTime': '16:00',
+          'status': 'active',
+        },
+      ]);
+      await repository.saveShifts([
+        {
+          'id': 1,
+          'userId': 1,
+          'date': '2026-06-13',
+          'startTime': '09:00',
+          'endTime': '17:00',
+          'status': 'completed',
+        },
+      ]);
+
+      final result = await repository.getShifts();
+
+      expect(result.length, 1);
+      expect(result.first['startTime'], '09:00');
+      expect(result.first['endTime'], '17:00');
+      expect(result.first['status'], 'completed');
     });
 
     test('queue pending action and retrieve it', () async {
@@ -221,6 +342,14 @@ void main() {
 
       final actions = await repository.getPendingActions();
       expect(actions.first.retryCount, 2);
+    });
+
+    test('increment retry on missing action completes without throwing', () async {
+      await expectLater(
+        repository.incrementRetry('missing-action'),
+        completes,
+      );
+      expect(await repository.getPendingActions(), isEmpty);
     });
 
     test('clearAll truncates cached tables and pending actions', () async {
