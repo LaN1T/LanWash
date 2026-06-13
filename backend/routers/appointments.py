@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
 from core.metrics import appointments_total
+from core.pagination import PaginationParams, paginate
 from core.security import decrypt_token
 from database import get_db
 from db_models import (
@@ -258,21 +259,21 @@ async def get_all(
 
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_owner(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_owner(request: Request, username: str, pagination: PaginationParams = Depends(), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only owner or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя.")
-    result = await db.execute(
+    query = (
         select(Appointment)
         .where(Appointment.ownerUsername == username.lower())
         .order_by(Appointment.dateTime.asc())
-        .limit(limit)
     )
-    return result.scalars().all()
+    _, items = await paginate(query, db, pagination)
+    return items
 
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_washer(request: Request, username: str, limit: int = Query(default=1000, ge=1, le=1000), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_washer(request: Request, username: str, pagination: PaginationParams = Depends(), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     # P0: IDOR check - only washer or admin can view.
     if current_user.username != username.lower() and current_user.role != 'admin':
         raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
@@ -282,20 +283,15 @@ async def get_by_washer(request: Request, username: str, limit: int = Query(defa
     if not user:
         raise HTTPException(404, "Пользователь не найден")
 
-    # 1. Явно назначенные записи
     safe_username = username.lower().replace('%', r'\%').replace('_', r'\_')
-    result = await db.execute(
-        select(Appointment)
-        .where(Appointment.assignedWasher.like(f'%"{safe_username}"%', escape='\\'))
-        .limit(limit)
-    )
-    explicit = list(result.scalars().all())
-    explicit_ids = {a.id for a in explicit}
-
-    # 2. Записи, которые попадают в смены мойщика
     appt_time = func.substr(Appointment.dateTime, 12, 5)
 
-    result2 = await db.execute(
+    assigned_query = (
+        select(Appointment)
+        .where(Appointment.assignedWasher.like(f'%"{safe_username}"%', escape='\\'))
+    )
+
+    shift_query = (
         select(Appointment)
         .join(Shift, and_(
             Shift.userId == user.id,
@@ -303,13 +299,11 @@ async def get_by_washer(request: Request, username: str, limit: int = Query(defa
             appt_time >= Shift.startTime,
             appt_time <= Shift.endTime,
         ))
-        .limit(limit)
     )
-    shift_based = [a for a in result2.scalars().all() if a.id not in explicit_ids]
 
-    all_appts = explicit + shift_based
-    all_appts.sort(key=lambda a: a.dateTime)
-    return all_appts[:limit]
+    union_query = assigned_query.union(shift_query).order_by(Appointment.dateTime.asc())
+    _, items = await paginate(union_query, db, pagination)
+    return items
 
 async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
     # 0. Восстановить остатки из предыдущих списаний и удалить старые логи
