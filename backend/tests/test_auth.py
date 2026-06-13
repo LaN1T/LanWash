@@ -46,6 +46,17 @@ class TestRegister:
         assert response.status_code == 400
         assert "Регистрация не удалась" in response.json()["detail"]
 
+    @pytest.mark.asyncio
+    async def test_register_honeypot_rejected(self, async_client):
+        response = await async_client.post("/api/auth/register", json={
+            "username": "honeypotuser",
+            "password": "TestPass123!",
+            "displayName": "Honeypot",
+            "website": "http://spam.example.com",
+        })
+        assert response.status_code == 400
+        assert "Регистрация не удалась" in response.json()["detail"]
+
 
 class TestLogin:
     @pytest.mark.asyncio

@@ -31,6 +31,7 @@ class RegisterRequest(BaseModel):
     carModel: str = Field(default="", max_length=50, description="Марка и модель автомобиля")
     carNumber: str = Field(default="", max_length=50, description="Госномер автомобиля")
     referralCode: Optional[str] = Field(default=None, max_length=20, description="Реферальный код пригласившего")
+    website: str = Field(default="", max_length=100, description="Honeypot field, must be empty")
 
     @field_validator('email')
     @classmethod
