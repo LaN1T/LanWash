@@ -15,15 +15,21 @@ class ConnectivityMonitor {
   }) : _connectivity = connectivity ?? Connectivity();
 
   void start() {
-    _subscription = _connectivity.onConnectivityChanged.listen((results) {
-      final isOnline = results.any(
-        (r) =>
-            r == ConnectivityResult.wifi ||
-            r == ConnectivityResult.mobile ||
-            r == ConnectivityResult.ethernet,
-      );
-      onChanged(isOnline);
-    });
+    _subscription?.cancel();
+    _subscription = _connectivity.onConnectivityChanged.listen(
+      (results) {
+        final isOnline = results.any(
+          (r) =>
+              r == ConnectivityResult.wifi ||
+              r == ConnectivityResult.mobile ||
+              r == ConnectivityResult.ethernet,
+        );
+        onChanged(isOnline);
+      },
+      onError: (_) => onChanged(false),
+    );
+
+    checkNow().then(onChanged).catchError((_) => onChanged(false));
   }
 
   void stop() {
@@ -32,12 +38,16 @@ class ConnectivityMonitor {
   }
 
   Future<bool> checkNow() async {
-    final result = await _connectivity.checkConnectivity();
-    return result.any(
-      (r) =>
-          r == ConnectivityResult.wifi ||
-          r == ConnectivityResult.mobile ||
-          r == ConnectivityResult.ethernet,
-    );
+    try {
+      final result = await _connectivity.checkConnectivity();
+      return result.any(
+        (r) =>
+            r == ConnectivityResult.wifi ||
+            r == ConnectivityResult.mobile ||
+            r == ConnectivityResult.ethernet,
+      );
+    } catch (_) {
+      return false;
+    }
   }
 }

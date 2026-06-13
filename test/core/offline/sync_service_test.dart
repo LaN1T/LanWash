@@ -104,6 +104,24 @@ void main() {
       expect(pending.first.retryCount, 1);
     });
 
+    test('keeps action in queue when api throws an exception', () async {
+      await repo.queueAction(
+        id: 'a1',
+        action: 'delete_shift',
+        endpoint: '/shifts/1',
+        method: 'DELETE',
+        payload: '{}',
+      );
+      when(() => api.delete('/shifts/1')).thenThrow(Exception('boom'));
+
+      final failed = await sync.sync();
+
+      expect(failed, ['a1']);
+      final pending = await repo.getPendingActions();
+      expect(pending.length, 1);
+      expect(pending.first.retryCount, 1);
+    });
+
     test('mixed success and failure leaves only failed action', () async {
       await repo.queueAction(
         id: 'a1',
