@@ -14,6 +14,7 @@ from passlib.context import CryptContext
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.cache import cache
 from core.config import get_settings
 from core.redis_client import get_redis
 from core.transaction import atomic
@@ -396,9 +397,25 @@ class AuthService:
 
         return {"user": user, "access_token": access_token, "token_type": "bearer"}
 
-    async def get_washers(self) -> list[User]:
+    async def get_washers(self) -> list[dict]:
+        cache_key = "washers:list"
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         result = await self._db.execute(select(User).where(User.role == "washer").order_by(User.displayName.asc()))
-        return list(result.scalars().all())
+        users = list(result.scalars().all())
+        data = [
+            {
+                "id": u.id,
+                "username": u.username,
+                "displayName": u.displayName,
+                "avatarUrl": u.avatarUrl or "",
+            }
+            for u in users
+        ]
+        await cache.set(cache_key, data, ttl=300)
+        return data
 
     async def update_profile(self, user_id: int, current_user: User, req, token: str) -> User:
         from models import UpdateProfileRequest
@@ -447,6 +464,8 @@ class AuthService:
             await self._db.execute(update(User).where(User.id == user_id).values(updates))
             await self._db.commit()
             await self._db.refresh(user)
+            if user.role == "washer":
+                await cache.delete("washers:list")
 
         return user
 

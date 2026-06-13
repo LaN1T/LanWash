@@ -27,27 +27,7 @@ router = APIRouter(
 @limiter.limit("60/minute")
 async def get_promos(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     svc = ServicesService(db)
-    promos = await svc.get_promos()
-    if not promos:
-        return []
-
-    promo_ids = [p.id for p in promos]
-    extras_map = await svc.get_promo_extras_map(promo_ids)
-
-    out = []
-    for p in promos:
-        out.append({
-            "id": p.id,
-            "washTypeId": p.washTypeId,
-            "name": p.name,
-            "description": p.description,
-            "price": p.price,
-            "discountPercent": p.discountPercent,
-            "duration": p.duration,
-            "weekendOnly": p.weekendOnly,
-            "includedExtraIds": extras_map.get(p.id, []),
-        })
-    return out
+    return await svc.get_promos()
 
 
 @router.get("/", response_model=list[ServiceResponse])
