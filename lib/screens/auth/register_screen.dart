@@ -166,7 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
-        title: Text('Регистрация',
+        title: Text(lang.tr('register_title'),
             style: TextStyle(color: AppStyles.adaptiveTextPrimary(context))),
         actions: [_buildLanguageButton(), _buildThemeButton()],
       ),

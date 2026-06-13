@@ -44,7 +44,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Регистрация'), findsOneWidget);
+      expect(find.text('Регистрация'), findsNWidgets(2));
       expect(find.byType(TextFormField), findsNWidgets(6));
       expect(find.text('Зарегистрироваться'), findsOneWidget);
     });
@@ -53,10 +53,12 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text('Зарегистрироваться'));
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Обязательное поле'), findsNWidgets(4));
+      expect(find.text('Обязательное поле'), findsNWidgets(3));
+      expect(find.text('Введите пароль'), findsOneWidget);
     });
 
     testWidgets('shows validation error for short login', (tester) async {
@@ -64,6 +66,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(2), 'ab');
+      await tester.ensureVisible(find.text('Зарегистрироваться'));
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
@@ -75,6 +78,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextFormField).at(3), '123');
+      await tester.ensureVisible(find.text('Зарегистрироваться'));
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
@@ -103,6 +107,7 @@ void main() {
       await tester.enterText(
           find.byType(TextFormField).at(5), '+7 (999) 000-00-00');
 
+      await tester.ensureVisible(find.text('Зарегистрироваться'));
       await tester.tap(find.text('Зарегистрироваться'));
       await tester.pumpAndSettle();
 
@@ -125,7 +130,8 @@ void main() {
             displayName: any(named: 'displayName'),
             email: any(named: 'email'),
             phone: any(named: 'phone'),
-          )).thenAnswer((_) async => null);
+          )).thenAnswer((_) => Future.delayed(
+              const Duration(milliseconds: 100), () => null));
       when(() => mockAuth.userLogin).thenReturn('ivan123');
       when(() => mockAppointment.reloadForUser(any(), any()))
           .thenAnswer((_) => Future.value());
@@ -141,11 +147,12 @@ void main() {
       await tester.enterText(
           find.byType(TextFormField).at(5), '+7 (999) 000-00-00');
 
+      await tester.ensureVisible(find.text('Зарегистрироваться'));
       await tester.tap(find.text('Зарегистрироваться'));
-      await tester.pumpAndSettle(); // loading starts
+      await tester.pump(const Duration(milliseconds: 50));
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 150));
 
       verify(() => mockAppointment.reloadForUser('ivan123', mockAuth))
           .called(1);
