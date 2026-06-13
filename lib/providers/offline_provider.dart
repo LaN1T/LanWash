@@ -15,6 +15,7 @@ class OfflineProvider extends ChangeNotifier {
   bool _isOnline = true;
   bool _isSyncing = false;
   int _pendingCount = 0;
+  bool _disposed = false;
 
   OfflineProvider({
     required ConnectivityMonitor monitor,
@@ -34,6 +35,7 @@ class OfflineProvider extends ChangeNotifier {
   bool get hasPendingActions => _pendingCount > 0;
 
   void _onConnectivityChanged(bool isOnline) {
+    if (_disposed) return;
     final wasOnline = _isOnline;
     _isOnline = isOnline;
     notifyListeners();
@@ -44,19 +46,20 @@ class OfflineProvider extends ChangeNotifier {
 
   /// Refreshes the pending action count from local storage.
   Future<void> refresh() async {
+    if (_disposed) return;
     try {
       _pendingCount = await _repository.getPendingCount();
     } catch (e, st) {
       if (kDebugMode) debugPrint('OfflineProvider refresh error: $e\n$st');
       _pendingCount = 0;
     }
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   /// Drains the pending-action queue and refreshes the count.
   /// Returns the number of actions that still failed.
   Future<int> sync() async {
-    if (_isSyncing) return 0;
+    if (_disposed || _isSyncing) return 0;
     _isSyncing = true;
     notifyListeners();
 
@@ -70,7 +73,7 @@ class OfflineProvider extends ChangeNotifier {
       _isSyncing = false;
     }
 
-    await refresh();
+    if (!_disposed) await refresh();
     return failed;
   }
 
@@ -79,6 +82,8 @@ class OfflineProvider extends ChangeNotifier {
     // The monitor is an app-wide singleton; we only stop listening to avoid
     // notifying a disposed ChangeNotifier. Stopping the monitor itself would
     // break background sync for the whole app.
+    if (_disposed) return;
+    _disposed = true;
     _monitor.onChanged = (_) {};
     super.dispose();
   }

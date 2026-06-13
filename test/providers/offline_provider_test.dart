@@ -94,7 +94,10 @@ void main() {
         method: 'POST',
         payload: '{}',
       );
-      when(() => sync.sync()).thenAnswer((_) async => []);
+      when(() => sync.sync()).thenAnswer((_) async {
+        await repo.removePendingAction('a1');
+        return [];
+      });
 
       final future = provider.sync();
       expect(provider.isSyncing, true);
