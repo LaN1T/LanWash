@@ -1,4 +1,3 @@
-import asyncio
 import json
 import uuid
 from collections import defaultdict
@@ -99,11 +98,16 @@ async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]
     return best_washer
 
 
-async def _send_fcm_bg(tokens: list[str], title: str, body: str, data: dict):
-    try:
-        await fcm_service.send_notification_to_tokens(tokens, title=title, body=body, data=data)
-    except Exception as e:
-        logger.warning("fcm_send_failed", error=str(e))
+async def _notify_fcm(request: Request, tokens: list[str], title: str, body: str, data: dict | None = None):
+    """Enqueue FCM notification via ARQ or send inline if worker is unavailable."""
+    arq_pool = getattr(request.app.state, "arq_pool", None)
+    if arq_pool:
+        await arq_pool.enqueue_job("send_fcm_notification", tokens, title, body, data)
+    else:
+        try:
+            await fcm_service.send_notification_to_tokens(tokens, title, body, data)
+        except Exception as e:
+            logger.warning("fcm_send_failed", error=str(e))
 
 router = APIRouter(
     prefix="/api/appointments",
@@ -505,12 +509,12 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
                 except Exception:
                     pass
             if tokens:
-                asyncio.create_task(_send_fcm_bg(
+                await _notify_fcm(request, 
                     tokens,
                     "Новая запись создана!",
                     f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана.",
                     {}
-                ))
+                )
 
     appointments_total.labels(status=effective_status).inc()
     await db.refresh(appt)
@@ -726,16 +730,16 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
                 elif appt.status == "scheduled":
                     title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}."
 
-            asyncio.create_task(_send_fcm_bg(client_tokens, title, body, {"type": "appointment_updated", "id": appt.id}))
+            await _notify_fcm(request, client_tokens, title, body, {"type": "appointment_updated", "id": appt.id})
 
             if old_datetime != appt.dateTime:
                 dt_str = format_date(appt.dateTime)
-                asyncio.create_task(_send_fcm_bg(
+                await _notify_fcm(request, 
                     client_tokens,
                     "Время мойки изменено",
                     f"Ваша запись перенесена на {dt_str}.",
                     {"type": "appointment_updated", "id": appt.id}
-                ))
+                )
 
     new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
     old_assigned_washers = json.loads(old_assigned_washer) if old_assigned_washer else []
@@ -758,22 +762,22 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         encrypted_tokens = tokens_map.get(washer_username, [])
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
-            asyncio.create_task(_send_fcm_bg(
+            await _notify_fcm(request, 
                 tokens,
                 "Новая запись",
                 f"Вы назначены на мойку {appt.carModel} {dt_str}.",
                 {}
-            ))
+            )
     for washer_username in removed_washers:
         encrypted_tokens = tokens_map.get(washer_username, [])
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
-            asyncio.create_task(_send_fcm_bg(
+            await _notify_fcm(request, 
                 tokens,
                 "Назначение отменено",
                 f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}.",
                 {}
-            ))
+            )
 
     await db.refresh(appt)
     return appt
@@ -803,12 +807,12 @@ async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends
     tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == owner))
     client_tokens = tokens_res.scalars().all()
     if client_tokens:
-        asyncio.create_task(_send_fcm_bg(
+        await _notify_fcm(request, 
             client_tokens,
             "Запись отменена",
             f"Ваша запись на мойку {car_model} в {date_time} была отменена.",
             {}
-        ))
+        )
 
     await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
     await db.commit()
@@ -910,21 +914,21 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             if username in current:
                 # Назначен
                 box_str = f" Бокс №{appt.box_index + 1}" if appt.box_index is not None else ""
-                asyncio.create_task(_send_fcm_bg(
+                await _notify_fcm(request, 
                     tokens,
                     "Новая запись",
                     f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
                     {"type": "appointment_updated", "id": appt.id}
-                ))
+                )
                 logger.info("notification_sent", event="assignment", username=username)
             else:
                 # Снят
-                asyncio.create_task(_send_fcm_bg(
+                await _notify_fcm(request, 
                     tokens,
                     "Запись снята",
                     f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
                     {"type": "appointment_updated", "id": appt.id}
-                ))
+                )
                 logger.info("notification_sent", event="removal", username=username)
 
     return appt
@@ -1081,12 +1085,12 @@ async def scan_appointment_qr(
                 except Exception:
                     pass
             if client_tokens:
-                asyncio.create_task(_send_fcm_bg(
+                await _notify_fcm(request, 
                     client_tokens,
                     title="Начало обслуживания",
                     body="Мойка началась",
                     data={"type": "appointment_updated", "id": appt.id},
-                ))
+                )
 
     await db.refresh(appt)
     return appt
@@ -1139,12 +1143,12 @@ async def report_late(
             except Exception:
                 pass
         if tokens:
-            asyncio.create_task(_send_fcm_bg(
+            await _notify_fcm(request, 
                 tokens,
                 title="Оповещение об опоздании",
                 body=f"Клиент {appt.clientName} опаздывает на {req.minutes} мин",
                 data={"type": "appointment_updated", "id": appt.id},
-            ))
+            )
 
     return appt
 
@@ -1202,12 +1206,12 @@ async def cancel_with_reason(
             except Exception:
                 pass
         if tokens:
-            asyncio.create_task(_send_fcm_bg(
+            await _notify_fcm(request, 
                 tokens,
                 title="Запись отменена",
                 body=f"Запись отменена: {req.reason}",
                 data={"type": "appointment_updated", "id": appt.id},
-            ))
+            )
 
     return appt
 
