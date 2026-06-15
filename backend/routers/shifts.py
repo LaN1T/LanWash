@@ -39,6 +39,9 @@ def _time_to_minutes(time_str: str) -> int:
     return h * 60 + m
 
 
+_MAX_SHIFT_RANGE_DAYS = 180
+
+
 @router.get("/", response_model=List[ShiftResponse])
 @limiter.limit("60/minute")
 async def list_shifts(
@@ -51,6 +54,14 @@ async def list_shifts(
     if not _parse_date(start_date) or not _parse_date(end_date):
         raise HTTPException(
             status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
+        )
+
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    if (end_dt - start_dt).days > _MAX_SHIFT_RANGE_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Диапазон не может превышать {_MAX_SHIFT_RANGE_DAYS} дней",
         )
 
     svc = ShiftsService(db)

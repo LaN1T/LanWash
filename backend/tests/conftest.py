@@ -9,6 +9,7 @@ import pytest_asyncio
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["JWT_SECRET_KEY"] = "test_secret_key_minimum_32_chars_long"
 os.environ["INITIAL_ADMIN_PASSWORD"] = "TestPass123!"
+os.environ["FCM_ENCRYPTION_KEY"] = "zM1-xb7fhoXQAbRzvCGSyMeZb37IdYLS2GN_zBUrFYw="
 
 # Добавляем backend в PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

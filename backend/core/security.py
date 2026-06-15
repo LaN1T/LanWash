@@ -11,8 +11,9 @@ _key_str = os.getenv("FCM_ENCRYPTION_KEY")
 if not _key_str:
     if settings.is_production:
         raise RuntimeError(
-            "FCM_ENCRYPTION_KEY must be set in production. "
-            "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+            "FCM_ENCRYPTION_KEY must be set in production. Generate one with: "
+            "python -c 'from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())'"
         )
     # Fallback для dev/testing только — сгенерировать временный ключ
     from cryptography.fernet import Fernet as _Fernet

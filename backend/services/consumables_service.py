@@ -1,11 +1,13 @@
 import io
 import asyncio
+import json
 import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.redis_client import get_redis
 from db_models import (
     Consumable,
     ConsumableRefillLog,
@@ -65,8 +67,32 @@ class ConsumablesService:
         )
         return list(result.scalars().all())
 
+    _FORECAST_CACHE_TTL_SECONDS = 300
+
     async def get_inventory_forecast(self):
-        return await generate_inventory_forecast(self._db)
+        cache_key = "inventory:forecast"
+        try:
+            redis = get_redis()
+            if redis:
+                cached = await redis.get(cache_key)
+                if cached:
+                    return json.loads(cached)
+        except Exception:
+            pass
+
+        forecast = await generate_inventory_forecast(self._db)
+        data = forecast.model_dump()
+
+        try:
+            redis = get_redis()
+            if redis:
+                await redis.setex(
+                    cache_key, self._FORECAST_CACHE_TTL_SECONDS, json.dumps(data)
+                )
+        except Exception:
+            pass
+
+        return data
 
     async def get_consumable(self, consumable_id: str) -> Consumable | None:
         result = await self._db.execute(select(Consumable).where(Consumable.id == consumable_id))
@@ -244,9 +270,28 @@ class ConsumablesService:
             return "'" + val
         return val
 
+    _MAX_EXPORT_DAYS = 90
+
     async def export_consumables(self, date_from: str | None, date_to: str | None) -> bytes:
         if not HAS_OPENPYXL:
             raise RuntimeError("openpyxl не установлен")
+
+        today = datetime.now().date()
+        if not date_to:
+            date_to = today.isoformat()
+        if not date_from:
+            date_from = (datetime.fromisoformat(date_to).date() - timedelta(days=30)).isoformat()
+
+        try:
+            from_date = datetime.fromisoformat(date_from).date()
+            to_date = datetime.fromisoformat(date_to).date()
+        except ValueError:
+            raise ValueError("date_from and date_to must be valid ISO dates (YYYY-MM-DD)")
+
+        if from_date > to_date:
+            raise ValueError("date_from must not be later than date_to")
+        if (to_date - from_date).days > self._MAX_EXPORT_DAYS:
+            raise ValueError(f"Export range must not exceed {self._MAX_EXPORT_DAYS} days")
 
         wb = self._create_workbook()
         wb.remove(wb.active)

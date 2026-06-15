@@ -1,5 +1,4 @@
 import ipaddress
-import os
 
 import jwt
 from fastapi import Request
@@ -63,11 +62,16 @@ def get_user_or_ip_key(request: Request) -> str:
 
 
 # Use Redis for rate limiting in production (multi-worker safe).
-# Fallback to in-memory storage if REDIS_URL is not set.
-_redis_url = os.getenv("REDIS_URL")
+# Fallback to in-memory storage only in development/testing.
+_redis_url = settings.redis_url
 _storage_uri = _redis_url if _redis_url else "memory://"
 
-if os.getenv("DISABLE_RATE_LIMIT") == "true":
+if settings.disable_rate_limit:
+    if settings.is_production:
+        raise RuntimeError(
+            "DISABLE_RATE_LIMIT must not be set in production"
+        )
+
     class DummyLimiter:
         """No-op limiter for load testing."""
         def limit(self, *args, **kwargs):
@@ -81,6 +85,10 @@ if os.getenv("DISABLE_RATE_LIMIT") == "true":
 
     limiter = DummyLimiter()
 else:
+    if settings.is_production and not _redis_url:
+        raise RuntimeError(
+            "REDIS_URL must be set in production for distributed rate limiting"
+        )
     limiter = Limiter(
         key_func=get_user_or_ip_key,
         storage_uri=_storage_uri,

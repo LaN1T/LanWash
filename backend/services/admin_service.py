@@ -18,7 +18,19 @@ class AdminService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
+    _DASHBOARD_CACHE_TTL_SECONDS = 60
+
     async def get_dashboard(self, from_date: str, to_date: str) -> dict:
+        cache_key = f"dashboard:{from_date}:{to_date}"
+        try:
+            redis = get_redis()
+            if redis:
+                cached = await redis.get(cache_key)
+                if cached:
+                    return json.loads(cached)
+        except Exception:
+            pass
+
         from_dt = datetime.strptime(from_date, "%Y-%m-%d")
         to_dt = datetime.strptime(to_date, "%Y-%m-%d")
         to_dt_inclusive = to_dt + timedelta(days=1)
@@ -178,7 +190,7 @@ class AdminService:
             for c in top_clients:
                 c["name"] = name_map.get(c["name"], c["name"])
 
-        return {
+        result = {
             "fromDate": from_date,
             "toDate": to_date,
             "totalRevenue": total_revenue,
@@ -193,6 +205,17 @@ class AdminService:
             "topWashers": top_washers,
             "topClients": top_clients,
         }
+
+        try:
+            redis = get_redis()
+            if redis:
+                await redis.setex(
+                    cache_key, self._DASHBOARD_CACHE_TTL_SECONDS, json.dumps(result)
+                )
+        except Exception:
+            pass
+
+        return result
 
     async def get_forecast(self, days: int) -> ForecastResponse:
         cache_key = f"forecast:{days}"

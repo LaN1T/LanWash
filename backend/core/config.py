@@ -47,11 +47,26 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     ai_provider: Literal["gemini", "groq"] = "groq"
 
+    # Monitoring
+    prometheus_api_token: str = ""
+    disable_rate_limit: bool = False
+
     @property
     def cors_origins(self) -> List[str]:
         raw = self.allowed_origins
         if not raw:
-            return ["http://localhost:8080", "http://localhost:3000"]
+            if self.is_production:
+                raise ValueError(
+                    "ALLOWED_ORIGINS must be set in production"
+                )
+            return [
+                "http://localhost:8080",
+                "http://localhost:3000",
+                "http://localhost:5000",
+                "http://127.0.0.1:8080",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5000",
+            ]
         return [o.strip() for o in raw.split(",") if o.strip()]
 
     @property

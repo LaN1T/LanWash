@@ -17,6 +17,8 @@ router = APIRouter(
     dependencies=[Depends(check_roles(["admin", "washer"]))],
 )
 
+_MAX_AVAILABILITY_RANGE_DAYS = 180
+
 
 def _parse_date(date_str: str) -> bool:
     try:
@@ -50,6 +52,15 @@ async def get_availability(
         raise HTTPException(
             status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
         )
+
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    if (end_dt - start_dt).days > _MAX_AVAILABILITY_RANGE_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Диапазон не может превышать {_MAX_AVAILABILITY_RANGE_DAYS} дней",
+        )
+
     return await service.get_availability(user_id, start_date, end_date)
 
 

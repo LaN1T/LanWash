@@ -28,7 +28,6 @@ WORKDIR /app
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
@@ -38,8 +37,15 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Create non-root user
 RUN groupadd -r lanwash && useradd -r -g lanwash lanwash
 
-# Copy application code
-COPY --chown=lanwash:lanwash . .
+# Copy only runtime application code
+COPY --chown=lanwash:lanwash main.py alembic.ini models.py database.py db_models.py ./
+COPY --chown=lanwash:lanwash core/ core/
+COPY --chown=lanwash:lanwash routers/ routers/
+COPY --chown=lanwash:lanwash services/ services/
+COPY --chown=lanwash:lanwash tasks/ tasks/
+COPY --chown=lanwash:lanwash bot/ bot/
+COPY --chown=lanwash:lanwash alembic/ alembic/
+COPY --chown=lanwash:lanwash migrations/ migrations/
 
 # Switch to non-root user
 USER lanwash
@@ -49,7 +55,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
 # Run with uvicorn (production settings)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--workers", "2"]
