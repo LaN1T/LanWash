@@ -10,32 +10,14 @@
 
 ---
 
-### Task 1: Extend `ReviewCreateScreen` to accept `Appointment` and return success
+### Task 1: Make `ReviewCreateScreen` return success flag
 
 **Files:**
 - Modify: `lib/screens/client/review_create_screen.dart:7-55`
 
-- [ ] **Step 1: Add `Appointment?` parameter and success return value**
+- [ ] **Step 1: Return a success flag on submission**
 
-Replace the constructor and `_submit` method with:
-
-```dart
-class ReviewCreateScreen extends StatefulWidget {
-  final String appointmentId;
-  final Appointment? appointment;
-
-  const ReviewCreateScreen({
-    super.key,
-    required this.appointmentId,
-    this.appointment,
-  });
-
-  @override
-  State<ReviewCreateScreen> createState() => _ReviewCreateScreenState();
-}
-```
-
-In `_submit`, after success:
+In `_submit`, after the API returns success:
 
 ```dart
 if (ok) {
@@ -46,22 +28,7 @@ if (ok) {
 }
 ```
 
-- [ ] **Step 2: Optionally show wash type in the title**
-
-In `build`, change `AppBar title` to:
-
-```dart
-title: Text(
-  widget.appointment != null
-      ? 'Оцените ${widget.appointment!.washTypeName}'
-      : 'Оцените мойку',
-  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-),
-```
-
-Use `widget.appointment?.washTypeName ?? 'мойку'` if the model exposes it; otherwise fall back to the original title.
-
-- [ ] **Step 3: Run analyzer on the file**
+- [ ] **Step 2: Run analyzer on the file**
 
 Run:
 
@@ -71,11 +38,11 @@ Run:
 
 Expected: No issues.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add lib/screens/client/review_create_screen.dart
-git commit -m "feat(reviews): allow passing Appointment and return success flag"
+git commit -m "feat(reviews): return success flag from ReviewCreateScreen"
 ```
 
 ---
@@ -126,7 +93,6 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
       MaterialPageRoute(
         builder: (_) => ReviewCreateScreen(
           appointmentId: widget.appointment.id,
-          appointment: widget.appointment,
         ),
       ),
     );

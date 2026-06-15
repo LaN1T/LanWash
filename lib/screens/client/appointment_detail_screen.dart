@@ -318,14 +318,14 @@ class _ClientAppointmentDetailScreenState
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    await Navigator.push(
+                    final submitted = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
                             ReviewCreateScreen(appointmentId: appointmentId),
                       ),
                     );
-                    if (mounted) {
+                    if (submitted == true && mounted) {
                       setState(() {
                         _hasReviewFuture = context
                             .read<ApiService>()
