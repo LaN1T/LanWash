@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from database import get_db
 from db_models import User
-from models import ShiftRequest, ShiftResponse
+from models import ShiftMoveRequest, ShiftRequest, ShiftResponse
 from services.auth_service import get_current_user
 from services.shifts_service import (
     ShiftAccessDeniedError,
@@ -213,3 +213,28 @@ async def delete_shift(
     except ShiftAccessDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     return None
+
+
+@router.patch("/{shift_id}/move", response_model=ShiftResponse)
+@limiter.limit("10/minute")
+async def move_shift(
+    request: Request,
+    shift_id: int,
+    req: ShiftMoveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not _parse_date(req.targetDate):
+        raise HTTPException(status_code=400, detail="Неверный формат даты")
+
+    svc = ShiftsService(db)
+    try:
+        return await svc.move_shift(
+            shift_id, req, current_user.username, current_user.role == "admin"
+        )
+    except ShiftNotFoundError:
+        raise HTTPException(status_code=404, detail="Смена не найдена")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
