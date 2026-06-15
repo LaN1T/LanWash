@@ -49,15 +49,16 @@ jobs:
       - name: Security scan
         run: |
           pip install bandit pip-audit
-          bandit -r . -f json -o bandit-report.json || true
+          bandit -r . -f json -o bandit-report.json
           pip-audit --requirement requirements.txt
 
       - name: Verify migrations
         env:
           ENVIRONMENT: testing
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
-          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY || 'test_secret_key_minimum_32_chars_long' }}
-          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD || 'TestPass123!' }}
+          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
         run: |
           alembic upgrade head
           alembic check
@@ -66,7 +67,8 @@ jobs:
         env:
           ENVIRONMENT: testing
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
-          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY || 'test_secret_key_minimum_32_chars_long' }}
-          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD || 'TestPass123!' }}
+          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
         run: |
           python -m pytest tests/ -v --tb=short

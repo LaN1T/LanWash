@@ -95,6 +95,8 @@ async def export_consumables(
     svc = ConsumablesService(db)
     try:
         data = await svc.export_consumables(date_from, date_to)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except RuntimeError:
         raise HTTPException(500, "Internal server error")
 

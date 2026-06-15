@@ -14,6 +14,8 @@ import '../models/report_entry.dart';
 import '../models/promo.dart';
 import '../models/wash_type.dart';
 import '../models/shift.dart';
+import '../models/shift_template.dart';
+import '../models/washer_availability.dart';
 import '../models/consumable.dart';
 import '../models/daily_report.dart';
 import '../models/review.dart';
@@ -23,6 +25,7 @@ import '../models/tip.dart';
 import '../models/subscription.dart';
 import '../models/admin_dashboard.dart';
 import '../models/consumable_forecast.dart';
+import '../models/shift_load_report.dart';
 import '../models/forecast.dart';
 import '../models/support_chat.dart';
 import '../models/support_message.dart';
@@ -1032,6 +1035,156 @@ class ApiService {
     );
   }
 
+  Future<Shift?> reopenShift(int shiftId) async {
+    final result = await ApiClient.put('/shifts/$shiftId/reopen');
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'reopen_shift',
+            endpoint: '/shifts/$shiftId/reopen',
+            method: 'PUT',
+            payload: {'id': shiftId},
+          );
+        }
+        return null;
+      },
+    );
+  }
+
+  Future<Shift?> moveShift(
+      int shiftId, int targetUserId, String targetDate) async {
+    final body = {
+      'targetUserId': targetUserId,
+      'targetDate': targetDate,
+    };
+    final result = await ApiClient.patch('/shifts/$shiftId/move', body: body);
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  // ─── Shift Templates ───────────────────────────────────────────────────────
+  Future<List<ShiftTemplate>> getShiftTemplates() async {
+    final result = await ApiClient.getList('/shift-templates/');
+    return result.when(
+      success: (list) => list
+          .cast<Map<String, dynamic>>()
+          .map(ShiftTemplate.fromMap)
+          .toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<ShiftTemplate?> createShiftTemplate(ShiftTemplate template) async {
+    final result = await ApiClient.post('/shift-templates/', body: template.toMap());
+    return result.when(
+      success: (data) => ShiftTemplate.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<ShiftTemplate?> updateShiftTemplate(ShiftTemplate template) async {
+    final result = await ApiClient.put(
+      '/shift-templates/${template.id}',
+      body: template.toMap(),
+    );
+    return result.when(
+      success: (data) => ShiftTemplate.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> deleteShiftTemplate(int id) async {
+    final result = await ApiClient.delete('/shift-templates/$id');
+    return result.isSuccess;
+  }
+
+  Future<int> applyShiftTemplate(
+    int templateId, {
+    required String weekStart,
+    int? targetUserId,
+  }) async {
+    final body = {
+      'weekStart': weekStart,
+      if (targetUserId != null) 'targetUserId': targetUserId,
+    };
+    final result = await ApiClient.post('/shift-templates/$templateId/apply', body: body);
+    return result.when(
+      success: (data) => (data['applied'] as int?) ?? 0,
+      failure: (_) => 0,
+    );
+  }
+
+  // ─── Washer Availability ───────────────────────────────────────────────────
+  Future<List<WasherAvailability>> getWasherAvailability(
+    int userId,
+    String startDate,
+    String endDate,
+  ) async {
+    final result = await ApiClient.getList(
+      '/washers/$userId/availability?start_date=$startDate&end_date=$endDate',
+    );
+    return result.when(
+      success: (list) => list
+          .cast<Map<String, dynamic>>()
+          .map(WasherAvailability.fromMap)
+          .toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<List<WasherAvailability>> updateWasherAvailability(
+    int userId,
+    List<WasherAvailability> entries,
+  ) async {
+    final body = {
+      'entries': entries
+          .map((e) => {'date': e.date, 'status': e.status})
+          .toList(),
+    };
+    final result = await ApiClient.put(
+      '/washers/$userId/availability',
+      body: body,
+    );
+    return result.when(
+      success: (data) {
+        final list = (data['entries'] as List<dynamic>?) ?? [];
+        return list
+            .cast<Map<String, dynamic>>()
+            .map(WasherAvailability.fromMap)
+            .toList();
+      },
+      failure: (_) => [],
+    );
+  }
+
+  Future<ShiftLoadReport?> getShiftLoadReport(
+    String startDate,
+    String endDate,
+  ) async {
+    final result = await ApiClient.get(
+      '/reports/shift-load/?start_date=$startDate&end_date=$endDate',
+    );
+    return result.when(
+      success: (data) => ShiftLoadReport.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> deleteWasherAvailability(
+    int userId,
+    String startDate,
+    String endDate,
+  ) async {
+    final result = await ApiClient.delete(
+      '/washers/$userId/availability?start_date=$startDate&end_date=$endDate',
+    );
+    return result.isSuccess;
+  }
+
   Future<bool> deleteShift(int shiftId) async {
     final result = await ApiClient.delete('/shifts/$shiftId');
     if (result.isSuccess) return true;
@@ -1047,8 +1200,6 @@ class ApiService {
     }
     return false;
   }
-
-
 
   Future<List<Shift>> getTodayShifts() async {
     final result = await ApiClient.getList('/shifts/today');

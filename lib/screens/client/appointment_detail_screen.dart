@@ -318,14 +318,14 @@ class _ClientAppointmentDetailScreenState
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    await Navigator.push(
+                    final submitted = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
                             ReviewCreateScreen(appointmentId: appointmentId),
                       ),
                     );
-                    if (mounted) {
+                    if (submitted == true && mounted) {
                       setState(() {
                         _hasReviewFuture = context
                             .read<ApiService>()
@@ -961,9 +961,22 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
     }
   }
 
+  static const _allowedSbpSchemes = {'https', 'http', 'sbp'};
+
   Future<void> _openSbpUrl() async {
     if (_sbpUrl == null) return;
     final uri = Uri.parse(_sbpUrl!);
+    if (!_allowedSbpSchemes.contains(uri.scheme)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Неподдерживаемая ссылка оплаты'),
+            backgroundColor: AppStyles.danger,
+          ),
+        );
+      }
+      return;
+    }
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {

@@ -7,9 +7,10 @@ from datetime import datetime, timezone
 
 import sentry_sdk
 import structlog
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from prometheus_fastapi_instrumentator import Instrumentator
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -38,11 +39,13 @@ from routers import (
     reports,
     reviews,
     services,
+    shift_templates,
     shifts,
     subscriptions,
     support,
     tips,
     wash_types,
+    washer_availability,
 )
 from services.auth_service import check_roles, get_current_user
 from services.websocket_manager import connect, disconnect
@@ -94,9 +97,21 @@ if settings.sentry_dsn:
 _start_time = datetime.now(timezone.utc)
 
 
+def _validate_production_settings():
+    if not settings.is_production:
+        return
+    if not settings.redis_url:
+        raise RuntimeError("REDIS_URL must be set in production")
+    if settings.disable_rate_limit:
+        raise RuntimeError("DISABLE_RATE_LIMIT must not be set in production")
+    if not settings.prometheus_api_token:
+        raise RuntimeError("PROMETHEUS_API_TOKEN must be set in production")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("app_starting", environment=settings.environment)
+    _validate_production_settings()
     await init_db()
     logger.info("app_ready", environment=settings.environment)
 
@@ -157,8 +172,25 @@ async def get_avatar(request: Request, filename: str, current_user=Depends(get_c
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Prometheus metrics (exposed at /metrics)
-Instrumentator().instrument(app).expose(app, include_in_schema=False)
+# Prometheus metrics (exposed at /metrics) — protected by static token
+_metrics_scheme = HTTPBearer(auto_error=False)
+
+
+def _verify_metrics_token(
+    credentials: HTTPAuthorizationCredentials = Security(_metrics_scheme),
+):
+    if not settings.prometheus_api_token:
+        raise HTTPException(status_code=403, detail="Metrics auth not configured")
+    if not credentials or credentials.credentials != settings.prometheus_api_token:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return credentials.credentials
+
+
+Instrumentator().instrument(app).expose(
+    app,
+    include_in_schema=False,
+    dependencies=[Depends(_verify_metrics_token)],
+)
 
 # Simple in-memory rate limit for /metrics (Prometheus scrapes every 10-15s)
 _METRICS_RATE_LIMIT: dict[str, list[float]] = {}
@@ -178,7 +210,8 @@ async def _metrics_rate_limit_middleware(request: Request, call_next):
         _METRICS_RATE_LIMIT[ip] = window
     return await call_next(request)
 
-# CORS — development allows any localhost port; production uses strict whitelist
+# CORS — strict whitelist in all environments. In production ALLOWED_ORIGINS
+# is mandatory; in development/testing it falls back to known local ports.
 _EXPOSED_HEADERS = [
     "X-Total-Pages",
     "X-Current-Page",
@@ -188,25 +221,14 @@ _EXPOSED_HEADERS = [
     "X-Frame-Options",
 ]
 
-if settings.is_production:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
-        expose_headers=_EXPOSED_HEADERS,
-    )
-else:
-    # Development / testing: allow any localhost port (Flutter web random ports)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
-        expose_headers=_EXPOSED_HEADERS,
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+    expose_headers=_EXPOSED_HEADERS,
+)
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdMiddleware)
@@ -280,6 +302,8 @@ app.include_router(reports.router, dependencies=[Depends(check_roles(["admin", "
 app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
+app.include_router(shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
+app.include_router(washer_availability.router)
 app.include_router(reviews.router)
 app.include_router(cars.router)
 app.include_router(referrals.router)

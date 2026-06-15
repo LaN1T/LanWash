@@ -395,6 +395,106 @@ class ShiftResponse(BaseModel):
     updatedAt: str
 
 
+class ShiftMoveRequest(BaseModel):
+    targetUserId: int = Field(..., ge=1)
+    targetDate: str = Field(..., max_length=10, description="YYYY-MM-DD")
+
+
+# ─── Shift Templates ─────────────────────────────────────────────────────────
+class ShiftTemplateSlot(BaseModel):
+    weekday: int = Field(..., ge=1, le=7, description="1=Monday ... 7=Sunday")
+    startTime: str = Field(..., max_length=5, description="HH:MM")
+    endTime: str = Field(..., max_length=5, description="HH:MM")
+
+
+class ShiftTemplateCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    isDefault: bool = False
+    slots: List[ShiftTemplateSlot]
+
+
+class ShiftTemplateUpdateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    isDefault: Optional[bool] = None
+    slots: Optional[List[ShiftTemplateSlot]] = None
+
+
+class ShiftTemplateApplyRequest(BaseModel):
+    weekStart: str = Field(..., max_length=10, description="YYYY-MM-DD, must be Monday")
+    targetUserId: Optional[int] = None
+
+
+class ShiftTemplateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ownerUsername: str
+    name: str
+    isDefault: bool
+    slots: List[ShiftTemplateSlot]
+
+
+# ─── Washer Availability ─────────────────────────────────────────────────────
+class WasherAvailabilityEntry(BaseModel):
+    date: str = Field(..., max_length=10, description="YYYY-MM-DD")
+    status: Literal["available", "unavailable"]
+
+
+class WasherAvailabilityUpdateRequest(BaseModel):
+    entries: List[WasherAvailabilityEntry]
+
+
+class WasherAvailabilityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    date: str
+    status: str
+    updatedAt: str
+
+
+# ─── Shift Load Report ───────────────────────────────────────────────────────
+class ShiftLoadDailyEntry(BaseModel):
+    date: str
+    confirmedMinutes: int
+    pendingMinutes: int
+
+
+class ShiftLoadWasherStat(BaseModel):
+    userId: int
+    displayName: str
+    confirmedMinutes: int
+    pendingMinutes: int
+    rejectedMinutes: int
+    utilizationPercent: float
+    isOvertime: bool
+    isUnderload: bool
+
+
+class ShiftLoadStatusCounts(BaseModel):
+    confirmed: int
+    pending: int
+    rejected: int
+
+
+class ShiftLoadAvailabilityCoverage(BaseModel):
+    availableDays: int
+    unavailableDays: int
+    unknownDays: int
+
+
+class ShiftLoadResponse(BaseModel):
+    startDate: str
+    endDate: str
+    targetWeeklyMinutesPerWasher: int
+    dailyHours: List[ShiftLoadDailyEntry]
+    washerStats: List[ShiftLoadWasherStat]
+    statusCounts: ShiftLoadStatusCounts
+    conflictCount: int
+    availabilityCoverage: ShiftLoadAvailabilityCoverage
+
+
 # ─── Reviews ─────────────────────────────────────────────────────────────────
 class ReviewCreateRequest(BaseModel):
     userId: int = Field(..., ge=1)

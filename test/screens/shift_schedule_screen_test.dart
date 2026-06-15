@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:lanwash/models/shift.dart';
 import 'package:lanwash/models/user.dart';
 import 'package:lanwash/screens/shared/shift_schedule_screen.dart';
+import 'package:lanwash/widgets/shift_schedule/shift_analytics_header.dart';
+import 'package:lanwash/widgets/shift_schedule/shift_filter_bar.dart';
+import 'package:lanwash/widgets/shift_schedule/shift_request_card.dart';
+import 'package:lanwash/widgets/shift_schedule/shift_requests_panel.dart';
 
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await initializeDateFormatting('ru_RU');
+  });
   group('ShiftCell', () {
     final washer = User(
       id: 1,
@@ -287,6 +296,132 @@ void main() {
       await tester.tap(find.text('Отклонить все заявки'));
       await tester.pumpAndSettle();
       expect(rejected, true);
+    });
+  });
+
+  group('ShiftAnalyticsHeader', () {
+    testWidgets('displays metrics', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ShiftAnalyticsHeader(
+              totalConfirmedHours: 120.5,
+              pendingCount: 3,
+              conflictCount: 1,
+              utilizationPercent: 85.0,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('120.5'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('85%'), findsOneWidget);
+      expect(find.text('Всего часов'), findsOneWidget);
+      expect(find.text('На рассмотрении'), findsOneWidget);
+    });
+  });
+
+  group('ShiftFilterBar', () {
+    testWidgets('calls onChanged with selected filter', (tester) async {
+      ShiftFilter? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ShiftFilterBar(
+              selected: ShiftFilter.all,
+              onChanged: (f) => selected = f,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Только я'));
+      await tester.pump();
+      expect(selected, ShiftFilter.mine);
+    });
+  });
+
+  group('ShiftRequestCard', () {
+    testWidgets('shows washer, date and time', (tester) async {
+      final shift = Shift(
+        id: 1,
+        userId: 1,
+        date: '2026-06-15',
+        startTime: '10:00',
+        endTime: '18:00',
+        status: 'pending',
+        createdBy: 'admin',
+        createdAt: DateTime(2026, 6, 15).toIso8601String(),
+        updatedAt: DateTime(2026, 6, 15).toIso8601String(),
+      );
+      final washer = User(
+        id: 1,
+        username: 'ivan',
+        displayName: 'Иван',
+        passwordHash: '',
+        role: UserRole.washer,
+        createdAt: DateTime(2026, 6, 15),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ShiftRequestCard(
+              shift: shift,
+              washer: washer,
+              status: 'pending',
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Иван'), findsOneWidget);
+      expect(find.textContaining('10:00 – 18:00'), findsOneWidget);
+    });
+  });
+
+  group('ShiftRequestsPanel', () {
+    testWidgets('shows pending section and counts', (tester) async {
+      final shifts = [
+        Shift(
+          id: 1,
+          userId: 1,
+          date: '2026-06-15',
+          startTime: '10:00',
+          endTime: '18:00',
+          status: 'pending',
+          createdBy: 'admin',
+          createdAt: DateTime(2026, 6, 15).toIso8601String(),
+          updatedAt: DateTime(2026, 6, 15).toIso8601String(),
+        ),
+      ];
+      final washers = [
+        User(
+          id: 1,
+          username: 'ivan',
+          displayName: 'Иван',
+          passwordHash: '',
+          role: UserRole.washer,
+          createdAt: DateTime(2026, 6, 15),
+        ),
+      ];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ShiftRequestsPanel(
+              shifts: shifts,
+              washers: washers,
+              onApprove: (_) {},
+              onReject: (_) {},
+              onUndo: (_, __) {},
+              onJump: (_) {},
+            ),
+          ),
+        ),
+      );
+      expect(find.textContaining('На рассмотрении'), findsWidgets);
+      expect(find.text('Иван'), findsOneWidget);
+      expect(find.text('1'), findsWidgets);
     });
   });
 }

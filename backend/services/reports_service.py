@@ -15,11 +15,13 @@ from db_models import (
     ServiceConsumable,
     Shift,
     User,
+    WasherAvailability,
     WashType,
     WashTypeConsumable,
 )
 
 WASH_CATEGORY = "Мойка кузова"
+SHIFT_LOAD_TARGET_WEEKLY_MINUTES = 40 * 60
 
 
 class CarPriceService:
@@ -311,3 +313,148 @@ class ReportsService:
             "washersOnShift": washers_on_shift,
             "consumablesAlert": consumables_alert,
         }
+
+    async def shift_load_report(self, start_date: str, end_date: str) -> dict:
+        target_minutes = SHIFT_LOAD_TARGET_WEEKLY_MINUTES
+
+        shifts_result = await self._db.execute(
+            select(Shift).where(
+                and_(Shift.date >= start_date, Shift.date <= end_date)
+            )
+        )
+        shifts = shifts_result.scalars().all()
+
+        availability_result = await self._db.execute(
+            select(WasherAvailability).where(
+                and_(
+                    WasherAvailability.date >= start_date,
+                    WasherAvailability.date <= end_date,
+                )
+            )
+        )
+        availability = availability_result.scalars().all()
+
+        users_result = await self._db.execute(
+            select(User.id, User.displayName).where(User.role == "washer")
+        )
+        washers = {u[0]: u[1] for u in users_result.all()}
+
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+        days_count = (end_dt - start_dt).days + 1
+
+        daily_minutes: dict[str, dict[str, int]] = defaultdict(
+            lambda: {"confirmedMinutes": 0, "pendingMinutes": 0}
+        )
+        washer_minutes: dict[int, dict[str, int]] = defaultdict(
+            lambda: {"confirmed": 0, "pending": 0, "rejected": 0}
+        )
+        status_counts = {"confirmed": 0, "pending": 0, "rejected": 0}
+
+        for shift in shifts:
+            minutes = self._shift_minutes(shift.startTime, shift.endTime)
+            if shift.status == "confirmed":
+                daily_minutes[shift.date]["confirmedMinutes"] += minutes
+                washer_minutes[shift.userId]["confirmed"] += minutes
+                status_counts["confirmed"] += 1
+            elif shift.status == "pending":
+                daily_minutes[shift.date]["pendingMinutes"] += minutes
+                washer_minutes[shift.userId]["pending"] += minutes
+                status_counts["pending"] += 1
+            elif shift.status == "rejected":
+                washer_minutes[shift.userId]["rejected"] += minutes
+                status_counts["rejected"] += 1
+
+        daily_hours = []
+        current = start_dt
+        while current <= end_dt:
+            d = current.strftime("%Y-%m-%d")
+            entry = daily_minutes.get(d, {"confirmedMinutes": 0, "pendingMinutes": 0})
+            daily_hours.append(
+                {
+                    "date": d,
+                    "confirmedMinutes": entry["confirmedMinutes"],
+                    "pendingMinutes": entry["pendingMinutes"],
+                }
+            )
+            current += timedelta(days=1)
+
+        washer_stats = []
+        for user_id, display_name in sorted(washers.items(), key=lambda x: x[1]):
+            confirmed = washer_minutes[user_id]["confirmed"]
+            pending = washer_minutes[user_id]["pending"]
+            rejected = washer_minutes[user_id]["rejected"]
+            utilization = (confirmed / target_minutes * 100) if target_minutes else 0.0
+            washer_stats.append(
+                {
+                    "userId": user_id,
+                    "displayName": display_name,
+                    "confirmedMinutes": confirmed,
+                    "pendingMinutes": pending,
+                    "rejectedMinutes": rejected,
+                    "utilizationPercent": round(utilization, 1),
+                    "isOvertime": confirmed > target_minutes,
+                    "isUnderload": confirmed < target_minutes * 0.5,
+                }
+            )
+
+        availability_counts = {"available": 0, "unavailable": 0}
+        for a in availability:
+            if a.status in availability_counts:
+                availability_counts[a.status] += 1
+
+        total_possible_days = len(washers) * days_count
+        unknown_days = max(
+            0,
+            total_possible_days
+            - availability_counts["available"]
+            - availability_counts["unavailable"],
+        )
+
+        return {
+            "startDate": start_date,
+            "endDate": end_date,
+            "targetWeeklyMinutesPerWasher": target_minutes,
+            "dailyHours": daily_hours,
+            "washerStats": washer_stats,
+            "statusCounts": status_counts,
+            "conflictCount": self._count_conflicts(shifts),
+            "availabilityCoverage": {
+                "availableDays": availability_counts["available"],
+                "unavailableDays": availability_counts["unavailable"],
+                "unknownDays": unknown_days,
+            },
+        }
+
+    @staticmethod
+    def _time_to_minutes(t: str) -> int:
+        h, m = map(int, t.split(":"))
+        return h * 60 + m
+
+    @classmethod
+    def _shift_minutes(cls, start_time: str, end_time: str) -> int:
+        start = cls._time_to_minutes(start_time)
+        end = cls._time_to_minutes(end_time)
+        return end - start
+
+    @classmethod
+    def _count_conflicts(cls, shifts: list[Shift]) -> int:
+        by_date: dict[str, list[Shift]] = defaultdict(list)
+        for shift in shifts:
+            if shift.status not in ("confirmed", "pending"):
+                continue
+            by_date[shift.date].append(shift)
+
+        total = 0
+        for day_shifts in by_date.values():
+            for i in range(len(day_shifts)):
+                for j in range(i + 1, len(day_shifts)):
+                    a = day_shifts[i]
+                    b = day_shifts[j]
+                    a_s = cls._time_to_minutes(a.startTime)
+                    a_e = a_s + cls._shift_minutes(a.startTime, a.endTime)
+                    b_s = cls._time_to_minutes(b.startTime)
+                    b_e = b_s + cls._shift_minutes(b.startTime, b.endTime)
+                    if a_s < b_e and a_e > b_s:
+                        total += 1
+        return total

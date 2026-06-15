@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from database import get_db
 from db_models import User
-from models import ShiftRequest, ShiftResponse
+from models import ShiftMoveRequest, ShiftRequest, ShiftResponse
 from services.auth_service import get_current_user
 from services.shifts_service import (
     ShiftAccessDeniedError,
@@ -39,6 +39,9 @@ def _time_to_minutes(time_str: str) -> int:
     return h * 60 + m
 
 
+_MAX_SHIFT_RANGE_DAYS = 180
+
+
 @router.get("/", response_model=List[ShiftResponse])
 @limiter.limit("60/minute")
 async def list_shifts(
@@ -51,6 +54,14 @@ async def list_shifts(
     if not _parse_date(start_date) or not _parse_date(end_date):
         raise HTTPException(
             status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
+        )
+
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    if (end_dt - start_dt).days > _MAX_SHIFT_RANGE_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Диапазон не может превышать {_MAX_SHIFT_RANGE_DAYS} дней",
         )
 
     svc = ShiftsService(db)
@@ -175,6 +186,26 @@ async def reject_shift(
         raise HTTPException(status_code=404, detail="Смена не найдена")
 
 
+@router.put("/{shift_id}/reopen", response_model=ShiftResponse)
+@limiter.limit("10/minute")
+async def reopen_shift(
+    request: Request,
+    shift_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Только администратор может возвращать смены на рассмотрение"
+        )
+
+    svc = ShiftsService(db)
+    try:
+        return await svc.reopen_shift(shift_id)
+    except ShiftNotFoundError:
+        raise HTTPException(status_code=404, detail="Смена не найдена")
+
+
 @router.delete("/{shift_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
 async def delete_shift(
@@ -193,3 +224,28 @@ async def delete_shift(
     except ShiftAccessDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     return None
+
+
+@router.patch("/{shift_id}/move", response_model=ShiftResponse)
+@limiter.limit("10/minute")
+async def move_shift(
+    request: Request,
+    shift_id: int,
+    req: ShiftMoveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not _parse_date(req.targetDate):
+        raise HTTPException(status_code=400, detail="Неверный формат даты")
+
+    svc = ShiftsService(db)
+    try:
+        return await svc.move_shift(
+            shift_id, req, current_user.username, current_user.role == "admin"
+        )
+    except ShiftNotFoundError:
+        raise HTTPException(status_code=404, detail="Смена не найдена")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
