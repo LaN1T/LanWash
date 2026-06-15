@@ -48,7 +48,9 @@ class _ReviewCreateScreenState extends State<ReviewCreateScreen> {
 
     if (ok) {
       _showSnack('Отзыв отправлен на модерацию');
-      Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     } else {
       _showSnack('Не удалось отправить отзыв', isError: true);
     }
