@@ -52,7 +52,7 @@ class WorkloadService:
         total_duration = base_duration
         try:
             extra_ids = json.loads(additional_services_json)
-        except:
+        except Exception:
             extra_ids = []
 
         if extra_ids:
@@ -349,7 +349,7 @@ class WorkloadService:
             total_duration = base_duration
             try:
                 extra_ids = json.loads(appt.additionalServices) if appt.additionalServices else []
-            except:
+            except Exception:
                 extra_ids = []
 
             for eid in extra_ids:

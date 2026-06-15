@@ -31,7 +31,7 @@ class ReferralsService:
         claimed_res = await self._db.execute(
             select(func.count(Referral.id)).where(
                 Referral.referrerId == user.id,
-                Referral.rewardClaimed == True,
+                Referral.rewardClaimed.is_(True),
             )
         )
         claimed_rewards = claimed_res.scalar() or 0
@@ -74,7 +74,7 @@ class ReferralsService:
         result = await self._db.execute(
             select(Referral).where(
                 Referral.referrerId == user_id,
-                Referral.rewardClaimed == False,
+                Referral.rewardClaimed.is_(False),
             ).with_for_update()
         )
         unclaimed = result.scalars().all()
