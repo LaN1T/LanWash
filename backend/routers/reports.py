@@ -98,3 +98,29 @@ async def daily_report(
     date = _parse_day(date)
     svc = ReportsService(db)
     return await svc.daily_report(date)
+
+
+@router.get("/shift-load/")
+@limiter.limit("60/minute")
+async def shift_load_report(
+    request: Request,
+    start_date: str,
+    end_date: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Weekly shift load analytics (admin only)."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Доступ только для администраторов"
+        )
+    try:
+        datetime.strptime(start_date, "%Y-%m-%d")
+        datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Неверный формат даты. Ожидается YYYY-MM-DD",
+        )
+    svc = ReportsService(db)
+    return await svc.shift_load_report(start_date, end_date)
