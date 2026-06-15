@@ -12,6 +12,7 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from db_models import Base  # noqa: E402
+from core.config import get_settings  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -23,8 +24,10 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Get DATABASE_URL from environment (same as app uses)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./lanwash.db")
+# Get DATABASE_URL from application settings (PostgreSQL only)
+settings = get_settings()
+DATABASE_URL = settings.database_url
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
