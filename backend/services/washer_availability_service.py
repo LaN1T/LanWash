@@ -2,10 +2,11 @@ from datetime import datetime
 from typing import List
 
 from fastapi import HTTPException
-from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User, WasherAvailability
+from repositories.user import UserRepository
+from repositories.washer_availability import WasherAvailabilityRepository
 from schemas import WasherAvailabilityEntry
 
 
@@ -14,28 +15,18 @@ class WasherAvailabilityService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._availability = WasherAvailabilityRepository(db)
+        self._users = UserRepository(db)
 
     async def get_availability(
         self, user_id: int, start_date: str, end_date: str
     ) -> List[WasherAvailability]:
-        stmt = (
-            select(WasherAvailability)
-            .where(
-                and_(
-                    WasherAvailability.userId == user_id,
-                    WasherAvailability.date >= start_date,
-                    WasherAvailability.date <= end_date,
-                )
-            )
-            .order_by(WasherAvailability.date.asc())
-        )
-        result = await self._db.execute(stmt)
-        return list(result.scalars().all())
+        return await self._availability.list_for_range(user_id, start_date, end_date)
 
     async def update_availability(
         self, user_id: int, entries: List[WasherAvailabilityEntry]
     ) -> List[WasherAvailability]:
-        user = await self._db.get(User, user_id)
+        user = await self._users.get_by_id(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
 
@@ -48,11 +39,7 @@ class WasherAvailabilityService:
         if not dates:
             return []
 
-        stmt = select(WasherAvailability).where(
-            and_(WasherAvailability.userId == user_id, WasherAvailability.date.in_(dates))
-        )
-        result = await self._db.execute(stmt)
-        existing = {row.date: row for row in result.scalars().all()}
+        existing = await self._availability.list_for_dates(user_id, dates)
 
         now = datetime.now().isoformat()
         for date_str, status in latest.items():
@@ -71,19 +58,11 @@ class WasherAvailabilityService:
                 )
 
         await self._db.commit()
-        return await self.get_availability(user_id, min(dates), max(dates))
+        return await self._availability.list_for_range(user_id, min(dates), max(dates))
 
     async def delete_availability(
         self, user_id: int, start_date: str, end_date: str
     ) -> int:
-        result = await self._db.execute(
-            delete(WasherAvailability).where(
-                and_(
-                    WasherAvailability.userId == user_id,
-                    WasherAvailability.date >= start_date,
-                    WasherAvailability.date <= end_date,
-                )
-            )
-        )
+        deleted = await self._availability.delete_for_range(user_id, start_date, end_date)
         await self._db.commit()
-        return result.rowcount or 0
+        return deleted
