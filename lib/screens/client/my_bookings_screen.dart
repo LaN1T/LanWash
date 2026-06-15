@@ -74,8 +74,16 @@ class _State extends State<MyBookingsScreen>
       ),
       Expanded(
           child: TabBarView(controller: _tab, children: [
-        _BookingsList(items: upcoming, services: catalogProvider.services),
-        _BookingsList(items: history, services: catalogProvider.services),
+        _BookingsList(
+          items: upcoming,
+          services: catalogProvider.services,
+          catalogProvider: catalogProvider,
+        ),
+        _BookingsList(
+          items: history,
+          services: catalogProvider.services,
+          catalogProvider: catalogProvider,
+        ),
       ])),
     ]);
   }
@@ -84,7 +92,12 @@ class _State extends State<MyBookingsScreen>
 class _BookingsList extends StatelessWidget {
   final List<Appointment> items;
   final List<dynamic> services;
-  const _BookingsList({required this.items, required this.services});
+  final CatalogProvider catalogProvider;
+  const _BookingsList({
+    required this.items,
+    required this.services,
+    required this.catalogProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +119,11 @@ class _BookingsList extends StatelessWidget {
               }
               _showDetail(ctx, a);
             },
-            child: _HistoryAppointmentCard(a: a, services: services),
+            child: _HistoryAppointmentCard(
+              a: a,
+              services: services,
+              catalogProvider: catalogProvider,
+            ),
           );
         },
       ),
@@ -126,7 +143,12 @@ class _BookingsList extends StatelessWidget {
 class _HistoryAppointmentCard extends StatefulWidget {
   final Appointment a;
   final List<dynamic> services;
-  const _HistoryAppointmentCard({required this.a, required this.services});
+  final CatalogProvider catalogProvider;
+  const _HistoryAppointmentCard({
+    required this.a,
+    required this.services,
+    required this.catalogProvider,
+  });
 
   @override
   State<_HistoryAppointmentCard> createState() =>
@@ -149,7 +171,6 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
 
   @override
   Widget build(BuildContext context) {
-    final catalogProvider = context.watch<CatalogProvider>();
     final color = AppStyles.statusColor(widget.a.status);
     final bgColor = AppStyles.statusBgColor(widget.a.status);
     final showActions =
@@ -162,11 +183,11 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildTopRow(catalogProvider, color, bgColor),
+          _buildTopRow(color, bgColor),
           const SizedBox(height: 12),
           Container(height: 1, color: AppStyles.adaptiveBorder(context)),
           const SizedBox(height: 12),
-          _buildTimePriceRow(catalogProvider),
+          _buildTimePriceRow(),
           if (showActions) ...[
             const SizedBox(height: 12),
             Container(height: 1, color: AppStyles.adaptiveBorder(context)),
@@ -181,8 +202,7 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
     );
   }
 
-  Widget _buildTopRow(
-      CatalogProvider catalogProvider, Color color, Color bgColor) {
+  Widget _buildTopRow(Color color, Color bgColor) {
     final showRefresh =
         widget.a.status == 'completed' || widget.a.status == 'cancelled';
 
@@ -198,7 +218,7 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
       Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(catalogProvider.washTypeName(widget.a.washTypeId),
+        Text(widget.catalogProvider.washTypeName(widget.a.washTypeId),
             style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: AppStyles.adaptiveTextPrimary(context))),
@@ -235,20 +255,19 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
     ]);
   }
 
-  Widget _buildTimePriceRow(CatalogProvider catalogProvider) {
-    final washType = catalogProvider.washTypeById(widget.a.washTypeId);
-    final duration = widget.a.calculateTotalPrice(
-                widget.services.cast<Service>(), washType) >=
-            0
-        ? (washType?.durationMinutes ?? 30) +
+  Widget _buildTimePriceRow() {
+    final washType = widget.catalogProvider.washTypeById(widget.a.washTypeId);
+    final services = widget.services.cast<Service>();
+    final totalPrice = widget.a.calculateTotalPrice(services, washType);
+    final duration = washType != null
+        ? washType.durationMinutes +
             widget.a.additionalServices
-                .where(
-                    (id) => !(washType?.includedExtraIds.contains(id) ?? false))
-                .fold(
+                .where((id) => !washType.includedExtraIds.contains(id))
+                .fold<int>(
                     0,
                     (sum, id) =>
                         sum +
-                        (catalogProvider.services
+                        (widget.catalogProvider.services
                             .firstWhere((s) => s.id == id,
                                 orElse: () => Service(
                                     id: id,
@@ -261,7 +280,7 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
                                     isFromApi: false))
                             .durationMinutes))
         : 30;
-    final endTime = widget.a.dateTime.add(Duration(minutes: duration.toInt()));
+    final endTime = widget.a.dateTime.add(Duration(minutes: duration));
     final cutoff = DateTime(widget.a.dateTime.year, widget.a.dateTime.month,
         widget.a.dateTime.day, 22, 0);
     String timeStr;
@@ -285,11 +304,13 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
               fontWeight: FontWeight.w500)),
       const Spacer(),
       Text(
-          '${widget.a.calculateTotalPrice(widget.services.cast<Service>(), catalogProvider.washTypeById(widget.a.washTypeId))} ₽',
-          style: const TextStyle(
-              color: AppStyles.primary,
-              fontSize: 15,
-              fontWeight: FontWeight.bold)),
+        '$totalPrice ₽',
+        style: const TextStyle(
+          color: AppStyles.primary,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     ]);
   }
 
@@ -314,7 +335,15 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
       return FutureBuilder<bool>(
         future: _reviewFuture,
         builder: (context, snapshot) {
-          final hasReview = snapshot.data == true;
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox(
+              height: 36,
+              width: 36,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            );
+          }
+
+          final hasReview = snapshot.hasData && snapshot.data == true;
           if (hasReview) {
             return OutlinedButton.icon(
               onPressed: null,
