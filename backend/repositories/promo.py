@@ -12,3 +12,7 @@ class PromoRepository(BaseRepository[Promo]):
     async def list_all(self) -> list[Promo]:
         result = await self._db.execute(select(Promo))
         return list(result.scalars().all())
+
+    async def list_all_id_name_map(self) -> dict[str, str]:
+        result = await self._db.execute(select(Promo.id, Promo.name))
+        return {row[0]: row[1] for row in result.all()}

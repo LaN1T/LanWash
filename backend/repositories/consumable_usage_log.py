@@ -1,7 +1,7 @@
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import ConsumableUsageLog
+from models import Appointment, Consumable, ConsumableUsageLog
 from repositories.base import BaseRepository
 
 
@@ -41,3 +41,29 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
             .group_by(ConsumableUsageLog.consumableId)
         )
         return {cid: float(total) for cid, total in result.all()}
+
+    async def stream_usage_with_appointment_in_period(
+        self, start_iso: str, end_iso: str
+    ):
+        query = (
+            select(
+                Consumable.id,
+                Consumable.name,
+                Consumable.unit,
+                ConsumableUsageLog.quantityUsed,
+                ConsumableUsageLog.appointmentId,
+                Appointment.promoId,
+            )
+            .join(Consumable, ConsumableUsageLog.consumableId == Consumable.id)
+            .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id)
+            .where(
+                and_(
+                    Appointment.dateTime >= start_iso,
+                    Appointment.dateTime < end_iso,
+                    Appointment.status == "completed",
+                )
+            )
+        )
+        result = await self._db.stream(query)
+        async for row in result:
+            yield row

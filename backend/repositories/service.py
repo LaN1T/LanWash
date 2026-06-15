@@ -24,3 +24,13 @@ class ServiceRepository(BaseRepository[Service]):
             categories.append('Акции')
             categories.sort()
         return categories
+
+    async def list_all_id_name_map(self) -> dict[str, str]:
+        result = await self._db.execute(select(Service.id, Service.name))
+        return {row[0]: row[1] for row in result.all()}
+
+    async def list_all_id_name_category_map(self) -> dict[str, tuple[str, str]]:
+        result = await self._db.execute(
+            select(Service.id, Service.name, Service.category)
+        )
+        return {row[0]: (row[1], row[2]) for row in result.all()}

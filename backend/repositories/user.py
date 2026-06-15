@@ -65,6 +65,16 @@ class UserRepository(BaseRepository[User]):
         )
         return {row[0]: row[1] for row in result.all()}
 
+    async def get_display_names_by_ids(
+        self, ids: list[int]
+    ) -> dict[int, str | None]:
+        if not ids:
+            return {}
+        result = await self._db.execute(
+            select(User.id, User.displayName).where(User.id.in_(ids))
+        )
+        return {row[0]: row[1] for row in result.all()}
+
     async def search(
         self,
         *,

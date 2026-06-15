@@ -46,3 +46,16 @@ class WasherAvailabilityRepository(BaseRepository[WasherAvailability]):
             )
         )
         return result.rowcount or 0
+
+    async def list_for_range_all(
+        self, start_date: str, end_date: str
+    ) -> list[WasherAvailability]:
+        result = await self._db.execute(
+            select(WasherAvailability).where(
+                and_(
+                    WasherAvailability.date >= start_date,
+                    WasherAvailability.date <= end_date,
+                )
+            )
+        )
+        return list(result.scalars().all())

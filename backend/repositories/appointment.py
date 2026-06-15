@@ -183,3 +183,105 @@ class AppointmentRepository(BaseRepository[Appointment]):
             .order_by(Appointment.dateTime.asc())
         )
         return list(result.scalars().all())
+
+    async def get_car_model_stats_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str | None, float, int]]:
+        result = await self._db.execute(
+            select(
+                Appointment.carModel,
+                func.avg(Appointment.paidPrice).label("avgCheck"),
+                func.count(Appointment.id).label("visitCount"),
+            )
+            .where(
+                and_(
+                    Appointment.status == "completed",
+                    Appointment.dateTime >= start_iso,
+                    Appointment.dateTime < end_iso,
+                )
+            )
+            .group_by(Appointment.carModel)
+        )
+        return [(row[0], row[1] or 0.0, row[2] or 0) for row in result.all()]
+
+    async def stream_popular_services_fields_in_period(
+        self, start_iso: str, end_iso: str
+    ):
+        query = select(
+            Appointment.additionalServices,
+            Appointment.promoId,
+            Appointment.washTypeId,
+        ).where(
+            and_(
+                Appointment.status == "completed",
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+            )
+        )
+        result = await self._db.stream(query)
+        async for row in result:
+            yield row
+
+    async def count_in_period(self, start_iso: str, end_iso: str) -> int:
+        result = await self._db.execute(
+            select(func.count(Appointment.id)).where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+            )
+        )
+        return result.scalar() or 0
+
+    async def get_completed_stats_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> tuple[int, int | None, float | None]:
+        result = await self._db.execute(
+            select(
+                func.count(Appointment.id),
+                func.sum(Appointment.paidPrice),
+                func.avg(Appointment.paidPrice),
+            )
+            .where(
+                and_(
+                    Appointment.dateTime >= start_iso,
+                    Appointment.dateTime < end_iso,
+                    Appointment.status == "completed",
+                )
+            )
+        )
+        row = result.first()
+        return (
+            row[0] or 0,
+            row[1],
+            row[2],
+        )
+
+    async def get_box_occupancy_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[int | None, int]]:
+        result = await self._db.execute(
+            select(Appointment.box_index, func.count(Appointment.id))
+            .where(
+                and_(
+                    Appointment.dateTime >= start_iso,
+                    Appointment.dateTime < end_iso,
+                    Appointment.status == "completed",
+                )
+            )
+            .group_by(Appointment.box_index)
+        )
+        return [(row[0], row[1] or 0) for row in result.all()]
+
+    async def list_wash_type_and_additional_services_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str | None, str | None]]:
+        result = await self._db.execute(
+            select(Appointment.washTypeId, Appointment.additionalServices)
+            .where(
+                and_(
+                    Appointment.dateTime >= start_iso,
+                    Appointment.dateTime < end_iso,
+                    Appointment.status == "completed",
+                )
+            )
+        )
+        return list(result.all())

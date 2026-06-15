@@ -46,3 +46,9 @@ class ServiceConsumableRepository(BaseRepository[ServiceConsumable]):
             )
         )
         return result.rowcount > 0
+
+    async def list_all_service_consumable_pairs(self) -> list[tuple[str, str]]:
+        result = await self._db.execute(
+            select(ServiceConsumable.serviceId, ServiceConsumable.consumableId)
+        )
+        return list(result.all())
