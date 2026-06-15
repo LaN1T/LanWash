@@ -552,8 +552,10 @@ class AuthService:
             total_appointments = await self._appointment_repo.count_completed_by_owner(
                 username.lower()
             )
-            total_spent = await self._appointment_repo.sum_paid_price_completed_by_owner(
-                username.lower()
+            total_spent = int(
+                await self._appointment_repo.sum_paid_price_completed_by_owner(
+                    username.lower()
+                )
             )
             favorite_wash_type = (
                 await self._appointment_repo.get_favorite_wash_type_completed_by_owner(

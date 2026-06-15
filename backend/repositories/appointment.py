@@ -21,14 +21,14 @@ class AppointmentRepository(BaseRepository[Appointment]):
         )
         return result.scalar() or 0
 
-    async def sum_paid_price_completed_by_owner(self, username: str) -> int:
+    async def sum_paid_price_completed_by_owner(self, username: str) -> Decimal:
         result = await self._db.execute(
             select(func.sum(Appointment.paidPrice)).where(
                 Appointment.ownerUsername == username,
                 Appointment.status == "completed",
             )
         )
-        return result.scalar() or 0
+        return result.scalar() or Decimal(0)
 
     async def get_favorite_wash_type_completed_by_owner(
         self, username: str
@@ -92,7 +92,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def get_revenue_stats_in_period(
         self, start_iso: str, end_iso: str
-    ) -> tuple[int | None, float | None]:
+    ) -> tuple[Decimal | None, Decimal | None]:
         result = await self._db.execute(
             select(func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
             .where(
@@ -153,7 +153,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def list_completed_owner_stats_in_period(
         self, start_iso: str, end_iso: str, limit: int
-    ) -> list[tuple[str | None, int, int | None]]:
+    ) -> list[tuple[str | None, int, Decimal | None]]:
         result = await self._db.execute(
             select(
                 Appointment.ownerUsername,
@@ -205,7 +205,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
             )
             .group_by(Appointment.carModel)
         )
-        return [(row[0], row[1] or 0.0, row[2] or 0) for row in result.all()]
+        return [(row[0], row[1] or Decimal(0), row[2] or 0) for row in result.all()]
 
     async def stream_popular_services_fields_in_period(
         self, start_iso: str, end_iso: str
