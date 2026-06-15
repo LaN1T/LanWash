@@ -4,7 +4,7 @@ from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db_models import Shift, User
-from models import ShiftRequest
+from models import ShiftMoveRequest, ShiftRequest
 
 
 class ShiftNotFoundError(Exception):
@@ -177,6 +177,49 @@ class ShiftsService:
 
         await self._db.execute(delete(Shift).where(Shift.id == shift_id))
         await self._db.commit()
+
+    async def move_shift(
+        self, shift_id: int, req: ShiftMoveRequest, caller_username: str, is_admin: bool
+    ) -> Shift:
+        if not is_admin:
+            raise PermissionError("Только администратор может перемещать смены")
+
+        shift_res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
+        shift = shift_res.scalar_one_or_none()
+        if not shift:
+            raise ShiftNotFoundError()
+
+        user_res = await self._db.execute(select(User).where(User.id == req.targetUserId))
+        target_user = user_res.scalar_one_or_none()
+        if not target_user:
+            raise ValueError("Пользователь не найден")
+
+        now = datetime.now().isoformat()
+
+        # Удаляем смену в целевой ячейке, если она есть (перезапись).
+        await self._db.execute(
+            delete(Shift).where(
+                and_(Shift.userId == req.targetUserId, Shift.date == req.targetDate)
+            )
+        )
+
+        # Удаляем исходную смену.
+        await self._db.execute(delete(Shift).where(Shift.id == shift_id))
+
+        new_shift = Shift(
+            userId=req.targetUserId,
+            date=req.targetDate,
+            startTime=shift.startTime,
+            endTime=shift.endTime,
+            status=shift.status,
+            createdBy=shift.createdBy,
+            createdAt=shift.createdAt,
+            updatedAt=now,
+        )
+        self._db.add(new_shift)
+        await self._db.commit()
+        await self._db.refresh(new_shift)
+        return new_shift
 
     @staticmethod
     def _time_to_minutes(time_str: str) -> int:
