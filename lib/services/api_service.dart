@@ -25,6 +25,7 @@ import '../models/tip.dart';
 import '../models/subscription.dart';
 import '../models/admin_dashboard.dart';
 import '../models/consumable_forecast.dart';
+import '../models/shift_load_report.dart';
 import '../models/forecast.dart';
 import '../models/support_chat.dart';
 import '../models/support_message.dart';
@@ -1157,6 +1158,19 @@ class ApiService {
             .toList();
       },
       failure: (_) => [],
+    );
+  }
+
+  Future<ShiftLoadReport?> getShiftLoadReport(
+    String startDate,
+    String endDate,
+  ) async {
+    final result = await ApiClient.get(
+      '/reports/shift-load/?start_date=$startDate&end_date=$endDate',
+    );
+    return result.when(
+      success: (data) => ShiftLoadReport.fromMap(data),
+      failure: (_) => null,
     );
   }
 
