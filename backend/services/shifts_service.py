@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Shift, User
+from models import Shift
+from repositories.shift import ShiftRepository
+from repositories.user import UserRepository
 from schemas import ShiftMoveRequest, ShiftRequest
 
 
@@ -20,42 +21,29 @@ class ShiftsService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._shifts = ShiftRepository(db)
+        self._users = UserRepository(db)
 
     async def list_shifts(
         self, start_date: str, end_date: str, user_id: int, is_admin: bool
     ) -> list[Shift]:
-        stmt = select(Shift).where(and_(Shift.date >= start_date, Shift.date <= end_date))
-        if not is_admin:
-            stmt = stmt.where(Shift.userId == user_id)
-        result = await self._db.execute(stmt)
-        return list(result.scalars().all())
+        return await self._shifts.list_for_range(
+            start_date, end_date, user_id=None if is_admin else user_id
+        )
 
     async def list_today_shifts(self, today: str, user_id: int, is_admin: bool) -> list[Shift]:
-        stmt = (
-            select(Shift)
-            .where(and_(Shift.date == today, Shift.status == "confirmed"))
-            .order_by(Shift.startTime.asc())
+        return await self._shifts.list_today(
+            today, user_id=None if is_admin else user_id
         )
-        if not is_admin:
-            stmt = stmt.where(Shift.userId == user_id)
-        result = await self._db.execute(stmt)
-        return list(result.scalars().all())
 
     async def list_current_shifts(
         self, today: str, current_minutes: int, user_id: int, is_admin: bool
     ) -> list[dict]:
-        stmt = select(Shift, User).join(User, Shift.userId == User.id).where(
-            and_(
-                Shift.date == today,
-                Shift.status == "confirmed",
-            )
+        rows = await self._shifts.list_current(
+            today, user_id=None if is_admin else user_id
         )
-        if not is_admin:
-            stmt = stmt.where(Shift.userId == user_id)
-
-        result = await self._db.execute(stmt)
         on_duty = []
-        for shift, user in result.all():
+        for shift, user in rows:
             start_m = self._time_to_minutes(shift.startTime)
             end_m = self._time_to_minutes(shift.endTime)
             if start_m <= current_minutes <= end_m:
@@ -70,20 +58,12 @@ class ShiftsService:
         return on_duty
 
     async def list_my_shifts(self, user_id: int, limit: int) -> list[Shift]:
-        stmt = (
-            select(Shift)
-            .where(Shift.userId == user_id)
-            .order_by(Shift.date.asc())
-            .limit(limit)
-        )
-        result = await self._db.execute(stmt)
-        return list(result.scalars().all())
+        return await self._shifts.list_for_user(user_id, limit)
 
     async def create_shift(
         self, req: ShiftRequest, caller_username: str, is_admin: bool
     ) -> Shift:
-        user_res = await self._db.execute(select(User).where(User.id == req.userId))
-        target_user = user_res.scalar_one_or_none()
+        target_user = await self._users.get_by_id(req.userId)
         if not target_user:
             raise ValueError("Пользователь не найден")
 
@@ -94,10 +74,7 @@ class ShiftsService:
         now = datetime.now().isoformat()
         status_val = "confirmed" if is_admin else "pending"
 
-        existing_res = await self._db.execute(
-            select(Shift).where(and_(Shift.userId == req.userId, Shift.date == req.date))
-        )
-        existing = existing_res.scalar_one_or_none()
+        existing = await self._shifts.get_by_user_and_date(req.userId, req.date)
 
         if existing:
             if not is_admin and existing.status == "confirmed":
@@ -123,14 +100,13 @@ class ShiftsService:
             createdAt=now,
             updatedAt=now,
         )
-        self._db.add(shift)
+        await self._shifts.add(shift)
         await self._db.commit()
         await self._db.refresh(shift)
         return shift
 
     async def approve_shift(self, shift_id: int) -> Shift:
-        res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
-        shift = res.scalar_one_or_none()
+        shift = await self._shifts.get_by_id(shift_id)
         if not shift:
             raise ShiftNotFoundError()
         shift.status = "confirmed"
@@ -140,8 +116,7 @@ class ShiftsService:
         return shift
 
     async def reject_shift(self, shift_id: int) -> Shift:
-        res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
-        shift = res.scalar_one_or_none()
+        shift = await self._shifts.get_by_id(shift_id)
         if not shift:
             raise ShiftNotFoundError()
         shift.status = "rejected"
@@ -151,8 +126,7 @@ class ShiftsService:
         return shift
 
     async def reopen_shift(self, shift_id: int) -> Shift:
-        res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
-        shift = res.scalar_one_or_none()
+        shift = await self._shifts.get_by_id(shift_id)
         if not shift:
             raise ShiftNotFoundError()
         shift.status = "pending"
@@ -162,20 +136,18 @@ class ShiftsService:
         return shift
 
     async def delete_shift(self, shift_id: int, caller_username: str, is_admin: bool) -> None:
-        res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
-        shift = res.scalar_one_or_none()
+        shift = await self._shifts.get_by_id(shift_id)
         if not shift:
             raise ShiftNotFoundError()
 
         if not is_admin:
-            user_res = await self._db.execute(select(User).where(User.id == shift.userId))
-            target_user = user_res.scalar_one_or_none()
+            target_user = await self._users.get_by_id(shift.userId)
             if not target_user or target_user.username != caller_username:
                 raise ShiftAccessDeniedError("Можно удалять только свои смены")
             if shift.status == "confirmed":
                 raise ShiftAccessDeniedError("Нельзя удалить подтверждённую смену")
 
-        await self._db.execute(delete(Shift).where(Shift.id == shift_id))
+        await self._shifts.delete(shift)
         await self._db.commit()
 
     async def move_shift(
@@ -184,27 +156,21 @@ class ShiftsService:
         if not is_admin:
             raise PermissionError("Только администратор может перемещать смены")
 
-        shift_res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
-        shift = shift_res.scalar_one_or_none()
+        shift = await self._shifts.get_by_id(shift_id)
         if not shift:
             raise ShiftNotFoundError()
 
-        user_res = await self._db.execute(select(User).where(User.id == req.targetUserId))
-        target_user = user_res.scalar_one_or_none()
+        target_user = await self._users.get_by_id(req.targetUserId)
         if not target_user:
             raise ValueError("Пользователь не найден")
 
         now = datetime.now().isoformat()
 
         # Удаляем смену в целевой ячейке, если она есть (перезапись).
-        await self._db.execute(
-            delete(Shift).where(
-                and_(Shift.userId == req.targetUserId, Shift.date == req.targetDate)
-            )
-        )
+        await self._shifts.delete_for_user_and_date(req.targetUserId, req.targetDate)
 
         # Удаляем исходную смену.
-        await self._db.execute(delete(Shift).where(Shift.id == shift_id))
+        await self._shifts.delete_by_id(shift_id)
 
         new_shift = Shift(
             userId=req.targetUserId,
@@ -216,7 +182,7 @@ class ShiftsService:
             createdAt=shift.createdAt,
             updatedAt=now,
         )
-        self._db.add(new_shift)
+        await self._shifts.add(new_shift)
         await self._db.commit()
         await self._db.refresh(new_shift)
         return new_shift
