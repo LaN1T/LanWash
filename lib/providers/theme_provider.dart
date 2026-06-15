@@ -6,8 +6,8 @@ enum AppThemeMode { light, dark, system }
 class ThemeProvider extends ChangeNotifier {
   static const _key = 'app_theme_mode';
 
-  ThemeMode _themeMode = ThemeMode.system;
-  AppThemeMode _appThemeMode = AppThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.light;
+  AppThemeMode _appThemeMode = AppThemeMode.light;
 
   ThemeMode get themeMode => _themeMode;
   AppThemeMode get appThemeMode => _appThemeMode;
@@ -21,7 +21,7 @@ class ThemeProvider extends ChangeNotifier {
     final raw = prefs.getString(_key);
     _appThemeMode = AppThemeMode.values.firstWhere(
       (e) => e.name == raw,
-      orElse: () => AppThemeMode.system,
+      orElse: () => AppThemeMode.light,
     );
     _syncThemeMode();
     notifyListeners();
