@@ -15,6 +15,7 @@ import '../models/promo.dart';
 import '../models/wash_type.dart';
 import '../models/shift.dart';
 import '../models/shift_template.dart';
+import '../models/washer_availability.dart';
 import '../models/consumable.dart';
 import '../models/daily_report.dart';
 import '../models/review.dart';
@@ -1114,6 +1115,60 @@ class ApiService {
       success: (data) => (data['applied'] as int?) ?? 0,
       failure: (_) => 0,
     );
+  }
+
+  // ─── Washer Availability ───────────────────────────────────────────────────
+  Future<List<WasherAvailability>> getWasherAvailability(
+    int userId,
+    String startDate,
+    String endDate,
+  ) async {
+    final result = await ApiClient.getList(
+      '/washers/$userId/availability?start_date=$startDate&end_date=$endDate',
+    );
+    return result.when(
+      success: (list) => list
+          .cast<Map<String, dynamic>>()
+          .map(WasherAvailability.fromMap)
+          .toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<List<WasherAvailability>> updateWasherAvailability(
+    int userId,
+    List<WasherAvailability> entries,
+  ) async {
+    final body = {
+      'entries': entries
+          .map((e) => {'date': e.date, 'status': e.status})
+          .toList(),
+    };
+    final result = await ApiClient.put(
+      '/washers/$userId/availability',
+      body: body,
+    );
+    return result.when(
+      success: (data) {
+        final list = (data['entries'] as List<dynamic>?) ?? [];
+        return list
+            .cast<Map<String, dynamic>>()
+            .map(WasherAvailability.fromMap)
+            .toList();
+      },
+      failure: (_) => [],
+    );
+  }
+
+  Future<bool> deleteWasherAvailability(
+    int userId,
+    String startDate,
+    String endDate,
+  ) async {
+    final result = await ApiClient.delete(
+      '/washers/$userId/availability?start_date=$startDate&end_date=$endDate',
+    );
+    return result.isSuccess;
   }
 
   Future<bool> deleteShift(int shiftId) async {

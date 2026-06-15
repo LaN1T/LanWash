@@ -434,6 +434,26 @@ class ShiftTemplateResponse(BaseModel):
     slots: List[ShiftTemplateSlot]
 
 
+# ─── Washer Availability ─────────────────────────────────────────────────────
+class WasherAvailabilityEntry(BaseModel):
+    date: str = Field(..., max_length=10, description="YYYY-MM-DD")
+    status: Literal["available", "unavailable"]
+
+
+class WasherAvailabilityUpdateRequest(BaseModel):
+    entries: List[WasherAvailabilityEntry]
+
+
+class WasherAvailabilityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    userId: int
+    date: str
+    status: str
+    updatedAt: str
+
+
 # ─── Reviews ─────────────────────────────────────────────────────────────────
 class ReviewCreateRequest(BaseModel):
     userId: int = Field(..., ge=1)

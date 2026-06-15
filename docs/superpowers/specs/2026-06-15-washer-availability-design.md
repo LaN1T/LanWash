@@ -52,13 +52,20 @@ Create `backend/routers/washer_availability.py` and register under `/api/washers
 
 - `PUT /api/washers/{user_id}/availability`
   - Body: `{ "entries": [ { "date": "...", "status": "available" }, ... ] }`
-  - Upserts records. Invalid dates → 400. Unknown user → 404.
+  - Upserts records. Returns `{ "entries": [...] }`.
+  - Invalid dates → 400. Unknown user → 404.
+  - Auth: own records or admin.
+
+- `DELETE /api/washers/{user_id}/availability?start_date=&end_date=`
+  - Removes all explicit availability records for the washer in the date range.
+  - Returns `{ "deleted": N }`.
   - Auth: own records or admin.
 
 ### Service (`backend/services/washer_availability_service.py`)
 
 - `get_availability(user_id, start, end)` → list of `WasherAvailability` rows.
 - `update_availability(user_id, entries)` → upserts rows, sets `updatedAt`, removes duplicates (last wins).
+- `delete_availability(user_id, start, end)` → removes rows in range, returns deleted count.
 
 ### Migrations
 
@@ -132,6 +139,7 @@ Add a segmented control in the app bar / above the table:
   - Update creates/updates records.
   - Duplicate dates in request — last wins.
   - Invalid date → 400.
+  - Delete removes records for the range.
 
 ### Frontend
 
