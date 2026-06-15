@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/log_entry.dart';
 import 'api_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 /// Константы действий — чтобы не писать строки вручную везде
 class LogAction {
@@ -23,7 +24,7 @@ class LogService {
   static LogService get instance => _instance;
   LogService._();
 
-  final _api = ApiService();
+  final _api = sl<ApiService>();
 
   Future<void> log(String username, String action, String details) async {
     try {

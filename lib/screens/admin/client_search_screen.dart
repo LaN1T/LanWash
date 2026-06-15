@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app_styles.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class ClientSearchScreen extends StatefulWidget {
   const ClientSearchScreen({super.key});
@@ -31,7 +32,7 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
       _loading = true;
       _error = null;
     });
-    final result = await ApiService().searchUsers(
+    final result = await sl<ApiService>().searchUsers(
       q: _searchCtrl.text.trim(),
       limit: _limit,
       offset: _offset,

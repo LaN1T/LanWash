@@ -9,9 +9,10 @@ import '../models/support_chat.dart';
 import '../models/support_message.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class SupportProvider extends ChangeNotifier {
-  final _api = ApiService();
+  final _api = sl<ApiService>();
 
   List<SupportChat> _chats = [];
   List<SupportChat> get chats => _chats;

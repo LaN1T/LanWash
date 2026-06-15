@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import '../firebase_options.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -32,7 +33,7 @@ class NotificationService {
   FirebaseMessaging? _fcm;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService = sl<ApiService>();
 
   bool _isInitialized = false;
   Completer<void>? _initCompleter;

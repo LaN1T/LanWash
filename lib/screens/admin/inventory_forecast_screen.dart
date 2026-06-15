@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app_styles.dart';
 import '../../models/consumable_forecast.dart';
 import '../../services/api_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class InventoryForecastScreen extends StatefulWidget {
   const InventoryForecastScreen({super.key});
@@ -27,7 +28,7 @@ class _InventoryForecastScreenState extends State<InventoryForecastScreen> {
       _loading = true;
       _error = null;
     });
-    final result = await ApiService().getInventoryForecast();
+    final result = await sl<ApiService>().getInventoryForecast();
     if (mounted) {
       setState(() {
         _loading = false;

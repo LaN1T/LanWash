@@ -10,6 +10,7 @@ import '../../providers/catalog_provider.dart';
 import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
 import '../../services/pdf_export_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class PopularServicesReportScreen extends StatefulWidget {
   const PopularServicesReportScreen({super.key});
@@ -57,7 +58,7 @@ class _PopularServicesReportScreenState
       _report = null;
     });
     try {
-      final apiService = ApiService();
+      final apiService = sl<ApiService>();
       final report = await apiService.getPopularAdditionalServices(
           _selectedDate,
           category: _selectedCategory);

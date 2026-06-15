@@ -8,6 +8,7 @@ import '../../models/consumable_forecast.dart';
 import '../../models/forecast.dart';
 import '../../services/api_service.dart';
 import 'inventory_forecast_screen.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -68,7 +69,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final fromStr = DateFormat('yyyy-MM-dd').format(from);
     final toStr = DateFormat('yyyy-MM-dd').format(now);
 
-    final dashboard = await ApiService().getAdminDashboard(fromStr, toStr);
+    final dashboard = await sl<ApiService>().getAdminDashboard(fromStr, toStr);
 
     if (mounted) {
       setState(() {
@@ -86,7 +87,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _forecastLoading = true;
       _forecastError = null;
     });
-    final result = await ApiService().getForecast(days: _forecastDays);
+    final result = await sl<ApiService>().getForecast(days: _forecastDays);
     if (mounted) {
       setState(() {
         _forecastLoading = false;
@@ -104,7 +105,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _inventoryLoading = true;
       _inventoryError = null;
     });
-    final result = await ApiService().getInventoryForecast();
+    final result = await sl<ApiService>().getInventoryForecast();
     if (mounted) {
       setState(() {
         _inventoryLoading = false;

@@ -8,6 +8,7 @@ import '../../widgets/app_date_picker.dart';
 import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
 import '../../services/pdf_export_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class AverageCheckReportScreen extends StatefulWidget {
   const AverageCheckReportScreen({super.key});
@@ -50,7 +51,7 @@ class _AverageCheckReportScreenState extends State<AverageCheckReportScreen> {
       _report = null;
     });
     try {
-      final apiService = ApiService();
+      final apiService = sl<ApiService>();
       final report = await apiService.getAverageCheckReport(_selectedDate);
       setState(() {
         _report = report;

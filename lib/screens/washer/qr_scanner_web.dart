@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../app_styles.dart';
 import '../shared/appointment_detail_widget.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class QrScannerBody extends StatefulWidget {
   const QrScannerBody({super.key});
@@ -20,7 +21,7 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
     setState(() => _isLoading = true);
 
     try {
-      final apiService = ApiService();
+      final apiService = sl<ApiService>();
       final appointment = await apiService.scanQrCode(code);
 
       if (!mounted) return;
