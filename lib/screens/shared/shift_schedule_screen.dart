@@ -13,7 +13,11 @@ import '../../widgets/shift_schedule/shift_filter_bar.dart';
 import '../../widgets/shift_schedule/shift_requests_panel.dart';
 import '../../widgets/shift_schedule/shift_templates_sheet.dart';
 import '../../widgets/shift_schedule/draggable_shift_cell.dart';
+import '../../widgets/shift_schedule/washer_availability_grid.dart';
 import '../../models/shift_template.dart';
+import '../../models/washer_availability.dart';
+
+enum _ScheduleMode { shifts, availability }
 
 class ShiftScheduleScreen extends StatefulWidget {
   const ShiftScheduleScreen({super.key});
@@ -29,6 +33,7 @@ class ShiftCell extends StatelessWidget {
   final Shift? shift;
   final bool canEdit;
   final List<Shift> dayShifts;
+  final String? availabilityStatus;
   final VoidCallback? onTap;
   final VoidCallback? onCopy;
   final VoidCallback? onPaste;
@@ -41,6 +46,7 @@ class ShiftCell extends StatelessWidget {
     this.shift,
     required this.canEdit,
     this.dayShifts = const [],
+    this.availabilityStatus,
     this.onTap,
     this.onCopy,
     this.onPaste,
@@ -141,6 +147,32 @@ class ShiftCell extends StatelessWidget {
         child: Stack(
           children: [
             child,
+            if (availabilityStatus == 'available')
+              Positioned(
+                top: 4,
+                left: 4,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppStyles.success,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              )
+            else if (availabilityStatus == 'unavailable')
+              Positioned(
+                top: 4,
+                left: 4,
+                right: 4,
+                child: Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppStyles.danger,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
             if (hasConflict)
               const Positioned(
                 top: 4,
@@ -387,6 +419,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   List<Shift>? _copiedWeek;
   ShiftFilter _filter = ShiftFilter.all;
   List<ShiftTemplate> _templates = [];
+  _ScheduleMode _mode = _ScheduleMode.shifts;
+  List<WasherAvailability> _availability = [];
+  bool _availabilityLoading = false;
 
   static const int _targetWeeklyMinutesPerWasher = 40 * 60;
 
@@ -449,23 +484,33 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       final end = _weekStart.add(const Duration(days: 6));
       final fmt = DateFormat('yyyy-MM-dd');
 
-      final results = await Future.wait([
-        api.getWashers(),
-        api.getShifts(fmt.format(_weekStart), fmt.format(end)),
-        api.getCurrentShifts(),
-      ]);
+      final washers = await api.getWashers();
+      List<Shift> shifts = [];
+      List<Map<String, dynamic>> current = [];
+
+      if (_mode == _ScheduleMode.shifts) {
+        final results = await Future.wait([
+          api.getShifts(fmt.format(_weekStart), fmt.format(end)),
+          api.getCurrentShifts(),
+        ]);
+        shifts = results[0] as List<Shift>;
+        current = results[1] as List<Map<String, dynamic>>;
+      }
+
+      await _loadAvailability(washers);
 
       if (mounted) {
         setState(() {
-          _washers = results[0] as List<User>;
-          _shifts = results[1] as List<Shift>;
-          _currentShifts = results[2] as List<Map<String, dynamic>>;
+          _washers = washers;
+          _shifts = shifts;
+          _currentShifts = current;
           _loading = false;
         });
       }
 
-      // Templates are loaded separately so they can't block the main schedule.
-      _loadTemplates();
+      if (_mode == _ScheduleMode.shifts) {
+        _loadTemplates();
+      }
     } catch (e, st) {
       debugPrint('ShiftSchedule: _loadData failed: $e\n$st');
       if (mounted) {
@@ -475,6 +520,63 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadAvailability(List<User> washers) async {
+    if (washers.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _availability = [];
+          _availabilityLoading = false;
+        });
+      }
+      return;
+    }
+
+    setState(() => _availabilityLoading = true);
+
+    final api = context.read<ApiService>();
+    final end = _weekStart.add(const Duration(days: 6));
+    final fmt = DateFormat('yyyy-MM-dd');
+
+    final userIds = <int>[];
+    if (_mode == _ScheduleMode.availability) {
+      userIds.addAll(washers.map((w) => w.id!).whereType<int>());
+    } else if (_isAdmin) {
+      userIds.addAll(washers.map((w) => w.id!).whereType<int>());
+    }
+
+    try {
+      final results = await Future.wait(
+        userIds.map(
+          (id) => api.getWasherAvailability(
+            id,
+            fmt.format(_weekStart),
+            fmt.format(end),
+          ),
+        ),
+      );
+      final all = results.expand((list) => list).toList();
+      if (mounted) {
+        setState(() {
+          _availability = all;
+          _availabilityLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: failed to load availability: $e\n$st');
+      if (mounted) setState(() => _availabilityLoading = false);
+    }
+  }
+
+  String? _availabilityStatus(int userId, DateTime date) {
+    final key = '${userId}_${DateFormat('yyyy-MM-dd').format(date)}';
+    for (final a in _availability) {
+      if (a.userId == userId && a.date == key.split('_').last) {
+        return a.status;
+      }
+    }
+    return null;
   }
 
   void _changeWeek(int delta) {
@@ -934,6 +1036,30 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     }
   }
 
+  Future<void> _saveAvailability(
+      User washer, List<WasherAvailability> entries) async {
+    final ok = await context
+        .read<ApiService>()
+        .updateWasherAvailability(washer.id!, entries);
+    if (mounted) {
+      _showSnack(ok.isNotEmpty ? 'Доступность сохранена' : 'Не удалось сохранить');
+      _loadData();
+    }
+  }
+
+  Future<void> _resetAvailability(User washer) async {
+    final fmt = DateFormat('yyyy-MM-dd');
+    final ok = await context.read<ApiService>().deleteWasherAvailability(
+          washer.id!,
+          fmt.format(_weekStart),
+          fmt.format(_weekStart.add(const Duration(days: 6))),
+        );
+    if (mounted) {
+      _showSnack(ok ? 'Доступность сброшена' : 'Не удалось сбросить');
+      _loadData();
+    }
+  }
+
   Future<void> _openEditor(User washer, DateTime date, Shift? existing) async {
     final canEdit = _canEdit(washer);
     if (!canEdit && existing == null) return;
@@ -945,6 +1071,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       end = _parseTime(existing.endTime);
     }
 
+    final availabilityStatus = _availabilityStatus(washer.id!, date);
+
     final api = context.read<ApiService>();
     final result = await showDialog<_EditResult>(
       context: context,
@@ -955,6 +1083,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         start: start,
         end: end,
         canEdit: canEdit,
+        availabilityStatus: availabilityStatus,
       ),
     );
     if (result == null) return;
@@ -1107,17 +1236,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                         Expanded(
                           child: Column(
                             children: [
-                              ShiftAnalyticsHeader(
-                                totalConfirmedHours: _totalConfirmedHours,
-                                pendingCount: _pendingCount,
-                                conflictCount: _conflictCount,
-                                utilizationPercent: _utilizationPercent,
+                              _buildModeToggle(),
+                              Expanded(
+                                child: _mode == _ScheduleMode.shifts
+                                    ? _buildShiftsView()
+                                    : _buildAvailabilityView(),
                               ),
-                              ShiftFilterBar(
-                                selected: _filter,
-                                onChanged: (f) => setState(() => _filter = f),
-                              ),
-                              Expanded(child: _buildTable()),
                             ],
                           ),
                         ),
@@ -1203,6 +1327,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                       .toList();
                   final hasConflict =
                       shift != null && ShiftCell.hasConflict(shift, dayShifts);
+                  final availabilityStatus = _availabilityStatus(w.id!, d);
                   final matchesFilter = _filter == ShiftFilter.all ||
                       _filter == ShiftFilter.mine ||
                       (_filter == ShiftFilter.pending &&
@@ -1220,6 +1345,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                             isDraggable: _isAdmin && shift != null,
                             isDropTarget: _isAdmin,
                             dayShifts: dayShifts,
+                            availabilityStatus: availabilityStatus,
                             onTap: () => _openEditor(w, d, shift),
                             onCopy: shift != null
                                 ? () => _copyShift(shift)
@@ -1254,6 +1380,112 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildModeToggle() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Center(
+        child: ToggleButtons(
+          isSelected: [
+            _mode == _ScheduleMode.shifts,
+            _mode == _ScheduleMode.availability,
+          ],
+          onPressed: (index) {
+            final newMode = index == 0
+                ? _ScheduleMode.shifts
+                : _ScheduleMode.availability;
+            if (newMode != _mode) {
+              setState(() => _mode = newMode);
+              _loadData();
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          selectedColor: Colors.white,
+          fillColor: AppStyles.primary,
+          color: AppStyles.adaptiveTextPrimary(context),
+          children: const [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Смены'),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Доступность'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShiftsView() {
+    return Column(
+      children: [
+        ShiftAnalyticsHeader(
+          totalConfirmedHours: _totalConfirmedHours,
+          pendingCount: _pendingCount,
+          conflictCount: _conflictCount,
+          utilizationPercent: _utilizationPercent,
+        ),
+        ShiftFilterBar(
+          selected: _filter,
+          onChanged: (f) => setState(() => _filter = f),
+        ),
+        Expanded(child: _buildTable()),
+      ],
+    );
+  }
+
+  Widget _buildAvailabilityView() {
+    if (_availabilityLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final targets = _isAdmin
+        ? _washers
+        : _washers.where((w) => _canEdit(w)).toList();
+
+    if (targets.isEmpty) {
+      return const Center(child: Text('Нет мойщиков для отображения'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: targets.length,
+      itemBuilder: (context, index) {
+        final w = targets[index];
+        final list =
+            _availability.where((a) => a.userId == w.id).toList();
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  w.displayName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                WasherAvailabilityGrid(
+                  washer: w,
+                  weekStart: _weekStart,
+                  availability: list,
+                  isEditable: _canEdit(w),
+                  onSave: (entries) => _saveAvailability(w, entries),
+                  onReset: () => _resetAvailability(w),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1311,8 +1543,50 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (!canEdit) return cell;
 
     return GestureDetector(
+      onTap: _isAdmin ? () => _openAvailabilityEditor(w) : null,
       onLongPress: () => _showNameCellMenu(w),
       child: cell,
+    );
+  }
+
+  void _openAvailabilityEditor(User washer) {
+    final washerAvailability = _availability.where((a) => a.userId == washer.id).toList();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.4,
+        maxChildSize: 0.8,
+        expand: false,
+        builder: (_, __) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Доступность: ${washer.displayName}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: WasherAvailabilityGrid(
+                  washer: washer,
+                  weekStart: _weekStart,
+                  availability: washerAvailability,
+                  isEditable: _canEdit(washer),
+                  onSave: (entries) => _saveAvailability(washer, entries),
+                  onReset: () => _resetAvailability(washer),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1399,6 +1673,7 @@ class _ShiftDialog extends StatefulWidget {
   final TimeOfDay? start;
   final TimeOfDay? end;
   final bool canEdit;
+  final String? availabilityStatus;
 
   const _ShiftDialog({
     required this.washerName,
@@ -1407,6 +1682,7 @@ class _ShiftDialog extends StatefulWidget {
     this.start,
     this.end,
     required this.canEdit,
+    this.availabilityStatus,
   });
 
   @override
@@ -1456,6 +1732,33 @@ class _ShiftDialogState extends State<_ShiftDialog> {
                 color: AppStyles.adaptiveTextSecondary(context),
               ),
             ),
+            if (widget.availabilityStatus == 'unavailable') ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppStyles.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppStyles.danger.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: AppStyles.danger, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Мойщик отметил этот день как недоступный. Создать смену всё равно?',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppStyles.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             _timeRow('Начало', _start, (t) => setState(() => _start = t)),
             const Divider(height: 24),

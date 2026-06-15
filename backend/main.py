@@ -44,6 +44,7 @@ from routers import (
     support,
     tips,
     wash_types,
+    washer_availability,
 )
 from services.auth_service import check_roles, get_current_user
 from services.websocket_manager import connect, disconnect
@@ -282,6 +283,7 @@ app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
 app.include_router(shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
+app.include_router(washer_availability.router)
 app.include_router(reviews.router)
 app.include_router(cars.router)
 app.include_router(referrals.router)
