@@ -454,6 +454,47 @@ class WasherAvailabilityResponse(BaseModel):
     updatedAt: str
 
 
+# ─── Shift Load Report ───────────────────────────────────────────────────────
+class ShiftLoadDailyEntry(BaseModel):
+    date: str
+    confirmedMinutes: int
+    pendingMinutes: int
+
+
+class ShiftLoadWasherStat(BaseModel):
+    userId: int
+    displayName: str
+    confirmedMinutes: int
+    pendingMinutes: int
+    rejectedMinutes: int
+    utilizationPercent: float
+    isOvertime: bool
+    isUnderload: bool
+
+
+class ShiftLoadStatusCounts(BaseModel):
+    confirmed: int
+    pending: int
+    rejected: int
+
+
+class ShiftLoadAvailabilityCoverage(BaseModel):
+    availableDays: int
+    unavailableDays: int
+    unknownDays: int
+
+
+class ShiftLoadResponse(BaseModel):
+    startDate: str
+    endDate: str
+    targetWeeklyMinutesPerWasher: int
+    dailyHours: List[ShiftLoadDailyEntry]
+    washerStats: List[ShiftLoadWasherStat]
+    statusCounts: ShiftLoadStatusCounts
+    conflictCount: int
+    availabilityCoverage: ShiftLoadAvailabilityCoverage
+
+
 # ─── Reviews ─────────────────────────────────────────────────────────────────
 class ReviewCreateRequest(BaseModel):
     userId: int = Field(..., ge=1)
