@@ -286,6 +286,19 @@ class ShiftTemplate(Base):
     slots = Column(JSON, nullable=False, default=list)
 
 
+class WasherAvailability(Base):
+    __tablename__ = 'washer_availability'
+    __table_args__ = (
+        Index('ix_washer_availability_user_date', 'userId', 'date'),
+        Index('ix_washer_availability_date', 'date'),
+    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    date = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+    updatedAt = Column(String, nullable=False)
+
+
 class NotificationQueue(Base):
     __tablename__ = 'notification_queue'
     __table_args__ = (
