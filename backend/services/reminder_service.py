@@ -3,11 +3,10 @@ from datetime import datetime
 from typing import List, Optional
 
 import structlog
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db_models import Appointment, FcmToken, User, WashType
 from services.fcm_service import fcm_service
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -16,7 +15,9 @@ _BATCH_SIZE = 100
 
 async def _get_user_fcm_tokens(db: AsyncSession, username: str) -> List[str]:
     """Fetch FCM tokens for a user."""
-    result = await db.execute(select(FcmToken.token).where(FcmToken.username == username))
+    result = await db.execute(
+        select(FcmToken.token).where(FcmToken.username == username)
+    )
     return [row[0] for row in result.all() if row[0]]
 
 
@@ -59,7 +60,7 @@ async def _process_batch(
         select(Appointment)
         .where(
             Appointment.ownerUsername.in_(usernames),
-            Appointment.status == 'completed',
+            Appointment.status == "completed",
         )
         .order_by(Appointment.dateTime.asc())
     )
@@ -99,7 +100,10 @@ async def _process_batch(
             days_int = int(days_since)
 
             title = "Пора на мойку!"
-            body = f"Прошло {days_int} дней с вашей последней {wash_type_name}. Записываемся?"
+            body = (
+                f"Прошло {days_int} дней с вашей последней {wash_type_name}. "
+                f"Записываемся?"
+            )
             data = {"type": "reminder", "screen": "booking"}
 
             try:
@@ -119,7 +123,9 @@ async def _process_batch(
 
         except Exception as e:
             error_count += 1
-            logger.warning("reminder_processing_failed", username=username, error=str(e))
+            logger.warning(
+                "reminder_processing_failed", username=username, error=str(e)
+            )
 
     return sent_count, skipped_count, error_count
 
@@ -149,7 +155,7 @@ async def check_and_send_reminders(db: AsyncSession) -> dict:
     while True:
         clients_result = await db.execute(
             select(User.username)
-            .where(User.role == 'client')
+            .where(User.role == "client")
             .order_by(User.id)
             .limit(_BATCH_SIZE)
             .offset(offset)

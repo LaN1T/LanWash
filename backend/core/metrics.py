@@ -3,11 +3,10 @@
 import time
 from datetime import datetime, timedelta
 
-from prometheus_client import Counter, Gauge
-from sqlalchemy import and_, func, select
-
 from database import AsyncSessionLocal
 from db_models import Appointment, Shift, User
+from prometheus_client import Counter, Gauge
+from sqlalchemy import and_, func, select
 
 # Cache business metrics to avoid hitting the DB on every Prometheus scrape.
 _METRICS_CACHE_TTL_SECONDS = 30.0

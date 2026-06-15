@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 import pytest
-
 from db_models import Appointment, Review, User
 
 
@@ -13,7 +12,7 @@ class TestAdminDashboard:
         week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         response = await async_client.get(
             f"/api/admin/dashboard?from_date={week_ago}&to_date={today}",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -29,7 +28,7 @@ class TestAdminDashboard:
         week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         response = await async_client.get(
             f"/api/admin/dashboard?from_date={week_ago}&to_date={today}",
-            headers={"Authorization": f"Bearer {client_token}"}
+            headers={"Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 403
 
@@ -38,7 +37,7 @@ class TestAdminDashboard:
         """Invalid date format returns 400."""
         response = await async_client.get(
             "/api/admin/dashboard?from_date=invalid&to_date=2024-01-01",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 400
 
@@ -47,7 +46,7 @@ class TestAdminDashboard:
         """from_date after to_date returns 400."""
         response = await async_client.get(
             "/api/admin/dashboard?from_date=2024-12-31&to_date=2024-01-01",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 400
 
@@ -100,7 +99,7 @@ class TestAdminDashboard:
 
         response = await async_client.get(
             f"/api/admin/dashboard?from_date={today_str}&to_date={today_str}",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -112,7 +111,9 @@ class TestAdminDashboard:
         assert data["dailyBreakdown"][0]["revenue"] == 1500
 
     @pytest.mark.asyncio
-    async def test_dashboard_top_washers_and_clients(self, async_client, db_session, admin_token):
+    async def test_dashboard_top_washers_and_clients(
+        self, async_client, db_session, admin_token
+    ):
         """Dashboard returns top washers and clients."""
         today = datetime.now()
         today_str = today.strftime("%Y-%m-%d")
@@ -136,7 +137,7 @@ class TestAdminDashboard:
 
         response = await async_client.get(
             f"/api/admin/dashboard?from_date={today_str}&to_date={today_str}",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()

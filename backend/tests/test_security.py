@@ -1,6 +1,5 @@
 import jwt
 import pytest
-
 from services.auth_service import (
     create_access_token,
     validate_password_strength,
@@ -45,13 +44,20 @@ class TestJWT:
         assert len(token) > 0
 
         # Декодируем без проверки подписи для теста
-        payload = jwt.decode(token, "test_secret_key_minimum_32_chars_long", algorithms=["HS256"])
+        payload = jwt.decode(
+            token, "test_secret_key_minimum_32_chars_long", algorithms=["HS256"]
+        )
         assert payload["sub"] == "testuser"
         assert payload["role"] == "client"
         assert "exp" in payload
 
     def test_token_expiration(self):
         from datetime import timedelta
-        token = create_access_token({"sub": "testuser"}, expires_delta=timedelta(seconds=-1))
+
+        token = create_access_token(
+            {"sub": "testuser"}, expires_delta=timedelta(seconds=-1)
+        )
         with pytest.raises(jwt.ExpiredSignatureError):
-            jwt.decode(token, "test_secret_key_minimum_32_chars_long", algorithms=["HS256"])
+            jwt.decode(
+                token, "test_secret_key_minimum_32_chars_long", algorithms=["HS256"]
+            )

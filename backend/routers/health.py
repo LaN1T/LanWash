@@ -1,14 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.config import get_settings
 from core.limiter import limiter
 from core.redis_client import get_redis
 from database import get_db
+from fastapi import APIRouter, Depends, Request
 from services.ai_resilience import ai_health
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 settings = get_settings()
 _start_time = datetime.now(timezone.utc)

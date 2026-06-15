@@ -2,7 +2,6 @@ import logging
 import sys
 
 import structlog
-
 from core.config import get_settings
 
 
@@ -21,7 +20,8 @@ def configure_logging() -> None:
     if settings.is_production:
         # Production: JSON output for log aggregation (Grafana/Loki/etc)
         structlog.configure(
-            processors=shared_processors + [
+            processors=shared_processors
+            + [
                 structlog.stdlib.filter_by_level,
                 structlog.processors.format_exc_info,
                 structlog.processors.JSONRenderer(),
@@ -34,7 +34,8 @@ def configure_logging() -> None:
     else:
         # Development: pretty console output
         structlog.configure(
-            processors=shared_processors + [
+            processors=shared_processors
+            + [
                 structlog.stdlib.filter_by_level,
                 structlog.processors.format_exc_info,
                 structlog.dev.ConsoleRenderer(colors=True),

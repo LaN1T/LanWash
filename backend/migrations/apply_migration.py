@@ -31,6 +31,7 @@ async def main(sql_file: str):
     await conn.close()
     print(f"Migration {sql_file} applied successfully.")
 
+
 if __name__ == "__main__":
     file_name = sys.argv[1] if len(sys.argv) > 1 else "001_add_missing_columns.sql"
     asyncio.run(main(file_name))

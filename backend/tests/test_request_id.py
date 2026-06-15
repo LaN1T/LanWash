@@ -1,9 +1,8 @@
 import pytest
 import pytest_asyncio
+from core.request_id import RequestIdMiddleware, get_request_id
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-
-from core.request_id import RequestIdMiddleware, get_request_id
 
 
 @pytest.fixture
@@ -45,7 +44,6 @@ async def test_request_id_preserved(client):
 @pytest.mark.asyncio
 async def test_request_id_in_logs(client, caplog):
     import logging
-
 
     # Ensure structlog/stdio logs are captured
     caplog.set_level(logging.INFO, logger="main")

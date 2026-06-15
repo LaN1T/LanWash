@@ -1,9 +1,8 @@
+from db_models import Car
+from models import CarRequest
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import Car
-from models import CarRequest
 
 
 class CarNotFoundError(Exception):
@@ -124,10 +123,7 @@ class CarsService:
 
         if was_primary:
             oldest_res = await self._db.execute(
-                select(Car)
-                .where(Car.userId == user_id)
-                .order_by(Car.id.asc())
-                .limit(1)
+                select(Car).where(Car.userId == user_id).order_by(Car.id.asc()).limit(1)
             )
             oldest = oldest_res.scalar_one_or_none()
             if oldest:

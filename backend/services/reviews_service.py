@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
 
+from db_models import Appointment, Review
+from models import ReviewCreateRequest, ReviewModerateRequest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import Appointment, Review
-from models import ReviewCreateRequest, ReviewModerateRequest
 
 
 class ReviewNotFoundError(Exception):
@@ -30,9 +29,7 @@ class ReviewsService:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def list_reviews(
-        self, published_only: bool, limit: int
-    ) -> list[Review]:
+    async def list_reviews(self, published_only: bool, limit: int) -> list[Review]:
         stmt = select(Review)
         if published_only:
             stmt = stmt.where(Review.isPublished == 1)
@@ -60,7 +57,11 @@ class ReviewsService:
         return result.scalar_one_or_none() is not None
 
     async def create_review(
-        self, data: ReviewCreateRequest, current_user_id: int, current_user_username: str, current_user_display_name: str
+        self,
+        data: ReviewCreateRequest,
+        current_user_id: int,
+        current_user_username: str,
+        current_user_display_name: str,
     ) -> Review:
         if data.appointmentId is not None:
             result = await self._db.execute(
@@ -71,8 +72,10 @@ class ReviewsService:
                 raise ReviewBadRequestError("Запись не найдена")
             if appointment.ownerUsername != current_user_username:
                 raise ReviewPermissionError("Нельзя оставить отзыв на чужую запись")
-            if appointment.status != 'completed':
-                raise ReviewBadRequestError("Можно оставить отзыв только на завершённую мойку")
+            if appointment.status != "completed":
+                raise ReviewBadRequestError(
+                    "Можно оставить отзыв только на завершённую мойку"
+                )
 
             existing = await self._db.execute(
                 select(Review).where(
@@ -106,7 +109,9 @@ class ReviewsService:
         result = await self._db.execute(stmt)
         return list(result.scalars().all())
 
-    async def moderate_review(self, review_id: int, data: ReviewModerateRequest) -> Review:
+    async def moderate_review(
+        self, review_id: int, data: ReviewModerateRequest
+    ) -> Review:
         result = await self._db.execute(select(Review).where(Review.id == review_id))
         review = result.scalar_one_or_none()
         if not review:

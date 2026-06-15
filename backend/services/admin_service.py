@@ -3,13 +3,12 @@ import json as _json
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.redis_client import get_redis
 from db_models import Appointment, Review, User
 from models import ForecastResponse
 from services.forecast_service import generate_forecast
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AdminService:
@@ -53,8 +52,9 @@ class AdminService:
 
         # Revenue & avg check
         revenue_result = await self._db.execute(
-            select(func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
-            .where(and_(base_filter, Appointment.status == "completed"))
+            select(
+                func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice)
+            ).where(and_(base_filter, Appointment.status == "completed"))
         )
         revenue_row = revenue_result.first()
         total_revenue = int(revenue_row[0] or 0)
@@ -83,7 +83,10 @@ class AdminService:
         returning_clients = 0
         for owner, visits in client_visits_in_period.items():
             first_visit = first_visit_map.get(owner)
-            if first_visit and from_dt.isoformat() <= first_visit < to_dt_inclusive.isoformat():
+            if (
+                first_visit
+                and from_dt.isoformat() <= first_visit < to_dt_inclusive.isoformat()
+            ):
                 new_clients += 1
             elif visits >= 2:
                 returning_clients += 1
@@ -92,8 +95,7 @@ class AdminService:
 
         # Average rating
         rating_result = await self._db.execute(
-            select(func.avg(Review.rating))
-            .where(
+            select(func.avg(Review.rating)).where(
                 and_(
                     Review.createdAt >= from_dt.isoformat(),
                     Review.createdAt < to_dt_inclusive.isoformat(),
@@ -137,8 +139,9 @@ class AdminService:
 
         # Top washers
         washer_apps_result = await self._db.execute(
-            select(Appointment.assignedWasher, Appointment.paidPrice)
-            .where(and_(base_filter, Appointment.status == "completed"))
+            select(Appointment.assignedWasher, Appointment.paidPrice).where(
+                and_(base_filter, Appointment.status == "completed")
+            )
         )
         washer_revenue: dict[str, int] = defaultdict(int)
         washer_count: dict[str, int] = defaultdict(int)
@@ -156,13 +159,17 @@ class AdminService:
 
         top_washers = [
             {"name": name, "revenue": rev, "appointments": washer_count[name]}
-            for name, rev in sorted(washer_revenue.items(), key=lambda x: x[1], reverse=True)[:5]
+            for name, rev in sorted(
+                washer_revenue.items(), key=lambda x: x[1], reverse=True
+            )[:5]
         ]
 
         washer_usernames = [w["name"] for w in top_washers]
         if washer_usernames:
             user_result = await self._db.execute(
-                select(User.username, User.displayName).where(User.username.in_(washer_usernames))
+                select(User.username, User.displayName).where(
+                    User.username.in_(washer_usernames)
+                )
             )
             name_map = {row[0]: row[1] for row in user_result.all()}
             for w in top_washers:
@@ -170,21 +177,37 @@ class AdminService:
 
         # Top clients
         client_result = await self._db.execute(
-            select(Appointment.ownerUsername, func.count(Appointment.id), func.sum(Appointment.paidPrice))
-            .where(and_(base_filter, Appointment.status == "completed", Appointment.ownerUsername.isnot(None)))
+            select(
+                Appointment.ownerUsername,
+                func.count(Appointment.id),
+                func.sum(Appointment.paidPrice),
+            )
+            .where(
+                and_(
+                    base_filter,
+                    Appointment.status == "completed",
+                    Appointment.ownerUsername.isnot(None),
+                )
+            )
             .group_by(Appointment.ownerUsername)
             .order_by(func.count(Appointment.id).desc())
             .limit(5)
         )
         top_clients = [
-            {"name": row[0] or "Unknown", "visits": row[1], "totalSpent": int(row[2] or 0)}
+            {
+                "name": row[0] or "Unknown",
+                "visits": row[1],
+                "totalSpent": int(row[2] or 0),
+            }
             for row in client_result.all()
         ]
 
         client_usernames = [c["name"] for c in top_clients]
         if client_usernames:
             user_result = await self._db.execute(
-                select(User.username, User.displayName).where(User.username.in_(client_usernames))
+                select(User.username, User.displayName).where(
+                    User.username.in_(client_usernames)
+                )
             )
             name_map = {row[0]: row[1] for row in user_result.all()}
             for c in top_clients:
@@ -240,7 +263,9 @@ class AdminService:
 
         return forecast
 
-    async def bulk_assign_washer(self, appointment_ids: list[str], washer_username: str) -> dict:
+    async def bulk_assign_washer(
+        self, appointment_ids: list[str], washer_username: str
+    ) -> dict:
         result = await self._db.execute(
             select(Appointment).where(Appointment.id.in_(appointment_ids))
         )
@@ -255,7 +280,9 @@ class AdminService:
         processed = 0
         for appt in appointments:
             if appt.status == "cancelled":
-                errors.append(f"{appt.id}: нельзя назначить мойщика на отменённую запись")
+                errors.append(
+                    f"{appt.id}: нельзя назначить мойщика на отменённую запись"
+                )
                 continue
             appt.assignedWasher = json.dumps([washer_username])
             appt.isModifiedByAdmin = 1
@@ -337,15 +364,15 @@ class AdminService:
         filters = []
 
         if q:
-            escaped_q = q.replace('%', r'\%').replace('_', r'\_')
+            escaped_q = q.replace("%", r"\%").replace("_", r"\_")
             safe_q = f"%{escaped_q}%"
             filters.append(
                 or_(
-                    User.displayName.ilike(safe_q, escape='\\'),
-                    User.username.ilike(safe_q, escape='\\'),
-                    User.phone.ilike(safe_q, escape='\\'),
-                    User.carModel.ilike(safe_q, escape='\\'),
-                    User.carNumber.ilike(safe_q, escape='\\'),
+                    User.displayName.ilike(safe_q, escape="\\"),
+                    User.username.ilike(safe_q, escape="\\"),
+                    User.phone.ilike(safe_q, escape="\\"),
+                    User.carModel.ilike(safe_q, escape="\\"),
+                    User.carNumber.ilike(safe_q, escape="\\"),
                 )
             )
 

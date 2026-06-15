@@ -7,19 +7,19 @@ from typing import List, Optional
 import jwt
 import redis
 import structlog
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jwt import PyJWTError as JWTError
-from passlib.context import CryptContext
-from sqlalchemy import and_, func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.cache import cache
 from core.config import get_settings
+from core.password import hash_password
+from core.password import verify_password as _verify_password
 from core.redis_client import get_redis
 from core.transaction import atomic
 from database import get_db
 from db_models import FcmToken, Referral, User
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jwt import PyJWTError as JWTError
+from sqlalchemy import and_, func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -27,22 +27,15 @@ settings = get_settings()
 
 SECRET_KEY = settings.jwt_secret_key
 if len(SECRET_KEY) < 32:
-    raise RuntimeError("JWT_SECRET_KEY слишком короткий. Минимум 32 символа для безопасности.")
+    raise RuntimeError(
+        "JWT_SECRET_KEY слишком короткий. Минимум 32 символа для безопасности."
+    )
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
 BLACKLIST_PREFIX = "jwt_blacklist:"
 
-pwd_context = CryptContext(
-    schemes=["argon2"],
-    deprecated="auto",
-    argon2__memory_cost=65536,
-    argon2__time_cost=3,
-    argon2__parallelism=4,
-    argon2__hash_len=32,
-    argon2__salt_len=16,
-)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 
@@ -74,7 +67,9 @@ async def is_token_blacklisted(jti: str) -> bool:
             return await r.exists(f"{BLACKLIST_PREFIX}{jti}") == 1
         except redis.RedisError as e:
             logger.critical("redis_blacklist_unavailable", error=str(e))
-            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Service temporarily unavailable")
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "Service temporarily unavailable"
+            )
     return False
 
 
@@ -95,16 +90,12 @@ def validate_password_strength(password: str) -> Optional[str]:
 import asyncio
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return hash_password(password)
 
 
 async def async_verify_password(plain_password: str, hashed_password: str) -> bool:
-    return await asyncio.to_thread(verify_password, plain_password, hashed_password)
+    return await asyncio.to_thread(_verify_password, plain_password, hashed_password)
 
 
 async def async_get_password_hash(password: str) -> str:
@@ -123,7 +114,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Не удалось проверить учетные данные",
@@ -160,9 +153,10 @@ def check_roles(allowed_roles: List[str]):
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="У вас недостаточно прав для выполнения этого действия"
+                detail="У вас недостаточно прав для выполнения этого действия",
             )
         return current_user
+
     return role_checker
 
 
@@ -203,7 +197,7 @@ class AvatarAccessDeniedError(Exception):
 
 
 # Dummy hash for constant-time login (prevents user enumeration via timing)
-_DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"
+_DUMMY_BCRYPT_HASH = "$2b$12$rSCVb1k/m76C/ROsdHsPxOLDK55BHSFpCwVB0Pu.BqqgZnV16Zp/C"
 
 # Referral code alphabet: excludes ambiguous chars 0, O, I, l, 1
 _REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -212,7 +206,10 @@ _REFERRAL_CODE_LENGTH = 8
 
 def _generate_referral_code() -> str:
     import secrets
-    return ''.join(secrets.choice(_REFERRAL_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH))
+
+    return "".join(
+        secrets.choice(_REFERRAL_ALPHABET) for _ in range(_REFERRAL_CODE_LENGTH)
+    )
 
 
 async def _ensure_unique_referral_code(db: AsyncSession) -> str:
@@ -235,7 +232,7 @@ class AuthService:
         user = result.scalar_one_or_none()
         if not user:
             # Constant-time dummy verification to prevent user enumeration
-            await async_verify_password(password, _DUMMY_ARGON2_HASH)
+            await async_verify_password(password, _DUMMY_BCRYPT_HASH)
             raise InvalidCredentialsError("Неверный логин или пароль")
 
         if not await async_verify_password(password, user.passwordHash):
@@ -243,7 +240,11 @@ class AuthService:
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
+            data={
+                "sub": user.username,
+                "role": user.role,
+                "pwd_ver": user.passwordVersion,
+            },
             expires_delta=access_token_expires,
         )
         return {"user": user, "access_token": access_token, "token_type": "bearer"}
@@ -251,16 +252,20 @@ class AuthService:
     @atomic
     async def register(self, req) -> dict:
         from models import RegisterRequest
+
         if not isinstance(req, RegisterRequest):
             raise TypeError("req must be RegisterRequest")
 
         username = req.username.lower().strip()
 
-        # Check referral code first (before duplicate check) so we can return specific error
+        # Check referral code first (before duplicate check)
+        # so we can return specific error
         referrer = None
         if req.referralCode is not None and req.referralCode.strip():
             ref_code = req.referralCode.strip().upper()
-            res = await self._db.execute(select(User).where(User.referralCode == ref_code))
+            res = await self._db.execute(
+                select(User).where(User.referralCode == ref_code)
+            )
             referrer = res.scalar_one_or_none()
             if not referrer:
                 raise InvalidReferralCodeError("Неверный реферальный код.")
@@ -269,7 +274,9 @@ class AuthService:
 
         result = await self._db.execute(select(User).where(User.username == username))
         if result.scalar_one_or_none():
-            raise UsernameAlreadyExistsError("Регистрация не удалась. Проверьте введённые данные.")
+            raise UsernameAlreadyExistsError(
+                "Регистрация не удалась. Проверьте введённые данные."
+            )
 
         referral_code = await _ensure_unique_referral_code(self._db)
 
@@ -302,7 +309,11 @@ class AuthService:
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": new_user.username, "role": new_user.role, "pwd_ver": new_user.passwordVersion},
+            data={
+                "sub": new_user.username,
+                "role": new_user.role,
+                "pwd_ver": new_user.passwordVersion,
+            },
             expires_delta=access_token_expires,
         )
 
@@ -317,7 +328,7 @@ class AuthService:
         import string
 
         referral_code = await _ensure_unique_referral_code(self._db)
-        random_password = ''.join(
+        random_password = "".join(
             secrets.choice(string.ascii_letters + string.digits) for _ in range(16)
         )
         new_user = User(
@@ -351,7 +362,9 @@ class AuthService:
         display_name = user_data.get("first_name") or username
         photo_url = user_data.get("photo_url", "")
 
-        result = await self._db.execute(select(User).where(User.telegramId == telegram_id))
+        result = await self._db.execute(
+            select(User).where(User.telegramId == telegram_id)
+        )
         user = result.scalar_one_or_none()
 
         if not user:
@@ -370,14 +383,22 @@ class AuthService:
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
+            data={
+                "sub": user.username,
+                "role": user.role,
+                "pwd_ver": user.passwordVersion,
+            },
             expires_delta=access_token_expires,
         )
 
         return {"user": user, "access_token": access_token, "token_type": "bearer"}
 
-    async def link_telegram(self, username: str, password: str, telegram_id: str) -> dict:
-        result = await self._db.execute(select(User).where(User.username == username.lower().strip()))
+    async def link_telegram(
+        self, username: str, password: str, telegram_id: str
+    ) -> dict:
+        result = await self._db.execute(
+            select(User).where(User.username == username.lower().strip())
+        )
         user = result.scalar_one_or_none()
 
         if not user:
@@ -391,7 +412,11 @@ class AuthService:
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.username, "role": user.role, "pwd_ver": user.passwordVersion},
+            data={
+                "sub": user.username,
+                "role": user.role,
+                "pwd_ver": user.passwordVersion,
+            },
             expires_delta=access_token_expires,
         )
 
@@ -403,7 +428,9 @@ class AuthService:
         if cached is not None:
             return cached
 
-        result = await self._db.execute(select(User).where(User.role == "washer").order_by(User.displayName.asc()))
+        result = await self._db.execute(
+            select(User).where(User.role == "washer").order_by(User.displayName.asc())
+        )
         users = list(result.scalars().all())
         data = [
             {
@@ -417,8 +444,11 @@ class AuthService:
         await cache.set(cache_key, data, ttl=300)
         return data
 
-    async def update_profile(self, user_id: int, current_user: User, req, token: str) -> User:
+    async def update_profile(
+        self, user_id: int, current_user: User, req, token: str
+    ) -> User:
         from models import UpdateProfileRequest
+
         if not isinstance(req, UpdateProfileRequest):
             raise TypeError("req must be UpdateProfileRequest")
 
@@ -442,7 +472,9 @@ class AuthService:
         if req.avatarUrl is not None:
             updates["avatarUrl"] = req.avatarUrl
         if req.newPassword is not None:
-            if not req.currentPassword or not await async_verify_password(req.currentPassword, user.passwordHash):
+            if not req.currentPassword or not await async_verify_password(
+                req.currentPassword, user.passwordHash
+            ):
                 raise ProfileAccessDeniedError("Неверный текущий пароль")
             password_error = validate_password_strength(req.newPassword)
             if password_error:
@@ -451,7 +483,9 @@ class AuthService:
             updates["passwordVersion"] = (user.passwordVersion or 1) + 1
             # Blacklist current token after password change
             try:
-                payload = jwt.decode(token, get_settings().jwt_secret_key, algorithms=["HS256"])
+                payload = jwt.decode(
+                    token, get_settings().jwt_secret_key, algorithms=["HS256"]
+                )
                 jti = payload.get("jti")
                 exp = payload.get("exp")
                 if jti and exp:
@@ -461,7 +495,9 @@ class AuthService:
                 pass
 
         if updates:
-            await self._db.execute(update(User).where(User.id == user_id).values(updates))
+            await self._db.execute(
+                update(User).where(User.id == user_id).values(updates)
+            )
             await self._db.commit()
             await self._db.refresh(user)
             if user.role == "washer":
@@ -471,13 +507,18 @@ class AuthService:
 
     async def save_fcm_token(self, req, current_user: User) -> dict:
         from models import FcmTokenRequest
+
         if not isinstance(req, FcmTokenRequest):
             raise TypeError("req must be FcmTokenRequest")
 
         if current_user.username != req.username and current_user.role != "admin":
-            raise FcmTokenAccessDeniedError("Вы не можете менять FCM токен другого пользователя")
+            raise FcmTokenAccessDeniedError(
+                "Вы не можете менять FCM токен другого пользователя"
+            )
 
-        result = await self._db.execute(select(FcmToken).where(FcmToken.username == req.username))
+        result = await self._db.execute(
+            select(FcmToken).where(FcmToken.username == req.username)
+        )
         existing = result.scalar_one_or_none()
 
         from core.security import encrypt_token
@@ -498,11 +539,15 @@ class AuthService:
         await self._db.commit()
         return {"status": "ok"}
 
-    async def update_avatar(self, user_id: int, current_user: User, avatar_url: str) -> User:
+    async def update_avatar(
+        self, user_id: int, current_user: User, avatar_url: str
+    ) -> User:
         if current_user.id != user_id and current_user.role != "admin":
             raise AvatarAccessDeniedError("Нет доступа к этому профилю")
 
-        await self._db.execute(update(User).where(User.id == user_id).values(avatarUrl=avatar_url))
+        await self._db.execute(
+            update(User).where(User.id == user_id).values(avatarUrl=avatar_url)
+        )
         await self._db.commit()
 
         result = await self._db.execute(select(User).where(User.id == user_id))
@@ -515,7 +560,9 @@ class AuthService:
         if current_user.username != username.lower() and current_user.role != "admin":
             raise StatsAccessDeniedError("Нет доступа к статистике")
 
-        user_res = await self._db.execute(select(User).where(User.username == username.lower()))
+        user_res = await self._db.execute(
+            select(User).where(User.username == username.lower())
+        )
         target_user = user_res.scalar_one_or_none()
         if not target_user:
             raise UserNotFoundError("Пользователь не найден")
@@ -524,7 +571,9 @@ class AuthService:
             safe_username = username.lower().replace("%", r"\%").replace("_", r"\_")
             res_explicit = await self._db.execute(
                 select(Appointment).where(
-                    Appointment.assignedWasher.like(f'%"{safe_username}"%', escape="\\"),
+                    Appointment.assignedWasher.like(
+                        f'%"{safe_username}"%', escape="\\"
+                    ),
                     Appointment.status == "completed",
                 )
             )
@@ -534,15 +583,20 @@ class AuthService:
             appt_time = func.substr(Appointment.dateTime, 12, 5)
             res_shift = await self._db.execute(
                 select(Appointment)
-                .join(Shift, and_(
-                    Shift.userId == target_user.id,
-                    Shift.date == Appointment.date,
-                    appt_time >= Shift.startTime,
-                    appt_time <= Shift.endTime,
-                ))
+                .join(
+                    Shift,
+                    and_(
+                        Shift.userId == target_user.id,
+                        Shift.date == Appointment.date,
+                        appt_time >= Shift.startTime,
+                        appt_time <= Shift.endTime,
+                    ),
+                )
                 .where(Appointment.status == "completed")
             )
-            shift_based = [a for a in res_shift.scalars().all() if a.id not in explicit_ids]
+            shift_based = [
+                a for a in res_shift.scalars().all() if a.id not in explicit_ids
+            ]
 
             all_washed = explicit + shift_based
             total_appointments = len(all_washed)
@@ -617,7 +671,9 @@ class AuthService:
 
     async def logout(self, token: str) -> dict:
         try:
-            payload = jwt.decode(token, get_settings().jwt_secret_key, algorithms=["HS256"])
+            payload = jwt.decode(
+                token, get_settings().jwt_secret_key, algorithms=["HS256"]
+            )
             jti = payload.get("jti")
             exp = payload.get("exp")
             if jti and exp:

@@ -1,9 +1,8 @@
 from datetime import datetime
 
+from db_models import LogEntry
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import LogEntry
 
 
 class LogAccessDeniedError(Exception):
@@ -25,7 +24,9 @@ class LogsService:
         )
         return list(result.scalars().all())
 
-    async def get_by_user(self, username: str, limit: int, offset: int = 0) -> list[LogEntry]:
+    async def get_by_user(
+        self, username: str, limit: int, offset: int = 0
+    ) -> list[LogEntry]:
         result = await self._db.execute(
             select(LogEntry)
             .where(LogEntry.username == username)
@@ -40,7 +41,7 @@ class LogsService:
             username=username,
             action=action,
             details=details,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
         self._db.add(new_log)
         await self._db.commit()

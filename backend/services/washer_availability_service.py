@@ -1,12 +1,11 @@
 from datetime import datetime
 from typing import List
 
+from db_models import User, WasherAvailability
 from fastapi import HTTPException
+from models import WasherAvailabilityEntry
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import User, WasherAvailability
-from models import WasherAvailabilityEntry
 
 
 class WasherAvailabilityService:
@@ -49,7 +48,9 @@ class WasherAvailabilityService:
             return []
 
         stmt = select(WasherAvailability).where(
-            and_(WasherAvailability.userId == user_id, WasherAvailability.date.in_(dates))
+            and_(
+                WasherAvailability.userId == user_id, WasherAvailability.date.in_(dates)
+            )
         )
         result = await self._db.execute(stmt)
         existing = {row.date: row for row in result.scalars().all()}

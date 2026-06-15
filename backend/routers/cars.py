@@ -1,14 +1,13 @@
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from models import CarRequest, CarResponse
 from services.auth_service import check_roles, get_current_user
 from services.cars_service import CarAccessDeniedError, CarNotFoundError, CarsService
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -72,9 +71,7 @@ async def update_car(
     try:
         return await svc.update_car(car_id, current_user.id, req)
     except CarNotFoundError:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "Автомобиль не найден"
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Автомобиль не найден")
     except CarAccessDeniedError:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
@@ -99,9 +96,7 @@ async def delete_car(
     try:
         await svc.delete_car(car_id, current_user.id)
     except CarNotFoundError:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "Автомобиль не найден"
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Автомобиль не найден")
     except CarAccessDeniedError:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,

@@ -7,16 +7,6 @@ from datetime import datetime, timezone
 
 import sentry_sdk
 import structlog
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from prometheus_fastapi_instrumentator import Instrumentator
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-
 from core.background import close_arq_pool, get_arq_pool
 from core.config import get_settings
 from core.limiter import limiter
@@ -25,6 +15,11 @@ from core.metrics import update_business_metrics
 from core.request_id import RequestIdMiddleware, get_request_id
 from core.security_headers import SecurityHeadersMiddleware
 from database import engine, get_db, init_db
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from prometheus_fastapi_instrumentator import Instrumentator
 from routers import (
     admin,
     appointments,
@@ -47,8 +42,12 @@ from routers import (
     wash_types,
     washer_availability,
 )
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 from services.auth_service import check_roles, get_current_user
 from services.websocket_manager import connect, disconnect
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 # Configure structured logging
 configure_logging()
@@ -57,9 +56,11 @@ settings = get_settings()
 
 # Initialize Sentry if DSN is configured
 if settings.sentry_dsn:
+
     def _sentry_scrub_sensitive(event, hint):
         """Remove sensitive data from Sentry events."""
         from sentry_sdk.utils import AnnotatedValue
+
         if event.get("exception"):
             for value in event.get("exception", {}).get("values", []):
                 if value.get("stacktrace"):
@@ -67,8 +68,20 @@ if settings.sentry_dsn:
                         if frame.get("vars"):
                             for key in list(frame["vars"].keys()):
                                 key_lower = key.lower()
-                                if any(s in key_lower for s in ("password", "token", "secret", "authorization", "api_key", "apikey")):
-                                    frame["vars"][key] = AnnotatedValue("[Filtered]", {"rem": ["scrubbed"]})
+                                if any(
+                                    s in key_lower
+                                    for s in (
+                                        "password",
+                                        "token",
+                                        "secret",
+                                        "authorization",
+                                        "api_key",
+                                        "apikey",
+                                    )
+                                ):
+                                    frame["vars"][key] = AnnotatedValue(
+                                        "[Filtered]", {"rem": ["scrubbed"]}
+                                    )
         if event.get("request"):
             req = event["request"]
             for key in ("cookies", "data", "headers", "env"):
@@ -78,8 +91,21 @@ if settings.sentry_dsn:
                 if not isinstance(container, dict):
                     continue
                 for k in list(container.keys()):
-                    if any(s in k.lower() for s in ("password", "token", "secret", "authorization", "api_key", "apikey", "cookie")):
-                        container[k] = AnnotatedValue("[Filtered]", {"rem": ["scrubbed"]})
+                    if any(
+                        s in k.lower()
+                        for s in (
+                            "password",
+                            "token",
+                            "secret",
+                            "authorization",
+                            "api_key",
+                            "apikey",
+                            "cookie",
+                        )
+                    ):
+                        container[k] = AnnotatedValue(
+                            "[Filtered]", {"rem": ["scrubbed"]}
+                        )
         return event
 
     sentry_sdk.init(
@@ -133,6 +159,7 @@ async def lifespan(app: FastAPI):
     await close_arq_pool()
     try:
         from core.redis_client import get_redis
+
         r = await get_redis()
         if r:
             await r.aclose()
@@ -144,7 +171,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="LanWash API",
-    description="REST API для системы управления автомойкой. Поддерживает роли: client, washer, admin.",
+    description=(
+        "REST API для системы управления автомойкой. "
+        "Поддерживает роли: client, washer, admin."
+    ),
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs" if not settings.is_production else None,
@@ -156,17 +186,19 @@ uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
 
 
-
 @app.get("/uploads/avatars/{filename}")
 @limiter.limit("60/minute")
-async def get_avatar(request: Request, filename: str, current_user=Depends(get_current_user)): 
+async def get_avatar(
+    request: Request, filename: str, current_user=Depends(get_current_user)
+):
     """Serve avatar images with auth check."""
-    if not filename or re.search(r'[/\\]', filename) or filename.startswith('.'):
+    if not filename or re.search(r"[/\\]", filename) or filename.startswith("."):
         raise HTTPException(400, "Invalid filename")
     filepath = os.path.join(uploads_dir, "avatars", os.path.basename(filename))
     if not await asyncio.to_thread(os.path.exists, filepath):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(filepath)
+
 
 # Apply rate limiter
 app.state.limiter = limiter
@@ -210,8 +242,10 @@ async def _metrics_rate_limit_middleware(request: Request, call_next):
         _METRICS_RATE_LIMIT[ip] = window
     return await call_next(request)
 
-# CORS — strict whitelist in all environments. In production ALLOWED_ORIGINS
-# is mandatory; in development/testing it falls back to known local ports.
+
+# CORS — strict whitelist in production. In development/testing we keep the
+# configured list but also allow any localhost/127.0.0.1 port and the `null`
+# origin used by mobile apps / Telegram webviews.
 _EXPOSED_HEADERS = [
     "X-Total-Pages",
     "X-Current-Page",
@@ -221,9 +255,16 @@ _EXPOSED_HEADERS = [
     "X-Frame-Options",
 ]
 
+_CORS_ORIGIN_REGEX = None
+if not settings.is_production:
+    _CORS_ORIGIN_REGEX = (
+        r"^(https?://localhost:\d+|https?://127\.0\.0\.1:\d+|null)$"
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=_CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
@@ -239,11 +280,13 @@ from core.app_check import verify_app_check_token
 
 _EXCLUDED_APP_CHECK_PATHS = {"/health", "/metrics", "/docs", "/redoc", "/openapi.json"}
 
+
 @app.middleware("http")
 async def app_check_middleware(request, call_next):
     if request.url.path not in _EXCLUDED_APP_CHECK_PATHS:
         await verify_app_check_token(request)
     return await call_next(request)
+
 
 # Business metrics middleware
 @app.middleware("http")
@@ -287,6 +330,7 @@ async def log_requests(request, call_next):
 
 # Debug routes only in development
 if settings.debug:
+
     @app.get("/debug/routes", dependencies=[Depends(check_roles(["admin"]))])
     async def get_routes():
         return [{"path": route.path} for route in app.routes]
@@ -298,11 +342,17 @@ app.include_router(appointments.router)
 app.include_router(services.router)
 app.include_router(logs.router)
 app.include_router(notes.router)
-app.include_router(reports.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
-app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
+app.include_router(
+    reports.router, dependencies=[Depends(check_roles(["admin", "washer"]))]
+)
+app.include_router(
+    consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))]
+)
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
-app.include_router(shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
+app.include_router(
+    shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))]
+)
 app.include_router(washer_availability.router)
 app.include_router(reviews.router)
 app.include_router(cars.router)
@@ -318,20 +368,25 @@ app.include_router(support.router)
 # Telegram Bot Webhook endpoint
 TELEGRAM_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 
+
 @app.post("/webhook")
 @limiter.limit("20/minute")
-async def telegram_webhook(request: Request, update: dict, x_telegram_bot_api_secret_token: str = Header(None)):
+async def telegram_webhook(
+    request: Request, update: dict, x_telegram_bot_api_secret_token: str = Header(None)
+):
     if not TELEGRAM_SECRET:
         raise HTTPException(500, "Webhook secret not configured")
     if x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
         raise HTTPException(403, "Invalid secret token")
     from bot.webhook import process_update
+
     return await process_update(update)
 
 
 # Telegram Mini App static files (must be after ALL API routes)
 miniapp_dir = os.path.join(os.path.dirname(__file__), "..", "telegram-miniapp", "dist")
 if os.path.exists(miniapp_dir):
+
     @app.get("/{path:path}")
     async def serve_miniapp(path: str):
         headers = {
@@ -343,7 +398,11 @@ if os.path.exists(miniapp_dir):
         norm_miniapp = os.path.normpath(miniapp_dir)
         if not file_path.startswith(norm_miniapp):
             raise HTTPException(403, "Invalid path")
-        if path and await asyncio.to_thread(os.path.exists, file_path) and await asyncio.to_thread(os.path.isfile, file_path):
+        if (
+            path
+            and await asyncio.to_thread(os.path.exists, file_path)
+            and await asyncio.to_thread(os.path.isfile, file_path)
+        ):
             return FileResponse(file_path, headers=headers)
         return FileResponse(os.path.join(miniapp_dir, "index.html"), headers=headers)
 else:
@@ -353,17 +412,20 @@ else:
 # ─── Support Chat WebSocket ─────────────────────────────────────────────────
 import json
 
+from db_models import SupportChat
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy import select
-
-from db_models import SupportChat
 
 _ws_attempts: dict[str, list[float]] = {}
 
 
 def _cleanup_ws_attempts() -> None:
     now = time.time()
-    stale = [ip for ip, attempts in _ws_attempts.items() if not any(now - t < 60 for t in attempts)]
+    stale = [
+        ip
+        for ip, attempts in _ws_attempts.items()
+        if not any(now - t < 60 for t in attempts)
+    ]
     for ip in stale:
         _ws_attempts.pop(ip, None)
 
@@ -477,4 +539,5 @@ async def _websocket_heartbeat(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False, proxy_headers=True)

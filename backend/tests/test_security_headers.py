@@ -1,9 +1,8 @@
 import pytest
 import pytest_asyncio
+from core.security_headers import SecurityHeadersMiddleware
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-
-from core.security_headers import SecurityHeadersMiddleware
 
 
 @pytest.fixture

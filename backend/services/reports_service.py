@@ -3,9 +3,6 @@ import random
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db_models import (
     Appointment,
     Consumable,
@@ -19,6 +16,8 @@ from db_models import (
     WashType,
     WashTypeConsumable,
 )
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 WASH_CATEGORY = "Мойка кузова"
 SHIFT_LOAD_TARGET_WEEKLY_MINUTES = 40 * 60
@@ -87,21 +86,31 @@ class ReportsService:
         for row in rows:
             car_model, avg_check, visit_count = row
             avg_car_price = await CarPriceService.get_average_price(car_model)
-            report.append({
-                "carModel": car_model,
-                "avgCheck": round(float(avg_check), 2),
-                "avgCarPrice": avg_car_price,
-                "visitCount": visit_count,
-                "ratio": round((avg_check / avg_car_price * 100) if avg_car_price > 0 else 0, 4),
-            })
+            report.append(
+                {
+                    "carModel": car_model,
+                    "avgCheck": round(float(avg_check), 2),
+                    "avgCarPrice": avg_car_price,
+                    "visitCount": visit_count,
+                    "ratio": round(
+                        (avg_check / avg_car_price * 100) if avg_car_price > 0 else 0, 4
+                    ),
+                }
+            )
         return {"date": date, "data": report}
 
-    async def popular_additional_services(self, date: str, category: str | None) -> dict:
-        all_services = (await self._db.execute(select(Service.id, Service.name, Service.category))).all()
+    async def popular_additional_services(
+        self, date: str, category: str | None
+    ) -> dict:
+        all_services = (
+            await self._db.execute(select(Service.id, Service.name, Service.category))
+        ).all()
         id_to_name = {s.id: s.name for s in all_services}
         id_to_cat = {s.id: s.category for s in all_services}
 
-        all_wash_types = (await self._db.execute(select(WashType.id, WashType.name))).all()
+        all_wash_types = (
+            await self._db.execute(select(WashType.id, WashType.name))
+        ).all()
         wt_id_to_name = {w.id: w.name for w in all_wash_types}
 
         all_promos = (await self._db.execute(select(Promo.id, Promo.name))).all()
@@ -154,29 +163,41 @@ class ReportsService:
                 elif final_cat == category:
                     service_counts[final_name] += 1
 
-            if is_promo and (category is None or category == "Все" or category == "Акции"):
+            if is_promo and (
+                category is None or category == "Все" or category == "Акции"
+            ):
                 promo_name = promo_id_to_name.get(promo_id)
                 if promo_name:
                     service_counts[promo_name] += 1
 
         report_data = [
             {"serviceName": name, "count": count}
-            for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)
+            for name, count in sorted(
+                service_counts.items(), key=lambda i: i[1], reverse=True
+            )
         ]
         return {"date": date, "data": report_data}
 
     async def consumables_usage(self, date: str, category: str | None) -> dict:
-        all_services = (await self._db.execute(select(Service.id, Service.category))).all()
+        all_services = (
+            await self._db.execute(select(Service.id, Service.category))
+        ).all()
         id_to_cat = {s.id: s.category for s in all_services}
 
         cons_to_cats: dict[str, set[str]] = defaultdict(set)
 
-        sc_links = (await self._db.execute(select(ServiceConsumable.serviceId, ServiceConsumable.consumableId))).all()
+        sc_links = (
+            await self._db.execute(
+                select(ServiceConsumable.serviceId, ServiceConsumable.consumableId)
+            )
+        ).all()
         for s_id, c_id in sc_links:
             cat = id_to_cat.get(s_id, "Прочее")
             cons_to_cats[c_id].add(cat)
 
-        wt_links = (await self._db.execute(select(WashTypeConsumable.consumableId))).all()
+        wt_links = (
+            await self._db.execute(select(WashTypeConsumable.consumableId))
+        ).all()
         for (c_id,) in wt_links:
             cons_to_cats[c_id].add(WASH_CATEGORY)
 
@@ -224,7 +245,10 @@ class ReportsService:
             {"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)}
             for n, v in sums.items()
         ]
-        return {"date": date, "data": sorted(data, key=lambda x: x["totalUsed"], reverse=True)}
+        return {
+            "date": date,
+            "data": sorted(data, key=lambda x: x["totalUsed"], reverse=True),
+        }
 
     async def daily_report(self, date: str) -> dict:
         start, end = self._day_bounds(date)
@@ -236,8 +260,11 @@ class ReportsService:
         appointments_count = total_result.scalar() or 0
 
         completed_result = await self._db.execute(
-            select(func.count(Appointment.id), func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
-            .where(and_(base_filter, Appointment.status == "completed"))
+            select(
+                func.count(Appointment.id),
+                func.sum(Appointment.paidPrice),
+                func.avg(Appointment.paidPrice),
+            ).where(and_(base_filter, Appointment.status == "completed"))
         )
         completed_row = completed_result.first()
         completed_count = completed_row[0] or 0
@@ -251,12 +278,19 @@ class ReportsService:
         )
         box_occupancy = {f"box{r[0] + 1}": r[1] for r in box_result.all()}
 
-        wash_types_map = {w.id: w.name for w in (await self._db.execute(select(WashType.id, WashType.name))).all()}
-        services_map = {s.id: s.name for s in (await self._db.execute(select(Service.id, Service.name))).all()}
+        wash_types_map = {
+            w.id: w.name
+            for w in (await self._db.execute(select(WashType.id, WashType.name))).all()
+        }
+        services_map = {
+            s.id: s.name
+            for s in (await self._db.execute(select(Service.id, Service.name))).all()
+        }
 
         appts_result = await self._db.execute(
-            select(Appointment.washTypeId, Appointment.additionalServices)
-            .where(and_(base_filter, Appointment.status == "completed"))
+            select(Appointment.washTypeId, Appointment.additionalServices).where(
+                and_(base_filter, Appointment.status == "completed")
+            )
         )
         service_counts: dict[str, int] = defaultdict(int)
         for wt_id, add_json in appts_result.all():
@@ -272,12 +306,15 @@ class ReportsService:
 
         top_services = [
             {"name": name, "count": count}
-            for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)[:5]
+            for name, count in sorted(
+                service_counts.items(), key=lambda i: i[1], reverse=True
+            )[:5]
         ]
 
         shifts_result = await self._db.execute(
-            select(Shift.userId, Shift.startTime, Shift.endTime)
-            .where(Shift.date == date)
+            select(Shift.userId, Shift.startTime, Shift.endTime).where(
+                Shift.date == date
+            )
         )
         shifts = shifts_result.all()
         washer_ids = [s[0] for s in shifts]
@@ -294,11 +331,16 @@ class ReportsService:
         ]
 
         consumables_result = await self._db.execute(
-            select(Consumable.name, Consumable.currentStock, Consumable.minStock)
-            .where(Consumable.currentStock < Consumable.minStock)
+            select(Consumable.name, Consumable.currentStock, Consumable.minStock).where(
+                Consumable.currentStock < Consumable.minStock
+            )
         )
         consumables_alert = [
-            {"name": n, "currentStock": round(float(cs), 1), "minStock": round(float(ms), 1)}
+            {
+                "name": n,
+                "currentStock": round(float(cs), 1),
+                "minStock": round(float(ms), 1),
+            }
             for n, cs, ms in consumables_result.all()
         ]
 
@@ -318,9 +360,7 @@ class ReportsService:
         target_minutes = SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
         shifts_result = await self._db.execute(
-            select(Shift).where(
-                and_(Shift.date >= start_date, Shift.date <= end_date)
-            )
+            select(Shift).where(and_(Shift.date >= start_date, Shift.date <= end_date))
         )
         shifts = shifts_result.scalars().all()
 

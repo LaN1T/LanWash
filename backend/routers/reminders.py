@@ -1,21 +1,24 @@
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, Request
 from services.auth_service import check_roles
 from services.reminders_service import RemindersService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-@router.post("/trigger-reminders", response_model=dict, summary="Запустить умные напоминания клиентам")
+@router.post(
+    "/trigger-reminders",
+    response_model=dict,
+    summary="Запустить умные напоминания клиентам",
+)
 @limiter.limit("5/minute")
 async def trigger_reminders(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_roles(["admin"]))
+    current_user: User = Depends(check_roles(["admin"])),
 ):
     arq_pool = getattr(request.app.state, "arq_pool", None)
     if arq_pool:

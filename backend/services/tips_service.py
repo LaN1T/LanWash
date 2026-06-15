@@ -2,12 +2,11 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
+from db_models import Appointment, Tip
+from models import TipCreateRequest
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import Appointment, Tip
-from models import TipCreateRequest
 
 
 class TipNotFoundError(Exception):
@@ -74,7 +73,9 @@ class TipsService:
         await self._db.refresh(tip)
         return tip
 
-    async def list_my_tips(self, username: str) -> list[tuple[Tip, Optional[Appointment]]]:
+    async def list_my_tips(
+        self, username: str
+    ) -> list[tuple[Tip, Optional[Appointment]]]:
         stmt = (
             select(Tip, Appointment)
             .join(Appointment, Tip.appointmentId == Appointment.id, isouter=True)
@@ -112,7 +113,9 @@ class TipsService:
             "pendingAmount": pending_amount,
         }
 
-    async def mark_tip_paid(self, tip_id: int, current_username: str, is_admin: bool) -> Tip:
+    async def mark_tip_paid(
+        self, tip_id: int, current_username: str, is_admin: bool
+    ) -> Tip:
         result = await self._db.execute(select(Tip).where(Tip.id == tip_id))
         tip = result.scalar_one_or_none()
         if not tip:

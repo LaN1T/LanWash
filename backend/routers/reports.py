@@ -1,14 +1,13 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from models import ShiftLoadResponse
 from services.auth_service import get_current_user
 from services.reports_service import ReportsService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/api/reports",
@@ -23,7 +22,9 @@ def _parse_month(date: str | None) -> str:
     try:
         datetime.strptime(date, "%Y-%m")
     except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid date format. Expected YYYY-MM.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Invalid date format. Expected YYYY-MM."
+        )
     return date
 
 
@@ -34,7 +35,9 @@ def _parse_day(date: str | None) -> str:
     try:
         datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid date format. Expected YYYY-MM-DD.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Invalid date format. Expected YYYY-MM-DD."
+        )
     return date
 
 
@@ -47,7 +50,9 @@ async def monthly_report(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "admin":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Доступ только для администраторов."
+        )
     date = _parse_month(date)
     svc = ReportsService(db)
     return await svc.monthly_report(date)
@@ -63,7 +68,9 @@ async def get_popular_additional_services(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "admin":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Доступ только для администраторов."
+        )
     date = _parse_month(date)
     svc = ReportsService(db)
     return await svc.popular_additional_services(date, category)
@@ -79,7 +86,9 @@ async def get_consumables_usage(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "admin":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Доступ только для администраторов."
+        )
     date = _parse_month(date)
     svc = ReportsService(db)
     return await svc.consumables_usage(date, category)
@@ -93,9 +102,12 @@ async def daily_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Daily summary: revenue, appointments, top services, washers on shift, consumables alerts."""
+    """Daily summary: revenue, appointments, top services,
+    washers on shift, consumables alerts."""
     if current_user.role != "admin":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ только для администраторов.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Доступ только для администраторов."
+        )
     date = _parse_day(date)
     svc = ReportsService(db)
     return await svc.daily_report(date)

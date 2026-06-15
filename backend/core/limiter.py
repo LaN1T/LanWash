@@ -1,14 +1,17 @@
 import ipaddress
+import logging
 
 import jwt
+import redis
+from core.config import get_settings
 from fastapi import Request
 from slowapi import Limiter
-
-from core.config import get_settings
 
 settings = get_settings()
 SECRET_KEY = settings.jwt_secret_key
 ALGORITHM = "HS256"
+
+logger = logging.getLogger(__name__)
 
 
 def _is_trusted_proxy(host: str | None) -> bool:
@@ -66,20 +69,40 @@ def get_user_or_ip_key(request: Request) -> str:
 _redis_url = settings.redis_url
 _storage_uri = _redis_url if _redis_url else "memory://"
 
+
+def _resolve_storage_uri() -> str:
+    """Return Redis URI in production; use memory in dev/test if Redis is down."""
+    if settings.is_production or not _redis_url:
+        return _storage_uri
+    try:
+        r = redis.from_url(_redis_url, socket_connect_timeout=1)
+        r.ping()
+        return _storage_uri
+    except redis.RedisError as e:
+        logger.warning(
+            "Redis unavailable for rate limiting, falling back to memory: %s", e
+        )
+        return "memory://"
+
+
+_storage_uri = _resolve_storage_uri()
+
 if settings.disable_rate_limit:
     if settings.is_production:
-        raise RuntimeError(
-            "DISABLE_RATE_LIMIT must not be set in production"
-        )
+        raise RuntimeError("DISABLE_RATE_LIMIT must not be set in production")
 
     class DummyLimiter:
         """No-op limiter for load testing."""
+
         def limit(self, *args, **kwargs):
             def decorator(f):
                 return f
+
             return decorator
+
         def _check_request_limit(self, *args, **kwargs):
             pass
+
         def _inject_headers(self, *args, **kwargs):
             pass
 

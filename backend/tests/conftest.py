@@ -27,6 +27,7 @@ limiter.enabled = False
 @pytest.fixture(scope="session")
 def event_loop_policy():
     import asyncio
+
     return asyncio.DefaultEventLoopPolicy()
 
 
@@ -34,6 +35,7 @@ def event_loop_policy():
 async def db_engine():
     """Создаёт тестовый движок БД и таблицы."""
     from database import engine
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
@@ -52,6 +54,7 @@ async def db_session(db_engine):
 async def async_client(db_engine):
     """HTTP-клиент для тестирования FastAPI."""
     from httpx import ASGITransport, AsyncClient
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         # Инициализируем БД (seed_data)
@@ -62,10 +65,13 @@ async def async_client(db_engine):
 @pytest_asyncio.fixture
 async def admin_token(async_client):
     """Токен администратора (из seed_data)."""
-    response = await async_client.post("/api/auth/login", json={
-        "username": "admin",
-        "password": os.getenv("INITIAL_ADMIN_PASSWORD"),
-    })
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "admin",
+            "password": os.getenv("INITIAL_ADMIN_PASSWORD"),
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -74,6 +80,7 @@ async def admin_token(async_client):
 async def washer_token(async_client, db_session):
     """Токен мойщика (создаётся напрямую в БД с role='washer')."""
     from services.auth_service import get_password_hash
+
     user = User(
         username="washer_test",
         passwordHash=get_password_hash("TestPass123!"),
@@ -84,10 +91,13 @@ async def washer_token(async_client, db_session):
     db_session.add(user)
     await db_session.commit()
 
-    response = await async_client.post("/api/auth/login", json={
-        "username": "washer_test",
-        "password": "TestPass123!",
-    })
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "washer_test",
+            "password": "TestPass123!",
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -95,15 +105,21 @@ async def washer_token(async_client, db_session):
 @pytest_asyncio.fixture
 async def client_token(async_client):
     """Токен обычного клиента (создаётся на лету)."""
-    await async_client.post("/api/auth/register", json={
-        "username": "client_test",
-        "password": "TestPass123!",
-        "displayName": "Client Test",
-    })
-    response = await async_client.post("/api/auth/login", json={
-        "username": "client_test",
-        "password": "TestPass123!",
-    })
+    await async_client.post(
+        "/api/auth/register",
+        json={
+            "username": "client_test",
+            "password": "TestPass123!",
+            "displayName": "Client Test",
+        },
+    )
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "client_test",
+            "password": "TestPass123!",
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -112,6 +128,7 @@ async def client_token(async_client):
 async def other_washer_token(async_client, db_session):
     """Токен другого мойщика (не назначенного на записи)."""
     from services.auth_service import get_password_hash
+
     user = User(
         username="other_washer",
         passwordHash=get_password_hash("TestPass123!"),
@@ -122,9 +139,12 @@ async def other_washer_token(async_client, db_session):
     db_session.add(user)
     await db_session.commit()
 
-    response = await async_client.post("/api/auth/login", json={
-        "username": "other_washer",
-        "password": "TestPass123!",
-    })
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "other_washer",
+            "password": "TestPass123!",
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]

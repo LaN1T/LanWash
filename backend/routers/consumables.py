@@ -1,13 +1,11 @@
 import io
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from models import (
     ConsumableRequest,
     ConsumableResponse,
@@ -18,6 +16,7 @@ from models import (
 )
 from services.auth_service import check_roles
 from services.consumables_service import ConsumableNotFoundError, ConsumablesService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/api/consumables",
@@ -110,7 +109,9 @@ async def export_consumables(
 
 @router.get("/import-template")
 @limiter.limit("10/minute")
-async def download_import_template(request: Request, current_user: User = Depends(check_roles(["admin", "washer"]))): 
+async def download_import_template(
+    request: Request, current_user: User = Depends(check_roles(["admin", "washer"]))
+):
     """Скачать пустой шаблон Excel для импорта пополнений."""
     svc = ConsumablesService(db=None)  # no DB needed
     try:
@@ -121,7 +122,11 @@ async def download_import_template(request: Request, current_user: User = Depend
     return StreamingResponse(
         io.BytesIO(data),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=consumables_import_template.xlsx"},
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=consumables_import_template.xlsx"
+            )
+        },
     )
 
 
@@ -155,6 +160,7 @@ async def import_refills(
 
 
 # ========== Динамические пути ==========
+
 
 @router.get("/{consumable_id}", response_model=ConsumableResponse)
 @limiter.limit("60/minute")

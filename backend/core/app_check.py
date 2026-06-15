@@ -9,10 +9,9 @@ In development, App Check uses debug providers and verification can be skipped.
 
 import firebase_admin
 import structlog
+from core.config import get_settings
 from fastapi import HTTPException, Request, status
 from firebase_admin import app_check as firebase_app_check
-
-from core.config import get_settings
 
 logger = structlog.get_logger()
 settings = get_settings()

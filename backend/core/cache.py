@@ -4,7 +4,6 @@ import json
 from typing import Any
 
 import structlog
-
 from core.redis_client import get_redis
 
 logger = structlog.get_logger()

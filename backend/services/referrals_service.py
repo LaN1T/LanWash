@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db_models import Referral, User
 from models import ReferralResponse
 from services.auth_service import _ensure_unique_referral_code
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ReferralsService:
@@ -54,7 +53,9 @@ class ReferralsService:
         referred_ids = [r.referredId for r in referrals]
         names_map = {}
         if referred_ids:
-            users_res = await self._db.execute(select(User).where(User.id.in_(referred_ids)))
+            users_res = await self._db.execute(
+                select(User).where(User.id.in_(referred_ids))
+            )
             for u in users_res.scalars().all():
                 names_map[u.id] = u.displayName
 
@@ -72,10 +73,12 @@ class ReferralsService:
 
     async def claim_rewards(self, user_id: int) -> int:
         result = await self._db.execute(
-            select(Referral).where(
+            select(Referral)
+            .where(
                 Referral.referrerId == user_id,
                 Referral.rewardClaimed == False,
-            ).with_for_update()
+            )
+            .with_for_update()
         )
         unclaimed = result.scalars().all()
 

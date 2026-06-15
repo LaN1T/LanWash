@@ -1,9 +1,8 @@
 from datetime import datetime
 
+from db_models import WasherNote
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import WasherNote
 
 
 class NoteAccessDeniedError(Exception):
@@ -25,7 +24,9 @@ class NotesService:
         )
         return list(result.scalars().all())
 
-    async def get_by_user(self, username: str, limit: int, offset: int = 0) -> list[WasherNote]:
+    async def get_by_user(
+        self, username: str, limit: int, offset: int = 0
+    ) -> list[WasherNote]:
         result = await self._db.execute(
             select(WasherNote)
             .where(WasherNote.username == username)
@@ -41,14 +42,16 @@ class NotesService:
         )
         return result.scalar() or 0
 
-    async def create_note(self, username: str, title: str, message: str, category: str) -> WasherNote:
+    async def create_note(
+        self, username: str, title: str, message: str, category: str
+    ) -> WasherNote:
         new_note = WasherNote(
             username=username,
             title=title,
             message=message,
             category=category,
             isRead=0,
-            createdAt=datetime.now().isoformat()
+            createdAt=datetime.now().isoformat(),
         )
         self._db.add(new_note)
         await self._db.commit()

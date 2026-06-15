@@ -1,11 +1,8 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db_models import ShiftTemplate, User
+from fastapi import HTTPException
 from models import (
     ShiftRequest,
     ShiftTemplateApplyRequest,
@@ -15,6 +12,8 @@ from models import (
     ShiftTemplateUpdateRequest,
 )
 from services.shifts_service import ShiftsService
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ShiftTemplatesService:
@@ -27,7 +26,10 @@ class ShiftTemplatesService:
         return self._current_user.role == "admin"
 
     async def _ensure_owner_access(self, template: ShiftTemplate) -> None:
-        if template.ownerUsername != self._current_user.username.lower() and not self._is_admin():
+        if (
+            template.ownerUsername != self._current_user.username.lower()
+            and not self._is_admin()
+        ):
             raise HTTPException(status_code=403, detail="Доступ запрещён")
 
     async def list_templates(self) -> List[ShiftTemplateResponse]:
@@ -36,7 +38,9 @@ class ShiftTemplatesService:
         else:
             stmt = (
                 select(ShiftTemplate)
-                .where(ShiftTemplate.ownerUsername == self._current_user.username.lower())
+                .where(
+                    ShiftTemplate.ownerUsername == self._current_user.username.lower()
+                )
                 .order_by(ShiftTemplate.name)
             )
         result = await self._db.execute(stmt)
@@ -103,7 +107,9 @@ class ShiftTemplatesService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Неверный формат weekStart")
         if monday.weekday() != 0:
-            raise HTTPException(status_code=400, detail="weekStart должен быть понедельником")
+            raise HTTPException(
+                status_code=400, detail="weekStart должен быть понедельником"
+            )
 
         target_user_id = payload.targetUserId
         if target_user_id is None:

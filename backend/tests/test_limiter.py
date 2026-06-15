@@ -1,8 +1,8 @@
-import pytest
-from fastapi import Request
 from unittest.mock import MagicMock
 
+import pytest
 from core.limiter import get_user_or_ip_key
+from fastapi import Request
 
 
 def test_get_user_or_ip_key_uses_username_for_valid_token():

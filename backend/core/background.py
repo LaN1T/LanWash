@@ -2,14 +2,11 @@
 
 from arq import create_pool
 from arq.connections import RedisSettings
-
 from core.config import get_settings
 
 settings = get_settings()
 
-REDIS_SETTINGS = RedisSettings.from_dsn(
-    settings.redis_url or "redis://localhost:6379"
-)
+REDIS_SETTINGS = RedisSettings.from_dsn(settings.redis_url or "redis://localhost:6379")
 
 _arq_pool = None
 

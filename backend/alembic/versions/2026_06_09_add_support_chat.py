@@ -5,10 +5,10 @@ Revises: d202fda86474
 Create Date: 2026-06-09 21:55:00.000000
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column("senderRole", sa.String(), nullable=False),
         sa.Column("senderId", sa.Integer(), nullable=True),
         sa.Column("content", sa.String(), nullable=False),
-        sa.Column("isAiDraft", sa.Integer(), nullable=False, server_default='0'),
+        sa.Column("isAiDraft", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("createdAt", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["chatId"], ["support_chats.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["senderId"], ["users.id"]),

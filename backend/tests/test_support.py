@@ -7,8 +7,16 @@ import pytest
 @pytest.fixture(autouse=True)
 def _mock_ai_services():
     with (
-        patch("routers.support.classify_and_reply", new_callable=AsyncMock, return_value=None) as _,
-        patch("routers.support.generate_admin_draft", new_callable=AsyncMock, return_value="Здравствуйте! Уточните детали.") as _,
+        patch(
+            "routers.support.classify_and_reply",
+            new_callable=AsyncMock,
+            return_value=None,
+        ) as _,
+        patch(
+            "routers.support.generate_admin_draft",
+            new_callable=AsyncMock,
+            return_value="Здравствуйте! Уточните детали.",
+        ) as _,
     ):
         yield
 
@@ -57,7 +65,9 @@ class TestSupportChat:
         assert any(c["lastMessagePreview"] == "Для админа" for c in data)
 
     @pytest.mark.asyncio
-    async def test_client_cannot_see_other_chat(self, async_client, client_token, admin_token):
+    async def test_client_cannot_see_other_chat(
+        self, async_client, client_token, admin_token
+    ):
         create_resp = await async_client.post(
             "/api/support/chats",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -77,7 +87,11 @@ class TestSupportChat:
         )
         chat_id = create_resp.json()["id"]
 
-        with patch("routers.support.classify_and_reply", new_callable=AsyncMock, return_value=None):
+        with patch(
+            "routers.support.classify_and_reply",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
             response = await async_client.post(
                 f"/api/support/chats/{chat_id}/messages",
                 headers={"Authorization": f"Bearer {admin_token}"},
@@ -88,7 +102,11 @@ class TestSupportChat:
 
     @pytest.mark.asyncio
     async def test_faq_auto_reply(self, async_client, client_token):
-        with patch("routers.support.classify_and_reply", new_callable=AsyncMock, return_value="Экспресс-мойка стоит 500₽."):
+        with patch(
+            "routers.support.classify_and_reply",
+            new_callable=AsyncMock,
+            return_value="Экспресс-мойка стоит 500₽.",
+        ):
             response = await async_client.post(
                 "/api/support/chats",
                 headers={"Authorization": f"Bearer {client_token}"},
@@ -107,7 +125,11 @@ class TestSupportChat:
         )
         chat_id = create_resp.json()["id"]
 
-        with patch("routers.support.generate_admin_draft", new_callable=AsyncMock, return_value="Добрый день! Уточните, пожалуйста, желаемое время."):
+        with patch(
+            "routers.support.generate_admin_draft",
+            new_callable=AsyncMock,
+            return_value="Добрый день! Уточните, пожалуйста, желаемое время.",
+        ):
             response = await async_client.post(
                 f"/api/support/chats/{chat_id}/ai-draft",
                 headers={"Authorization": f"Bearer {admin_token}"},
@@ -134,9 +156,8 @@ class TestSupportChat:
 
 class TestSupportWebSocket:
     def test_websocket_broadcast(self):
-        from starlette.testclient import TestClient
-
         from main import app
+        from starlette.testclient import TestClient
 
         with TestClient(app) as client:
             admin_resp = client.post(
@@ -149,19 +170,29 @@ class TestSupportWebSocket:
             assert admin_resp.status_code == 200
             admin_token = admin_resp.json()["access_token"]
 
-            client.post("/api/auth/register", json={
-                "username": "ws_client_test",
-                "password": "TestPass123!",
-                "displayName": "WS Client",
-            })
-            user_resp = client.post("/api/auth/login", json={
-                "username": "ws_client_test",
-                "password": "TestPass123!",
-            })
+            client.post(
+                "/api/auth/register",
+                json={
+                    "username": "ws_client_test",
+                    "password": "TestPass123!",
+                    "displayName": "WS Client",
+                },
+            )
+            user_resp = client.post(
+                "/api/auth/login",
+                json={
+                    "username": "ws_client_test",
+                    "password": "TestPass123!",
+                },
+            )
             assert user_resp.status_code == 200
             user_token = user_resp.json()["access_token"]
 
-            with patch("routers.support.classify_and_reply", new_callable=AsyncMock, return_value=None):
+            with patch(
+                "routers.support.classify_and_reply",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
                 create_resp = client.post(
                     "/api/support/chats",
                     headers={"Authorization": f"Bearer {user_token}"},
@@ -172,7 +203,11 @@ class TestSupportWebSocket:
 
             with client.websocket_connect(f"/ws/support/chats/{chat_id}") as ws:
                 ws.send_json({"type": "auth", "token": admin_token})
-                with patch("routers.support.classify_and_reply", new_callable=AsyncMock, return_value=None):
+                with patch(
+                    "routers.support.classify_and_reply",
+                    new_callable=AsyncMock,
+                    return_value=None,
+                ):
                     msg_resp = client.post(
                         f"/api/support/chats/{chat_id}/messages",
                         headers={"Authorization": f"Bearer {user_token}"},

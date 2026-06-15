@@ -1,15 +1,14 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, HTTPException, Request
 from models import WasherAvailabilityResponse, WasherAvailabilityUpdateRequest
 from services.auth_service import check_roles, get_current_user
 from services.washer_availability_service import WasherAvailabilityService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/api/washers",
@@ -80,7 +79,11 @@ async def update_availability(
                 status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
             )
     rows = await service.update_availability(user_id, payload.entries)
-    return {"entries": [WasherAvailabilityResponse.model_validate(r).model_dump() for r in rows]}
+    return {
+        "entries": [
+            WasherAvailabilityResponse.model_validate(r).model_dump() for r in rows
+        ]
+    }
 
 
 @router.delete("/{user_id}/availability")

@@ -1,11 +1,10 @@
 from datetime import datetime
 
 import structlog
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db_models import Appointment, Subscription, User
 from models import SubscriptionCreateRequest
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -27,15 +26,19 @@ class SubscriptionsService:
     async def get_my_subscriptions(self, user_id: int) -> list[Subscription]:
         today = datetime.now().isoformat()[:10]
         result = await self._db.execute(
-            select(Subscription).where(
+            select(Subscription)
+            .where(
                 Subscription.userId == user_id,
                 Subscription.usedWashes < Subscription.totalWashes,
                 or_(Subscription.validUntil == None, Subscription.validUntil >= today),
-            ).order_by(Subscription.createdAt.desc())
+            )
+            .order_by(Subscription.createdAt.desc())
         )
         return list(result.scalars().all())
 
-    async def create_subscription(self, req: SubscriptionCreateRequest, admin_username: str) -> Subscription:
+    async def create_subscription(
+        self, req: SubscriptionCreateRequest, admin_username: str
+    ) -> Subscription:
         user_res = await self._db.execute(select(User).where(User.id == req.userId))
         user = user_res.scalar_one_or_none()
         if not user:
@@ -65,12 +68,14 @@ class SubscriptionsService:
     async def use_subscription(self, subscription_id: int, user_id: int) -> dict:
         today = datetime.now().isoformat()[:10]
         result = await self._db.execute(
-            select(Subscription).where(
+            select(Subscription)
+            .where(
                 Subscription.id == subscription_id,
                 Subscription.userId == user_id,
                 Subscription.usedWashes < Subscription.totalWashes,
                 or_(Subscription.validUntil == None, Subscription.validUntil >= today),
-            ).with_for_update()
+            )
+            .with_for_update()
         )
         sub = result.scalar_one_or_none()
         if not sub:

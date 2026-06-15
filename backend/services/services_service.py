@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import delete, distinct, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.cache import cache
 from db_models import ExtraFavorite, Promo, PromoIncludedExtra, Service, ServiceFavorite
 from models import ServiceRequest
+from sqlalchemy import delete, distinct, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ServiceNotFoundError(Exception):
@@ -22,8 +21,9 @@ class ServicesService:
         if not promo_ids:
             return {}
         extras_res = await self._db.execute(
-            select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
-            .where(PromoIncludedExtra.promoId.in_(promo_ids))
+            select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId).where(
+                PromoIncludedExtra.promoId.in_(promo_ids)
+            )
         )
         extras_map: dict[int, list[str]] = {}
         for promo_id, extra_id in extras_res.all():
@@ -93,8 +93,8 @@ class ServicesService:
             select(distinct(Service.category)).order_by(Service.category)
         )
         categories = [r[0] for r in result.all()]
-        if 'Акции' not in categories:
-            categories.append('Акции')
+        if "Акции" not in categories:
+            categories.append("Акции")
             categories.sort()
         await cache.set(cache_key, categories, ttl=600)
         return categories
@@ -114,7 +114,7 @@ class ServicesService:
             category=req.category,
             isFavorite=int(req.isFavorite),
             isFromApi=int(req.isFromApi),
-            updatedAt=datetime.now().isoformat()
+            updatedAt=datetime.now().isoformat(),
         )
         self._db.add(new_service)
         await self._db.commit()
@@ -151,7 +151,9 @@ class ServicesService:
 
     async def get_service_favorites(self, username: str) -> list[str]:
         result = await self._db.execute(
-            select(ServiceFavorite.serviceId).where(ServiceFavorite.username == username)
+            select(ServiceFavorite.serviceId).where(
+                ServiceFavorite.username == username
+            )
         )
         return result.scalars().all()
 

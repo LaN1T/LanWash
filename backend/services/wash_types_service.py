@@ -1,9 +1,8 @@
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.cache import cache
 from db_models import WashType, WashTypeIncludedExtra
 from models import WashTypeRequest
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class WashTypesService:
@@ -16,8 +15,9 @@ class WashTypesService:
         if not wash_type_ids:
             return {}
         extras_res = await self._db.execute(
-            select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
-            .where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
+            select(
+                WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId
+            ).where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
         )
         extras_map: dict[str, list[str]] = {}
         for wt_id, extra_id in extras_res.all():
@@ -59,8 +59,9 @@ class WashTypesService:
 
     async def get_included_extra_ids(self, wash_type_id: str) -> list[str]:
         res = await self._db.execute(
-            select(WashTypeIncludedExtra.extraServiceId)
-            .where(WashTypeIncludedExtra.washTypeId == wash_type_id)
+            select(WashTypeIncludedExtra.extraServiceId).where(
+                WashTypeIncludedExtra.washTypeId == wash_type_id
+            )
         )
         return [r[0] for r in res.all()]
 
@@ -89,9 +90,7 @@ class WashTypesService:
         )
         for extra_id in req.includedExtraIds:
             self._db.add(
-                WashTypeIncludedExtra(
-                    washTypeId=wash_type_id, extraServiceId=extra_id
-                )
+                WashTypeIncludedExtra(washTypeId=wash_type_id, extraServiceId=extra_id)
             )
 
         await self._db.commit()

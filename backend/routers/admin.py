@@ -1,11 +1,9 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, HTTPException, Request
 from models import (
     BulkAssignWasherRequest,
     BulkCancelRequest,
@@ -18,6 +16,7 @@ from models import (
 from services.admin_service import AdminService
 from services.audit_service import log_admin_action
 from services.auth_service import check_roles
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -26,7 +25,9 @@ def _parse_iso_date(date_str: str) -> datetime:
     try:
         return datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        raise HTTPException(status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD")
+        raise HTTPException(
+            status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
+        )
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -42,7 +43,9 @@ async def admin_dashboard(
     from_dt = _parse_iso_date(from_date)
     to_dt = _parse_iso_date(to_date)
     if from_dt > to_dt:
-        raise HTTPException(status_code=400, detail="from_date не может быть позже to_date")
+        raise HTTPException(
+            status_code=400, detail="from_date не может быть позже to_date"
+        )
 
     svc = AdminService(db)
     return await svc.get_dashboard(from_date, to_date)
@@ -80,7 +83,11 @@ async def bulk_assign_washer(
         action="bulk_assign_washer",
         entity_type="appointment",
         entity_id=",".join(req.appointmentIds),
-        new_values={"appointmentIds": req.appointmentIds, "washerUsername": req.washerUsername, "result": result},
+        new_values={
+            "appointmentIds": req.appointmentIds,
+            "washerUsername": req.washerUsername,
+            "result": result,
+        },
         request=request,
     )
     await db.commit()
@@ -104,7 +111,11 @@ async def bulk_cancel(
         action="bulk_cancel_appointments",
         entity_type="appointment",
         entity_id=",".join(req.appointmentIds),
-        new_values={"appointmentIds": req.appointmentIds, "reason": req.reason, "result": result},
+        new_values={
+            "appointmentIds": req.appointmentIds,
+            "reason": req.reason,
+            "result": result,
+        },
         request=request,
     )
     await db.commit()
@@ -128,7 +139,11 @@ async def bulk_update_status(
         action="bulk_update_status",
         entity_type="appointment",
         entity_id=",".join(req.appointmentIds),
-        new_values={"appointmentIds": req.appointmentIds, "status": req.status, "result": result},
+        new_values={
+            "appointmentIds": req.appointmentIds,
+            "status": req.status,
+            "result": result,
+        },
         request=request,
     )
     await db.commit()

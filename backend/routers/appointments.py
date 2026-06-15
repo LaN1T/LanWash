@@ -5,10 +5,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import and_, delete, func, or_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from core.metrics import appointments_total
 from core.pagination import PaginationParams, paginate
@@ -29,6 +25,7 @@ from db_models import (
     WashType,
     WashTypeConsumable,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from models import (
     AppointmentRequest,
     AppointmentResponse,
@@ -42,6 +39,8 @@ from services.auth_service import check_roles, get_current_user
 from services.fcm_service import fcm_service
 from services.notification_service import add_notification
 from services.workload_service import workload_service
+from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -68,8 +67,7 @@ async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]
 
     # Count appointments per washer on this date
     appt_result = await db.execute(
-        select(Appointment.assignedWasher)
-        .where(
+        select(Appointment.assignedWasher).where(
             and_(
                 Appointment.date == date_str,
                 Appointment.status != "cancelled",
@@ -87,7 +85,7 @@ async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]
 
     # Pick washer with fewest assignments
     best_washer = None
-    best_count = float('inf')
+    best_count = float("inf")
     for uid in washer_ids:
         username = id_to_username.get(uid)
         if username is None:
@@ -100,7 +98,9 @@ async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]
     return best_washer
 
 
-async def _notify_fcm(request: Request, tokens: list[str], title: str, body: str, data: dict | None = None):
+async def _notify_fcm(
+    request: Request, tokens: list[str], title: str, body: str, data: dict | None = None
+):
     """Enqueue FCM notification via ARQ or send inline if worker is unavailable."""
     arq_pool = getattr(request.app.state, "arq_pool", None)
     if arq_pool:
@@ -111,34 +111,44 @@ async def _notify_fcm(request: Request, tokens: list[str], title: str, body: str
         except Exception as e:
             logger.warning("fcm_send_failed", error=str(e))
 
+
 router = APIRouter(
     prefix="/api/appointments",
     tags=["appointments"],
-
 )
+
 
 @router.get(
     "/busy-slots",
     response_model=dict,
     summary="Занятые слоты",
-
 )
 @limiter.limit("30/minute")
-async def get_busy_slots(request: Request, date: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_busy_slots(
+    request: Request,
+    date: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     return await workload_service.get_busy_slots(db, date)
+
 
 @router.get("/last-updated", response_model=dict)
 @limiter.limit("30/minute")
-async def get_last_updated(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_last_updated(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     res = await db.execute(select(func.count(Appointment.id), func.max(Appointment.id)))
     count, max_id = res.one()
     return {"count": count, "max_id": max_id}
+
 
 @router.get(
     "/",
     response_model=list[AppointmentResponse],
     summary="Список записей (с пагинацией)",
-
 )
 @limiter.limit("60/minute")
 async def get_all(
@@ -147,19 +157,19 @@ async def get_all(
     page: int = 1,
     date: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     # Use the indexed `date` column (YYYY-MM-DD) instead of func.substr(dateTime).
     # Cap unique dates to the last 90 days to avoid unbounded headers/memory
     cutoff_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
 
     # 1. Get unique dates (days) in descending order
-    if current_user.role == 'admin':
+    if current_user.role == "admin":
         dates_query = (
             select(Appointment.date)
             .where(
                 Appointment.date != None,
-                Appointment.date != '',
+                Appointment.date != "",
                 Appointment.date >= cutoff_date,
             )
             .distinct()
@@ -169,11 +179,14 @@ async def get_all(
         # P0: IDOR fix — clients only see their own appointments
         date_filters = [
             Appointment.date != None,
-            Appointment.date != '',
+            Appointment.date != "",
             Appointment.date >= cutoff_date,
-            or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None),
+            or_(
+                Appointment.isHiddenFromAdmin == False,
+                Appointment.isHiddenFromAdmin == None,
+            ),
         ]
-        if current_user.role == 'client':
+        if current_user.role == "client":
             date_filters.append(Appointment.ownerUsername == current_user.username)
         dates_query = (
             select(Appointment.date)
@@ -224,11 +237,16 @@ async def get_all(
     )
 
     if not target_date:
-        logger.debug("appointments_empty", reason="no_target_date", total_pages=total_pages, page=page)
+        logger.debug(
+            "appointments_empty",
+            reason="no_target_date",
+            total_pages=total_pages,
+            page=page,
+        )
         return []
 
     # 3. Fetch appointments for the target date
-    if current_user.role == 'admin':
+    if current_user.role == "admin":
         result = await db.execute(
             select(Appointment)
             .where(Appointment.date == target_date)
@@ -238,9 +256,12 @@ async def get_all(
         # P0: IDOR fix — clients only see their own appointments
         appt_filters = [
             Appointment.date == target_date,
-            or_(Appointment.isHiddenFromAdmin == False, Appointment.isHiddenFromAdmin == None),
+            or_(
+                Appointment.isHiddenFromAdmin == False,
+                Appointment.isHiddenFromAdmin == None,
+            ),
         ]
-        if current_user.role == 'client':
+        if current_user.role == "client":
             appt_filters.append(Appointment.ownerUsername == current_user.username)
         result = await db.execute(
             select(Appointment)
@@ -257,12 +278,21 @@ async def get_all(
     )
     return appointments
 
+
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_owner(request: Request, username: str, pagination: PaginationParams = Depends(), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_owner(
+    request: Request,
+    username: str,
+    pagination: PaginationParams = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - only owner or admin can view.
-    if current_user.username != username.lower() and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя.")
+    if current_user.username != username.lower() and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого пользователя."
+        )
     query = (
         select(Appointment)
         .where(Appointment.ownerUsername == username.lower())
@@ -271,47 +301,66 @@ async def get_by_owner(request: Request, username: str, pagination: PaginationPa
     _, items = await paginate(query, db, pagination)
     return items
 
+
 @router.get("/by-washer/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
-async def get_by_washer(request: Request, username: str, pagination: PaginationParams = Depends(), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_by_washer(
+    request: Request,
+    username: str,
+    pagination: PaginationParams = Depends(),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - only washer or admin can view.
-    if current_user.username != username.lower() and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика.")
+    if current_user.username != username.lower() and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет доступа к записям этого мойщика."
+        )
 
     user_res = await db.execute(select(User).where(User.username == username.lower()))
     user = user_res.scalar_one_or_none()
     if not user:
         raise HTTPException(404, "Пользователь не найден")
 
-    safe_username = username.lower().replace('%', r'\%').replace('_', r'\_')
+    safe_username = username.lower().replace("%", r"\%").replace("_", r"\_")
     appt_time = func.substr(Appointment.dateTime, 12, 5)
 
-    assigned_query = (
-        select(Appointment)
-        .where(Appointment.assignedWasher.like(f'%"{safe_username}"%', escape='\\'))
+    assigned_query = select(Appointment).where(
+        Appointment.assignedWasher.like(f'%"{safe_username}"%', escape="\\")
     )
 
-    shift_query = (
-        select(Appointment)
-        .join(Shift, and_(
+    shift_query = select(Appointment).join(
+        Shift,
+        and_(
             Shift.userId == user.id,
             Shift.date == Appointment.date,
             appt_time >= Shift.startTime,
             appt_time <= Shift.endTime,
-        ))
+        ),
     )
 
     union_query = assigned_query.union(shift_query).order_by(Appointment.dateTime.asc())
     _, items = await paginate(union_query, db, pagination)
     return items
 
-async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id: str, additional_services: list[str], promo_id: str = None):
+
+async def _track_consumables_usage(
+    db: AsyncSession,
+    appt_id: str,
+    wash_type_id: str,
+    additional_services: list[str],
+    promo_id: str = None,
+):
     # 0. Восстановить остатки из предыдущих списаний и удалить старые логи
-    old_logs_res = await db.execute(select(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id))
+    old_logs_res = await db.execute(
+        select(ConsumableUsageLog).where(ConsumableUsageLog.appointmentId == appt_id)
+    )
     old_logs = old_logs_res.scalars().all()
     if old_logs:
         consumable_ids = {log.consumableId for log in old_logs}
-        cons_res = await db.execute(select(Consumable).where(Consumable.id.in_(consumable_ids)))
+        cons_res = await db.execute(
+            select(Consumable).where(Consumable.id.in_(consumable_ids))
+        )
         cons_map = {c.id: c for c in cons_res.scalars().all()}
         for old_log in old_logs:
             c = cons_map.get(old_log.consumableId)
@@ -320,22 +369,42 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
             await db.delete(old_log)
 
     # 1. Сбор расходников из типа мойки
-    res_wt = await db.execute(select(WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service).where(WashTypeConsumable.washTypeId == wash_type_id))
+    res_wt = await db.execute(
+        select(
+            WashTypeConsumable.consumableId, WashTypeConsumable.quantity_per_service
+        ).where(WashTypeConsumable.washTypeId == wash_type_id)
+    )
     usage_map = {row[0]: float(row[1]) for row in res_wt.all()}
 
     # 2. Сбор расходников из промо (упрощённо — пока не учитываем)
-    # При необходимости: await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
+    # При необходимости:
+    # await db.execute(
+    #     select(PromoIncludedExtra.extraServiceId).where(
+    #         PromoIncludedExtra.promoId == promo_id
+    #     )
+    # )
 
     # 3. Сбор расходников из доп.услуг
     if additional_services:
         try:
             # Если это JSON строка, парсим её
-            service_ids = json.loads(additional_services) if isinstance(additional_services, str) else additional_services
+            service_ids = (
+                json.loads(additional_services)
+                if isinstance(additional_services, str)
+                else additional_services
+            )
         except:
-            service_ids = additional_services if isinstance(additional_services, list) else []
+            service_ids = (
+                additional_services if isinstance(additional_services, list) else []
+            )
 
         if service_ids:
-            res_svc = await db.execute(select(ServiceConsumable.consumableId, ServiceConsumable.quantity_per_service).where(ServiceConsumable.serviceId.in_(service_ids)))
+            res_svc = await db.execute(
+                select(
+                    ServiceConsumable.consumableId,
+                    ServiceConsumable.quantity_per_service,
+                ).where(ServiceConsumable.serviceId.in_(service_ids))
+            )
             for cid, qty in res_svc.all():
                 usage_map[cid] = usage_map.get(cid, 0.0) + float(qty)
 
@@ -359,35 +428,45 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
                         current=consumable.currentStock,
                         minimum=consumable.minStock,
                     )
-            logs.append(ConsumableUsageLog(
-                appointmentId=appt_id,
-                consumableId=cid,
-                quantityUsed=qty,
-                timestamp=now,
-            ))
+            logs.append(
+                ConsumableUsageLog(
+                    appointmentId=appt_id,
+                    consumableId=cid,
+                    quantityUsed=qty,
+                    timestamp=now,
+                )
+            )
         db.add_all(logs)
+
 
 @router.post(
     "/",
     response_model=AppointmentResponse,
     summary="Создание записи",
-
 )
 @limiter.limit("10/minute")
-async def create(request: Request, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create(
+    request: Request,
+    req: AppointmentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
-    if current_user.role != 'admin':
+    if current_user.role != "admin":
         # Non-admins cannot set prices; server will calculate or use defaults
         req.promoPrice = 0
         req.paidPrice = 0
         req.originalPrice = 0
         req.promoId = None
 
-    if current_user.username != owner_username.lower() and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Вы не можете создавать записи для других пользователей.")
+    if current_user.username != owner_username.lower() and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Вы не можете создавать записи для других пользователей.",
+        )
 
     # Клиенты и мойщики могут создавать только запланированные записи
-    effective_status = req.status if current_user.role == 'admin' else 'scheduled'
+    effective_status = req.status if current_user.role == "admin" else "scheduled"
 
     # Если указан carId, валидируем принадлежность и подставляем данные
     car_model = req.carModel
@@ -395,23 +474,35 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     if req.carId is not None:
         # Determine the target user for car ownership validation
         target_user_id = current_user.id
-        if current_user.role == 'admin' and current_user.username != owner_username.lower():
-            target_user_res = await db.execute(select(User).where(User.username == owner_username.lower()))
+        if (
+            current_user.role == "admin"
+            and current_user.username != owner_username.lower()
+        ):
+            target_user_res = await db.execute(
+                select(User).where(User.username == owner_username.lower())
+            )
             target_user = target_user_res.scalar_one_or_none()
             if target_user:
                 target_user_id = target_user.id
 
-        car_res = await db.execute(select(Car).where(Car.id == req.carId, Car.userId == target_user_id))
+        car_res = await db.execute(
+            select(Car).where(Car.id == req.carId, Car.userId == target_user_id)
+        )
         car = car_res.scalar_one_or_none()
         if not car:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Указанный автомобиль не найден или не принадлежит клиенту")
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Указанный автомобиль не найден или не принадлежит клиенту",
+            )
         car_model = f"{car.brand} {car.model}".strip()
         car_number = car.number
 
     # Determine target user ID for subscription lookup
     target_user_id = current_user.id
-    if current_user.role == 'admin' and current_user.username != owner_username.lower():
-        target_user_res = await db.execute(select(User).where(User.username == owner_username.lower()))
+    if current_user.role == "admin" and current_user.username != owner_username.lower():
+        target_user_res = await db.execute(
+            select(User).where(User.username == owner_username.lower())
+        )
         target_user = target_user_res.scalar_one_or_none()
         if target_user:
             target_user_id = target_user.id
@@ -419,12 +510,14 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     # Check for active subscription
     today = datetime.now().isoformat()[:10]
     sub_res = await db.execute(
-        select(Subscription).where(
+        select(Subscription)
+        .where(
             Subscription.userId == target_user_id,
             Subscription.washTypeId == req.washTypeId,
             Subscription.usedWashes < Subscription.totalWashes,
             or_(Subscription.validUntil == None, Subscription.validUntil >= today),
-        ).with_for_update()
+        )
+        .with_for_update()
     )
     sub = sub_res.scalar_one_or_none()
 
@@ -435,16 +528,23 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         req.paidPrice = 0
         # Preserve original price for savings tracking
         if req.originalPrice == 0:
-            wt_res = await db.execute(select(WashType).where(WashType.id == req.washTypeId))
+            wt_res = await db.execute(
+                select(WashType).where(WashType.id == req.washTypeId)
+            )
             wt = wt_res.scalar_one_or_none()
             req.originalPrice = wt.basePrice if wt else 0
 
     # Находим свободный бокс
-    duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
+    duration = await workload_service.get_appointment_duration(
+        db, req.washTypeId, req.additionalServices, req.promoId
+    )
     box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
 
     if box_idx == -1:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "К сожалению, на это время нет свободных боксов.",
+        )
 
     appt_data = {
         "id": req.id if req.id else str(uuid.uuid4()),
@@ -466,31 +566,39 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
         "box_index": box_idx,
     }
 
-    if current_user.role == 'admin':
+    if current_user.role == "admin":
         assigned = req.assignedWasher
         if not assigned or assigned == "[]":
             auto_washer = await _auto_assign_washer(db, req.dateTime)
             if auto_washer:
                 assigned = json.dumps([auto_washer])
-        appt_data.update({
-            "isModifiedByAdmin": int(req.isModifiedByAdmin),
-            "isModifiedByWasher": int(req.isModifiedByWasher),
-            "isSeenByClient": 1 if not (req.isModifiedByAdmin or req.isModifiedByWasher) else 0,
-            "originalPrice": req.originalPrice,
-            "assignedWasher": assigned,
-        })
+        appt_data.update(
+            {
+                "isModifiedByAdmin": int(req.isModifiedByAdmin),
+                "isModifiedByWasher": int(req.isModifiedByWasher),
+                "isSeenByClient": 1
+                if not (req.isModifiedByAdmin or req.isModifiedByWasher)
+                else 0,
+                "originalPrice": req.originalPrice,
+                "assignedWasher": assigned,
+            }
+        )
     else:
         assigned = "[]"
         auto_washer = await _auto_assign_washer(db, req.dateTime)
         if auto_washer:
             assigned = json.dumps([auto_washer])
-        appt_data.update({
-            "isModifiedByAdmin": 0,
-            "isModifiedByWasher": 0,
-            "isSeenByClient": 1,
-            "originalPrice": req.paidPrice if req.originalPrice == 0 else req.originalPrice,
-            "assignedWasher": assigned,
-        })
+        appt_data.update(
+            {
+                "isModifiedByAdmin": 0,
+                "isModifiedByWasher": 0,
+                "isSeenByClient": 1,
+                "originalPrice": req.paidPrice
+                if req.originalPrice == 0
+                else req.originalPrice,
+                "assignedWasher": assigned,
+            }
+        )
 
     appt = Appointment(**appt_data)
     db.add(appt)
@@ -498,11 +606,15 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
     appointments_total.labels(status=appt.status).inc()
 
     if effective_status == "completed":
-        await _track_consumables_usage(db, req.id, req.washTypeId, req.additionalServices, req.promoId)
+        await _track_consumables_usage(
+            db, req.id, req.washTypeId, req.additionalServices, req.promoId
+        )
         await db.commit()
 
     if appt.ownerUsername:
-        res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        res = await db.execute(
+            select(FcmToken.token).where(FcmToken.username == appt.ownerUsername)
+        )
         encrypted_tokens = res.scalars().all()
         if encrypted_tokens:
             tokens = []
@@ -512,18 +624,20 @@ async def create(request: Request, req: AppointmentRequest, db: AsyncSession = D
                 except Exception:
                     pass
             if tokens:
-                await _notify_fcm(request, 
+                await _notify_fcm(
+                    request,
                     tokens,
                     "Новая запись создана!",
-                    f"Ваша запись на мойку {appt.carModel} в {appt.dateTime} успешно создана.",
-                    {}
+                    (
+                        f"Ваша запись на мойку {appt.carModel} в "
+                        f"{appt.dateTime} успешно создана."
+                    ),
+                    {},
                 )
 
     appointments_total.labels(status=effective_status).inc()
     await db.refresh(appt)
     return appt
-
-
 
 
 def format_date(dt_str):
@@ -532,7 +646,7 @@ def format_date(dt_str):
     try:
         # Пытаемся распарсить, если это строка ISO
         if isinstance(dt_str, str):
-            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
         else:
             dt = dt_str
         return dt.strftime("%d.%m %H:%M")
@@ -544,10 +658,15 @@ def format_date(dt_str):
     "/{appt_id}",
     response_model=AppointmentResponse,
     summary="Редактирование записи",
-
 )
 @limiter.limit("10/minute")
-async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_appt(
+    request: Request,
+    appt_id: str,
+    req: AppointmentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
     if not appt:
@@ -572,14 +691,19 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     original_box_index = appt.box_index
 
     # Логирование для отладки прав доступа
-    logger.debug("updating_appointment", appt_id=appt_id, username=current_user.username, role=current_user.role)
+    logger.debug(
+        "updating_appointment",
+        appt_id=appt_id,
+        username=current_user.username,
+        role=current_user.role,
+    )
     logger.debug("appointment_owner", owner=appt.ownerUsername)
 
     # Разрешаем владельцу, админу или мойщику редактировать запись
     # Проверяем, является ли текущий пользователь владельцем, админом или мойщиком
     is_owner = current_user.username == appt.ownerUsername
-    is_admin = current_user.role == 'admin'
-    is_washer = current_user.role == 'washer'
+    is_admin = current_user.role == "admin"
+    is_washer = current_user.role == "washer"
 
     assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
     is_assigned_washer = is_washer and current_user.username in assigned_washers
@@ -588,7 +712,9 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     is_shift_washer = False
     if is_washer and not is_assigned_washer:
         appt_date = appt.dateTime[:10] if appt.dateTime else None
-        appt_time = appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        appt_time = (
+            appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        )
         if appt_date and appt_time:
             shift_res = await db.execute(
                 select(Shift).where(
@@ -601,7 +727,9 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
             is_shift_washer = shift_res.scalar_one_or_none() is not None
 
     if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет прав на редактирование этой записи."
+        )
 
     # Washers can only change status and notes
     if is_washer and not is_admin:
@@ -623,11 +751,18 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     old_assigned_washer = appt.assignedWasher
 
     # Проверка доступности бокса, если время или услуги изменились
-    duration = await workload_service.get_appointment_duration(db, req.washTypeId, req.additionalServices, req.promoId)
-    box_idx = await workload_service.find_available_box(db, req.dateTime, duration, exclude_appt_id=appt_id)
+    duration = await workload_service.get_appointment_duration(
+        db, req.washTypeId, req.additionalServices, req.promoId
+    )
+    box_idx = await workload_service.find_available_box(
+        db, req.dateTime, duration, exclude_appt_id=appt_id
+    )
 
     if box_idx == -1:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "К сожалению, на это время нет свободных боксов.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "К сожалению, на это время нет свободных боксов.",
+        )
 
     appt.clientName = req.clientName
     appt.carModel = req.carModel
@@ -645,7 +780,7 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     appt.promoId = req.promoId
     appt.box_index = box_idx
 
-    if current_user.role == 'admin':
+    if current_user.role == "admin":
         appt.ownerUsername = req.ownerUsername.lower()
         appt.originalPrice = req.originalPrice
         appt.assignedWasher = req.assignedWasher
@@ -653,27 +788,51 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         # Определяем, внёс ли админ изменения, требующие уведомления клиента
         def normalize_json(s):
             try:
-                return sorted(json.loads(s)) if isinstance(json.loads(s), list) else json.loads(s)
+                return (
+                    sorted(json.loads(s))
+                    if isinstance(json.loads(s), list)
+                    else json.loads(s)
+                )
             except:
                 return s
 
         admin_made_changes = False
-        if appt.clientName != original_clientName: admin_made_changes = True
-        if appt.carModel != original_carModel: admin_made_changes = True
-        if appt.carNumber != original_carNumber: admin_made_changes = True
-        if appt.dateTime != original_dateTime: admin_made_changes = True
-        if appt.washTypeId != original_washTypeId: admin_made_changes = True
-        if normalize_json(appt.additionalServices) != normalize_json(original_additionalServices): admin_made_changes = True
-        if appt.status != original_status: admin_made_changes = True
-        if appt.notes != original_notes: admin_made_changes = True
-        if appt.isFavorite != original_isFavorite: admin_made_changes = True
-        if appt.ownerUsername != original_ownerUsername: admin_made_changes = True
-        if appt.promoPrice != original_promoPrice: admin_made_changes = True
-        if appt.paidPrice != original_paidPrice: admin_made_changes = True
-        if appt.originalPrice != original_originalPrice: admin_made_changes = True
-        if normalize_json(appt.assignedWasher) != normalize_json(original_assignedWasher): admin_made_changes = True
-        if appt.promoId != original_promoId: admin_made_changes = True
-        if appt.box_index != original_box_index: admin_made_changes = True
+        if appt.clientName != original_clientName:
+            admin_made_changes = True
+        if appt.carModel != original_carModel:
+            admin_made_changes = True
+        if appt.carNumber != original_carNumber:
+            admin_made_changes = True
+        if appt.dateTime != original_dateTime:
+            admin_made_changes = True
+        if appt.washTypeId != original_washTypeId:
+            admin_made_changes = True
+        if normalize_json(appt.additionalServices) != normalize_json(
+            original_additionalServices
+        ):
+            admin_made_changes = True
+        if appt.status != original_status:
+            admin_made_changes = True
+        if appt.notes != original_notes:
+            admin_made_changes = True
+        if appt.isFavorite != original_isFavorite:
+            admin_made_changes = True
+        if appt.ownerUsername != original_ownerUsername:
+            admin_made_changes = True
+        if appt.promoPrice != original_promoPrice:
+            admin_made_changes = True
+        if appt.paidPrice != original_paidPrice:
+            admin_made_changes = True
+        if appt.originalPrice != original_originalPrice:
+            admin_made_changes = True
+        if normalize_json(appt.assignedWasher) != normalize_json(
+            original_assignedWasher
+        ):
+            admin_made_changes = True
+        if appt.promoId != original_promoId:
+            admin_made_changes = True
+        if appt.box_index != original_box_index:
+            admin_made_changes = True
 
         if admin_made_changes:
             logger.info("admin_changes_triggered", appt_id=appt.id)
@@ -725,9 +884,10 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
                 new_values=new_values,
                 request=request,
             )
-        # Если изменений нет, флаги (isModifiedByAdmin, isSeenByClient) остаются без изменений
+        # Если изменений нет, флаги (isModifiedByAdmin, isSeenByClient)
+        # остаются без изменений
 
-    elif current_user.role == 'washer':
+    elif current_user.role == "washer":
         # Если статус изменился, помечаем, что это изменение от мойщика
         if old_status != req.status:
             appt.isModifiedByWasher = 1
@@ -751,11 +911,15 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
             await add_notification(db, client_tg, message)
 
     if req.status == "completed":
-        await _track_consumables_usage(db, appt_id, req.washTypeId, req.additionalServices, req.promoId)
+        await _track_consumables_usage(
+            db, appt_id, req.washTypeId, req.additionalServices, req.promoId
+        )
         await db.commit()
 
     if appt.ownerUsername:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        tokens_res = await db.execute(
+            select(FcmToken.token).where(FcmToken.username == appt.ownerUsername)
+        )
         encrypted_tokens = tokens_res.scalars().all()
 
         if encrypted_tokens:
@@ -771,27 +935,50 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
             if old_status != appt.status:
                 dt_str = format_date(appt.dateTime)
                 if appt.status == "completed":
-                    title, body = "Запись завершена", "Ваша запись завершена. Спасибо, что выбрали нас!"
+                    title, body = (
+                        "Запись завершена",
+                        "Ваша запись завершена. Спасибо, что выбрали нас!",
+                    )
                 elif appt.status == "in_progress":
-                    title, body = "Начало обслуживания", f"Ваш авто в боксе {appt.box_index + 1}. Мы начали!"
+                    title, body = (
+                        "Начало обслуживания",
+                        f"Ваш авто в боксе {appt.box_index + 1}. Мы начали!",
+                    )
                 elif appt.status == "cancelled":
-                    title, body = "Запись отменена", f"К сожалению, запись на {dt_str} была отменена."
+                    title, body = (
+                        "Запись отменена",
+                        f"К сожалению, запись на {dt_str} была отменена.",
+                    )
                 elif appt.status == "scheduled":
-                    title, body = "Запись подтверждена", f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}."
+                    title, body = (
+                        "Запись подтверждена",
+                        f"Вы записались на мойку {dt_str}. Бокс {appt.box_index + 1}.",
+                    )
 
-            await _notify_fcm(request, client_tokens, title, body, {"type": "appointment_updated", "id": appt.id})
+            await _notify_fcm(
+                request,
+                client_tokens,
+                title,
+                body,
+                {"type": "appointment_updated", "id": appt.id},
+            )
 
             if old_datetime != appt.dateTime:
                 dt_str = format_date(appt.dateTime)
-                await _notify_fcm(request, 
+                await _notify_fcm(
+                    request,
                     client_tokens,
                     "Время мойки изменено",
                     f"Ваша запись перенесена на {dt_str}.",
-                    {"type": "appointment_updated", "id": appt.id}
+                    {"type": "appointment_updated", "id": appt.id},
                 )
 
-    new_assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
-    old_assigned_washers = json.loads(old_assigned_washer) if old_assigned_washer else []
+    new_assigned_washers = (
+        json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    )
+    old_assigned_washers = (
+        json.loads(old_assigned_washer) if old_assigned_washer else []
+    )
 
     added_washers = [w for w in new_assigned_washers if w not in old_assigned_washers]
     removed_washers = [w for w in old_assigned_washers if w not in new_assigned_washers]
@@ -801,7 +988,9 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
     tokens_map: dict[str, list[str]] = {}
     if all_washer_usernames:
         tokens_res = await db.execute(
-            select(FcmToken.username, FcmToken.token).where(FcmToken.username.in_(all_washer_usernames))
+            select(FcmToken.username, FcmToken.token).where(
+                FcmToken.username.in_(all_washer_usernames)
+            )
         )
         for username, token in tokens_res.all():
             tokens_map.setdefault(username, []).append(token)
@@ -811,41 +1000,57 @@ async def update_appt(request: Request, appt_id: str, req: AppointmentRequest, d
         encrypted_tokens = tokens_map.get(washer_username, [])
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
-            await _notify_fcm(request, 
+            await _notify_fcm(
+                request,
                 tokens,
                 "Новая запись",
                 f"Вы назначены на мойку {appt.carModel} {dt_str}.",
-                {}
+                {},
             )
     for washer_username in removed_washers:
         encrypted_tokens = tokens_map.get(washer_username, [])
         if encrypted_tokens:
             tokens = [decrypt_token(t) for t in encrypted_tokens]
-            await _notify_fcm(request, 
+            await _notify_fcm(
+                request,
                 tokens,
                 "Назначение отменено",
                 f"Вы были удалены из записи на мойку {appt.carModel} {dt_str}.",
-                {}
+                {},
             )
 
     await db.refresh(appt)
     return appt
 
+
 @router.delete(
     "/{appt_id}",
     summary="Удаление записи",
-
 )
 @limiter.limit("10/minute")
-async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def delete_appt(
+    request: Request,
+    appt_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - Only admin or the owner can delete.
-    result = await db.execute(select(Appointment.ownerUsername, Appointment.carModel, Appointment.dateTime).where(Appointment.id == appt_id))
+    result = await db.execute(
+        select(
+            Appointment.ownerUsername, Appointment.carModel, Appointment.dateTime
+        ).where(Appointment.id == appt_id)
+    )
     appt_info = result.first()
 
     if not appt_info:
         raise HTTPException(404, "Запись не найдена")
-    if current_user.username != appt_info.ownerUsername and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на удаление этой записи.")
+    if (
+        current_user.username != appt_info.ownerUsername
+        and current_user.role != "admin"
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет прав на удаление этой записи."
+        )
 
     owner = appt_info.ownerUsername
     car_model = appt_info.carModel
@@ -853,19 +1058,26 @@ async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends
     db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
 
     # Отправка уведомления клиенту об удалении записи
-    tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == owner))
+    tokens_res = await db.execute(
+        select(FcmToken.token).where(FcmToken.username == owner)
+    )
     client_tokens = tokens_res.scalars().all()
     if client_tokens:
-        await _notify_fcm(request, 
+        await _notify_fcm(
+            request,
             client_tokens,
             "Запись отменена",
             f"Ваша запись на мойку {car_model} в {date_time} была отменена.",
-            {}
+            {},
         )
 
-    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isHiddenFromAdmin=True))
+    await db.execute(
+        update(Appointment)
+        .where(Appointment.id == appt_id)
+        .values(isHiddenFromAdmin=True)
+    )
 
-    if current_user.role == 'admin':
+    if current_user.role == "admin":
         await log_admin_action(
             db,
             current_user,
@@ -879,28 +1091,49 @@ async def delete_appt(request: Request, appt_id: str, db: AsyncSession = Depends
     await db.commit()
     return {"ok": True}
 
+
 @router.post("/{appt_id}/toggle-favorite")
 @limiter.limit("10/minute")
-async def toggle_favorite(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def toggle_favorite(
+    request: Request,
+    appt_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - Only owner or admin can toggle favorite.
-    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
+    result = await db.execute(
+        select(Appointment.ownerUsername).where(Appointment.id == appt_id)
+    )
     owner_username = result.scalar_one_or_none()
     if not owner_username:
         raise HTTPException(404, "Запись не найдена")
-    if current_user.username != owner_username and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на изменение избранного для этой записи.")
+    if current_user.username != owner_username and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "У вас нет прав на изменение избранного для этой записи.",
+        )
 
-    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isFavorite=1 - Appointment.isFavorite))
+    await db.execute(
+        update(Appointment)
+        .where(Appointment.id == appt_id)
+        .values(isFavorite=1 - Appointment.isFavorite)
+    )
     await db.commit()
     return {"ok": True}
+
 
 @router.post(
     "/{appt_id}/assign-washer",
     summary="Назначение мойщика",
-
 )
 @limiter.limit("10/minute")
-async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(check_roles(['admin']))):
+async def assign_washer(
+    request: Request,
+    appt_id: str,
+    req: AssignWasherRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
     # Только администратор может назначать/снимать мойщиков.
     result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
@@ -919,29 +1152,33 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
         # Проверяем, что пользователь существует и у него роль 'washer'
         user_res = await db.execute(select(User).where(User.username == username))
         target_user = user_res.scalar_one_or_none()
-        if not target_user or target_user.role != 'washer':
+        if not target_user or target_user.role != "washer":
             raise HTTPException(400, f"Пользователь {username} не является мойщиком")
 
         if len(current) >= 3:
             raise HTTPException(400, "Максимум 3 мойщика")
 
         # Проверка на пересечение времени с другими назначенными записями
-        safe_username = username.replace('%', r'\%').replace('_', r'\_')
+        safe_username = username.replace("%", r"\%").replace("_", r"\_")
         conflict_res = await db.execute(
             select(Appointment).where(
-                Appointment.assignedWasher.like(f'%{safe_username}%', escape='\\'),
-                Appointment.status != 'cancelled',
-                Appointment.id != appt_id
+                Appointment.assignedWasher.like(f"%{safe_username}%", escape="\\"),
+                Appointment.status != "cancelled",
+                Appointment.id != appt_id,
             )
         )
         try:
             appt_start = workload_service._safe_parse_iso(appt.dateTime)
         except ValueError:
             raise HTTPException(400, "Некорректная дата записи")
-        appt_duration = await workload_service.get_appointment_duration(db, appt.washTypeId, appt.additionalServices, appt.promoId)
+        appt_duration = await workload_service.get_appointment_duration(
+            db, appt.washTypeId, appt.additionalServices, appt.promoId
+        )
         appt_end = appt_start + timedelta(minutes=appt_duration)
         conflict_appts = list(conflict_res.scalars().all())
-        durations = await workload_service.get_appointment_durations_batch(db, conflict_appts + [appt])
+        durations = await workload_service.get_appointment_durations_batch(
+            db, conflict_appts + [appt]
+        )
         for other in conflict_appts:
             try:
                 other_start = workload_service._safe_parse_iso(other.dateTime)
@@ -950,7 +1187,9 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             other_duration = durations.get(other.id, 30)
             other_end = other_start + timedelta(minutes=other_duration)
             if appt_start < other_end and appt_end > other_start:
-                raise HTTPException(400, f"Мойщик {username} уже назначен на пересекающееся время")
+                raise HTTPException(
+                    400, f"Мойщик {username} уже назначен на пересекающееся время"
+                )
 
         current.append(username)
 
@@ -972,7 +1211,9 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
     await db.refresh(appt)
 
     # Уведомление мойщику при назначении или снятии
-    tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == username))
+    tokens_res = await db.execute(
+        select(FcmToken.token).where(FcmToken.username == username)
+    )
     encrypted_tokens = tokens_res.scalars().all()
     if encrypted_tokens:
         tokens = []
@@ -987,79 +1228,131 @@ async def assign_washer(request: Request, appt_id: str, req: AssignWasherRequest
             dt_str = format_date(appt.dateTime)
             if username in current:
                 # Назначен
-                box_str = f" Бокс №{appt.box_index + 1}" if appt.box_index is not None else ""
-                await _notify_fcm(request, 
+                box_str = (
+                    f" Бокс №{appt.box_index + 1}" if appt.box_index is not None else ""
+                )
+                await _notify_fcm(
+                    request,
                     tokens,
                     "Новая запись",
                     f"Вы назначены на мойку {appt.carModel} {dt_str}.{box_str}",
-                    {"type": "appointment_updated", "id": appt.id}
+                    {"type": "appointment_updated", "id": appt.id},
                 )
                 logger.info("notification_sent", event="assignment", username=username)
             else:
                 # Снят
-                await _notify_fcm(request, 
+                await _notify_fcm(
+                    request,
                     tokens,
                     "Запись снята",
                     f"Вы были сняты с записи на мойку {appt.carModel} {dt_str}.",
-                    {"type": "appointment_updated", "id": appt.id}
+                    {"type": "appointment_updated", "id": appt.id},
                 )
                 logger.info("notification_sent", event="removal", username=username)
 
     return appt
 
+
 @router.get("/deleted-notification/{username}")
 @limiter.limit("60/minute")
-async def get_deleted_notification(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_deleted_notification(
+    request: Request,
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - Only the user themselves or admin can check.
-    if current_user.username != username.lower() and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к этому уведомлению.")
-    result = await db.execute(select(func.count(DeletedNotification.id)).where(DeletedNotification.username == username.lower()))
+    if current_user.username != username.lower() and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет доступа к этому уведомлению."
+        )
+    result = await db.execute(
+        select(func.count(DeletedNotification.id)).where(
+            DeletedNotification.username == username.lower()
+        )
+    )
     count = result.scalar()
     return {"hasNotification": count > 0}
 
+
 @router.delete("/deleted-notification/{username}")
 @limiter.limit("10/minute")
-async def clear_deleted_notification(request: Request, username: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def clear_deleted_notification(
+    request: Request,
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - Only the user themselves or admin can clear.
-    if current_user.username != username.lower() and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на очистку этого уведомления.")
-    await db.execute(delete(DeletedNotification).where(DeletedNotification.username == username.lower()))
+    if current_user.username != username.lower() and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет прав на очистку этого уведомления."
+        )
+    await db.execute(
+        delete(DeletedNotification).where(
+            DeletedNotification.username == username.lower()
+        )
+    )
     await db.commit()
     return {"ok": True}
+
 
 @router.post("/{appt_id}/clear-admin-flag")
 @limiter.limit("10/minute")
-async def clear_admin_flag(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def clear_admin_flag(
+    request: Request,
+    appt_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - Only admin or the owner can clear the flag.
-    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
+    result = await db.execute(
+        select(Appointment.ownerUsername).where(Appointment.id == appt_id)
+    )
     owner_username = result.scalar_one_or_none()
     if not owner_username:
         raise HTTPException(404, "Запись не найдена")
-    if current_user.username != owner_username and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на снятие флага модификации.")
+    if current_user.username != owner_username and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет прав на снятие флага модификации."
+        )
 
-    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(
-        isModifiedByAdmin=0,
-        isModifiedByWasher=0,
-        isSeenByClient=1
-    ))
+    await db.execute(
+        update(Appointment)
+        .where(Appointment.id == appt_id)
+        .values(isModifiedByAdmin=0, isModifiedByWasher=0, isSeenByClient=1)
+    )
     await db.commit()
     return {"ok": True}
+
 
 @router.post("/{appt_id}/mark-seen")
 @limiter.limit("10/minute")
-async def mark_appointment_seen(request: Request, appt_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def mark_appointment_seen(
+    request: Request,
+    appt_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: IDOR check - Only the owner or admin can mark as seen.
-    result = await db.execute(select(Appointment.ownerUsername).where(Appointment.id == appt_id))
+    result = await db.execute(
+        select(Appointment.ownerUsername).where(Appointment.id == appt_id)
+    )
     owner_username = result.scalar_one_or_none()
     if not owner_username:
         raise HTTPException(404, "Запись не найдена")
-    if current_user.username != owner_username and current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на отметку этой записи как просмотренной.")
+    if current_user.username != owner_username and current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "У вас нет прав на отметку этой записи как просмотренной.",
+        )
 
-    await db.execute(update(Appointment).where(Appointment.id == appt_id).values(isSeenByClient=1))
+    await db.execute(
+        update(Appointment).where(Appointment.id == appt_id).values(isSeenByClient=1)
+    )
     await db.commit()
     return {"ok": True}
+
 
 @router.get("/{appointment_id}/qr")
 @limiter.limit("60/minute")
@@ -1069,26 +1362,32 @@ async def get_appointment_qr(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id))
+    result = await db.execute(
+        select(Appointment).where(Appointment.id == appointment_id)
+    )
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
 
     try:
-        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+        assigned_washers = (
+            json.loads(appt.assignedWasher) if appt.assignedWasher else []
+        )
     except json.JSONDecodeError:
         assigned_washers = []
 
     is_owner = current_user.username == appt.ownerUsername
-    is_admin = current_user.role == 'admin'
-    is_washer = current_user.role == 'washer'
+    is_admin = current_user.role == "admin"
+    is_washer = current_user.role == "washer"
     is_assigned_washer = is_washer and current_user.username in assigned_washers
 
     # Мойщик может видеть QR записей, которые попадают в его смену
     is_shift_washer = False
     if is_washer and not is_assigned_washer:
         appt_date = appt.dateTime[:10] if appt.dateTime else None
-        appt_time = appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        appt_time = (
+            appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
+        )
         if appt_date and appt_time:
             shift_res = await db.execute(
                 select(Shift).where(
@@ -1101,7 +1400,9 @@ async def get_appointment_qr(
             is_shift_washer = shift_res.scalar_one_or_none() is not None
 
     if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет доступа к QR-коду этой записи.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет доступа к QR-коду этой записи."
+        )
 
     return {"qrData": appt.id}
 
@@ -1114,42 +1415,59 @@ async def scan_appointment_qr(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == req.qrData).with_for_update())
+    result = await db.execute(
+        select(Appointment).where(Appointment.id == req.qrData).with_for_update()
+    )
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
 
-    if appt.status != 'scheduled':
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Некорректный статус записи: {appt.status}")
+    if appt.status != "scheduled":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"Некорректный статус записи: {appt.status}"
+        )
 
     try:
-        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+        assigned_washers = (
+            json.loads(appt.assignedWasher) if appt.assignedWasher else []
+        )
     except json.JSONDecodeError:
         assigned_washers = []
 
-    is_admin = current_user.role == 'admin'
-    is_assigned_washer = current_user.role == 'washer' and current_user.username in assigned_washers
+    is_admin = current_user.role == "admin"
+    is_assigned_washer = (
+        current_user.role == "washer" and current_user.username in assigned_washers
+    )
 
     if not (is_admin or is_assigned_washer):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "У вас нет прав на сканирование этой записи.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет прав на сканирование этой записи."
+        )
 
-    appt.status = 'in_progress'
+    appt.status = "in_progress"
     appt.isModifiedByWasher = 1
     appt.isSeenByClient = 0
 
-    db.add(LogEntry(
-        username=current_user.username,
-        action="qr_scan",
-        details=f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress",
-        timestamp=datetime.now().isoformat(),
-    ))
+    db.add(
+        LogEntry(
+            username=current_user.username,
+            action="qr_scan",
+            details=(
+                f"Сканирован QR-код записи {appt.id}, "
+                f"статус изменён на in_progress"
+            ),
+            timestamp=datetime.now().isoformat(),
+        )
+    )
 
     await db.commit()
-    appointments_total.labels(status='in_progress').inc()
+    appointments_total.labels(status="in_progress").inc()
 
     # Отправка FCM-уведомления клиенту (не блокируем ответ)
     if appt.ownerUsername:
-        tokens_res = await db.execute(select(FcmToken.token).where(FcmToken.username == appt.ownerUsername))
+        tokens_res = await db.execute(
+            select(FcmToken.token).where(FcmToken.username == appt.ownerUsername)
+        )
         encrypted_tokens = tokens_res.scalars().all()
         if encrypted_tokens:
             client_tokens = []
@@ -1159,7 +1477,8 @@ async def scan_appointment_qr(
                 except Exception:
                     pass
             if client_tokens:
-                await _notify_fcm(request, 
+                await _notify_fcm(
+                    request,
                     client_tokens,
                     title="Начало обслуживания",
                     body="Мойка началась",
@@ -1179,34 +1498,49 @@ async def report_late(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id).with_for_update())
+    result = await db.execute(
+        select(Appointment).where(Appointment.id == appointment_id).with_for_update()
+    )
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
     if current_user.username != appt.ownerUsername:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только владелец может сообщить об опоздании.")
-    if appt.status != 'scheduled':
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно сообщить об опоздании только для запланированной записи.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Только владелец может сообщить об опоздании."
+        )
+    if appt.status != "scheduled":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Можно сообщить об опоздании только для запланированной записи.",
+        )
 
-    # Idempotency: if the value is already the same, return without mutating or notifying
+    # Idempotency: if the value is already the same, return without
+    # mutating or notifying
     if appt.late_minutes == req.minutes:
         return appt
 
     appt.late_minutes = req.minutes
 
-    db.add(LogEntry(
-        username=current_user.username,
-        action="report_late",
-        details=f"Клиент сообщил об опоздании на {req.minutes} мин для записи {appt.id}",
-        timestamp=datetime.now().isoformat(),
-    ))
+    db.add(
+        LogEntry(
+            username=current_user.username,
+            action="report_late",
+            details=(
+                f"Клиент сообщил об опоздании на {req.minutes} мин "
+                f"для записи {appt.id}"
+            ),
+            timestamp=datetime.now().isoformat(),
+        )
+    )
 
     await db.commit()
     await db.refresh(appt)
 
     # FCM-уведомление админам (не блокируем ответ)
     admin_tokens_res = await db.execute(
-        select(FcmToken.token).join(User, FcmToken.username == User.username).where(User.role == 'admin')
+        select(FcmToken.token)
+        .join(User, FcmToken.username == User.username)
+        .where(User.role == "admin")
     )
     encrypted_tokens = admin_tokens_res.scalars().all()
     if encrypted_tokens:
@@ -1217,7 +1551,8 @@ async def report_late(
             except Exception:
                 pass
         if tokens:
-            await _notify_fcm(request, 
+            await _notify_fcm(
+                request,
                 tokens,
                 title="Оповещение об опоздании",
                 body=f"Клиент {appt.clientName} опаздывает на {req.minutes} мин",
@@ -1236,42 +1571,58 @@ async def cancel_with_reason(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appointment_id).with_for_update())
+    result = await db.execute(
+        select(Appointment).where(Appointment.id == appointment_id).with_for_update()
+    )
     appt = result.scalar_one_or_none()
     if not appt:
         raise HTTPException(404, "Запись не найдена")
     if current_user.username != appt.ownerUsername:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Только владелец может отменить запись с указанием причины.")
-    if appt.status not in ('scheduled', 'in_progress'):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Можно отменить только запланированную или текущую запись.")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Только владелец может отменить запись с указанием причины.",
+        )
+    if appt.status not in ("scheduled", "in_progress"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Можно отменить только запланированную или текущую запись.",
+        )
 
     appt.cancel_reason = req.reason
-    appt.status = 'cancelled'
+    appt.status = "cancelled"
 
-    db.add(LogEntry(
-        username=current_user.username,
-        action="cancel_with_reason",
-        details=f"Запись {appt.id} отменена. Причина: {req.reason}",
-        timestamp=datetime.now().isoformat(),
-    ))
+    db.add(
+        LogEntry(
+            username=current_user.username,
+            action="cancel_with_reason",
+            details=f"Запись {appt.id} отменена. Причина: {req.reason}",
+            timestamp=datetime.now().isoformat(),
+        )
+    )
 
     await db.commit()
     await db.refresh(appt)
-    appointments_total.labels(status='cancelled').inc()
+    appointments_total.labels(status="cancelled").inc()
 
     # FCM-уведомление назначенным мойщикам и админам (не блокируем ответ)
     try:
-        assigned_washers = json.loads(appt.assignedWasher) if appt.assignedWasher else []
+        assigned_washers = (
+            json.loads(appt.assignedWasher) if appt.assignedWasher else []
+        )
     except json.JSONDecodeError:
         assigned_washers = []
 
     admin_tokens_res = await db.execute(
-        select(FcmToken.token).join(User, FcmToken.username == User.username).where(User.role == 'admin')
+        select(FcmToken.token)
+        .join(User, FcmToken.username == User.username)
+        .where(User.role == "admin")
     )
     washer_tokens_res = await db.execute(
         select(FcmToken.token).where(FcmToken.username.in_(assigned_washers))
     )
-    encrypted_tokens = list(set(admin_tokens_res.scalars().all() + washer_tokens_res.scalars().all()))
+    encrypted_tokens = list(
+        set(admin_tokens_res.scalars().all() + washer_tokens_res.scalars().all())
+    )
     if encrypted_tokens:
         tokens = []
         for t in encrypted_tokens:
@@ -1280,7 +1631,8 @@ async def cancel_with_reason(
             except Exception:
                 pass
         if tokens:
-            await _notify_fcm(request, 
+            await _notify_fcm(
+                request,
                 tokens,
                 title="Запись отменена",
                 body=f"Запись отменена: {req.reason}",
@@ -1292,17 +1644,27 @@ async def cancel_with_reason(
 
 @router.get("/stats")
 @limiter.limit("60/minute")
-async def stats(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def stats(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # P0: Assuming stats are only for admins, or all authenticated users.
     # Пока оставляем только для администраторов.
-    if current_user.role != 'admin':
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ к статистике только для администраторов.")
+    if current_user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Доступ к статистике только для администраторов."
+        )
 
     res_total = await db.execute(select(func.count(Appointment.id)))
-    res_sched = await db.execute(select(func.count(Appointment.id)).where(Appointment.status == 'scheduled'))
-    res_comp = await db.execute(select(func.count(Appointment.id)).where(Appointment.status == 'completed'))
+    res_sched = await db.execute(
+        select(func.count(Appointment.id)).where(Appointment.status == "scheduled")
+    )
+    res_comp = await db.execute(
+        select(func.count(Appointment.id)).where(Appointment.status == "completed")
+    )
     return {
         "total": res_total.scalar(),
         "scheduled": res_sched.scalar(),
-        "completed": res_comp.scalar()
+        "completed": res_comp.scalar(),
     }

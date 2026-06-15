@@ -1,7 +1,6 @@
 import structlog
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from services.reminder_service import check_and_send_reminders
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -19,6 +18,6 @@ class RemindersService:
             admin=admin_username,
             sent=result["sent"],
             skipped=result["skipped"],
-            errors=result["errors"]
+            errors=result["errors"],
         )
         return result

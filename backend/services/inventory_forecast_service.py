@@ -2,9 +2,6 @@ import json
 from collections import Counter
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db_models import (
     Appointment,
     Consumable,
@@ -13,6 +10,8 @@ from db_models import (
     WashTypeConsumable,
 )
 from models import ConsumableForecastItem, InventoryForecastResponse
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def generate_inventory_forecast(

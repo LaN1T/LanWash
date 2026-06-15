@@ -1,10 +1,9 @@
 from datetime import datetime
 from typing import List
 
+from db_models import NotificationQueue
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from db_models import NotificationQueue
 
 
 async def add_notification(

@@ -4,14 +4,11 @@ import re
 from io import BytesIO
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from PIL import Image
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from models import (
     FcmTokenRequest,
     LoginRequest,
@@ -25,6 +22,7 @@ from models import (
     UserStatsResponse,
     WasherPublicResponse,
 )
+from PIL import Image
 from services.auth_service import (
     AuthService,
     FcmTokenAccessDeniedError,
@@ -39,12 +37,15 @@ from services.auth_service import (
     oauth2_scheme,
     validate_password_strength,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
-USERNAME_PATTERN = re.compile(r'^[a-z0-9_]{3,30}$')
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_]{3,30}$")
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "avatars")
+UPLOAD_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "uploads", "avatars"
+)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter(
@@ -59,14 +60,16 @@ router = APIRouter(
     summary="Вход в систему",
 )
 @limiter.limit("10/minute")
-async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     client_ip = request.client.host if request.client else "unknown"
     identifier = f"{client_ip}:{req.username.lower().strip()}"
 
     if await is_locked_out(identifier):
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            "Слишком много неудачных попыток. Попробуйте позже."
+            "Слишком много неудачных попыток. Попробуйте позже.",
         )
 
     svc = AuthService(db)
@@ -85,8 +88,13 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     summary="Регистрация нового пользователя",
 )
 @limiter.limit("5/minute")
-async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    generic_error = HTTPException(status.HTTP_400_BAD_REQUEST, "Регистрация не удалась. Проверьте введённые данные.")
+async def register(
+    req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
+    generic_error = HTTPException(
+        status.HTTP_400_BAD_REQUEST,
+        "Регистрация не удалась. Проверьте введённые данные.",
+    )
 
     # Honeypot: bots often fill hidden fields
     if req.website:
@@ -96,7 +104,10 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     identifier = f"register:{client_ip}"
 
     if await is_locked_out(identifier):
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Слишком много попыток регистрации. Попробуйте позже.")
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Слишком много попыток регистрации. Попробуйте позже.",
+        )
 
     if not req.username.strip():
         await record_failed_attempt(identifier)
@@ -178,7 +189,11 @@ async def link_telegram(
     summary="Список мойщиков",
 )
 @limiter.limit("60/minute")
-async def get_washers(request: Request, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def get_washers(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     svc = AuthService(db)
     return await svc.get_washers()
 
@@ -246,18 +261,22 @@ async def upload_avatar(
     allowed_exts = {"jpg", "jpeg", "png", "webp"}
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
     if ext not in allowed_exts:
-        raise HTTPException(400, "Недопустимое расширение файла. Допустимы: JPEG, PNG, WebP")
+        raise HTTPException(
+            400, "Недопустимое расширение файла. Допустимы: JPEG, PNG, WebP"
+        )
 
     max_size = 5 * 1024 * 1024
     content = await file.read()
     if len(content) > max_size:
         raise HTTPException(400, "Файл слишком большой. Максимум 5 МБ")
 
-    if content.startswith(b'\xff\xd8\xff'):
+    if content.startswith(b"\xff\xd8\xff"):
         detected = {"jpg", "jpeg"}
-    elif content.startswith(b'\x89PNG\r\n\x1a\n'):
+    elif content.startswith(b"\x89PNG\r\n\x1a\n"):
         detected = {"png"}
-    elif len(content) >= 12 and content.startswith(b'RIFF') and content[8:12] == b'WEBP':
+    elif (
+        len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP"
+    ):
         detected = {"webp"}
     else:
         raise HTTPException(400, "Файл не является валидным изображением")
@@ -270,7 +289,9 @@ async def upload_avatar(
         width, height = await asyncio.to_thread(lambda: img.size)
         max_dimension = 4096
         if width > max_dimension or height > max_dimension:
-            raise HTTPException(400, f"Image dimensions too large. Max {max_dimension}x{max_dimension}")
+            raise HTTPException(
+                400, f"Image dimensions too large. Max {max_dimension}x{max_dimension}"
+            )
         # Verify integrity (Pillow's verify requires a fresh image object)
         verify_img = await asyncio.to_thread(Image.open, BytesIO(content))
         await asyncio.to_thread(verify_img.verify)
@@ -286,7 +307,9 @@ async def upload_avatar(
         buf = BytesIO()
         # Convert to RGB/RGBA for WebP compatibility
         if img.mode not in ("RGB", "RGBA"):
-            img = await asyncio.to_thread(img.convert, "RGBA" if img.mode in ("P", "LA") else "RGB")
+            img = await asyncio.to_thread(
+                img.convert, "RGBA" if img.mode in ("P", "LA") else "RGB"
+            )
         await asyncio.to_thread(img.save, buf, format="WEBP", quality=85)
         content = buf.getvalue()
         ext = "webp"
@@ -296,10 +319,12 @@ async def upload_avatar(
         raise HTTPException(400, "Failed to optimize image")
 
     import uuid
+
     filename = f"{uuid.uuid4().hex}.{ext}"
     filepath = os.path.join(UPLOAD_DIR, os.path.basename(filename))
 
     import aiofiles
+
     async with aiofiles.open(filepath, "wb") as buffer:
         await buffer.write(content)
 

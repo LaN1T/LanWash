@@ -1,7 +1,6 @@
 """ARQ background tasks for reminder notifications."""
 
 import structlog
-
 from database import AsyncSessionLocal
 from services.reminder_service import check_and_send_reminders
 

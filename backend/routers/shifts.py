@@ -1,12 +1,10 @@
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from models import ShiftMoveRequest, ShiftRequest, ShiftResponse
 from services.auth_service import get_current_user
 from services.shifts_service import (
@@ -14,6 +12,7 @@ from services.shifts_service import (
     ShiftNotFoundError,
     ShiftsService,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 
@@ -35,7 +34,7 @@ def _parse_time(time_str: str) -> bool:
 
 
 def _time_to_minutes(time_str: str) -> int:
-    h, m = map(int, time_str.split(':'))
+    h, m = map(int, time_str.split(":"))
     return h * 60 + m
 
 
@@ -196,7 +195,8 @@ async def reopen_shift(
 ):
     if current_user.role != "admin":
         raise HTTPException(
-            status_code=403, detail="Только администратор может возвращать смены на рассмотрение"
+            status_code=403,
+            detail="Только администратор может возвращать смены на рассмотрение",
         )
 
     svc = ShiftsService(db)
