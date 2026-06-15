@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import ShiftTemplate, User
-from models import (
+from schemas import (
     ShiftRequest,
     ShiftTemplateApplyRequest,
     ShiftTemplateCreateRequest,

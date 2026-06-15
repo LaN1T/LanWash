@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from db.session import AsyncSessionLocal
+from db import session as db_session
 from models import (
     Consumable,
     Promo,
@@ -28,7 +28,7 @@ settings = get_settings()
 
 
 async def seed_data():
-    async with AsyncSessionLocal() as session:
+    async with db_session.AsyncSessionLocal() as session:
         now = datetime.now().isoformat()
 
         admin_pass = settings.initial_admin_password

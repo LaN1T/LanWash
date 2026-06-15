@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from core.limiter import limiter
 from core.redis_client import get_redis
-from database import get_db
+from db.session import get_db
 from services.ai_resilience import ai_health
 
 settings = get_settings()

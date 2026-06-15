@@ -5,7 +5,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment
-from models import ForecastResponse, ForecastSlot
+from schemas import ForecastResponse, ForecastSlot
 from services.workload_service import NUM_BOXES
 
 _WEEKS_HISTORY = 8

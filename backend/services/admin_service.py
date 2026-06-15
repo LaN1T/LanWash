@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
 from models import Appointment, Review, User
-from models import ForecastResponse
+from schemas import ForecastResponse
 from services.forecast_service import generate_forecast
 
 
@@ -370,8 +370,7 @@ class AdminService:
         result = await self._db.execute(stmt)
         items = result.scalars().all()
 
-        from models import UserListItem
-
+        from schemas import UserListItem
         return {
             "items": [UserListItem.model_validate(u) for u in items],
             "total": total,

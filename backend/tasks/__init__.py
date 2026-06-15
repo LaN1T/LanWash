@@ -30,7 +30,7 @@ async def update_metrics(ctx):
 
 async def check_inventory_forecast(ctx, db=None):
     """Check inventory forecast and log alerts for critical items."""
-    from database import AsyncSessionLocal
+    from db.session import AsyncSessionLocal
     from services.inventory_forecast_service import generate_inventory_forecast
 
     session = db

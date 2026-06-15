@@ -122,7 +122,7 @@ class TestReviews:
 
     @pytest.mark.asyncio
     async def test_create_review_with_other_user_appointment(self, async_client, client_token):
-        from database import AsyncSessionLocal
+        from db.session import AsyncSessionLocal
         from db_models import User
         from services.auth_service import get_password_hash
 

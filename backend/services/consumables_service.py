@@ -15,7 +15,7 @@ from models import (
     Service,
     ServiceConsumable,
 )
-from models import (
+from schemas import (
     ConsumableRequest,
     RefillRequest,
     ServiceConsumableRequest,

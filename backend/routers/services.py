@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
-from database import get_db
+from db.session import get_db
 from models import User
-from models import (
+from schemas import (
     PromoResponse,
     ServiceRequest,
     ServiceResponse,

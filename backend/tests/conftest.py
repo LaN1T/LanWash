@@ -64,11 +64,13 @@ _test_engine = create_async_engine(
     _get_test_database_url(), echo=False, future=True, poolclass=NullPool
 )
 
-import database as _database_module
-from database import init_db as _orig_init_db
+import db.engine as _db_engine_module
+import db.session as _db_session_module
+import db.init as _db_init_module
+from db.init import init_db as _orig_init_db
 
-_database_module.engine = _test_engine
-_database_module.AsyncSessionLocal = sessionmaker(
+_db_engine_module.engine = _test_engine
+_db_session_module.AsyncSessionLocal = sessionmaker(
     _test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
@@ -78,7 +80,7 @@ async def _noop_init_db():
     return
 
 
-_database_module.init_db = _noop_init_db
+_db_init_module.init_db = _noop_init_db
 
 # Imports that must happen after env vars / patches are in place
 from core.limiter import limiter
@@ -177,7 +179,7 @@ async def db(db_session):
 @pytest_asyncio.fixture
 async def async_client(db_session):
     """HTTP-клиент для тестирования FastAPI."""
-    from database import get_db
+    from db.session import get_db
 
     async def _override_get_db():
         yield db_session

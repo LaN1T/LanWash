@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from models import Appointment
-from models import ForecastResponse, ForecastSlot
+from schemas import ForecastResponse, ForecastSlot
 from services.forecast_service import generate_forecast
 
 

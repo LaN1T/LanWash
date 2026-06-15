@@ -12,7 +12,7 @@ from models import (
     ServiceConsumable,
     WashTypeConsumable,
 )
-from models import ConsumableForecastItem, InventoryForecastResponse
+from schemas import ConsumableForecastItem, InventoryForecastResponse
 
 
 async def generate_inventory_forecast(

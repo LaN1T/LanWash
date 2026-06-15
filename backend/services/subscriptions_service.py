@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment, Subscription, User
-from models import SubscriptionCreateRequest
+from schemas import SubscriptionCreateRequest
 
 logger = structlog.get_logger()
 

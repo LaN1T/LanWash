@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
 from models import WashType, WashTypeIncludedExtra
-from models import WashTypeRequest
+from schemas import WashTypeRequest
 
 
 class WashTypesService:

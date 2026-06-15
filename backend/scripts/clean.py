@@ -82,7 +82,7 @@ async def drop_and_recreate():
     os.environ["DATABASE_URL"] = test_url
 
     # Re-import after setting env var
-    from database import init_db
+    from db.init import init_db
 
     await init_db()
     print("✅ Tables + base data ready")

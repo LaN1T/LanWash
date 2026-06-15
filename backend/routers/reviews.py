@@ -5,9 +5,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
-from database import get_db
+from db.session import get_db
 from models import User
-from models import ReviewCreateRequest, ReviewModerateRequest, ReviewResponse
+from schemas import ReviewCreateRequest, ReviewModerateRequest, ReviewResponse
 from services.auth_service import get_current_user
 from services.reviews_service import (
     ReviewBadRequestError,

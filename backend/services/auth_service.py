@@ -18,7 +18,7 @@ from core.cache import cache
 from core.config import get_settings
 from core.redis_client import get_redis
 from core.transaction import atomic
-from database import get_db
+from db.session import get_db
 from models import FcmToken, Referral, User
 
 logger = structlog.get_logger()
@@ -250,7 +250,7 @@ class AuthService:
 
     @atomic
     async def register(self, req) -> dict:
-        from models import RegisterRequest
+        from schemas import RegisterRequest
         if not isinstance(req, RegisterRequest):
             raise TypeError("req must be RegisterRequest")
 
@@ -418,7 +418,7 @@ class AuthService:
         return data
 
     async def update_profile(self, user_id: int, current_user: User, req, token: str) -> User:
-        from models import UpdateProfileRequest
+        from schemas import UpdateProfileRequest
         if not isinstance(req, UpdateProfileRequest):
             raise TypeError("req must be UpdateProfileRequest")
 
@@ -470,7 +470,7 @@ class AuthService:
         return user
 
     async def save_fcm_token(self, req, current_user: User) -> dict:
-        from models import FcmTokenRequest
+        from schemas import FcmTokenRequest
         if not isinstance(req, FcmTokenRequest):
             raise TypeError("req must be FcmTokenRequest")
 

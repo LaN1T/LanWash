@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from models import Appointment, Consumable, ConsumableUsageLog
-from models import ConsumableForecastItem, InventoryForecastResponse
+from schemas import ConsumableForecastItem, InventoryForecastResponse
 from services.inventory_forecast_service import generate_inventory_forecast
 
 

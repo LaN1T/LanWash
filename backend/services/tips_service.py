@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment, Tip
-from models import TipCreateRequest
+from schemas import TipCreateRequest
 
 
 class TipNotFoundError(Exception):

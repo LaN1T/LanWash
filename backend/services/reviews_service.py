@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment, Review
-from models import ReviewCreateRequest, ReviewModerateRequest
+from schemas import ReviewCreateRequest, ReviewModerateRequest
 
 
 class ReviewNotFoundError(Exception):

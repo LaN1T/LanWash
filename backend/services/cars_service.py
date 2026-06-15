@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Car
-from models import CarRequest
+from schemas import CarRequest
 
 
 class CarNotFoundError(Exception):

@@ -24,7 +24,9 @@ from core.logging import configure_logging
 from core.metrics import update_business_metrics
 from core.request_id import RequestIdMiddleware, get_request_id
 from core.security_headers import SecurityHeadersMiddleware
-from database import engine, get_db, init_db
+from db.engine import engine
+from db.session import get_db
+from db.init import init_db
 from routers import (
     admin,
     appointments,

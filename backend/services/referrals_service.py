@@ -4,7 +4,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Referral, User
-from models import ReferralResponse
+from schemas import ReferralResponse
 from services.auth_service import _ensure_unique_referral_code
 
 

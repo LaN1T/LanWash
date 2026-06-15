@@ -4,7 +4,7 @@ from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Shift, User
-from models import ShiftMoveRequest, ShiftRequest
+from schemas import ShiftMoveRequest, ShiftRequest
 
 
 class ShiftNotFoundError(Exception):

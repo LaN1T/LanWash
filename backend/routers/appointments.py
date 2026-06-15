@@ -13,7 +13,7 @@ from core.limiter import limiter
 from core.metrics import appointments_total
 from core.pagination import PaginationParams, paginate
 from core.security import decrypt_token
-from database import get_db
+from db.session import get_db
 from models import (
     Appointment,
     Car,
@@ -29,7 +29,7 @@ from models import (
     WashType,
     WashTypeConsumable,
 )
-from models import (
+from schemas import (
     AppointmentRequest,
     AppointmentResponse,
     AssignWasherRequest,

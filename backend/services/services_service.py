@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
 from models import ExtraFavorite, Promo, PromoIncludedExtra, Service, ServiceFavorite
-from models import ServiceRequest
+from schemas import ServiceRequest
 
 
 class ServiceNotFoundError(Exception):
