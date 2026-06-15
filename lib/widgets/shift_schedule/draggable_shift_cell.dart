@@ -40,9 +40,8 @@ class DraggableShiftCell extends StatelessWidget {
     this.onMove,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    Widget cell = ShiftCell(
+  Widget _buildCell() {
+    return ShiftCell(
       washer: washer,
       date: date,
       shift: shift,
@@ -53,6 +52,11 @@ class DraggableShiftCell extends StatelessWidget {
       onPaste: onPaste,
       onClear: onClear,
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget cell = _buildCell();
 
     if (isDraggable && shift != null) {
       cell = Draggable<Shift>(
@@ -86,9 +90,9 @@ class DraggableShiftCell extends StatelessWidget {
         ),
         childWhenDragging: Opacity(
           opacity: 0.35,
-          child: cell,
+          child: _buildCell(),
         ),
-        child: cell,
+        child: _buildCell(),
       );
     }
 
