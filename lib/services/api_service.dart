@@ -1051,6 +1051,19 @@ class ApiService {
     );
   }
 
+  Future<Shift?> moveShift(
+      int shiftId, int targetUserId, String targetDate) async {
+    final body = {
+      'targetUserId': targetUserId,
+      'targetDate': targetDate,
+    };
+    final result = await ApiClient.patch('/shifts/$shiftId/move', body: body);
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
   // ─── Shift Templates ───────────────────────────────────────────────────────
   Future<List<ShiftTemplate>> getShiftTemplates() async {
     final result = await ApiClient.getList('/shift-templates/');
