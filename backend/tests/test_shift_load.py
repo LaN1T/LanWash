@@ -91,7 +91,7 @@ async def test_empty_report(async_client, admin_token):
     coverage = data["availabilityCoverage"]
     assert coverage["availableDays"] == 0
     assert coverage["unavailableDays"] == 0
-    assert coverage["unknownDays"] == 0
+    assert coverage["unknownDays"] == len(data["washerStats"]) * len(data["dailyHours"])
 
 
 @pytest.mark.asyncio

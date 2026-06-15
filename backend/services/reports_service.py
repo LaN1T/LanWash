@@ -402,16 +402,14 @@ class ReportsService:
         for a in availability:
             if a.status in availability_counts:
                 availability_counts[a.status] += 1
-        if not availability:
-            unknown_days = 0
-        else:
-            total_possible_days = len(washers) * days_count
-            unknown_days = max(
-                0,
-                total_possible_days
-                - availability_counts["available"]
-                - availability_counts["unavailable"],
-            )
+
+        total_possible_days = len(washers) * days_count
+        unknown_days = max(
+            0,
+            total_possible_days
+            - availability_counts["available"]
+            - availability_counts["unavailable"],
+        )
 
         return {
             "startDate": start_date,
