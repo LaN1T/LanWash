@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
 from database import get_db
-from db_models import User
+from models import User
 from models import WasherAvailabilityResponse, WasherAvailabilityUpdateRequest
 from services.auth_service import check_roles, get_current_user
 from services.washer_availability_service import WasherAvailabilityService

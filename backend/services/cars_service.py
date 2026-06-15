@@ -2,7 +2,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import Car
+from models import Car
 from models import CarRequest
 
 

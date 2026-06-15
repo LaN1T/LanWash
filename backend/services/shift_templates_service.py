@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import ShiftTemplate, User
+from models import ShiftTemplate, User
 from models import (
     ShiftRequest,
     ShiftTemplateApplyRequest,

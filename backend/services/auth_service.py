@@ -19,7 +19,7 @@ from core.config import get_settings
 from core.redis_client import get_redis
 from core.transaction import atomic
 from database import get_db
-from db_models import FcmToken, Referral, User
+from models import FcmToken, Referral, User
 
 logger = structlog.get_logger()
 

@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import User, WasherAvailability
+from models import User, WasherAvailability
 from models import WasherAvailabilityEntry
 
 

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
 from core.limiter import limiter
 from database import get_db
-from db_models import User
+from models import User
 from models import (
     FcmTokenRequest,
     LoginRequest,

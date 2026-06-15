@@ -14,7 +14,7 @@ from core.metrics import appointments_total
 from core.pagination import PaginationParams, paginate
 from core.security import decrypt_token
 from database import get_db
-from db_models import (
+from models import (
     Appointment,
     Car,
     Consumable,

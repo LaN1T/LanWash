@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from db.session import AsyncSessionLocal
-from db_models import (
+from models import (
     Consumable,
     Promo,
     PromoIncludedExtra,

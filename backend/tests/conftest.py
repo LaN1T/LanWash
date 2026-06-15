@@ -82,7 +82,7 @@ _database_module.init_db = _noop_init_db
 
 # Imports that must happen after env vars / patches are in place
 from core.limiter import limiter
-from db_models import Base, User
+from models import Base, User
 
 # Patch @atomic so tests can share a rolled-back connection-level transaction
 # across requests.  When a transaction is already active the decorator creates

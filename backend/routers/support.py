@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
 from database import get_db
-from db_models import SupportChat, SupportMessage, User
+from models import SupportChat, SupportMessage, User
 from models import (
     AiDraftResponse,
     SupportChatCreateRequest,

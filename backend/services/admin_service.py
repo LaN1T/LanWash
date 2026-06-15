@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
-from db_models import Appointment, Review, User
+from models import Appointment, Review, User
 from models import ForecastResponse
 from services.forecast_service import generate_forecast
 

@@ -9,9 +9,9 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, declared_attr, validates
+from sqlalchemy.orm import declared_attr, validates
 
-Base = declarative_base()
+from db.base import Base
 
 class User(Base):
     __tablename__ = 'users'

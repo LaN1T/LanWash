@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from core.pagination import PaginationParams
 from database import get_db
-from db_models import User
+from models import User
 from models import LogRequest, LogResponse
 from services.auth_service import get_current_user
 from services.logs_service import LogsService

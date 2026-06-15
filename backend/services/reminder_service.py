@@ -6,7 +6,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import Appointment, FcmToken, User, WashType
+from models import Appointment, FcmToken, User, WashType
 from services.fcm_service import fcm_service
 
 logger = structlog.get_logger()

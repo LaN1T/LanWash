@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from db_models import Appointment
+from models import Appointment
 
 
 class TestBulkOperations:

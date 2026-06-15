@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
-from db_models import (
+from models import (
     Consumable,
     ConsumableRefillLog,
     ConsumableUsageLog,

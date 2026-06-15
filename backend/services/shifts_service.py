@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import Shift, User
+from models import Shift, User
 from models import ShiftMoveRequest, ShiftRequest
 
 

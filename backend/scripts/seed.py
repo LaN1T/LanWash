@@ -16,7 +16,7 @@ from passlib.context import CryptContext
 from sqlalchemy import func, select
 
 from database import AsyncSessionLocal, init_db
-from db_models import (
+from models import (
     Appointment,
     LogEntry,
     Review,

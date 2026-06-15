@@ -4,7 +4,7 @@ import structlog
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import Appointment, Subscription, User
+from models import Appointment, Subscription, User
 from models import SubscriptionCreateRequest
 
 logger = structlog.get_logger()

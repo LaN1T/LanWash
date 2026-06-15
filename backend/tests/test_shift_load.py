@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
-from db_models import Shift, WasherAvailability
+from models import Shift, WasherAvailability
 from services.reports_service import SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
 

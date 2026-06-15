@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 import pytest_asyncio
 
-from db_models import Appointment, FcmToken, User
+from models import Appointment, FcmToken, User
 from services.reminder_service import check_and_send_reminders
 
 

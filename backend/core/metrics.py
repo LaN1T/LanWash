@@ -7,7 +7,7 @@ from prometheus_client import Counter, Gauge
 from sqlalchemy import and_, func, select
 
 from db.session import AsyncSessionLocal
-from app.models import Appointment, Shift, User
+from models import Appointment, Shift, User
 
 # Cache business metrics to avoid hitting the DB on every Prometheus scrape.
 _METRICS_CACHE_TTL_SECONDS = 30.0

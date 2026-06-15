@@ -356,7 +356,7 @@ import json
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
-from db_models import SupportChat
+from models import SupportChat
 
 _ws_attempts: dict[str, list[float]] = {}
 

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from db_models import Shift, User
+from models import Shift, User
 
 
 class TestShifts:

@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from db_models import Car, User
+from models import Car, User
 from services.auth_service import get_password_hash
 
 

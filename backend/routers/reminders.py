@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
 from database import get_db
-from db_models import User
+from models import User
 from services.auth_service import check_roles
 from services.reminders_service import RemindersService
 

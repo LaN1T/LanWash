@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from db_models import LogEntry
+from models import LogEntry
 
 
 class TestLateAndCancel:

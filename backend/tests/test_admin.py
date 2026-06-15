@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from db_models import Appointment, Review, User
+from models import Appointment, Review, User
 
 
 class TestAdminDashboard:

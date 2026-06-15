@@ -4,7 +4,7 @@ from sqlalchemy import delete, distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
-from db_models import ExtraFavorite, Promo, PromoIncludedExtra, Service, ServiceFavorite
+from models import ExtraFavorite, Promo, PromoIncludedExtra, Service, ServiceFavorite
 from models import ServiceRequest
 
 

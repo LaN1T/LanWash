@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from db_models import AdminAuditLog
+from models import AdminAuditLog
 
 
 async def log_admin_action(

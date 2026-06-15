@@ -7,7 +7,7 @@ import structlog
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import (
+from models import (
     Appointment,
     Promo,
     PromoIncludedExtra,
