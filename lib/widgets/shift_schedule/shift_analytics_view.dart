@@ -7,12 +7,10 @@ import '../../models/shift_load_report.dart';
 
 class ShiftAnalyticsView extends StatelessWidget {
   final ShiftLoadReport report;
-  final DateTime weekStart;
 
   const ShiftAnalyticsView({
     super.key,
     required this.report,
-    required this.weekStart,
   });
 
   @override
@@ -32,7 +30,7 @@ class ShiftAnalyticsView extends StatelessWidget {
         const SizedBox(height: 24),
         _buildSectionTitle(context, 'Доступность мойщиков'),
         const SizedBox(height: 12),
-        _buildAvailabilityChips(context),
+        _buildAvailabilityChips(),
       ],
     );
   }
@@ -198,7 +196,9 @@ class ShiftAnalyticsView extends StatelessWidget {
     final maxMinutes = report.targetWeeklyMinutesPerWasher;
     return Column(
       children: report.washerStats.map((stat) {
-        final ratio = (stat.confirmedMinutes / maxMinutes).clamp(0.0, 1.0);
+        final ratio = maxMinutes > 0
+            ? (stat.confirmedMinutes / maxMinutes).clamp(0.0, 1.0)
+            : 0.0;
         final color = stat.isOvertime
             ? AppStyles.danger
             : stat.isUnderload
@@ -247,20 +247,20 @@ class ShiftAnalyticsView extends StatelessWidget {
     );
   }
 
-  Widget _buildAvailabilityChips(BuildContext context) {
+  Widget _buildAvailabilityChips() {
     final coverage = report.availabilityCoverage;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _chip(context, 'Доступны', coverage.availableDays.toString(), AppStyles.success),
-        _chip(context, 'Недоступны', coverage.unavailableDays.toString(), AppStyles.danger),
-        _chip(context, 'Не указано', coverage.unknownDays.toString(), Colors.grey),
+        _chip('Доступны', coverage.availableDays.toString(), AppStyles.success),
+        _chip('Недоступны', coverage.unavailableDays.toString(), AppStyles.danger),
+        _chip('Не указано', coverage.unknownDays.toString(), Colors.grey),
       ],
     );
   }
 
-  Widget _chip(BuildContext context, String label, String value, Color color) {
+  Widget _chip(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(

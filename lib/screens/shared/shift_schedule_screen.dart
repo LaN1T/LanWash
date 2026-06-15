@@ -501,7 +501,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         current = results[1] as List<Map<String, dynamic>>;
       }
 
-      await _loadAvailability(washers);
+      if (_mode != _ScheduleMode.analytics) {
+        await _loadAvailability(washers);
+      }
 
       if (_mode == _ScheduleMode.analytics) {
         await _loadShiftLoadReport();
@@ -1463,7 +1465,6 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     }
     return ShiftAnalyticsView(
       report: report,
-      weekStart: _weekStart,
     );
   }
 

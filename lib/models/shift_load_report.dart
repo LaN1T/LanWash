@@ -25,11 +25,11 @@ class ShiftLoadReport {
       endDate: map['endDate'] as String,
       targetWeeklyMinutesPerWasher:
           map['targetWeeklyMinutesPerWasher'] as int? ?? 2400,
-      dailyHours: (map['dailyHours'] as List<dynamic>)
+      dailyHours: ((map['dailyHours'] ?? []) as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(ShiftLoadDailyEntry.fromMap)
           .toList(),
-      washerStats: (map['washerStats'] as List<dynamic>)
+      washerStats: ((map['washerStats'] ?? []) as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(ShiftLoadWasherStat.fromMap)
           .toList(),
