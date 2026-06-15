@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from db_models import Consumable, ConsumableUsageLog
+from db_models import Appointment, Consumable, ConsumableUsageLog
 from models import ConsumableForecastItem, InventoryForecastResponse
 from services.inventory_forecast_service import generate_inventory_forecast
 
@@ -50,9 +50,21 @@ class TestInventoryForecastService:
 
         for day in range(30):
             ts = (reference_date - timedelta(days=30 - day)).isoformat()
+            appt_id = f"appt_{day}"
+            db_session.add(
+                Appointment(
+                    id=appt_id,
+                    clientName="Test",
+                    carModel="",
+                    carNumber="",
+                    dateTime=ts,
+                    date=ts[:10],
+                    washTypeId="w1",
+                )
+            )
             db_session.add(
                 ConsumableUsageLog(
-                    appointmentId=f"appt_{day}",
+                    appointmentId=appt_id,
                     consumableId="c_forecast_test",
                     quantityUsed=10.0,
                     timestamp=ts,
@@ -91,12 +103,25 @@ class TestInventoryForecastTask:
 
         ref = datetime(2026, 6, 9, 12, 0, 0)
         for i in range(30):
+            ts = (ref - timedelta(days=i + 1)).isoformat()
+            appt_id = f"appt_{i}"
+            db_session.add(
+                Appointment(
+                    id=appt_id,
+                    clientName="Test",
+                    carModel="",
+                    carNumber="",
+                    dateTime=ts,
+                    date=ts[:10],
+                    washTypeId="w1",
+                )
+            )
             db_session.add(
                 ConsumableUsageLog(
-                    appointmentId=f"appt_{i}",
+                    appointmentId=appt_id,
                     consumableId="c_crit_task",
                     quantityUsed=50.0,
-                    timestamp=(ref - timedelta(days=i + 1)).isoformat(),
+                    timestamp=ts,
                 )
             )
         await db_session.commit()

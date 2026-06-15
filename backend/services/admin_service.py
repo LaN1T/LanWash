@@ -97,7 +97,7 @@ class AdminService:
                 and_(
                     Review.createdAt >= from_dt.isoformat(),
                     Review.createdAt < to_dt_inclusive.isoformat(),
-                    Review.isPublished == True,
+                    Review.isPublished == 1,
                 )
             )
         )
