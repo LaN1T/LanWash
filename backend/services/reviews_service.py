@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Appointment, Review
+from models import Review
 from repositories.appointment import AppointmentRepository
 from repositories.review import ReviewRepository
 from schemas import ReviewCreateRequest, ReviewModerateRequest
@@ -68,7 +68,7 @@ class ReviewsService:
             createdAt=datetime.now(timezone.utc).isoformat(),
             appointmentId=data.appointmentId,
         )
-        self._db.add(review)
+        await self._reviews.add(review)
         try:
             await self._db.commit()
         except IntegrityError:
@@ -93,5 +93,5 @@ class ReviewsService:
         review = await self._reviews.get_by_id(review_id)
         if not review:
             raise ReviewNotFoundError()
-        await self._db.delete(review)
+        await self._reviews.delete(review)
         await self._db.commit()

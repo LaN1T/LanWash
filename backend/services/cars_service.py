@@ -49,7 +49,7 @@ class CarsService:
             number=req.number or "",
             isPrimary=is_primary,
         )
-        self._db.add(car)
+        await self._cars.add(car)
         try:
             await self._db.commit()
         except IntegrityError:
@@ -90,7 +90,7 @@ class CarsService:
         car = await self._ensure_access(car_id, user_id)
 
         was_primary = car.isPrimary
-        await self._db.delete(car)
+        await self._cars.delete(car)
 
         if was_primary:
             oldest = await self._cars.get_oldest_for_user(user_id)

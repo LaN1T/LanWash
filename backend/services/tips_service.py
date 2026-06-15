@@ -59,7 +59,7 @@ class TipsService:
             status="pending",
             createdAt=datetime.now(timezone.utc).isoformat(),
         )
-        self._db.add(tip)
+        await self._tips.add(tip)
         try:
             await self._db.commit()
         except IntegrityError:

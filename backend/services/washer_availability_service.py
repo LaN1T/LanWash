@@ -4,7 +4,7 @@ from typing import List
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import User, WasherAvailability
+from models import WasherAvailability
 from repositories.user import UserRepository
 from repositories.washer_availability import WasherAvailabilityRepository
 from schemas import WasherAvailabilityEntry
@@ -48,7 +48,7 @@ class WasherAvailabilityService:
                 row.status = status
                 row.updatedAt = now
             else:
-                self._db.add(
+                await self._availability.add(
                     WasherAvailability(
                         userId=user_id,
                         date=date_str,

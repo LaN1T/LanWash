@@ -45,7 +45,7 @@ class SubscriptionsService:
             validUntil=req.validUntil,
             createdAt=datetime.now().isoformat(),
         )
-        self._db.add(sub)
+        await self._subscriptions.add(sub)
         await self._db.commit()
         await self._db.refresh(sub)
         logger.info(

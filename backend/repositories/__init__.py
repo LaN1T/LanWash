@@ -30,3 +30,37 @@ from repositories.tip import TipRepository
 from repositories.support_chat import SupportChatRepository
 from repositories.support_message import SupportMessageRepository
 from repositories.admin_audit_log import AdminAuditLogRepository
+
+__all__ = [
+    "BaseRepository",
+    "UserRepository",
+    "CarRepository",
+    "WashTypeRepository",
+    "WashTypeIncludedExtraRepository",
+    "WashTypeConsumableRepository",
+    "SubscriptionRepository",
+    "AppointmentRepository",
+    "ServiceRepository",
+    "PromoRepository",
+    "PromoIncludedExtraRepository",
+    "LogEntryRepository",
+    "ServiceFavoriteRepository",
+    "ExtraFavoriteRepository",
+    "WasherNoteRepository",
+    "DeletedNotificationRepository",
+    "FcmTokenRepository",
+    "ConsumableRepository",
+    "ServiceConsumableRepository",
+    "ConsumableUsageLogRepository",
+    "ConsumableRefillLogRepository",
+    "ShiftRepository",
+    "ShiftTemplateRepository",
+    "WasherAvailabilityRepository",
+    "NotificationQueueRepository",
+    "ReviewRepository",
+    "ReferralRepository",
+    "TipRepository",
+    "SupportChatRepository",
+    "SupportMessageRepository",
+    "AdminAuditLogRepository",
+]

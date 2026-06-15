@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 import uuid
@@ -95,9 +96,6 @@ def validate_password_strength(password: str) -> Optional[str]:
     if not re.search(r"[@$!%*?&_]", password):
         return "Пароль должен содержать хотя бы один специальный символ (@$!%*?&_)."
     return None
-
-
-import asyncio
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

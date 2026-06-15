@@ -35,7 +35,7 @@ class NotesService:
             isRead=0,
             createdAt=datetime.now().isoformat()
         )
-        self._db.add(new_note)
+        await self._notes.add(new_note)
         await self._db.commit()
         await self._db.refresh(new_note)
         return new_note

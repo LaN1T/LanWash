@@ -51,7 +51,7 @@ class ShiftTemplatesService:
             isDefault=payload.isDefault,
             slots=[s.model_dump() for s in payload.slots],
         )
-        self._db.add(template)
+        await self._templates.add(template)
         await self._db.commit()
         await self._db.refresh(template)
         return ShiftTemplateResponse.model_validate(template)
@@ -82,7 +82,7 @@ class ShiftTemplatesService:
         if template is None:
             raise HTTPException(status_code=404, detail="Шаблон не найден")
         await self._ensure_owner_access(template)
-        await self._db.delete(template)
+        await self._templates.delete(template)
         await self._db.commit()
 
     async def apply_template(

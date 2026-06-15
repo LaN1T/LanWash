@@ -30,7 +30,7 @@ class LogsService:
             details=details,
             timestamp=datetime.now().isoformat()
         )
-        self._db.add(new_log)
+        await self._logs.add(new_log)
         await self._db.commit()
         await self._db.refresh(new_log)
         return new_log

@@ -15,7 +15,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         return (
             Subscription.userId == user_id,
             Subscription.usedWashes < Subscription.totalWashes,
-            or_(Subscription.validUntil == None, Subscription.validUntil >= today),
+            or_(Subscription.validUntil.is_(None), Subscription.validUntil >= today),
         )
 
     async def list_active_for_user(self, user_id: int) -> list[Subscription]:
@@ -50,7 +50,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         result = await self._db.execute(
             select(func.coalesce(func.sum(Appointment.originalPrice), 0)).where(
                 Appointment.userId == user_id,
-                Appointment.subscriptionId != None,
+                Appointment.subscriptionId.is_not(None),
             )
         )
         return result.scalar() or 0

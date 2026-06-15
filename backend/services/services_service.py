@@ -103,7 +103,7 @@ class ServicesService:
             isFromApi=int(req.isFromApi),
             updatedAt=datetime.now().isoformat()
         )
-        self._db.add(new_service)
+        await self._services.add(new_service)
         await self._db.commit()
         await self._db.refresh(new_service)
         await self._invalidate_service_cache()
@@ -144,7 +144,7 @@ class ServicesService:
             await self._service_favorites.delete_favorite(username, service_id)
             is_fav = False
         else:
-            self._db.add(ServiceFavorite(username=username, serviceId=service_id))
+            await self._service_favorites.add(ServiceFavorite(username=username, serviceId=service_id))
             is_fav = True
         await self._db.commit()
         return is_fav
@@ -158,7 +158,7 @@ class ServicesService:
             await self._extra_favorites.delete_favorite(username, service_id)
             is_fav = False
         else:
-            self._db.add(ExtraFavorite(username=username, serviceId=service_id))
+            await self._extra_favorites.add(ExtraFavorite(username=username, serviceId=service_id))
             is_fav = True
         await self._db.commit()
         return is_fav
