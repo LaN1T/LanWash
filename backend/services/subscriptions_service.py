@@ -1,10 +1,11 @@
 from datetime import datetime
 
 import structlog
-from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Appointment, Subscription, User
+from models import Subscription
+from repositories.subscription import SubscriptionRepository
+from repositories.user import UserRepository
 from schemas import SubscriptionCreateRequest
 
 logger = structlog.get_logger()
@@ -23,21 +24,14 @@ class SubscriptionsService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._subscriptions = SubscriptionRepository(db)
+        self._users = UserRepository(db)
 
     async def get_my_subscriptions(self, user_id: int) -> list[Subscription]:
-        today = datetime.now().isoformat()[:10]
-        result = await self._db.execute(
-            select(Subscription).where(
-                Subscription.userId == user_id,
-                Subscription.usedWashes < Subscription.totalWashes,
-                or_(Subscription.validUntil == None, Subscription.validUntil >= today),
-            ).order_by(Subscription.createdAt.desc())
-        )
-        return list(result.scalars().all())
+        return await self._subscriptions.list_active_for_user(user_id)
 
     async def create_subscription(self, req: SubscriptionCreateRequest, admin_username: str) -> Subscription:
-        user_res = await self._db.execute(select(User).where(User.id == req.userId))
-        user = user_res.scalar_one_or_none()
+        user = await self._users.get_by_id(req.userId)
         if not user:
             raise UserNotFoundError()
 
@@ -63,16 +57,7 @@ class SubscriptionsService:
         return sub
 
     async def use_subscription(self, subscription_id: int, user_id: int) -> dict:
-        today = datetime.now().isoformat()[:10]
-        result = await self._db.execute(
-            select(Subscription).where(
-                Subscription.id == subscription_id,
-                Subscription.userId == user_id,
-                Subscription.usedWashes < Subscription.totalWashes,
-                or_(Subscription.validUntil == None, Subscription.validUntil >= today),
-            ).with_for_update()
-        )
-        sub = result.scalar_one_or_none()
+        sub = await self._subscriptions.get_active_for_user_with_lock(subscription_id, user_id)
         if not sub:
             raise SubscriptionNotFoundError()
 
@@ -82,22 +67,6 @@ class SubscriptionsService:
         return {"ok": True, "remaining": sub.totalWashes - sub.usedWashes}
 
     async def get_subscription_stats(self, user_id: int) -> dict:
-        today = datetime.now().isoformat()[:10]
-        active_res = await self._db.execute(
-            select(func.count(Subscription.id)).where(
-                Subscription.userId == user_id,
-                Subscription.usedWashes < Subscription.totalWashes,
-                or_(Subscription.validUntil == None, Subscription.validUntil >= today),
-            )
-        )
-        active_count = active_res.scalar() or 0
-
-        saved_res = await self._db.execute(
-            select(func.coalesce(func.sum(Appointment.originalPrice), 0)).where(
-                Appointment.userId == user_id,
-                Appointment.subscriptionId != None,
-            )
-        )
-        total_saved = saved_res.scalar() or 0
-
+        active_count = await self._subscriptions.count_active_for_user(user_id)
+        total_saved = await self._subscriptions.sum_saved_for_user(user_id)
         return {"activeCount": active_count, "totalSaved": total_saved}
