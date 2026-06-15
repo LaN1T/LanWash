@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lanwash/models/shift.dart';
 import 'package:lanwash/models/user.dart';
 import 'package:lanwash/screens/shared/shift_schedule_screen.dart';
+import 'package:lanwash/widgets/shift_schedule/shift_analytics_header.dart';
+import 'package:lanwash/widgets/shift_schedule/shift_filter_bar.dart';
 
 void main() {
   group('ShiftCell', () {
@@ -287,6 +289,50 @@ void main() {
       await tester.tap(find.text('Отклонить все заявки'));
       await tester.pumpAndSettle();
       expect(rejected, true);
+    });
+  });
+
+  group('ShiftAnalyticsHeader', () {
+    testWidgets('displays metrics', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ShiftAnalyticsHeader(
+              totalConfirmedHours: 120.5,
+              pendingCount: 3,
+              conflictCount: 1,
+              utilizationPercent: 85.0,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('120.5'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('85%'), findsOneWidget);
+      expect(find.text('Всего часов'), findsOneWidget);
+      expect(find.text('На рассмотрении'), findsOneWidget);
+    });
+  });
+
+  group('ShiftFilterBar', () {
+    testWidgets('calls onChanged with selected filter', (tester) async {
+      ShiftFilter? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ShiftFilterBar(
+              selected: ShiftFilter.all,
+              onChanged: (f) => selected = f,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Только я'));
+      await tester.pump();
+      expect(selected, ShiftFilter.mine);
     });
   });
 }
