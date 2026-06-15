@@ -395,6 +395,40 @@ class ShiftResponse(BaseModel):
     updatedAt: str
 
 
+# ─── Shift Templates ─────────────────────────────────────────────────────────
+class ShiftTemplateSlot(BaseModel):
+    weekday: int = Field(..., ge=1, le=7, description="1=Monday ... 7=Sunday")
+    startTime: str = Field(..., max_length=5, description="HH:MM")
+    endTime: str = Field(..., max_length=5, description="HH:MM")
+
+
+class ShiftTemplateCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    isDefault: bool = False
+    slots: List[ShiftTemplateSlot]
+
+
+class ShiftTemplateUpdateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    isDefault: Optional[bool] = None
+    slots: Optional[List[ShiftTemplateSlot]] = None
+
+
+class ShiftTemplateApplyRequest(BaseModel):
+    weekStart: str = Field(..., max_length=10, description="YYYY-MM-DD, must be Monday")
+    targetUserId: Optional[int] = None
+
+
+class ShiftTemplateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ownerUsername: str
+    name: str
+    isDefault: bool
+    slots: List[ShiftTemplateSlot]
+
+
 # ─── Reviews ─────────────────────────────────────────────────────────────────
 class ReviewCreateRequest(BaseModel):
     userId: int = Field(..., ge=1)

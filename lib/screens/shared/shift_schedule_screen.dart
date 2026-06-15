@@ -11,6 +11,8 @@ import '../../widgets/shift_schedule/shift_analytics_header.dart';
 import '../../widgets/shift_schedule/shift_filter_bar.dart';
 
 import '../../widgets/shift_schedule/shift_requests_panel.dart';
+import '../../widgets/shift_schedule/shift_templates_sheet.dart';
+import '../../models/shift_template.dart';
 
 class ShiftScheduleScreen extends StatefulWidget {
   const ShiftScheduleScreen({super.key});
@@ -382,6 +384,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   Shift? _copiedShift;
   List<Shift>? _copiedWeek;
   ShiftFilter _filter = ShiftFilter.all;
+  List<ShiftTemplate> _templates = [];
 
   static const int _targetWeeklyMinutesPerWasher = 40 * 60;
 
@@ -438,11 +441,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final fmt = DateFormat('yyyy-MM-dd');
     final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
     final current = await api.getCurrentShifts();
+    final templates = await api.getShiftTemplates();
     if (mounted) {
       setState(() {
         _washers = washers;
         _shifts = shifts;
         _currentShifts = current;
+        _templates = templates;
         _loading = false;
       });
     }
@@ -542,6 +547,133 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         ),
       ),
     );
+  }
+
+  void _openTemplatesSheet() {
+    final target = _effectiveTargetWasher;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.8,
+        expand: false,
+        builder: (_, __) => ShiftTemplatesSheet(
+          templates: _templates,
+          targetWasher: target,
+          weekStart: _weekStart,
+          onRefresh: _loadTemplates,
+          onSave: (name, _) => _saveCurrentWeekAsTemplate(name),
+          onApply: (template) => _applyTemplate(template, target),
+          onDelete: (template) => _deleteTemplate(template),
+          onSetDefault: (template, isDefault) => _setDefaultTemplate(template, isDefault),
+        ),
+      ),
+    );
+  }
+
+  User? get _selectedWasher {
+    if (_highlightedWasherId != null) {
+      try {
+        return _washers.firstWhere((w) => w.id == _highlightedWasherId);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  User? get _effectiveTargetWasher {
+    if (_selectedWasher != null) return _selectedWasher;
+    if (_isWasher) {
+      final me = context.read<AuthProvider>().user;
+      try {
+        return _washers.firstWhere((w) => w.username == me?.username);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _loadTemplates() async {
+    final templates = await context.read<ApiService>().getShiftTemplates();
+    if (mounted) setState(() => _templates = templates);
+  }
+
+  Future<void> _saveCurrentWeekAsTemplate(String name) async {
+    final washer = _effectiveTargetWasher;
+    if (washer == null) {
+      _showSnack('Выберите мойщика (тап по строке)');
+      return;
+    }
+
+    final slots = _shifts
+        .where((s) => s.userId == washer.id)
+        .map((s) {
+          final date = DateTime.parse(s.date);
+          return ShiftTemplateSlot(
+            weekday: date.weekday,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          );
+        })
+        .toList()
+      ..sort((a, b) => a.weekday.compareTo(b.weekday));
+
+    if (slots.isEmpty) {
+      _showSnack('У выбранного мойщика нет смен на текущей неделе');
+      return;
+    }
+
+    final api = context.read<ApiService>();
+    final template = await api.createShiftTemplate(
+      ShiftTemplate(
+        id: 0,
+        ownerUsername: '',
+        name: name,
+        isDefault: false,
+        slots: slots,
+      ),
+    );
+    if (template != null && mounted) {
+      _showSnack('Шаблон сохранён');
+      _loadTemplates();
+    }
+  }
+
+  Future<void> _applyTemplate(ShiftTemplate template, User? target) async {
+    final washer = target ?? _selectedWasher;
+    if (washer == null) {
+      _showSnack('Выберите мойщика');
+      return;
+    }
+
+    final fmt = DateFormat('yyyy-MM-dd');
+    final count = await context.read<ApiService>().applyShiftTemplate(
+      template.id,
+      weekStart: fmt.format(_weekStart),
+      targetUserId: washer.id,
+    );
+    if (mounted) {
+      _showSnack(count > 0 ? 'Применено $count смен' : 'Не удалось применить шаблон');
+      _loadData();
+    }
+  }
+
+  Future<void> _deleteTemplate(ShiftTemplate template) async {
+    final ok = await context.read<ApiService>().deleteShiftTemplate(template.id);
+    if (ok && mounted) {
+      _showSnack('Шаблон удалён');
+      _loadTemplates();
+    }
+  }
+
+  Future<void> _setDefaultTemplate(ShiftTemplate template, bool isDefault) async {
+    final updated = await context.read<ApiService>().updateShiftTemplate(
+      template.copyWith(isDefault: isDefault),
+    );
+    if (updated != null && mounted) {
+      _showSnack(isDefault ? 'Шаблон по умолчанию установлен' : 'По умолчанию снят');
+      _loadTemplates();
+    }
   }
 
   List<User> get _visibleWashers {
@@ -861,6 +993,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
               style: TextButton.styleFrom(foregroundColor: AppStyles.danger),
             ),
           ],
+          TextButton.icon(
+            onPressed: _openTemplatesSheet,
+            icon: const Icon(Icons.calendar_view_week, size: 18),
+            label: const Text('Шаблоны'),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _loading
