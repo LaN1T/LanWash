@@ -288,7 +288,7 @@ class TestAppointments:
         """When creating an appointment without washer, auto-assign from shift."""
         from datetime import datetime
 
-        from db_models import Shift, User
+        from models import Shift, User
 
         # Create a washer with a confirmed shift for today
         washer = User(
@@ -351,7 +351,7 @@ class TestAppointments:
         """Admin-specified washer is not overwritten by auto-assign."""
         from datetime import datetime, timedelta
 
-        from db_models import Shift, User
+        from models import Shift, User
 
         washer = User(
             username="auto_washer2",

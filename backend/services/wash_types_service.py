@@ -2,8 +2,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
-from db_models import WashType, WashTypeIncludedExtra
-from models import WashTypeRequest
+from models import WashType, WashTypeIncludedExtra
+from schemas import WashTypeRequest
 
 
 class WashTypesService:

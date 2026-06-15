@@ -6,15 +6,15 @@ from unittest.mock import AsyncMock, patch
 async def test_lifespan_closes_arq_pool_and_engine():
     from contextlib import asynccontextmanager
 
-    from main import lifespan
+    from app.lifespan import lifespan
 
     app_mock = type("App", (), {"state": type("State", (), {})()})()
 
     with (
-        patch("main.init_db", new_callable=AsyncMock) as mock_init_db,
-        patch("main.get_arq_pool", new_callable=AsyncMock) as mock_get_arq_pool,
-        patch("main.close_arq_pool", new_callable=AsyncMock) as mock_close_arq_pool,
-        patch("main.engine", new_callable=AsyncMock) as mock_engine,
+        patch("app.lifespan.init_db", new_callable=AsyncMock) as mock_init_db,
+        patch("app.lifespan.get_arq_pool", new_callable=AsyncMock) as mock_get_arq_pool,
+        patch("app.lifespan.close_arq_pool", new_callable=AsyncMock) as mock_close_arq_pool,
+        patch("app.lifespan.engine", new_callable=AsyncMock) as mock_engine,
         patch("core.redis_client.get_redis", new_callable=AsyncMock) as mock_get_redis,
     ):
         mock_arq_pool = AsyncMock()

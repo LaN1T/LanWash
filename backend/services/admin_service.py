@@ -7,8 +7,8 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
-from db_models import Appointment, Review, User
-from models import ForecastResponse
+from models import Appointment, Review, User
+from schemas import ForecastResponse
 from services.forecast_service import generate_forecast
 
 
@@ -97,7 +97,7 @@ class AdminService:
                 and_(
                     Review.createdAt >= from_dt.isoformat(),
                     Review.createdAt < to_dt_inclusive.isoformat(),
-                    Review.isPublished == True,
+                    Review.isPublished == 1,
                 )
             )
         )
@@ -370,8 +370,7 @@ class AdminService:
         result = await self._db.execute(stmt)
         items = result.scalars().all()
 
-        from models import UserListItem
-
+        from schemas import UserListItem
         return {
             "items": [UserListItem.model_validate(u) for u in items],
             "total": total,

@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from db_models import Appointment
-from models import ForecastResponse, ForecastSlot
+from models import Appointment
+from schemas import ForecastResponse, ForecastSlot
 from services.forecast_service import generate_forecast
 
 

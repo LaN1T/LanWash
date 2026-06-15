@@ -3,8 +3,8 @@ from datetime import datetime
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import Referral, User
-from models import ReferralResponse
+from models import Referral, User
+from schemas import ReferralResponse
 from services.auth_service import _ensure_unique_referral_code
 
 

@@ -1,62 +1,194 @@
 import os
 import sys
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse, quote
 
 import pytest
 import pytest_asyncio
 
-# Переопределяем DATABASE_URL ДО импорта приложения
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+# Load the project-root .env (PostgreSQL credentials) before importing app settings.
+# This overrides a possible backend/.env that still points to SQLite.
+from dotenv import load_dotenv
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+load_dotenv(os.path.join(ROOT_DIR, ".env"), override=True)
+
+
+def _resolve_local_database_url(url: str) -> str:
+    """Rewrite a Docker Compose service hostname (db) to localhost."""
+    parsed = urlparse(url)
+    if parsed.hostname != "db":
+        return url
+    port = parsed.port or 5432
+    netloc = parsed.netloc
+    if "@" in netloc:
+        userinfo, hostport = netloc.rsplit("@", 1)
+        hostport = hostport.replace(f"db:{port}", f"localhost:{port}", 1)
+        netloc = f"{userinfo}@{hostport}"
+    else:
+        netloc = netloc.replace(f"db:{port}", f"localhost:{port}", 1)
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+raw_db_url = os.environ.get("DATABASE_URL")
+if raw_db_url:
+    os.environ["DATABASE_URL"] = _resolve_local_database_url(raw_db_url)
+
 os.environ["JWT_SECRET_KEY"] = "test_secret_key_minimum_32_chars_long"
 os.environ["INITIAL_ADMIN_PASSWORD"] = "TestPass123!"
-os.environ["FCM_ENCRYPTION_KEY"] = "zM1-xb7fhoXQAbRzvCGSyMeZb37IdYLS2GN_zBUrFYw="
+os.environ.setdefault(
+    "FCM_ENCRYPTION_KEY", "zM1-xb7fhoXQAbRzvCGSyMeZb37IdYLS2GN_zBUrFYw="
+)
 
 # Добавляем backend в PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from core.config import get_settings
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-# Отключаем rate limiting для тестов
+settings = get_settings()
+
+
+def _get_test_database_url() -> str:
+    parsed = urlparse(settings.database_url)
+    return urlunparse(parsed._replace(path="/lanwash_test"))
+
+
+# Create the test engine at module import time and patch the database module
+# *before* the FastAPI app is imported. This makes app startup (lifespan/init_db)
+# and all database sessions point to the disposable test database.
+from sqlalchemy.pool import NullPool
+
+_test_engine = create_async_engine(
+    _get_test_database_url(), echo=False, future=True, poolclass=NullPool
+)
+
+import db.engine as _db_engine_module
+import db.session as _db_session_module
+import db.init as _db_init_module
+from db.init import init_db as _orig_init_db
+
+_db_engine_module.engine = _test_engine
+_db_session_module.AsyncSessionLocal = sessionmaker(
+    _test_engine, class_=AsyncSession, expire_on_commit=False
+)
+
+
+async def _noop_init_db():
+    """No-op replacement for init_db during app lifespan in tests."""
+    return
+
+
+_db_init_module.init_db = _noop_init_db
+
+# Imports that must happen after env vars / patches are in place
 from core.limiter import limiter
-from database import AsyncSessionLocal, init_db
-from db_models import Base, User
+from models import Base, User
+
+# Patch @atomic so tests can share a rolled-back connection-level transaction
+# across requests.  When a transaction is already active the decorator creates
+# a savepoint; otherwise it behaves like the original decorator.
+import core.transaction as _transaction_module
+
+_orig_atomic = _transaction_module.atomic
+
+
+def _test_atomic(func):
+    from functools import wraps
+
+    @wraps(func)
+    async def wrapper(self, *args, **kwargs):
+        if self._db.in_transaction():
+            async with self._db.begin_nested():
+                return await func(self, *args, **kwargs)
+        async with self._db.begin():
+            return await func(self, *args, **kwargs)
+
+    return wrapper
+
+
+_transaction_module.atomic = _test_atomic
+
 from main import app
 
 limiter.enabled = False
 
-
-@pytest.fixture(scope="session")
-def event_loop_policy():
-    import asyncio
-    return asyncio.DefaultEventLoopPolicy()
+import asyncpg
+from httpx import ASGITransport, AsyncClient
 
 
-@pytest_asyncio.fixture
-async def db_engine():
-    """Создаёт тестовый движок БД и таблицы."""
-    from database import engine
-    async with engine.begin() as conn:
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _create_test_database():
+    """Ensure the disposable PostgreSQL test database exists."""
+    test_url = _get_test_database_url()
+    # Connect to the maintenance 'postgres' DB using the same encoded credentials.
+    admin_dsn = test_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "/lanwash_test", "/postgres"
+    )
+    conn = await asyncpg.connect(admin_dsn)
+    try:
+        exists = await conn.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = 'lanwash_test'"
+        )
+        if not exists:
+            await conn.execute("CREATE DATABASE lanwash_test")
+    finally:
+        await conn.close()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _seed_test_db(_create_test_database):
+    """Recreate tables and seed reference data once per test session."""
+    async with _test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all, checkfirst=True)
         await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    await _orig_init_db()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def test_engine():
+    """Session-scoped async engine for the test database."""
+    yield _test_engine
 
 
 @pytest_asyncio.fixture
-async def db_session(db_engine):
-    """Создаёт тестовую сессию БД."""
-    async with AsyncSessionLocal() as session:
-        yield session
+async def db_session(test_engine) -> AsyncSession:
+    """Create a test session wrapped in a transaction that is rolled back."""
+    async with test_engine.connect() as conn:
+        trans = await conn.begin()
+        session_maker = async_sessionmaker(
+            bind=conn,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+        session = session_maker()
+        try:
+            yield session
+        finally:
+            await session.close()
+            await trans.rollback()
 
 
 @pytest_asyncio.fixture
-async def async_client(db_engine):
+async def db(db_session):
+    """Alias for db_session to keep existing tests compatible."""
+    return db_session
+
+
+@pytest_asyncio.fixture
+async def async_client(db_session):
     """HTTP-клиент для тестирования FastAPI."""
-    from httpx import ASGITransport, AsyncClient
+    from db.session import get_db
+
+    async def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # Инициализируем БД (seed_data)
-        await init_db()
         yield client
+    app.dependency_overrides.pop(get_db, None)
 
 
 @pytest_asyncio.fixture

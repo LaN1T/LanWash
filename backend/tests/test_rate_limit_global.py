@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 
-from routers.auth import router as auth_router
+from app.routers.auth import router as auth_router
 
 
 class TestRateLimitGlobal:

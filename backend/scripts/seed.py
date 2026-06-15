@@ -15,8 +15,9 @@ from faker import Faker
 from passlib.context import CryptContext
 from sqlalchemy import func, select
 
-from database import AsyncSessionLocal, init_db
-from db_models import (
+from db.session import AsyncSessionLocal
+from db.init import init_db
+from models import (
     Appointment,
     LogEntry,
     Review,

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import (
+from models import (
     Appointment,
     Consumable,
     ConsumableUsageLog,

@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import Appointment
-from models import ForecastResponse, ForecastSlot
+from models import Appointment
+from schemas import ForecastResponse, ForecastSlot
 from services.workload_service import NUM_BOXES
 
 _WEEKS_HISTORY = 8

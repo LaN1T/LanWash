@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from db_models import SupportChat, SupportMessage, User
+from models import SupportChat, SupportMessage, User
 from services.ai_resilience import (
     ai_cache_get,
     ai_cache_set,
