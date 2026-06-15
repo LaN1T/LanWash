@@ -23,10 +23,13 @@ class DraggableShiftCell extends StatelessWidget {
   final bool isDropTarget;
   final List<Shift> dayShifts;
   final String? availabilityStatus;
+  final bool isPast;
   final VoidCallback? onTap;
   final VoidCallback? onCopy;
   final VoidCallback? onPaste;
   final VoidCallback? onClear;
+  final VoidCallback? onCopyDay;
+  final VoidCallback? onPasteDay;
   final ValueChanged<Shift>? onMove;
 
   const DraggableShiftCell({
@@ -39,10 +42,13 @@ class DraggableShiftCell extends StatelessWidget {
     this.isDropTarget = false,
     this.dayShifts = const [],
     this.availabilityStatus,
+    this.isPast = false,
     this.onTap,
     this.onCopy,
     this.onPaste,
     this.onClear,
+    this.onCopyDay,
+    this.onPasteDay,
     this.onMove,
   });
 
@@ -54,10 +60,13 @@ class DraggableShiftCell extends StatelessWidget {
       canEdit: canEdit,
       dayShifts: dayShifts,
       availabilityStatus: availabilityStatus,
+      isPast: isPast,
       onTap: onTap,
       onCopy: onCopy,
       onPaste: onPaste,
       onClear: onClear,
+      onCopyDay: onCopyDay,
+      onPasteDay: onPasteDay,
     );
   }
 

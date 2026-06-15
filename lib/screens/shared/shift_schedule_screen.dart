@@ -36,10 +36,13 @@ class ShiftCell extends StatelessWidget {
   final bool canEdit;
   final List<Shift> dayShifts;
   final String? availabilityStatus;
+  final bool isPast;
   final VoidCallback? onTap;
   final VoidCallback? onCopy;
   final VoidCallback? onPaste;
   final VoidCallback? onClear;
+  final VoidCallback? onCopyDay;
+  final VoidCallback? onPasteDay;
 
   const ShiftCell({
     super.key,
@@ -49,10 +52,13 @@ class ShiftCell extends StatelessWidget {
     required this.canEdit,
     this.dayShifts = const [],
     this.availabilityStatus,
+    this.isPast = false,
     this.onTap,
     this.onCopy,
     this.onPaste,
     this.onClear,
+    this.onCopyDay,
+    this.onPasteDay,
   });
 
   @override
@@ -70,18 +76,20 @@ class ShiftCell extends StatelessWidget {
       timeLabel = '';
       textColor = AppStyles.adaptiveTextSecondary(context);
     } else if (shift!.status == 'pending') {
-      bgColor = AppStyles.warning;
+      bgColor = AppStyles.warning.withValues(alpha: isPast ? 0.7 : 1.0);
       timeLabel = '${shift!.startTime}–${shift!.endTime}';
       textColor = Colors.white;
       badge = 'ожид.';
     } else if (shift!.status == 'rejected') {
-      bgColor = AppStyles.danger;
+      bgColor = AppStyles.danger.withValues(alpha: isPast ? 0.7 : 1.0);
       timeLabel = 'Откл.';
       textColor = Colors.white;
     } else {
-      bgColor = AppStyles.primary;
+      bgColor = AppStyles.primary.withValues(alpha: isPast ? 0.7 : 1.0);
       timeLabel = '${shift!.startTime}–${shift!.endTime}';
-      textColor = Colors.white;
+      textColor = isPast
+          ? AppStyles.adaptiveTextSecondary(context)
+          : Colors.white;
     }
 
     final child = Container(
@@ -203,51 +211,51 @@ class ShiftCell extends StatelessWidget {
 
   bool get _hasMenu =>
       (shift != null && (onCopy != null || onClear != null)) ||
-      (shift == null && onPaste != null);
+      (shift == null && onPaste != null) ||
+      onCopyDay != null ||
+      onPasteDay != null;
 
   void _showMenu(BuildContext context) {
-    final items = <PopupMenuEntry<VoidCallback>>[];
+    final entries = <({String label, IconData icon, Color? color, VoidCallback? action})>[];
     if (shift != null && onCopy != null) {
-      items.add(
-        const PopupMenuItem(
-          value: null,
-          child: Row(
-            children: [
-              Icon(Icons.copy, size: 18),
-              SizedBox(width: 8),
-              Text('Копировать'),
-            ],
-          ),
-        ),
-      );
+      entries.add((
+        label: 'Копировать',
+        icon: Icons.copy,
+        color: null,
+        action: onCopy,
+      ));
     }
     if (shift == null && onPaste != null) {
-      items.add(
-        const PopupMenuItem(
-          value: null,
-          child: Row(
-            children: [
-              Icon(Icons.paste, size: 18),
-              SizedBox(width: 8),
-              Text('Вставить'),
-            ],
-          ),
-        ),
-      );
+      entries.add((
+        label: 'Вставить',
+        icon: Icons.paste,
+        color: null,
+        action: onPaste,
+      ));
+    }
+    if (onCopyDay != null) {
+      entries.add((
+        label: 'Копировать день',
+        icon: Icons.copy_all,
+        color: null,
+        action: onCopyDay,
+      ));
+    }
+    if (onPasteDay != null) {
+      entries.add((
+        label: 'Вставить день',
+        icon: Icons.paste,
+        color: null,
+        action: onPasteDay,
+      ));
     }
     if (shift != null && onClear != null) {
-      items.add(
-        const PopupMenuItem(
-          value: null,
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18, color: AppStyles.danger),
-              SizedBox(width: 8),
-              Text('Удалить', style: TextStyle(color: AppStyles.danger)),
-            ],
-          ),
-        ),
-      );
+      entries.add((
+        label: 'Удалить',
+        icon: Icons.delete_outline,
+        color: AppStyles.danger,
+        action: onClear,
+      ));
     }
 
     showModalBottomSheet<void>(
@@ -255,34 +263,13 @@ class ShiftCell extends StatelessWidget {
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: items.asMap().entries.map((e) {
-            final label = switch (e.key) {
-              0 => shift != null ? 'Копировать' : 'Вставить',
-              _ => 'Удалить',
-            };
-            final action = switch (label) {
-              'Копировать' => onCopy,
-              'Вставить' => onPaste,
-              _ => onClear,
-            };
+          children: entries.map((e) {
             return ListTile(
-              leading: Icon(
-                label == 'Копировать'
-                    ? Icons.copy
-                    : label == 'Вставить'
-                        ? Icons.paste
-                        : Icons.delete_outline,
-                color: label == 'Удалить' ? AppStyles.danger : null,
-              ),
-              title: Text(
-                label,
-                style: TextStyle(
-                  color: label == 'Удалить' ? AppStyles.danger : null,
-                ),
-              ),
+              leading: Icon(e.icon, color: e.color),
+              title: Text(e.label, style: TextStyle(color: e.color)),
               onTap: () {
                 Navigator.pop(context);
-                action?.call();
+                e.action?.call();
               },
             );
           }).toList(),
@@ -419,6 +406,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   int? _highlightedWasherId;
   Shift? _copiedShift;
   List<Shift>? _copiedWeek;
+  List<Shift>? _copiedDayShifts;
+  DateTime? _copiedDayDate;
   ShiftFilter _filter = ShiftFilter.all;
   List<ShiftTemplate> _templates = [];
   _ScheduleMode _mode = _ScheduleMode.shifts;
@@ -983,6 +972,83 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     }
   }
 
+  void _copyDay(User washer, DateTime date) {
+    final fmt = DateFormat('yyyy-MM-dd');
+    final dayShifts = _shifts
+        .where((s) => s.userId == washer.id && s.date == fmt.format(date))
+        .toList();
+    setState(() {
+      _copiedDayShifts = dayShifts;
+      _copiedDayDate = date;
+      _copiedShift = null;
+      _copiedWeek = null;
+    });
+    final dayLabel = DateFormat('d MMM', 'ru_RU').format(_copiedDayDate!);
+    _showSnack('День $dayLabel скопирован');
+  }
+
+  Future<void> _pasteDay(User washer, DateTime date) async {
+    if (_copiedDayShifts == null || _copiedDayShifts!.isEmpty) return;
+    final api = context.read<ApiService>();
+    final fmt = DateFormat('yyyy-MM-dd');
+    final targetDateStr = fmt.format(date);
+
+    for (final shift in _copiedDayShifts!) {
+      await api.createShift(
+        washer.id!,
+        targetDateStr,
+        shift.startTime,
+        shift.endTime,
+      );
+    }
+    if (mounted) {
+      _showSnack('День вставлен');
+      _loadData();
+    }
+  }
+
+  Future<void> _duplicateShift(Shift shift) async {
+    final fmt = DateFormat('yyyy-MM-dd');
+    final nextDate =
+        DateTime.parse(shift.date).add(const Duration(days: 1));
+    final nextDateStr = fmt.format(nextDate);
+
+    final existing = _findShift(shift.userId, nextDate);
+    if (existing != null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Перезаписать смену?'),
+          content: const Text(
+              'На следующий день уже есть смена. Продолжить и заменить её?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Перезаписать',
+                  style: TextStyle(color: AppStyles.danger)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    final result = await context.read<ApiService>().createShift(
+          shift.userId,
+          nextDateStr,
+          shift.startTime,
+          shift.endTime,
+        );
+    if (result != null && mounted) {
+      _showSnack('Смена продублирована');
+      _loadData();
+    }
+  }
+
   Future<void> _deleteShift(Shift shift) async {
     final ok = await context.read<ApiService>().deleteShift(shift.id);
     if (ok && mounted) {
@@ -1116,6 +1182,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         end: end,
         canEdit: canEdit,
         availabilityStatus: availabilityStatus,
+        onDuplicate:
+            existing != null ? () => _duplicateShift(existing) : null,
       ),
     );
     if (result == null) return;
@@ -1124,6 +1192,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
     if (result.delete && existing != null) {
       await _deleteShift(existing);
+      return;
+    }
+
+    if (result.duplicate && existing != null) {
+      await _duplicateShift(existing);
       return;
     }
 
@@ -1305,6 +1378,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   Widget _buildTable() {
     final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
     final fmt = DateFormat('yyyy-MM-dd');
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final todayStr = fmt.format(today);
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -1338,7 +1417,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                 children: [
                   _headerCell('Мойщик', align: Alignment.centerLeft),
                   ...days.map(
-                    (d) => _headerCell(_dayLabel(d), isWeekend: d.weekday >= 6),
+                    (d) => _headerCell(
+                      _dayLabel(d),
+                      isWeekend: d.weekday >= 6,
+                      isToday: fmt.format(d) == todayStr,
+                    ),
                   ),
                   _headerCell('Часов'),
                 ],
@@ -1363,32 +1446,44 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                       (_filter == ShiftFilter.pending &&
                           shift?.status == 'pending') ||
                       (_filter == ShiftFilter.conflicts && hasConflict);
+                  final isPast = d.isBefore(today);
+                  final isToday = fmt.format(d) == todayStr;
 
                   return _wrapHighlight(
                     highlight,
-                    matchesFilter
-                        ? DraggableShiftCell(
-                            washer: w,
-                            date: d,
-                            shift: shift,
-                            canEdit: _canEdit(w),
-                            isDraggable: _isAdmin && shift != null,
-                            isDropTarget: _isAdmin,
-                            dayShifts: dayShifts,
-                            availabilityStatus: availabilityStatus,
-                            onTap: () => _openEditor(w, d, shift),
-                            onCopy: shift != null
-                                ? () => _copyShift(shift)
-                                : null,
-                            onPaste: shift == null && _copiedShift != null
-                                ? () => _pasteShift(w, d)
-                                : null,
-                            onClear: shift != null
-                                ? () => _deleteShift(shift)
-                                : null,
-                            onMove: (moved) => _handleShiftMove(moved, w, d),
-                          )
-                        : const SizedBox(height: 72),
+                    Container(
+                      color: isToday
+                          ? AppStyles.primary.withValues(alpha: 0.08)
+                          : null,
+                      child: matchesFilter
+                          ? DraggableShiftCell(
+                              washer: w,
+                              date: d,
+                              shift: shift,
+                              canEdit: _canEdit(w),
+                              isDraggable: _isAdmin && shift != null,
+                              isDropTarget: _isAdmin,
+                              dayShifts: dayShifts,
+                              availabilityStatus: availabilityStatus,
+                              isPast: isPast,
+                              onTap: () => _openEditor(w, d, shift),
+                              onCopy: shift != null
+                                  ? () => _copyShift(shift)
+                                  : null,
+                              onPaste: shift == null && _copiedShift != null
+                                  ? () => _pasteShift(w, d)
+                                  : null,
+                              onClear: shift != null
+                                  ? () => _deleteShift(shift)
+                                  : null,
+                              onCopyDay: () => _copyDay(w, d),
+                              onPasteDay: _copiedDayShifts != null
+                                  ? () => _pasteDay(w, d)
+                                  : null,
+                              onMove: (moved) => _handleShiftMove(moved, w, d),
+                            )
+                          : const SizedBox(height: 72),
+                    ),
                   );
                 }).toList();
 
@@ -1548,11 +1643,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   Widget _headerCell(
     String text, {
     bool isWeekend = false,
+    bool isToday = false,
     Alignment align = Alignment.center,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       alignment: align,
+      color: isToday ? AppStyles.primary.withValues(alpha: 0.08) : null,
       child: Text(
         text,
         textAlign: TextAlign.center,
@@ -1710,8 +1807,14 @@ class _EditResult {
   final TimeOfDay? start;
   final TimeOfDay? end;
   final bool delete;
+  final bool duplicate;
 
-  _EditResult({this.start, this.end, this.delete = false});
+  _EditResult({
+    this.start,
+    this.end,
+    this.delete = false,
+    this.duplicate = false,
+  });
 }
 
 class _ShiftDialog extends StatefulWidget {
@@ -1722,6 +1825,7 @@ class _ShiftDialog extends StatefulWidget {
   final TimeOfDay? end;
   final bool canEdit;
   final String? availabilityStatus;
+  final VoidCallback? onDuplicate;
 
   const _ShiftDialog({
     required this.washerName,
@@ -1731,6 +1835,7 @@ class _ShiftDialog extends StatefulWidget {
     this.end,
     required this.canEdit,
     this.availabilityStatus,
+    this.onDuplicate,
   });
 
   @override
@@ -1820,6 +1925,12 @@ class _ShiftDialogState extends State<_ShiftDialog> {
             onPressed: () => Navigator.pop(context, _EditResult(delete: true)),
             style: TextButton.styleFrom(foregroundColor: AppStyles.danger),
             child: const Text('Удалить'),
+          ),
+        if (widget.existing != null && widget.canEdit)
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, _EditResult(duplicate: true)),
+            child: const Text('Дублировать'),
           ),
         TextButton(
           onPressed: () => Navigator.pop(context),
