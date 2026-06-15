@@ -20,7 +20,9 @@ class BaseRepository(Generic[ModelT]):
         if not ids:
             return []
         result = await self._db.execute(
-            select(self._model).where(self._model.id.in_(ids))
+            select(self._model)
+            .where(self._model.id.in_(ids))
+            .order_by(self._model.id.asc())
         )
         return result.scalars().all()
 
