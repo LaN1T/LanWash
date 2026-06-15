@@ -43,6 +43,7 @@ COPY --chown=lanwash:lanwash app/ app/
 COPY --chown=lanwash:lanwash db/ db/
 COPY --chown=lanwash:lanwash models/ models/
 COPY --chown=lanwash:lanwash schemas/ schemas/
+COPY --chown=lanwash:lanwash repositories/ repositories/
 COPY --chown=lanwash:lanwash core/ core/
 COPY --chown=lanwash:lanwash services/ services/
 COPY --chown=lanwash:lanwash tasks/ tasks/
