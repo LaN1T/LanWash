@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.limiter import limiter
 from database import get_db
 from db_models import User
+from models import ShiftLoadResponse
 from services.auth_service import get_current_user
 from services.reports_service import ReportsService
 
@@ -100,7 +101,7 @@ async def daily_report(
     return await svc.daily_report(date)
 
 
-@router.get("/shift-load/")
+@router.get("/shift-load/", response_model=ShiftLoadResponse)
 @limiter.limit("60/minute")
 async def shift_load_report(
     request: Request,
@@ -114,13 +115,12 @@ async def shift_load_report(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Доступ только для администраторов"
         )
-    try:
-        datetime.strptime(start_date, "%Y-%m-%d")
-        datetime.strptime(end_date, "%Y-%m-%d")
-    except ValueError:
+    start_date = _parse_day(start_date)
+    end_date = _parse_day(end_date)
+    if start_date > end_date:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Неверный формат даты. Ожидается YYYY-MM-DD",
+            "start_date must be before or equal to end_date",
         )
     svc = ReportsService(db)
     return await svc.shift_load_report(start_date, end_date)

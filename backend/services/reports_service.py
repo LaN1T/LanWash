@@ -21,6 +21,7 @@ from db_models import (
 )
 
 WASH_CATEGORY = "Мойка кузова"
+SHIFT_LOAD_TARGET_WEEKLY_MINUTES = 40 * 60
 
 
 class CarPriceService:
@@ -314,7 +315,7 @@ class ReportsService:
         }
 
     async def shift_load_report(self, start_date: str, end_date: str) -> dict:
-        target_minutes = 40 * 60
+        target_minutes = SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
         shifts_result = await self._db.execute(
             select(Shift).where(
@@ -401,13 +402,16 @@ class ReportsService:
         for a in availability:
             if a.status in availability_counts:
                 availability_counts[a.status] += 1
-        total_possible_days = len(washers) * days_count
-        unknown_days = max(
-            0,
-            total_possible_days
-            - availability_counts["available"]
-            - availability_counts["unavailable"],
-        )
+        if not availability:
+            unknown_days = 0
+        else:
+            total_possible_days = len(washers) * days_count
+            unknown_days = max(
+                0,
+                total_possible_days
+                - availability_counts["available"]
+                - availability_counts["unavailable"],
+            )
 
         return {
             "startDate": start_date,
@@ -425,21 +429,22 @@ class ReportsService:
         }
 
     @staticmethod
-    def _shift_minutes(start_time: str, end_time: str) -> int:
-        def _to_minutes(t: str) -> int:
-            h, m = map(int, t.split(":"))
-            return h * 60 + m
+    def _time_to_minutes(t: str) -> int:
+        h, m = map(int, t.split(":"))
+        return h * 60 + m
 
-        start = _to_minutes(start_time)
-        end = _to_minutes(end_time)
-        if end < start:
-            end += 24 * 60
+    @classmethod
+    def _shift_minutes(cls, start_time: str, end_time: str) -> int:
+        start = cls._time_to_minutes(start_time)
+        end = cls._time_to_minutes(end_time)
         return end - start
 
-    @staticmethod
-    def _count_conflicts(shifts: list[Shift]) -> int:
+    @classmethod
+    def _count_conflicts(cls, shifts: list[Shift]) -> int:
         by_date: dict[str, list[Shift]] = defaultdict(list)
         for shift in shifts:
+            if shift.status not in ("confirmed", "pending"):
+                continue
             by_date[shift.date].append(shift)
 
         total = 0
@@ -448,10 +453,10 @@ class ReportsService:
                 for j in range(i + 1, len(day_shifts)):
                     a = day_shifts[i]
                     b = day_shifts[j]
-                    a_s = int(a.startTime.split(":")[0]) * 60 + int(a.startTime.split(":")[1])
-                    a_e = a_s + ReportsService._shift_minutes(a.startTime, a.endTime)
-                    b_s = int(b.startTime.split(":")[0]) * 60 + int(b.startTime.split(":")[1])
-                    b_e = b_s + ReportsService._shift_minutes(b.startTime, b.endTime)
+                    a_s = cls._time_to_minutes(a.startTime)
+                    a_e = a_s + cls._shift_minutes(a.startTime, a.endTime)
+                    b_s = cls._time_to_minutes(b.startTime)
+                    b_e = b_s + cls._shift_minutes(b.startTime, b.endTime)
                     if a_s < b_e and a_e > b_s:
                         total += 1
         return total

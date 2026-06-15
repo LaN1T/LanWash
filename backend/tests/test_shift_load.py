@@ -1,12 +1,13 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
-from db_models import Shift
+from db_models import Shift, WasherAvailability
+from services.reports_service import SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
 
 @pytest.mark.asyncio
-async def test_admin_gets_shift_load_report(async_client, admin_token, washer_token):
+async def test_admin_gets_shift_load_report(async_client, admin_token):
     today = date.today().isoformat()
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
@@ -19,7 +20,7 @@ async def test_admin_gets_shift_load_report(async_client, admin_token, washer_to
     data = response.json()
     assert data["startDate"] == today
     assert data["endDate"] == tomorrow
-    assert data["targetWeeklyMinutesPerWasher"] == 2400
+    assert data["targetWeeklyMinutesPerWasher"] == SHIFT_LOAD_TARGET_WEEKLY_MINUTES
     assert "dailyHours" in data
     assert "washerStats" in data
     assert "statusCounts" in data
@@ -50,6 +51,50 @@ async def test_invalid_date_returns_400(async_client, admin_token):
 
 
 @pytest.mark.asyncio
+async def test_start_date_after_end_date_returns_400(async_client, admin_token):
+    response = await async_client.get(
+        "/api/reports/shift-load/",
+        params={"start_date": "2026-06-15", "end_date": "2026-06-10"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_empty_report(async_client, admin_token):
+    start = (date.today() + timedelta(days=365)).isoformat()
+    end = (date.today() + timedelta(days=366)).isoformat()
+
+    response = await async_client.get(
+        "/api/reports/shift-load/",
+        params={"start_date": start, "end_date": end},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["startDate"] == start
+    assert data["endDate"] == end
+    assert len(data["dailyHours"]) == 2
+    assert all(
+        entry["confirmedMinutes"] == 0 and entry["pendingMinutes"] == 0
+        for entry in data["dailyHours"]
+    )
+    for washer in data["washerStats"]:
+        assert washer["confirmedMinutes"] == 0
+        assert washer["pendingMinutes"] == 0
+        assert washer["rejectedMinutes"] == 0
+    status = data["statusCounts"]
+    assert status["confirmed"] == 0
+    assert status["pending"] == 0
+    assert status["rejected"] == 0
+    assert data["conflictCount"] == 0
+    coverage = data["availabilityCoverage"]
+    assert coverage["availableDays"] == 0
+    assert coverage["unavailableDays"] == 0
+    assert coverage["unknownDays"] == 0
+
+
+@pytest.mark.asyncio
 async def test_conflict_count(async_client, admin_token, washer_token, db_session):
     washers = await async_client.get(
         "/api/auth/washers",
@@ -58,7 +103,6 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
     washer = next(u for u in washers.json() if u["username"] == "washer_test")
 
     today = date.today().isoformat()
-    from datetime import datetime
     now = datetime.now().isoformat()
     db_session.add_all(
         [
@@ -93,3 +137,40 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
     )
     assert response.status_code == 200
     assert response.json()["conflictCount"] == 1
+
+
+@pytest.mark.asyncio
+async def test_availability_coverage(async_client, admin_token, washer_token, db_session):
+    washers = await async_client.get(
+        "/api/auth/washers",
+        headers={"Authorization": f"Bearer {washer_token}"},
+    )
+    washer = next(u for u in washers.json() if u["username"] == "washer_test")
+
+    today = date.today().isoformat()
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    now = datetime.now().isoformat()
+    db_session.add_all(
+        [
+            WasherAvailability(
+                userId=washer["id"], date=today, status="available", updatedAt=now
+            ),
+            WasherAvailability(
+                userId=washer["id"], date=tomorrow, status="unavailable", updatedAt=now
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    response = await async_client.get(
+        "/api/reports/shift-load/",
+        params={"start_date": today, "end_date": tomorrow},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    coverage = data["availabilityCoverage"]
+    total_washers = len(data["washerStats"])
+    assert coverage["availableDays"] == 1
+    assert coverage["unavailableDays"] == 1
+    assert coverage["unknownDays"] == total_washers * 2 - 1 - 1
