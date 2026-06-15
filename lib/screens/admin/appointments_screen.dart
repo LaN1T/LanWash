@@ -255,10 +255,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   Widget _buildFilters() => SizedBox(
         height: 48,
-        child: ListView(
+        child: ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           scrollDirection: Axis.horizontal,
-          children: _filters.map((f) {
+          itemCount: _filters.length,
+          itemBuilder: (context, index) {
+            final f = _filters[index];
             final selected = _selectedFilters.contains(f.$1);
             return Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -275,7 +277,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 ),
               ),
             );
-          }).toList(),
+          },
         ),
       );
 

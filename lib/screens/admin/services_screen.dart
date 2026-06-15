@@ -70,10 +70,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
       // Фильтр по категориям
       SizedBox(
         height: 48,
-        child: ListView(
+        child: ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           scrollDirection: Axis.horizontal,
-          children: cats.map((cat) {
+          itemCount: cats.length,
+          itemBuilder: (context, index) {
+            final cat = cats[index];
             final selected = _selectedCategory == cat;
             return Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -90,7 +92,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 ),
               ),
             );
-          }).toList(),
+          },
         ),
       ),
 
