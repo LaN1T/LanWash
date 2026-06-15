@@ -46,7 +46,7 @@ class WasherNoteRepository(BaseRepository[WasherNote]):
         result = await self._db.execute(update(WasherNote).values(isRead=1))
         return result.rowcount
 
-    async def delete(self, note_id: int) -> int:
+    async def delete_by_id(self, note_id: int) -> int:
         result = await self._db.execute(
             delete(WasherNote).where(WasherNote.id == note_id)
         )

@@ -49,5 +49,5 @@ class NotesService:
         await self._db.commit()
 
     async def delete_note(self, note_id: int) -> None:
-        await self._notes.delete(note_id)
+        await self._notes.delete_by_id(note_id)
         await self._db.commit()
