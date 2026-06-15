@@ -10,6 +10,8 @@ import '../../services/api_service.dart';
 import '../../widgets/shift_schedule/shift_analytics_header.dart';
 import '../../widgets/shift_schedule/shift_filter_bar.dart';
 
+import '../../widgets/shift_schedule/shift_requests_panel.dart';
+
 class ShiftScheduleScreen extends StatefulWidget {
   const ShiftScheduleScreen({super.key});
 
@@ -477,6 +479,71 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     return me?.username == washer.username;
   }
 
+  Future<void> _approveShiftFromPanel(Shift shift) async {
+    final ok = await context.read<ApiService>().approveShift(shift.id);
+    if (ok != null && mounted) {
+      _showSnack('Смена одобрена');
+      _loadData();
+    }
+  }
+
+  Future<void> _rejectShiftFromPanel(Shift shift) async {
+    final ok = await context.read<ApiService>().rejectShift(shift.id);
+    if (ok != null && mounted) {
+      _showSnack('Смена отклонена');
+      _loadData();
+    }
+  }
+
+  Future<void> _reopenShiftFromPanel(Shift shift) async {
+    final ok = await context.read<ApiService>().reopenShift(shift.id);
+    if (ok != null && mounted) {
+      _showSnack('Смена возвращена на рассмотрение');
+      _loadData();
+    }
+  }
+
+  void _jumpToShift(Shift shift) {
+    try {
+      final washer = _washers.firstWhere((w) => w.id == shift.userId);
+      setState(() {
+        _highlightedWasherId = washer.id;
+        _weekStart = _mondayOf(DateTime.parse(shift.date));
+      });
+      _loadData();
+    } catch (_) {}
+  }
+
+  void _showRequestsBottomSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, __) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: ShiftRequestsPanel(
+            shifts: _shifts,
+            washers: _washers,
+            onApprove: _approveShiftFromPanel,
+            onReject: _rejectShiftFromPanel,
+            onUndo: (shift, _) {
+              Navigator.of(context).pop();
+              _reopenShiftFromPanel(shift);
+            },
+            onJump: (shift) {
+              Navigator.of(context).pop();
+              _jumpToShift(shift);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   List<User> get _visibleWashers {
     switch (_filter) {
       case ShiftFilter.mine:
@@ -800,20 +867,52 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _washers.isEmpty
               ? const Center(child: Text('Нет мойщиков для отображения'))
-              : Column(
-                  children: [
-                    ShiftAnalyticsHeader(
-                      totalConfirmedHours: _totalConfirmedHours,
-                      pendingCount: _pendingCount,
-                      conflictCount: _conflictCount,
-                      utilizationPercent: _utilizationPercent,
-                    ),
-                    ShiftFilterBar(
-                      selected: _filter,
-                      onChanged: (f) => setState(() => _filter = f),
-                    ),
-                    Expanded(child: _buildTable()),
-                  ],
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 1100;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              ShiftAnalyticsHeader(
+                                totalConfirmedHours: _totalConfirmedHours,
+                                pendingCount: _pendingCount,
+                                conflictCount: _conflictCount,
+                                utilizationPercent: _utilizationPercent,
+                              ),
+                              ShiftFilterBar(
+                                selected: _filter,
+                                onChanged: (f) => setState(() => _filter = f),
+                              ),
+                              Expanded(child: _buildTable()),
+                            ],
+                          ),
+                        ),
+                        if (isWide)
+                          ShiftRequestsPanel(
+                            shifts: _shifts,
+                            washers: _washers,
+                            onApprove: _approveShiftFromPanel,
+                            onReject: _rejectShiftFromPanel,
+                            onUndo: (shift, _) => _reopenShiftFromPanel(shift),
+                            onJump: _jumpToShift,
+                          ),
+                      ],
+                    );
+                  },
+                ),
+      floatingActionButton: _loading || _washers.isEmpty
+          ? null
+          : MediaQuery.sizeOf(context).width >= 1100
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: () => _showRequestsBottomSheet(context),
+                  icon: const Icon(Icons.format_list_bulleted),
+                  label: Text(
+                    'Заявки${_pendingCount > 0 ? " ($_pendingCount)" : ""}',
+                  ),
                 ),
     );
   }

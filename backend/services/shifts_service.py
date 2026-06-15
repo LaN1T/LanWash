@@ -150,6 +150,17 @@ class ShiftsService:
         await self._db.refresh(shift)
         return shift
 
+    async def reopen_shift(self, shift_id: int) -> Shift:
+        res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
+        shift = res.scalar_one_or_none()
+        if not shift:
+            raise ShiftNotFoundError()
+        shift.status = "pending"
+        shift.updatedAt = datetime.now().isoformat()
+        await self._db.commit()
+        await self._db.refresh(shift)
+        return shift
+
     async def delete_shift(self, shift_id: int, caller_username: str, is_admin: bool) -> None:
         res = await self._db.execute(select(Shift).where(Shift.id == shift_id))
         shift = res.scalar_one_or_none()

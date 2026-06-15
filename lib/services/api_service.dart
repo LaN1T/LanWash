@@ -1032,6 +1032,24 @@ class ApiService {
     );
   }
 
+  Future<Shift?> reopenShift(int shiftId) async {
+    final result = await ApiClient.put('/shifts/$shiftId/reopen');
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'reopen_shift',
+            endpoint: '/shifts/$shiftId/reopen',
+            method: 'PUT',
+            payload: {'id': shiftId},
+          );
+        }
+        return null;
+      },
+    );
+  }
+
   Future<bool> deleteShift(int shiftId) async {
     final result = await ApiClient.delete('/shifts/$shiftId');
     if (result.isSuccess) return true;
