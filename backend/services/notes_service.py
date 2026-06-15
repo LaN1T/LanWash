@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import WasherNote
@@ -42,15 +41,13 @@ class NotesService:
         return new_note
 
     async def mark_read(self, note_id: int) -> None:
-        await self._db.execute(
-            update(WasherNote).where(WasherNote.id == note_id).values(isRead=1)
-        )
+        await self._notes.mark_read(note_id)
         await self._db.commit()
 
     async def mark_all_read(self) -> None:
-        await self._db.execute(update(WasherNote).values(isRead=1))
+        await self._notes.mark_all_read()
         await self._db.commit()
 
     async def delete_note(self, note_id: int) -> None:
-        await self._db.execute(delete(WasherNote).where(WasherNote.id == note_id))
+        await self._notes.delete(note_id)
         await self._db.commit()

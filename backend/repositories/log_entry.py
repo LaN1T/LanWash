@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import LogEntry
@@ -27,3 +27,7 @@ class LogEntryRepository(BaseRepository[LogEntry]):
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def clear_all(self) -> int:
+        result = await self._db.execute(delete(LogEntry))
+        return result.rowcount

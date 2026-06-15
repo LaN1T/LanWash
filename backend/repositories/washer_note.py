@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import WasherNote
@@ -33,3 +33,21 @@ class WasherNoteRepository(BaseRepository[WasherNote]):
             select(func.count(WasherNote.id)).where(WasherNote.isRead == 0)
         )
         return result.scalar() or 0
+
+    async def mark_read(self, note_id: int) -> int:
+        result = await self._db.execute(
+            update(WasherNote)
+            .where(WasherNote.id == note_id)
+            .values(isRead=1)
+        )
+        return result.rowcount
+
+    async def mark_all_read(self) -> int:
+        result = await self._db.execute(update(WasherNote).values(isRead=1))
+        return result.rowcount
+
+    async def delete(self, note_id: int) -> int:
+        result = await self._db.execute(
+            delete(WasherNote).where(WasherNote.id == note_id)
+        )
+        return result.rowcount

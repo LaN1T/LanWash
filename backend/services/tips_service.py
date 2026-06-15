@@ -2,7 +2,6 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,17 +82,12 @@ class TipsService:
         if current_username != tip.washerUsername and not is_admin:
             raise TipAccessDeniedError("Нет прав на изменение статуса")
 
-        update_result = await self._db.execute(
-            update(Tip)
-            .where(Tip.id == tip_id, Tip.status == "pending")
-            .values(status="paid")
-        )
+        update_result = await self._tips.mark_paid(tip_id)
         await self._db.commit()
-        if update_result.rowcount == 0:
+        if update_result == 0:
             raise ValueError("Чаевые уже отмечены как полученные")
 
         await self._db.refresh(tip)
-        tip.status = "paid"
         return tip
 
     @staticmethod

@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import LogEntry
@@ -37,5 +36,5 @@ class LogsService:
         return new_log
 
     async def clear_all(self) -> None:
-        await self._db.execute(delete(LogEntry))
+        await self._logs.clear_all()
         await self._db.commit()

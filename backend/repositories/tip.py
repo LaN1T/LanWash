@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Tip
@@ -55,3 +55,11 @@ class TipRepository(BaseRepository[Tip]):
             "totalAmount": total_amount,
             "pendingAmount": pending_amount,
         }
+
+    async def mark_paid(self, tip_id: int) -> int:
+        result = await self._db.execute(
+            update(Tip)
+            .where(Tip.id == tip_id, Tip.status == "pending")
+            .values(status="paid")
+        )
+        return result.rowcount
