@@ -1,7 +1,7 @@
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Tip
+from models import Appointment, Tip
 from repositories.base import BaseRepository
 
 
@@ -18,8 +18,7 @@ class TipRepository(BaseRepository[Tip]):
         )
         return result.scalar_one_or_none()
 
-    async def list_with_appointments(self, username: str):
-        from models import Appointment
+    async def list_with_appointments(self, username: str) -> list[tuple[Tip, Appointment | None]]:
         result = await self._db.execute(
             select(Tip, Appointment)
             .join(Appointment, Tip.appointmentId == Appointment.id, isouter=True)

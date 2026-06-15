@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+from sqlalchemy import text
 
 from models import Appointment, Tip
 from repositories.tip import TipRepository
@@ -73,16 +74,32 @@ class TestTipRepository:
 
         tip1 = _tip(appt1.id)
         tip2 = _tip(appt2.id, washer="other_washer")
-        db_session.add_all([tip1, tip2])
+        orphan_tip = _tip("nonexistent_appointment_id")
+
+        # The schema enforces a non-nullable FK on appointmentId, so temporarily
+        # drop the constraint inside this transaction to test the left-outer-join
+        # semantics with an orphan tip. The DDL is rolled back with the test
+        # transaction, leaving the schema unchanged for other tests.
+        await db_session.execute(
+            text('ALTER TABLE tips DROP CONSTRAINT "tips_appointmentId_fkey"')
+        )
+
+        db_session.add_all([tip1, tip2, orphan_tip])
         await db_session.flush()
 
         rows = await repo.list_with_appointments("washer_tip")
-        assert len(rows) == 1
-        tip, appointment = rows[0]
+        assert len(rows) == 2
+        matched = {tip.id: (tip, appointment) for tip, appointment in rows}
+        assert tip1.id in matched
+        tip, appointment = matched[tip1.id]
         assert isinstance(tip, Tip)
         assert isinstance(appointment, Appointment)
-        assert tip.id == tip1.id
         assert appointment.id == appt1.id
+
+        assert orphan_tip.id in matched
+        orphan, orphan_appointment = matched[orphan_tip.id]
+        assert isinstance(orphan, Tip)
+        assert orphan_appointment is None
 
     @pytest.mark.asyncio
     async def test_get_stats(self, db_session):
