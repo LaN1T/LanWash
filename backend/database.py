@@ -102,10 +102,8 @@ async def seed_data():
                 ("washer2", "Петр", "+79007654321"),
                 ("washer3", "Алексей", "+79001112233"),
             ]
-            dev_washer_password = (
-                settings.initial_admin_password or "change_me_to_something_secure"
-            )
-            if dev_washer_password == "change_me_to_something_secure":
+            dev_washer_password = "Washer_1312"
+            if dev_washer_password == "Washer_1312":
                 logger.warning("dev_washer_default_password_used")
             for login, name, phone in washers:
                 stmt = insert(User).values(
