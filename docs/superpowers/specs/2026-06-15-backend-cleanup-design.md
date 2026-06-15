@@ -60,7 +60,12 @@ docker compose up -d postgres redis
 cd backend && source ../.venv/bin/activate && pytest -q
 ```
 
-### 1.3 Consolidate migrations
+### 1.3 Dev seed data
+
+- Washer accounts (`washer1`, `washer2`, `washer3`) must be created with password `Washer_1312` in non-production environments.
+- Admin account continues to use `INITIAL_ADMIN_PASSWORD`.
+
+### 1.4 Consolidate migrations
 
 - Delete `backend/migrations/*.sql` and `backend/migrations/apply_migration.py`.
 - Verify that `alembic upgrade head` produces a schema matching `db_models.py`.
