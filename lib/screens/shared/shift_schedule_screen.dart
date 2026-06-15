@@ -16,8 +16,10 @@ import '../../widgets/shift_schedule/draggable_shift_cell.dart';
 import '../../widgets/shift_schedule/washer_availability_grid.dart';
 import '../../models/shift_template.dart';
 import '../../models/washer_availability.dart';
+import '../../models/shift_load_report.dart';
+import '../../widgets/shift_schedule/shift_analytics_view.dart';
 
-enum _ScheduleMode { shifts, availability }
+enum _ScheduleMode { shifts, availability, analytics }
 
 class ShiftScheduleScreen extends StatefulWidget {
   const ShiftScheduleScreen({super.key});
@@ -422,6 +424,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   _ScheduleMode _mode = _ScheduleMode.shifts;
   List<WasherAvailability> _availability = [];
   bool _availabilityLoading = false;
+  ShiftLoadReport? _shiftLoadReport;
+  bool _shiftLoadLoading = false;
 
   static const int _targetWeeklyMinutesPerWasher = 40 * 60;
 
@@ -497,7 +501,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         current = results[1] as List<Map<String, dynamic>>;
       }
 
-      await _loadAvailability(washers);
+      if (_mode != _ScheduleMode.analytics) {
+        await _loadAvailability(washers);
+      }
+
+      if (_mode == _ScheduleMode.analytics) {
+        await _loadShiftLoadReport();
+      }
 
       if (mounted) {
         setState(() {
@@ -566,6 +576,28 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     } catch (e, st) {
       debugPrint('ShiftSchedule: failed to load availability: $e\n$st');
       if (mounted) setState(() => _availabilityLoading = false);
+    }
+  }
+
+  Future<void> _loadShiftLoadReport() async {
+    if (!_isAdmin) return;
+    setState(() => _shiftLoadLoading = true);
+    try {
+      final fmt = DateFormat('yyyy-MM-dd');
+      final end = _weekStart.add(const Duration(days: 6));
+      final report = await context.read<ApiService>().getShiftLoadReport(
+            fmt.format(_weekStart),
+            fmt.format(end),
+          );
+      if (mounted) {
+        setState(() {
+          _shiftLoadReport = report;
+          _shiftLoadLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: failed to load shift load report: $e\n$st');
+      if (mounted) setState(() => _shiftLoadLoading = false);
     }
   }
 
@@ -1238,9 +1270,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                             children: [
                               _buildModeToggle(),
                               Expanded(
-                                child: _mode == _ScheduleMode.shifts
-                                    ? _buildShiftsView()
-                                    : _buildAvailabilityView(),
+                                child: _buildShiftsViewOrAvailability(),
                               ),
                             ],
                           ),
@@ -1384,18 +1414,16 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   }
 
   Widget _buildModeToggle() {
+    final modes = _isAdmin
+        ? _ScheduleMode.values
+        : [_ScheduleMode.shifts, _ScheduleMode.availability];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Center(
         child: ToggleButtons(
-          isSelected: [
-            _mode == _ScheduleMode.shifts,
-            _mode == _ScheduleMode.availability,
-          ],
+          isSelected: modes.map((m) => _mode == m).toList(),
           onPressed: (index) {
-            final newMode = index == 0
-                ? _ScheduleMode.shifts
-                : _ScheduleMode.availability;
+            final newMode = modes[index];
             if (newMode != _mode) {
               setState(() => _mode = newMode);
               _loadData();
@@ -1405,18 +1433,38 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           selectedColor: Colors.white,
           fillColor: AppStyles.primary,
           color: AppStyles.adaptiveTextPrimary(context),
-          children: const [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Смены'),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Доступность'),
-            ),
-          ],
+          children: modes.map((m) {
+            final label = switch (m) {
+              _ScheduleMode.shifts => 'Смены',
+              _ScheduleMode.availability => 'Доступность',
+              _ScheduleMode.analytics => 'Аналитика',
+            };
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(label),
+            );
+          }).toList(),
         ),
       ),
+    );
+  }
+
+  Widget _buildShiftsViewOrAvailability() {
+    if (_mode == _ScheduleMode.shifts) return _buildShiftsView();
+    if (_mode == _ScheduleMode.availability) return _buildAvailabilityView();
+    return _buildAnalyticsView();
+  }
+
+  Widget _buildAnalyticsView() {
+    if (_shiftLoadLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final report = _shiftLoadReport;
+    if (report == null) {
+      return const Center(child: Text('Не удалось загрузить аналитику'));
+    }
+    return ShiftAnalyticsView(
+      report: report,
     );
   }
 

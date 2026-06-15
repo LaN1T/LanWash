@@ -1201,8 +1201,6 @@ class ApiService {
     return false;
   }
 
-
-
   Future<List<Shift>> getTodayShifts() async {
     final result = await ApiClient.getList('/shifts/today');
     return result.when(
