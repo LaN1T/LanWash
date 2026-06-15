@@ -45,11 +45,10 @@ void main() {
 
   testWidgets('renders KPI row, chart, washer stats and availability chips', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
           body: ShiftAnalyticsView(
             report: report,
-            weekStart: DateTime(2026, 6, 8),
           ),
         ),
       ),
