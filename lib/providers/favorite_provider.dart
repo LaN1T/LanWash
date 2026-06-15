@@ -11,6 +11,7 @@ class FavoriteProvider extends ChangeNotifier {
   String _currentUser = '';
 
   Set<String> get extraFavorites => _extraFavSet;
+  Set<String> get serviceFavorites => _serviceFavSet;
   bool isExtraFavorite(String serviceId) => _extraFavSet.contains(serviceId);
   bool isServiceFavorite(String id) => _serviceFavSet.contains(id);
 

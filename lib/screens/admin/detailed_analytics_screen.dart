@@ -6,6 +6,7 @@ import '../../models/appointment.dart';
 import '../../models/daily_report.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_date_picker.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class DetailedAnalyticsScreen extends StatefulWidget {
   final DateTime initialDate;
@@ -37,8 +38,8 @@ class _DetailedAnalyticsScreenState extends State<DetailedAnalyticsScreen> {
     });
     try {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final report = await ApiService().getDailyReport(dateStr);
-      final paginated = await ApiService().getAppointments(date: dateStr);
+      final report = await sl<ApiService>().getDailyReport(dateStr);
+      final paginated = await sl<ApiService>().getAppointments(date: dateStr);
       if (mounted) {
         setState(() {
           _report = report;

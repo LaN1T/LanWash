@@ -38,9 +38,11 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final appointmentProvider = context.watch<AppointmentProvider>();
+    final appointmentBadges = context.select<AppointmentProvider,
+            ({bool loading, int favCount})>(
+        (ap) => (loading: ap.loading, favCount: ap.favoriteAppointments.length));
     final theme = Theme.of(context);
-    if (appointmentProvider.loading) {
+    if (appointmentBadges.loading) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: Center(
@@ -59,7 +61,7 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     // У админа считаем только избранные ЗАПИСИ (не услуги клиента)
-    final favCount = appointmentProvider.favoriteAppointments.length;
+    final favCount = appointmentBadges.favCount;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -101,7 +103,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
         ],
       ),
-      drawer: _buildDrawer(context, favCount),
+      drawer: _buildDrawer(context),
       body: IndexedStack(
         index: _index,
         children: const [
@@ -155,8 +157,11 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Widget _buildDrawer(BuildContext ctx, int favCount) {
-    final auth = ctx.watch<AuthProvider>();
+  Widget _buildDrawer(BuildContext ctx) {
+    final username = ctx.select<AuthProvider, String>((a) => a.username);
+    final isAdmin = ctx.select<AuthProvider, bool>((a) => a.isAdmin);
+    final favCount =
+        ctx.select<AppointmentProvider, int>((ap) => ap.favoriteAppointments.length);
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -197,7 +202,7 @@ class _HomeShellState extends State<HomeShell> {
                   color: AppStyles.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(auth.username,
+                child: Text(username,
                     style: const TextStyle(
                         color: AppStyles.primary,
                         fontSize: 11,
@@ -240,13 +245,7 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: Badge(
-                isLabelVisible: context.watch<NoteProvider>().unreadNotes > 0,
-                label: Text('${context.watch<NoteProvider>().unreadNotes}'),
-                backgroundColor: AppStyles.danger,
-                child: Icon(Icons.note_alt_outlined,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              ),
+              leading: _NotesBadge(),
               title: Text('Заметки мойщиков',
                   style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
@@ -277,7 +276,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
           // Модерация отзывов
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -299,20 +298,12 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Поддержка
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
                 minLeadingWidth: 24,
-                leading: Badge(
-                  isLabelVisible:
-                      context.watch<SupportProvider>().unreadAdminCount > 0,
-                  label: Text(
-                      '${context.watch<SupportProvider>().unreadAdminCount}'),
-                  backgroundColor: AppStyles.danger,
-                  child: Icon(Icons.support_agent,
-                      color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-                ),
+                leading: _SupportBadge(),
                 title: Text('Поддержка',
                     style:
                         TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
@@ -328,7 +319,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Дашборд
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -350,7 +341,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Прогноз расходников
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -372,7 +363,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Поиск клиентов
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -414,7 +405,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
           // Отчёты
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -436,7 +427,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Управление запасами
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -458,7 +449,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Настройки
-          if (auth.isAdmin)
+          if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
@@ -542,6 +533,38 @@ class _HomeShellState extends State<HomeShell> {
           Navigator.pop(ctx);
         },
       ),
+    );
+  }
+}
+
+class _NotesBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final count =
+        context.select<NoteProvider, int>((np) => np.unreadNotes);
+
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      backgroundColor: AppStyles.danger,
+      child: Icon(Icons.note_alt_outlined,
+          color: AppStyles.adaptiveTextSecondary(context), size: 22),
+    );
+  }
+}
+
+class _SupportBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final count = context.select<SupportProvider, int>(
+        (sp) => sp.unreadAdminCount);
+
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      backgroundColor: AppStyles.danger,
+      child: Icon(Icons.support_agent,
+          color: AppStyles.adaptiveTextSecondary(context), size: 22),
     );
   }
 }

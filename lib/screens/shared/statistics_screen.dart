@@ -10,6 +10,7 @@ import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../admin/detailed_analytics_screen.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -50,7 +51,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     });
 
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final report = await ApiService().getDailyReport(dateStr);
+    final report = await sl<ApiService>().getDailyReport(dateStr);
 
     if (!mounted) return;
     setState(() {

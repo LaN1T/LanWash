@@ -53,19 +53,6 @@ class _ClientShellState extends State<ClientShell> {
 
   @override
   Widget build(BuildContext context) {
-    final appointmentProvider = context.watch<AppointmentProvider>();
-    final catalogProvider = context.watch<CatalogProvider>();
-    final favoriteProvider = context.watch<FavoriteProvider>();
-    final auth = context.watch<AuthProvider>();
-    // Считаем только избранные каталожные услуги (не extra), чтобы не путать с admin
-    final favCount = catalogProvider.services
-        .where((s) => favoriteProvider.isServiceFavorite(s.id))
-        .length;
-    final hasUnseenChanges = appointmentProvider.appointments.any((a) =>
-            (a.isModifiedByAdmin || a.isModifiedByWasher) &&
-            !a.isSeenByClient) ||
-        appointmentProvider.hasDeletedByAdmin;
-
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -96,7 +83,7 @@ class _ClientShellState extends State<ClientShell> {
           OfflineStatusIndicator(),
         ],
       ),
-      drawer: _buildDrawer(context, favCount, auth),
+      drawer: _buildDrawer(context),
       body: IndexedStack(index: _index, children: const [
         ClientHomeScreen(),
         MyBookingsScreen(),
@@ -129,37 +116,20 @@ class _ClientShellState extends State<ClientShell> {
           elevation: 0,
           indicatorColor: AppStyles.adaptivePrimaryBg(context),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: [
-            const NavigationDestination(
+          destinations: const [
+            NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home_rounded, color: AppStyles.primary),
               label: 'Главная',
             ),
             NavigationDestination(
-              icon: Badge(
-                isLabelVisible: hasUnseenChanges,
-                label: const Text('!'),
-                backgroundColor: AppStyles.danger,
-                child: const Icon(Icons.calendar_today_outlined),
-              ),
-              selectedIcon: Badge(
-                isLabelVisible: hasUnseenChanges,
-                label: const Text('!'),
-                backgroundColor: AppStyles.danger,
-                child: const Icon(Icons.calendar_today_rounded,
-                    color: AppStyles.primary),
-              ),
+              icon: _AppointmentsBadge(),
+              selectedIcon: _AppointmentsBadge(selected: true),
               label: 'Записи',
             ),
             NavigationDestination(
-              icon: Badge(
-                isLabelVisible: favCount > 0,
-                label: Text('$favCount'),
-                backgroundColor: AppStyles.primary,
-                child: const Icon(Icons.star_outline),
-              ),
-              selectedIcon:
-                  const Icon(Icons.star_rounded, color: AppStyles.primary),
+              icon: _FavoritesBadge(),
+              selectedIcon: _FavoritesBadge(selected: true),
               label: 'Избранное',
             ),
           ],
@@ -168,7 +138,12 @@ class _ClientShellState extends State<ClientShell> {
     );
   }
 
-  Widget _buildDrawer(BuildContext ctx, int favCount, AuthProvider auth) {
+  Widget _buildDrawer(BuildContext ctx) {
+    final username = ctx.select<AuthProvider, String>((a) => a.username);
+    final favCount = ctx.select<CatalogProvider, int>((cp) {
+      final favSet = ctx.read<FavoriteProvider>().serviceFavorites;
+      return cp.services.where((s) => favSet.contains(s.id)).length;
+    });
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -210,7 +185,7 @@ class _ClientShellState extends State<ClientShell> {
                   color: AppStyles.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(auth.username,
+                child: Text(username,
                     style: const TextStyle(
                         color: AppStyles.primary,
                         fontSize: 11,
@@ -227,6 +202,7 @@ class _ClientShellState extends State<ClientShell> {
           _drawerItem(ctx, 2, Icons.star_outline, Icons.star_rounded,
               'Избранное', favCount > 0 ? '$favCount' : null),
 
+
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
           // Чат с поддержкой
@@ -234,15 +210,7 @@ class _ClientShellState extends State<ClientShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: ListTile(
               minLeadingWidth: 24,
-              leading: Badge(
-                isLabelVisible:
-                    context.watch<SupportProvider>().unreadClientCount > 0,
-                label: Text(
-                    '${context.watch<SupportProvider>().unreadClientCount}'),
-                backgroundColor: AppStyles.danger,
-                child: Icon(Icons.support_agent_outlined,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              ),
+              leading: _SupportBadge(),
               title: Text('Чат с поддержкой',
                   style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
               onTap: () {
@@ -318,6 +286,69 @@ class _ClientShellState extends State<ClientShell> {
           Navigator.pop(ctx);
         },
       ),
+    );
+  }
+}
+
+class _AppointmentsBadge extends StatelessWidget {
+  final bool selected;
+  const _AppointmentsBadge({this.selected = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasUnseenChanges = context.select<AppointmentProvider, bool>((ap) =>
+        ap.appointments.any((a) =>
+            (a.isModifiedByAdmin || a.isModifiedByWasher) &&
+            !a.isSeenByClient) ||
+        ap.hasDeletedByAdmin);
+
+    return Badge(
+      isLabelVisible: hasUnseenChanges,
+      label: const Text('!'),
+      backgroundColor: AppStyles.danger,
+      child: Icon(
+        selected ? Icons.calendar_today_rounded : Icons.calendar_today_outlined,
+        color: selected ? AppStyles.primary : null,
+      ),
+    );
+  }
+}
+
+class _FavoritesBadge extends StatelessWidget {
+  final bool selected;
+  const _FavoritesBadge({this.selected = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final favCount = context.select<CatalogProvider, int>((cp) {
+      final favSet = context.read<FavoriteProvider>().serviceFavorites;
+      return cp.services.where((s) => favSet.contains(s.id)).length;
+    });
+
+    return Badge(
+      isLabelVisible: favCount > 0,
+      label: Text('$favCount'),
+      backgroundColor: AppStyles.primary,
+      child: Icon(
+        selected ? Icons.star_rounded : Icons.star_outline,
+        color: selected ? AppStyles.primary : null,
+      ),
+    );
+  }
+}
+
+class _SupportBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final count = context.select<SupportProvider, int>(
+        (sp) => sp.unreadClientCount);
+
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      backgroundColor: AppStyles.danger,
+      child: Icon(Icons.support_agent_outlined,
+          color: AppStyles.adaptiveTextSecondary(context), size: 22),
     );
   }
 }

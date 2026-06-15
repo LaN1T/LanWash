@@ -10,6 +10,7 @@ import '../../services/api_service.dart';
 import '../../models/report_entry.dart';
 import '../../providers/catalog_provider.dart';
 import '../../services/pdf_export_service.dart';
+import 'package:lanwash/core/service_locator.dart';
 
 class ConsumablesReportScreen extends StatefulWidget {
   const ConsumablesReportScreen({super.key});
@@ -70,7 +71,7 @@ class _ConsumablesReportScreenState extends State<ConsumablesReportScreen> {
       _report = null;
     });
     try {
-      final apiService = ApiService();
+      final apiService = sl<ApiService>();
       final report = await apiService.getConsumablesUsageReport(_selectedDate,
           category: _selectedCategory);
       setState(() {
