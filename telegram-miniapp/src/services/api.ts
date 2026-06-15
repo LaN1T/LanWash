@@ -20,7 +20,11 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('lanwash_token')
-      window.location.reload()
+      // Prevent infinite reload loops if the server keeps rejecting the session.
+      if (!sessionStorage.getItem('lanwash_auth_reload')) {
+        sessionStorage.setItem('lanwash_auth_reload', '1')
+        window.location.reload()
+      }
     }
     return Promise.reject(error)
   }

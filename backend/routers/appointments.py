@@ -339,25 +339,33 @@ async def _track_consumables_usage(db: AsyncSession, appt_id: str, wash_type_id:
             for cid, qty in res_svc.all():
                 usage_map[cid] = usage_map.get(cid, 0.0) + float(qty)
 
-    # 4. Уменьшение остатков + сохранение в лог (с блокировкой строки)
-    for cid, qty in usage_map.items():
-        res = await db.execute(select(Consumable).where(Consumable.id == cid).with_for_update())
-        consumable = res.scalar_one_or_none()
-        if consumable:
-            consumable.currentStock = max(0.0, consumable.currentStock - qty)
-            if consumable.currentStock < consumable.minStock:
-                logger.warning(
-                    "low_consumable_stock",
-                    consumable=consumable.name,
-                    current=consumable.currentStock,
-                    minimum=consumable.minStock,
-                )
-        db.add(ConsumableUsageLog(
-            appointmentId=appt_id,
-            consumableId=cid,
-            quantityUsed=qty,
-            timestamp=datetime.now().isoformat()
-        ))
+    # 4. Уменьшение остатков + пакетное сохранение в лог (с блокировкой строк)
+    if usage_map:
+        cids = list(usage_map.keys())
+        cons_res = await db.execute(
+            select(Consumable).where(Consumable.id.in_(cids)).with_for_update()
+        )
+        cons_map = {c.id: c for c in cons_res.scalars().all()}
+        now = datetime.now().isoformat()
+        logs = []
+        for cid, qty in usage_map.items():
+            consumable = cons_map.get(cid)
+            if consumable:
+                consumable.currentStock = max(0.0, consumable.currentStock - qty)
+                if consumable.currentStock < consumable.minStock:
+                    logger.warning(
+                        "low_consumable_stock",
+                        consumable=consumable.name,
+                        current=consumable.currentStock,
+                        minimum=consumable.minStock,
+                    )
+            logs.append(ConsumableUsageLog(
+                appointmentId=appt_id,
+                consumableId=cid,
+                quantityUsed=qty,
+                timestamp=now,
+            ))
+        db.add_all(logs)
 
 @router.post(
     "/",

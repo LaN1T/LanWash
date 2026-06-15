@@ -70,6 +70,9 @@ services:
     restart: always
     ports:
       - "127.0.0.1:9090:9090"
+    environment:
+      PROMETHEUS_USER: ${PROMETHEUS_USER}
+      PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD}
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus

@@ -17,6 +17,7 @@ class User(Base):
     __tablename__ = 'users'
     __table_args__ = (
         Index('ix_users_role', 'role'),
+        Index('ix_users_created_at', 'createdAt'),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, nullable=False, unique=True)
@@ -75,6 +76,7 @@ class Subscription(Base):
     __tablename__ = 'subscriptions'
     __table_args__ = (
         Index('ix_subscriptions_user', 'userId'),
+        Index('ix_subscriptions_user_wash_type', 'userId', 'washTypeId'),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
@@ -206,6 +208,9 @@ class WasherNote(Base):
 
 class DeletedNotification(Base):
     __tablename__ = 'deleted_notifications'
+    __table_args__ = (
+        Index('ix_deleted_notifications_username', 'username'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, nullable=False)
     createdAt = Column(String, nullable=False)
@@ -289,6 +294,7 @@ class ShiftTemplate(Base):
 class WasherAvailability(Base):
     __tablename__ = 'washer_availability'
     __table_args__ = (
+        UniqueConstraint('userId', 'date', name='uq_washer_availability_user_date'),
         Index('ix_washer_availability_user_date', 'userId', 'date'),
         Index('ix_washer_availability_date', 'date'),
     )
@@ -303,6 +309,12 @@ class NotificationQueue(Base):
     __tablename__ = 'notification_queue'
     __table_args__ = (
         Index('ix_notification_queue_sent', 'sentAt'),
+        Index(
+            'ix_notification_queue_pending',
+            'createdAt',
+            sqlite_where=(Column('sentAt', String) == None),
+            postgresql_where=(Column('sentAt', String) == None),
+        ),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     telegramId = Column(String, nullable=False)

@@ -961,9 +961,22 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
     }
   }
 
+  static const _allowedSbpSchemes = {'https', 'http', 'sbp'};
+
   Future<void> _openSbpUrl() async {
     if (_sbpUrl == null) return;
     final uri = Uri.parse(_sbpUrl!);
+    if (!_allowedSbpSchemes.contains(uri.scheme)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Неподдерживаемая ссылка оплаты'),
+            backgroundColor: AppStyles.danger,
+          ),
+        );
+      }
+      return;
+    }
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {

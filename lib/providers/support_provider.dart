@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/config.dart';
 import '../core/api_client.dart';
@@ -149,6 +148,10 @@ class SupportProvider extends ChangeNotifier {
     return ok;
   }
 
+  void _log(String message) {
+    if (kDebugMode) _log(message);
+  }
+
   void connectToChat(int chatId) {
     disconnect();
     _activeChatId = chatId;
@@ -162,7 +165,7 @@ class SupportProvider extends ChangeNotifier {
   void _startPolling(int chatId) {
     _pollingTimer?.cancel();
     _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (_activeChatId == chatId) {
+      if (_activeChatId == chatId && !isConnected.value) {
         loadMessages(chatId, silent: true);
       }
     });
@@ -175,7 +178,7 @@ class SupportProvider extends ChangeNotifier {
     try {
       final token = await ApiClient.getToken();
       if (token == null || token.isEmpty) {
-        debugPrint('[SupportProvider] WebSocket skipped: no token');
+        _log('[SupportProvider] WebSocket skipped: no token');
         isConnected.value = false;
         return;
       }
@@ -184,15 +187,16 @@ class SupportProvider extends ChangeNotifier {
           base.endsWith('/api') ? base.substring(0, base.length - 4) : base;
       final wsUrl =
           '${host.replaceFirst('http', 'ws')}/ws/support/chats/$chatId';
-      debugPrint('[SupportProvider] WebSocket connecting to $wsUrl');
+      _log('[SupportProvider] WebSocket connecting to $wsUrl');
       _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _wsChannel!.sink.add(jsonEncode({'type': 'auth', 'token': token}));
       isConnected.value = true;
       _reconnectAttempt = 0;
-      debugPrint('[SupportProvider] WebSocket connected, auth sent');
+      _pollingTimer?.cancel();
+      _log('[SupportProvider] WebSocket connected, auth sent');
       _wsSubscription = _wsChannel!.stream.listen(
         (event) {
-          debugPrint('[SupportProvider] WebSocket event: $event');
+          _log('[SupportProvider] WebSocket event: $event');
           try {
             final data = jsonDecode(event as String) as Map<String, dynamic>;
             final type = data['type'] as String?;
@@ -204,7 +208,7 @@ class SupportProvider extends ChangeNotifier {
                 _messages.add(msg);
                 _bumpChat(chatId, msg.content);
                 notifyListeners();
-                debugPrint(
+                _log(
                     '[SupportProvider] WebSocket new_message added: ${msg.content}');
               }
             } else if (type == 'status_update') {
@@ -213,23 +217,26 @@ class SupportProvider extends ChangeNotifier {
               }
             }
           } catch (e, st) {
-            debugPrint(
-                '[SupportProvider] WebSocket event handling error: $e\n$st');
+            _log('[SupportProvider] WebSocket event handling error: $e\n$st');
           }
         },
         onError: (e) {
-          debugPrint('[SupportProvider] WebSocket onError: $e');
+          _log('[SupportProvider] WebSocket onError: $e');
           isConnected.value = false;
+          _startPolling(chatId);
           _scheduleReconnect(chatId);
         },
         onDone: () {
-          debugPrint('[SupportProvider] WebSocket onDone');
+          _log('[SupportProvider] WebSocket onDone');
           isConnected.value = false;
+          if (_shouldReconnect) {
+            _startPolling(chatId);
+          }
           _scheduleReconnect(chatId);
         },
       );
     } catch (e) {
-      debugPrint('[SupportProvider] WebSocket connect exception: $e');
+      _log('[SupportProvider] WebSocket connect exception: $e');
       isConnected.value = false;
       _scheduleReconnect(chatId);
     }
