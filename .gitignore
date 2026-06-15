@@ -39,8 +39,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-.db
+*.db
 lanwash.db
+lanwash*.db
 
 # Flutter plugins
 .flutter-plugins
@@ -50,7 +51,10 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/*.pyc
 backend/.env
+backend/.env.local
 backend/lanwash.db
+backend/.pytest_cache/
+backend/.ruff_cache/
 **/*.db
 
 # iOS
@@ -99,8 +103,9 @@ ios/build/
 landing/assets/index-*.js
 landing/assets/index-*.css
 
-# AI plans
+# AI docs (kept local)
 /docs/superpowers/plans/
+/docs/superpowers/specs/
 
 # pytest
 .pytest_cache/
