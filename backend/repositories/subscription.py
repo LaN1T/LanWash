@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,7 +47,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         )
         return result.scalar() or 0
 
-    async def sum_saved_for_user(self, user_id: int) -> int | float:
+    async def sum_saved_for_user(self, user_id: int) -> Decimal:
         result = await self._db.execute(
             select(func.coalesce(func.sum(Appointment.originalPrice), 0)).where(
                 Appointment.userId == user_id,

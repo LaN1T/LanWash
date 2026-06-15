@@ -62,13 +62,13 @@ class TestWasherNoteRepository:
         db_session.add(note)
         await db_session.flush()
 
-        rowcount = await repo.delete_by_id(note.id)
+        deleted = await repo.delete_by_id(note.id)
         await db_session.flush()
 
-        assert rowcount == 1
+        assert deleted is True
         assert await db_session.get(WasherNote, note.id) is None
 
     @pytest.mark.asyncio
-    async def test_delete_by_id_missing_returns_zero(self, db_session):
+    async def test_delete_by_id_missing_returns_false(self, db_session):
         repo = WasherNoteRepository(db_session)
-        assert await repo.delete_by_id(999999) == 0
+        assert await repo.delete_by_id(999999) is False

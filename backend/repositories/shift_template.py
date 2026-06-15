@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import ShiftTemplate
@@ -18,10 +18,12 @@ class ShiftTemplateRepository(BaseRepository[ShiftTemplate]):
         return list(result.scalars().all())
 
     async def clear_owner_default(self, owner_username: str) -> None:
-        result = await self._db.execute(
-            select(ShiftTemplate)
-            .where(ShiftTemplate.ownerUsername == owner_username)
-            .where(ShiftTemplate.isDefault.is_(True))
+        await self._db.execute(
+            update(ShiftTemplate)
+            .where(
+                ShiftTemplate.ownerUsername == owner_username,
+                ShiftTemplate.isDefault.is_(True),
+            )
+            .values(isDefault=False)
+            .execution_options(synchronize_session="fetch")
         )
-        for row in result.scalars().all():
-            row.isDefault = False
