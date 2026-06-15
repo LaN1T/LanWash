@@ -1,19 +1,16 @@
-import asyncio
-import subprocess
-import sys
+"""Database seed data for development and testing."""
+
 from datetime import datetime
-from pathlib import Path
 
 import structlog
 from passlib.context import CryptContext
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
+from db.session import AsyncSessionLocal
 from db_models import (
-    Base,
     Consumable,
     Promo,
     PromoIncludedExtra,
@@ -26,53 +23,8 @@ from db_models import (
 )
 
 logger = structlog.get_logger()
-
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 settings = get_settings()
-
-_engine_kwargs = {
-    "echo": False,
-    "pool_pre_ping": True,
-    "pool_size": 10,
-    "max_overflow": 20,
-    "pool_recycle": 3600,
-}
-
-engine = create_async_engine(settings.database_url, **_engine_kwargs)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-
-async def init_db():
-    """Initialize database.
-
-    In production we rely on Alembic migrations; in development/testing we
-    create tables directly and seed reference data.
-    """
-    if settings.is_production:
-        await _run_migrations()
-        return
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await seed_data()
-
-
-async def _run_migrations():
-    """Run Alembic migrations in a subprocess."""
-    backend_dir = Path(__file__).resolve().parent
-    try:
-        result = await asyncio.to_thread(
-            subprocess.run,
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            cwd=str(backend_dir),
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        logger.info("migrations_applied", stdout=result.stdout.strip())
-    except subprocess.CalledProcessError as exc:
-        logger.error("migration_failed", stdout=exc.stdout, stderr=exc.stderr)
-        raise RuntimeError("Database migrations failed") from exc
 
 
 async def seed_data():
@@ -260,7 +212,3 @@ async def seed_data():
                 PromoIncludedExtra(promoId='promo_4', extraServiceId='s4'),
             ])
             await session.commit()
-
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
