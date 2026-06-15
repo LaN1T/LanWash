@@ -73,3 +73,98 @@ class AppointmentRepository(BaseRepository[Appointment]):
             .where(Appointment.status == "completed")
         )
         return list(result.scalars().all())
+
+    async def get_status_counts_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str, int]]:
+        result = await self._db.execute(
+            select(Appointment.status, func.count(Appointment.id))
+            .where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+            )
+            .group_by(Appointment.status)
+        )
+        return [(row[0], row[1]) for row in result.all()]
+
+    async def get_revenue_stats_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> tuple[int | None, float | None]:
+        result = await self._db.execute(
+            select(func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
+            .where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+                Appointment.status == "completed",
+            )
+        )
+        row = result.first()
+        return (row[0], row[1]) if row else (None, None)
+
+    async def list_completed_owners_datetimes_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str | None, str]]:
+        result = await self._db.execute(
+            select(Appointment.ownerUsername, Appointment.dateTime)
+            .where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+                Appointment.status == "completed",
+            )
+            .order_by(Appointment.dateTime.asc())
+        )
+        return list(result.all())
+
+    async def get_first_visit_dates(self) -> dict[str | None, str]:
+        result = await self._db.execute(
+            select(Appointment.ownerUsername, func.min(Appointment.dateTime))
+            .where(Appointment.status == "completed")
+            .group_by(Appointment.ownerUsername)
+        )
+        return {row[0]: row[1] for row in result.all()}
+
+    async def list_period_details(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str, str, int | None]]:
+        result = await self._db.execute(
+            select(Appointment.date, Appointment.status, Appointment.paidPrice)
+            .where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+            )
+        )
+        return list(result.all())
+
+    async def list_completed_washer_paid_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str | None, int | None]]:
+        result = await self._db.execute(
+            select(Appointment.assignedWasher, Appointment.paidPrice)
+            .where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+                Appointment.status == "completed",
+            )
+        )
+        return list(result.all())
+
+    async def list_completed_owner_stats_in_period(
+        self, start_iso: str, end_iso: str, limit: int
+    ) -> list[tuple[str | None, int, int | None]]:
+        result = await self._db.execute(
+            select(
+                Appointment.ownerUsername,
+                func.count(Appointment.id),
+                func.sum(Appointment.paidPrice),
+            )
+            .where(
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+                Appointment.status == "completed",
+                Appointment.ownerUsername.isnot(None),
+            )
+            .group_by(Appointment.ownerUsername)
+            .order_by(func.count(Appointment.id).desc())
+            .limit(limit)
+        )
+        return list(result.all())

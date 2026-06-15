@@ -3,11 +3,10 @@ import json as _json
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
-from models import Appointment, Review, User
+from repositories import AppointmentRepository, ReviewRepository, UserRepository
 from schemas import ForecastResponse
 from services.forecast_service import generate_forecast
 
@@ -17,6 +16,9 @@ class AdminService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._appointments = AppointmentRepository(db)
+        self._reviews = ReviewRepository(db)
+        self._users = UserRepository(db)
 
     _DASHBOARD_CACHE_TTL_SECONDS = 60
 
@@ -35,45 +37,30 @@ class AdminService:
         to_dt = datetime.strptime(to_date, "%Y-%m-%d")
         to_dt_inclusive = to_dt + timedelta(days=1)
 
-        base_filter = and_(
-            Appointment.dateTime >= from_dt.isoformat(),
-            Appointment.dateTime < to_dt_inclusive.isoformat(),
-        )
+        start_iso = from_dt.isoformat()
+        end_iso = to_dt_inclusive.isoformat()
 
         # Total counts by status
-        status_result = await self._db.execute(
-            select(Appointment.status, func.count(Appointment.id))
-            .where(base_filter)
-            .group_by(Appointment.status)
+        status_rows = await self._appointments.get_status_counts_in_period(
+            start_iso, end_iso
         )
-        status_counts = {row[0]: row[1] for row in status_result.all()}
+        status_counts = dict(status_rows)
         total_appointments = sum(status_counts.values())
         completed = status_counts.get("completed", 0)
         cancelled = status_counts.get("cancelled", 0)
 
         # Revenue & avg check
-        revenue_result = await self._db.execute(
-            select(func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
-            .where(and_(base_filter, Appointment.status == "completed"))
+        revenue_sum, revenue_avg = await self._appointments.get_revenue_stats_in_period(
+            start_iso, end_iso
         )
-        revenue_row = revenue_result.first()
-        total_revenue = int(revenue_row[0] or 0)
-        avg_check = round(float(revenue_row[1] or 0), 2)
+        total_revenue = int(revenue_sum or 0)
+        avg_check = round(float(revenue_avg or 0), 2)
 
         # Clients analysis
-        appts_result = await self._db.execute(
-            select(Appointment.ownerUsername, Appointment.dateTime)
-            .where(and_(base_filter, Appointment.status == "completed"))
-            .order_by(Appointment.dateTime.asc())
+        appts = await self._appointments.list_completed_owners_datetimes_in_period(
+            start_iso, end_iso
         )
-        appts = appts_result.all()
-
-        first_visit_result = await self._db.execute(
-            select(Appointment.ownerUsername, func.min(Appointment.dateTime))
-            .where(Appointment.status == "completed")
-            .group_by(Appointment.ownerUsername)
-        )
-        first_visit_map = {row[0]: row[1] for row in first_visit_result.all()}
+        first_visit_map = await self._appointments.get_first_visit_dates()
 
         client_visits_in_period: dict[str, int] = defaultdict(int)
         for owner, _ in appts:
@@ -83,7 +70,7 @@ class AdminService:
         returning_clients = 0
         for owner, visits in client_visits_in_period.items():
             first_visit = first_visit_map.get(owner)
-            if first_visit and from_dt.isoformat() <= first_visit < to_dt_inclusive.isoformat():
+            if first_visit and start_iso <= first_visit < end_iso:
                 new_clients += 1
             elif visits >= 2:
                 returning_clients += 1
@@ -91,31 +78,18 @@ class AdminService:
                 returning_clients += 1
 
         # Average rating
-        rating_result = await self._db.execute(
-            select(func.avg(Review.rating))
-            .where(
-                and_(
-                    Review.createdAt >= from_dt.isoformat(),
-                    Review.createdAt < to_dt_inclusive.isoformat(),
-                    Review.isPublished == 1,
-                )
-            )
+        avg_rating_value = await self._reviews.get_average_rating_published_in_period(
+            start_iso, end_iso
         )
-        avg_rating = round(float(rating_result.scalar() or 0), 2)
+        avg_rating = round(float(avg_rating_value or 0), 2)
 
         # Daily breakdown
         daily_revenue: dict[str, int] = defaultdict(int)
         daily_apps: dict[str, int] = defaultdict(int)
         daily_completed: dict[str, int] = defaultdict(int)
 
-        day_result = await self._db.execute(
-            select(
-                Appointment.date,
-                Appointment.status,
-                Appointment.paidPrice,
-            ).where(base_filter)
-        )
-        for day, status, paid in day_result.all():
+        day_rows = await self._appointments.list_period_details(start_iso, end_iso)
+        for day, status, paid in day_rows:
             daily_apps[day] += 1
             if status == "completed":
                 daily_completed[day] += 1
@@ -136,13 +110,12 @@ class AdminService:
             d += timedelta(days=1)
 
         # Top washers
-        washer_apps_result = await self._db.execute(
-            select(Appointment.assignedWasher, Appointment.paidPrice)
-            .where(and_(base_filter, Appointment.status == "completed"))
+        washer_rows = await self._appointments.list_completed_washer_paid_in_period(
+            start_iso, end_iso
         )
         washer_revenue: dict[str, int] = defaultdict(int)
         washer_count: dict[str, int] = defaultdict(int)
-        for assigned_json, paid in washer_apps_result.all():
+        for assigned_json, paid in washer_rows:
             try:
                 usernames = json.loads(assigned_json or "[]")
             except Exception:
@@ -156,37 +129,33 @@ class AdminService:
 
         top_washers = [
             {"name": name, "revenue": rev, "appointments": washer_count[name]}
-            for name, rev in sorted(washer_revenue.items(), key=lambda x: x[1], reverse=True)[:5]
+            for name, rev in sorted(
+                washer_revenue.items(), key=lambda x: x[1], reverse=True
+            )[:5]
         ]
 
         washer_usernames = [w["name"] for w in top_washers]
         if washer_usernames:
-            user_result = await self._db.execute(
-                select(User.username, User.displayName).where(User.username.in_(washer_usernames))
+            name_map = await self._users.get_display_names_by_usernames(
+                washer_usernames
             )
-            name_map = {row[0]: row[1] for row in user_result.all()}
             for w in top_washers:
                 w["name"] = name_map.get(w["name"], w["name"])
 
         # Top clients
-        client_result = await self._db.execute(
-            select(Appointment.ownerUsername, func.count(Appointment.id), func.sum(Appointment.paidPrice))
-            .where(and_(base_filter, Appointment.status == "completed", Appointment.ownerUsername.isnot(None)))
-            .group_by(Appointment.ownerUsername)
-            .order_by(func.count(Appointment.id).desc())
-            .limit(5)
+        client_rows = await self._appointments.list_completed_owner_stats_in_period(
+            start_iso, end_iso, limit=5
         )
         top_clients = [
             {"name": row[0] or "Unknown", "visits": row[1], "totalSpent": int(row[2] or 0)}
-            for row in client_result.all()
+            for row in client_rows
         ]
 
         client_usernames = [c["name"] for c in top_clients]
         if client_usernames:
-            user_result = await self._db.execute(
-                select(User.username, User.displayName).where(User.username.in_(client_usernames))
+            name_map = await self._users.get_display_names_by_usernames(
+                client_usernames
             )
-            name_map = {row[0]: row[1] for row in user_result.all()}
             for c in top_clients:
                 c["name"] = name_map.get(c["name"], c["name"])
 
@@ -241,10 +210,7 @@ class AdminService:
         return forecast
 
     async def bulk_assign_washer(self, appointment_ids: list[str], washer_username: str) -> dict:
-        result = await self._db.execute(
-            select(Appointment).where(Appointment.id.in_(appointment_ids))
-        )
-        appointments = result.scalars().all()
+        appointments = await self._appointments.get_by_ids(appointment_ids)
 
         found_ids = {a.id for a in appointments}
         missing = [i for i in appointment_ids if i not in found_ids]
@@ -265,10 +231,7 @@ class AdminService:
         return {"processed": processed, "failed": len(errors), "errors": errors}
 
     async def bulk_cancel(self, appointment_ids: list[str], reason: str | None) -> dict:
-        result = await self._db.execute(
-            select(Appointment).where(Appointment.id.in_(appointment_ids))
-        )
-        appointments = result.scalars().all()
+        appointments = await self._appointments.get_by_ids(appointment_ids)
 
         found_ids = {a.id for a in appointments}
         missing = [i for i in appointment_ids if i not in found_ids]
@@ -296,10 +259,7 @@ class AdminService:
         return {"processed": processed, "failed": len(errors), "errors": errors}
 
     async def bulk_update_status(self, appointment_ids: list[str], status: str) -> dict:
-        result = await self._db.execute(
-            select(Appointment).where(Appointment.id.in_(appointment_ids))
-        )
-        appointments = result.scalars().all()
+        appointments = await self._appointments.get_by_ids(appointment_ids)
 
         found_ids = {a.id for a in appointments}
         missing = [i for i in appointment_ids if i not in found_ids]
@@ -333,42 +293,14 @@ class AdminService:
         limit: int,
         offset: int,
     ) -> dict:
-        stmt = select(User)
-        filters = []
-
-        if q:
-            escaped_q = q.replace('%', r'\%').replace('_', r'\_')
-            safe_q = f"%{escaped_q}%"
-            filters.append(
-                or_(
-                    User.displayName.ilike(safe_q, escape='\\'),
-                    User.username.ilike(safe_q, escape='\\'),
-                    User.phone.ilike(safe_q, escape='\\'),
-                    User.carModel.ilike(safe_q, escape='\\'),
-                    User.carNumber.ilike(safe_q, escape='\\'),
-                )
-            )
-
-        if role:
-            filters.append(User.role == role)
-
-        if from_date:
-            filters.append(User.createdAt >= from_date)
-        if to_date:
-            filters.append(User.createdAt < to_date + "T23:59:59")
-
-        if filters:
-            stmt = stmt.where(and_(*filters))
-
-        count_stmt = select(func.count(User.id))
-        if filters:
-            count_stmt = count_stmt.where(and_(*filters))
-        total_result = await self._db.execute(count_stmt)
-        total = total_result.scalar() or 0
-
-        stmt = stmt.order_by(User.createdAt.desc()).limit(limit).offset(offset)
-        result = await self._db.execute(stmt)
-        items = result.scalars().all()
+        items, total = await self._users.search(
+            q=q,
+            role=role,
+            from_date=from_date,
+            to_date=to_date,
+            limit=limit,
+            offset=offset,
+        )
 
         from schemas import UserListItem
         return {

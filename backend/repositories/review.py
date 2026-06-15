@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Review
@@ -40,3 +40,15 @@ class ReviewRepository(BaseRepository[Review]):
             )
         )
         return result.scalar_one_or_none() is not None
+
+    async def get_average_rating_published_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> float | None:
+        result = await self._db.execute(
+            select(func.avg(Review.rating)).where(
+                Review.createdAt >= start_iso,
+                Review.createdAt < end_iso,
+                Review.isPublished == 1,
+            )
+        )
+        return result.scalar()
