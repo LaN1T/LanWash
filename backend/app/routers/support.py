@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/support", tags=["support"])
 
 
 async def _admin_tokens(db: AsyncSession, exclude_user_ids: Optional[set[int]] = None) -> list[str]:
-    from db_models import FcmToken
+    from models import FcmToken
     stmt = (
         select(FcmToken.token)
         .join(User, FcmToken.username == User.username)
@@ -39,7 +39,7 @@ async def _admin_tokens(db: AsyncSession, exclude_user_ids: Optional[set[int]] =
 
 
 async def _user_tokens(db: AsyncSession, user_id: int) -> list[str]:
-    from db_models import FcmToken
+    from models import FcmToken
     user_res = await db.execute(select(User.username).where(User.id == user_id))
     username = user_res.scalar_one_or_none()
     if not username:

@@ -510,7 +510,7 @@ class AuthService:
         return user
 
     async def get_user_stats(self, username: str, current_user: User) -> dict:
-        from db_models import Appointment, Shift, WashType
+        from models import Appointment, Shift, WashType
 
         if current_user.username != username.lower() and current_user.role != "admin":
             raise StatsAccessDeniedError("Нет доступа к статистике")

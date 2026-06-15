@@ -88,7 +88,7 @@ class TestInventoryForecastTask:
     async def test_check_inventory_forecast_task(self, db_session):
         from datetime import datetime, timedelta
 
-        from db_models import Consumable, ConsumableUsageLog
+        from models import Consumable, ConsumableUsageLog
         from tasks import check_inventory_forecast
 
         # Create critical consumable: 30 stock, 100 minStock, high usage
