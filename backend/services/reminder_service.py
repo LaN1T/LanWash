@@ -3,28 +3,20 @@ from datetime import datetime
 from typing import List, Optional
 
 import structlog
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Appointment, FcmToken, User, WashType
+from models import Appointment
+from repositories import (
+    AppointmentRepository,
+    FcmTokenRepository,
+    UserRepository,
+    WashTypeRepository,
+)
 from services.fcm_service import fcm_service
 
 logger = structlog.get_logger()
 
 _BATCH_SIZE = 100
-
-
-async def _get_user_fcm_tokens(db: AsyncSession, username: str) -> List[str]:
-    """Fetch FCM tokens for a user."""
-    result = await db.execute(select(FcmToken.token).where(FcmToken.username == username))
-    return [row[0] for row in result.all() if row[0]]
-
-
-async def _get_wash_type_name(db: AsyncSession, wash_type_id: str) -> str:
-    """Get wash type name by ID."""
-    result = await db.execute(select(WashType.name).where(WashType.id == wash_type_id))
-    row = result.scalar_one_or_none()
-    return row or "мойки"
 
 
 def _avg_interval_days(appointments: List[Appointment]) -> Optional[float]:
@@ -44,10 +36,11 @@ def _avg_interval_days(appointments: List[Appointment]) -> Optional[float]:
 
 
 async def _process_batch(
-    db: AsyncSession,
     usernames: List[str],
     now: datetime,
     wash_types: dict,
+    appointments_repo: AppointmentRepository,
+    fcm_tokens_repo: FcmTokenRepository,
 ) -> tuple[int, int, int]:
     """Process a batch of clients and return (sent, skipped, errors)."""
     sent_count = 0
@@ -55,15 +48,7 @@ async def _process_batch(
     error_count = 0
 
     # Fetch all completed appointments for this batch in one query
-    appts_result = await db.execute(
-        select(Appointment)
-        .where(
-            Appointment.ownerUsername.in_(usernames),
-            Appointment.status == 'completed',
-        )
-        .order_by(Appointment.dateTime.asc())
-    )
-    appointments = appts_result.scalars().all()
+    appointments = await appointments_repo.list_completed_by_owners(usernames)
 
     by_user: dict[str, List[Appointment]] = defaultdict(list)
     for appt in appointments:
@@ -90,7 +75,7 @@ async def _process_batch(
                 skipped_count += 1
                 continue
 
-            tokens = await _get_user_fcm_tokens(db, username)
+            tokens = await fcm_tokens_repo.list_tokens_by_username(username)
             if not tokens:
                 skipped_count += 1
                 continue
@@ -99,7 +84,10 @@ async def _process_batch(
             days_int = int(days_since)
 
             title = "Пора на мойку!"
-            body = f"Прошло {days_int} дней с вашей последней {wash_type_name}. Записываемся?"
+            body = (
+                f"Прошло {days_int} дней с вашей последней {wash_type_name}. "
+                "Записываемся?"
+            )
             data = {"type": "reminder", "screen": "booking"}
 
             try:
@@ -119,7 +107,9 @@ async def _process_batch(
 
         except Exception as e:
             error_count += 1
-            logger.warning("reminder_processing_failed", username=username, error=str(e))
+            logger.warning(
+                "reminder_processing_failed", username=username, error=str(e)
+            )
 
     return sent_count, skipped_count, error_count
 
@@ -140,24 +130,23 @@ async def check_and_send_reminders(db: AsyncSession) -> dict:
 
     now = datetime.now()
 
+    appointments_repo = AppointmentRepository(db)
+    fcm_tokens_repo = FcmTokenRepository(db)
+    users_repo = UserRepository(db)
+    wash_types_repo = WashTypeRepository(db)
+
     # Preload small reference table
-    wash_types_result = await db.execute(select(WashType.id, WashType.name))
-    wash_types = {row[0]: row[1] for row in wash_types_result.all()}
+    wash_types = await wash_types_repo.list_all_id_name_map()
 
     # Stream client usernames in batches directly from the DB
     offset = 0
     while True:
-        clients_result = await db.execute(
-            select(User.username)
-            .where(User.role == 'client')
-            .order_by(User.id)
-            .limit(_BATCH_SIZE)
-            .offset(offset)
-        )
-        batch = [row[0] for row in clients_result.all() if row[0]]
+        batch = await users_repo.list_client_usernames(limit=_BATCH_SIZE, offset=offset)
         if not batch:
             break
-        s, sk, e = await _process_batch(db, batch, now, wash_types)
+        s, sk, e = await _process_batch(
+            batch, now, wash_types, appointments_repo, fcm_tokens_repo
+        )
         sent_count += s
         skipped_count += sk
         error_count += e

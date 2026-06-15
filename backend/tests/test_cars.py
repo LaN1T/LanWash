@@ -77,7 +77,12 @@ class TestCars:
         r2 = await async_client.post(
             "/api/cars/",
             headers={"Authorization": f"Bearer {client_token}"},
-            json={"brand": "Audi", "model": "A6", "number": "В456КМ777", "isPrimary": True},
+            json={
+                "brand": "Audi",
+                "model": "A6",
+                "number": "В456КМ777",
+                "isPrimary": True,
+            },
         )
         second_id = r2.json()["id"]
         assert r2.json()["isPrimary"] is True
@@ -92,7 +97,9 @@ class TestCars:
         assert cars[second_id]["isPrimary"] is True
 
     @pytest.mark.asyncio
-    async def test_delete_primary_makes_oldest_primary(self, async_client, client_token):
+    async def test_delete_primary_makes_oldest_primary(
+        self, async_client, client_token
+    ):
         # Create three cars
         r1 = await async_client.post(
             "/api/cars/",
@@ -107,7 +114,12 @@ class TestCars:
         r3 = await async_client.post(
             "/api/cars/",
             headers={"Authorization": f"Bearer {client_token}"},
-            json={"brand": "Mercedes", "model": "E", "number": "А333БВ777", "isPrimary": True},
+            json={
+                "brand": "Mercedes",
+                "model": "E",
+                "number": "А333БВ777",
+                "isPrimary": True,
+            },
         )
         third_id = r3.json()["id"]
         first_id = r1.json()["id"]
@@ -169,14 +181,21 @@ class TestCars:
         response = await async_client.put(
             f"/api/cars/{car_id}",
             headers={"Authorization": f"Bearer {client_token}"},
-            json={"brand": "BMW", "model": "X5", "number": "А111БВ777", "isPrimary": False},
+            json={
+                "brand": "BMW",
+                "model": "X5",
+                "number": "А111БВ777",
+                "isPrimary": False,
+            },
         )
         assert response.status_code == 200
         data = response.json()
         assert data["isPrimary"] is False
 
     @pytest.mark.asyncio
-    async def test_cannot_access_other_users_car(self, async_client, client_token, db_session):
+    async def test_cannot_access_other_users_car(
+        self, async_client, client_token, db_session
+    ):
         # Create another user
         other = User(
             username="other_client",
@@ -189,7 +208,13 @@ class TestCars:
         await db_session.commit()
 
         # Add a car for the other user directly
-        other_car = Car(userId=other.id, brand="Toyota", model="Camry", number="О777ОО777", isPrimary=True)
+        other_car = Car(
+            userId=other.id,
+            brand="Toyota",
+            model="Camry",
+            number="О777ОО777",
+            isPrimary=True,
+        )
         db_session.add(other_car)
         await db_session.commit()
 
@@ -239,7 +264,9 @@ class TestCars:
         assert data["carNumber"] == "А123БВ777"
 
     @pytest.mark.asyncio
-    async def test_create_appointment_with_invalid_car_id(self, async_client, client_token):
+    async def test_create_appointment_with_invalid_car_id(
+        self, async_client, client_token
+    ):
         response = await async_client.post(
             "/api/appointments/",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -257,7 +284,9 @@ class TestCars:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_admin_create_appointment_with_client_car(self, async_client, admin_token, db_session):
+    async def test_admin_create_appointment_with_client_car(
+        self, async_client, admin_token, db_session
+    ):
         # Create a client user directly in DB
         client_user = User(
             username="target_client",

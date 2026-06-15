@@ -18,28 +18,45 @@ class LoginResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Логин пользователя")
+    username: str = Field(
+        ..., min_length=3, max_length=50, description="Логин пользователя"
+    )
     password: str = Field(..., min_length=8, max_length=128, description="Пароль")
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Уникальный логин (латиница и цифры)")
-    password: str = Field(..., min_length=8, max_length=128, description="Пароль, минимум 4 символа")
-    displayName: str = Field(..., min_length=1, max_length=100, description="Отображаемое имя")
+    username: str = Field(
+        ...,
+        min_length=3,
+        max_length=50,
+        description="Уникальный логин (латиница и цифры)",
+    )
+    password: str = Field(
+        ..., min_length=8, max_length=128, description="Пароль, минимум 4 символа"
+    )
+    displayName: str = Field(
+        ..., min_length=1, max_length=100, description="Отображаемое имя"
+    )
     email: str = Field(default="", max_length=100, description="Email адрес")
     phone: str = Field(default="", max_length=20, description="Номер телефона")
-    carModel: str = Field(default="", max_length=50, description="Марка и модель автомобиля")
+    carModel: str = Field(
+        default="", max_length=50, description="Марка и модель автомобиля"
+    )
     carNumber: str = Field(default="", max_length=50, description="Госномер автомобиля")
-    referralCode: Optional[str] = Field(default=None, max_length=20, description="Реферальный код пригласившего")
-    website: str = Field(default="", max_length=100, description="Honeypot field, must be empty")
+    referralCode: Optional[str] = Field(
+        default=None, max_length=20, description="Реферальный код пригласившего"
+    )
+    website: str = Field(
+        default="", max_length=100, description="Honeypot field, must be empty"
+    )
 
-    @field_validator('email')
+    @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
         if not v:
             return v
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
-            raise ValueError('Некорректный email адрес')
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", v):
+            raise ValueError("Некорректный email адрес")
         return v.lower()
 
 
@@ -63,6 +80,7 @@ class UserResponse(BaseModel):
 
 class WasherPublicResponse(BaseModel):
     """Public washer info — minimal fields exposed to any authenticated user."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -178,7 +196,9 @@ class AppointmentRequest(BaseModel):
     carId: Optional[int] = Field(default=None, description="ID автомобиля из гаража")
     dateTime: str = Field(..., max_length=30, description="Дата и время в ISO формате")
     washTypeId: str = Field(..., max_length=36, description="ID типа мойки")
-    additionalServices: str = Field(default="[]", max_length=1000, description="JSON-массив ID доп. услуг")
+    additionalServices: str = Field(
+        default="[]", max_length=1000, description="JSON-массив ID доп. услуг"
+    )
 
     @field_validator("additionalServices")
     @classmethod
@@ -194,7 +214,9 @@ class AppointmentRequest(BaseModel):
     status: Literal["scheduled", "in_progress", "completed", "cancelled"] = "scheduled"
     notes: str = Field(default="", max_length=1000, description="Заметки")
     isFavorite: bool = False
-    ownerUsername: str = Field(default="", max_length=50, description="Логин владельца записи")
+    ownerUsername: str = Field(
+        default="", max_length=50, description="Логин владельца записи"
+    )
     promoPrice: int = Field(default=0, ge=0, description="Акционная цена")
     paidPrice: int = Field(default=0, ge=0, description="Фактически оплаченная сумма")
     isModifiedByAdmin: bool = False
@@ -258,7 +280,9 @@ class CancelReasonRequest(BaseModel):
 
 
 class QrScanRequest(BaseModel):
-    qrData: str = Field(..., min_length=1, max_length=36, description="ID записи из QR-кода")
+    qrData: str = Field(
+        ..., min_length=1, max_length=36, description="ID записи из QR-кода"
+    )
 
 
 # ─── Services ────────────────────────────────────────────────────────────────
@@ -346,6 +370,7 @@ class ConsumableRequest(BaseModel):
     name: str = Field(..., max_length=100)
     unit: str = Field(default="", max_length=20)
 
+
 class ConsumableResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -364,6 +389,7 @@ class ServiceConsumableRequest(BaseModel):
     serviceId: str = Field(..., max_length=36)
     consumableId: str = Field(..., max_length=36)
     quantity_per_service: float = Field(..., ge=0)
+
 
 class ServiceConsumableResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -533,7 +559,9 @@ class ToggleExtraFavoriteRequest(BaseModel):
 
 # ─── Telegram Auth ───────────────────────────────────────────────────────────
 class TelegramAuthRequest(BaseModel):
-    initData: str = Field(..., min_length=10, description="Telegram WebApp initData string")
+    initData: str = Field(
+        ..., min_length=10, description="Telegram WebApp initData string"
+    )
 
 
 class TelegramLinkRequest(BaseModel):
@@ -571,7 +599,9 @@ class CarResponse(BaseModel):
 class TipCreateRequest(BaseModel):
     appointmentId: str = Field(..., max_length=36, description="ID записи")
     amount: int = Field(..., ge=50, le=50000, description="Сумма чаевых в рублях")
-    method: Literal["sbp", "cash", "app"] = Field(default="sbp", description="Способ оплаты")
+    method: Literal["sbp", "cash", "app"] = Field(
+        default="sbp", description="Способ оплаты"
+    )
 
 
 class TipResponse(BaseModel):
@@ -655,7 +685,7 @@ class BulkCancelRequest(BaseModel):
 
 class BulkUpdateStatusRequest(BaseModel):
     appointmentIds: List[str] = Field(..., min_length=1, max_length=100)
-    status: str = Field(..., pattern=r'^(scheduled|in_progress|completed|cancelled)$')
+    status: str = Field(..., pattern=r"^(scheduled|in_progress|completed|cancelled)$")
 
 
 class BulkResult(BaseModel):
@@ -720,9 +750,14 @@ class InventoryForecastResponse(BaseModel):
 
 # ─── Support Chat ────────────────────────────────────────────────────────────
 
+
 class SupportMessageCreateRequest(BaseModel):
-    content: str = Field(..., min_length=1, max_length=2000, description="Текст сообщения")
-    isAiDraft: bool = Field(default=False, description="Сообщение отправлено на основе черновика ИИ")
+    content: str = Field(
+        ..., min_length=1, max_length=2000, description="Текст сообщения"
+    )
+    isAiDraft: bool = Field(
+        default=False, description="Сообщение отправлено на основе черновика ИИ"
+    )
 
 
 class SupportMessageResponse(BaseModel):
@@ -741,13 +776,16 @@ class SupportMessageResponse(BaseModel):
     @classmethod
     def _escape_html(cls, v):
         import html
+
         if isinstance(v, str):
             return html.escape(v)
         return v
 
 
 class SupportChatCreateRequest(BaseModel):
-    firstMessage: str = Field(default="", max_length=2000, description="Первое сообщение в чате поддержки")
+    firstMessage: str = Field(
+        default="", max_length=2000, description="Первое сообщение в чате поддержки"
+    )
 
 
 class SupportChatResponse(BaseModel):
@@ -766,10 +804,17 @@ class SupportChatResponse(BaseModel):
     lastMessagePreview: Optional[str] = None
     createdAt: str
 
-    @field_validator("userName", "userPhone", "assignedAdminName", "lastMessagePreview", mode="before")
+    @field_validator(
+        "userName",
+        "userPhone",
+        "assignedAdminName",
+        "lastMessagePreview",
+        mode="before",
+    )
     @classmethod
     def _escape_html(cls, v):
         import html
+
         if isinstance(v, str):
             return html.escape(v)
         return v

@@ -10,12 +10,16 @@ from services.reminders_service import RemindersService
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-@router.post("/trigger-reminders", response_model=dict, summary="Запустить умные напоминания клиентам")
+@router.post(
+    "/trigger-reminders",
+    response_model=dict,
+    summary="Запустить умные напоминания клиентам",
+)
 @limiter.limit("5/minute")
 async def trigger_reminders(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_roles(["admin"]))
+    current_user: User = Depends(check_roles(["admin"])),
 ):
     arq_pool = getattr(request.app.state, "arq_pool", None)
     if arq_pool:

@@ -4,7 +4,9 @@ import pytest
 class TestReports:
     """Тесты отчётов (admin only)."""
 
-    async def _create_completed_appointment(self, async_client, token, appt_id, date_time, paid_price=1000):
+    async def _create_completed_appointment(
+        self, async_client, token, appt_id, date_time, paid_price=1000
+    ):
         """Хелпер для создания завершённой записи."""
         resp = await async_client.post(
             "/api/appointments/",
@@ -57,7 +59,9 @@ class TestReports:
         assert "visitCount" in row
 
     @pytest.mark.asyncio
-    async def test_popular_services_report(self, async_client, admin_token, client_token):
+    async def test_popular_services_report(
+        self, async_client, admin_token, client_token
+    ):
         await self._create_completed_appointment(
             async_client, admin_token, "rep_appt_2", "2099-02-10T14:00:00", 2000
         )
@@ -72,7 +76,9 @@ class TestReports:
         assert isinstance(data["data"], list)
 
     @pytest.mark.asyncio
-    async def test_consumables_usage_report(self, async_client, admin_token, client_token):
+    async def test_consumables_usage_report(
+        self, async_client, admin_token, client_token
+    ):
         # Создаём запись с типом мойки w1 (express) — расходуется шампунь
         await self._create_completed_appointment(
             async_client, admin_token, "rep_appt_3", "2099-03-05T09:00:00", 500

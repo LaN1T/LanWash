@@ -68,18 +68,20 @@ _storage_uri = _redis_url if _redis_url else "memory://"
 
 if settings.disable_rate_limit:
     if settings.is_production:
-        raise RuntimeError(
-            "DISABLE_RATE_LIMIT must not be set in production"
-        )
+        raise RuntimeError("DISABLE_RATE_LIMIT must not be set in production")
 
     class DummyLimiter:
         """No-op limiter for load testing."""
+
         def limit(self, *args, **kwargs):
             def decorator(f):
                 return f
+
             return decorator
+
         def _check_request_limit(self, *args, **kwargs):
             pass
+
         def _inject_headers(self, *args, **kwargs):
             pass
 

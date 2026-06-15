@@ -1,4 +1,3 @@
-
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +37,9 @@ async def get_my_subscriptions(
     return await svc.get_my_subscriptions(current_user.id)
 
 
-@router.post("/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("30/minute")
 async def create_subscription(
     request: Request,
@@ -62,7 +63,8 @@ async def use_subscription(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Internal endpoint to decrement subscription usage. Called by appointment creation."""
+    """Internal endpoint to decrement subscription usage.
+    Called by appointment creation."""
     svc = SubscriptionsService(db)
     try:
         return await svc.use_subscription(subscription_id, current_user.id)

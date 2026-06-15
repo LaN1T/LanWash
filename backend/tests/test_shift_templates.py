@@ -1,5 +1,6 @@
-import pytest
 from datetime import date, timedelta
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -52,7 +53,9 @@ async def test_create_default_template_clears_previous(async_client, admin_token
 
 
 @pytest.mark.asyncio
-async def test_list_templates_washer_sees_only_own(async_client, admin_token, washer_token):
+async def test_list_templates_washer_sees_only_own(
+    async_client, admin_token, washer_token
+):
     await async_client.post(
         "/api/shift-templates/",
         json={"name": "Admin template", "slots": []},
@@ -118,7 +121,10 @@ async def test_apply_template_admin_to_self(async_client, admin_token):
 
     shifts = await async_client.get(
         "/api/shifts/",
-        params={"start_date": monday.isoformat(), "end_date": (monday + timedelta(days=6)).isoformat()},
+        params={
+            "start_date": monday.isoformat(),
+            "end_date": (monday + timedelta(days=6)).isoformat(),
+        },
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert shifts.status_code == 200
@@ -166,10 +172,15 @@ async def test_washer_can_apply_to_self(async_client, washer_token):
 
 
 @pytest.mark.asyncio
-async def test_washer_cannot_apply_to_other(async_client, washer_token, other_washer_token):
+async def test_washer_cannot_apply_to_other(
+    async_client, washer_token, other_washer_token
+):
     tpl = await async_client.post(
         "/api/shift-templates/",
-        json={"name": "Mine", "slots": [{"weekday": 1, "startTime": "09:00", "endTime": "18:00"}]},
+        json={
+            "name": "Mine",
+            "slots": [{"weekday": 1, "startTime": "09:00", "endTime": "18:00"}],
+        },
         headers={"Authorization": f"Bearer {washer_token}"},
     )
     tpl_id = tpl.json()["id"]
@@ -200,7 +211,10 @@ async def test_update_template(async_client, admin_token):
 
     response = await async_client.put(
         f"/api/shift-templates/{tpl_id}",
-        json={"name": "New", "slots": [{"weekday": 1, "startTime": "09:00", "endTime": "18:00"}]},
+        json={
+            "name": "New",
+            "slots": [{"weekday": 1, "startTime": "09:00", "endTime": "18:00"}],
+        },
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200

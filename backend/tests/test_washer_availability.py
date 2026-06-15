@@ -138,7 +138,9 @@ async def test_delete_availability_removes_records(async_client, washer_token):
 
 
 @pytest.mark.asyncio
-async def test_update_availability_duplicate_dates_last_wins(async_client, washer_token):
+async def test_update_availability_duplicate_dates_last_wins(
+    async_client, washer_token
+):
     washers = await async_client.get(
         "/api/auth/washers",
         headers={"Authorization": f"Bearer {washer_token}"},
@@ -193,7 +195,10 @@ async def test_update_availability_unknown_user(async_client, admin_token):
 async def test_client_cannot_access_availability(async_client, client_token):
     response = await async_client.get(
         "/api/washers/1/availability",
-        params={"start_date": date.today().isoformat(), "end_date": date.today().isoformat()},
+        params={
+            "start_date": date.today().isoformat(),
+            "end_date": date.today().isoformat(),
+        },
         headers={"Authorization": f"Bearer {client_token}"},
     )
     assert response.status_code == 403

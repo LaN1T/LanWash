@@ -1,10 +1,7 @@
-from datetime import datetime
-from typing import List
-
-from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import NotificationQueue
+from repositories import NotificationQueueRepository
 
 
 async def add_notification(
@@ -13,13 +10,8 @@ async def add_notification(
     message: str,
 ) -> NotificationQueue:
     """Add a notification to the queue."""
-    notification = NotificationQueue(
-        telegramId=telegram_id,
-        message=message,
-        createdAt=datetime.now().isoformat(),
-        sentAt=None,
-    )
-    db.add(notification)
+    repo = NotificationQueueRepository(db)
+    notification = await repo.add_notification(telegram_id, message)
     await db.commit()
     await db.refresh(notification)
     return notification
@@ -28,15 +20,10 @@ async def add_notification(
 async def get_pending_notifications(
     db: AsyncSession,
     limit: int = 100,
-) -> List[NotificationQueue]:
+) -> list[NotificationQueue]:
     """Get unsent notifications."""
-    result = await db.execute(
-        select(NotificationQueue)
-        .where(NotificationQueue.sentAt.is_(None))
-        .order_by(NotificationQueue.createdAt.asc())
-        .limit(limit)
-    )
-    return list(result.scalars().all())
+    repo = NotificationQueueRepository(db)
+    return await repo.get_pending(limit)
 
 
 async def mark_sent(
@@ -49,14 +36,11 @@ async def mark_sent(
 
 async def mark_sent_batch(
     db: AsyncSession,
-    notification_ids: List[int],
+    notification_ids: list[int],
 ) -> None:
     """Mark multiple notifications as sent in a single UPDATE."""
     if not notification_ids:
         return
-    await db.execute(
-        update(NotificationQueue)
-        .where(NotificationQueue.id.in_(notification_ids))
-        .values(sentAt=datetime.now().isoformat())
-    )
+    repo = NotificationQueueRepository(db)
+    await repo.mark_sent_batch(notification_ids)
     await db.commit()

@@ -2,11 +2,12 @@ import json
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment, Tip
+from repositories.appointment import AppointmentRepository
+from repositories.tip import TipRepository
 from schemas import TipCreateRequest
 
 
@@ -31,12 +32,11 @@ class TipsService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._appointments = AppointmentRepository(db)
+        self._tips = TipRepository(db)
 
     async def create_tip(self, data: TipCreateRequest, current_username: str) -> Tip:
-        result = await self._db.execute(
-            select(Appointment).where(Appointment.id == data.appointmentId)
-        )
-        appointment = result.scalar_one_or_none()
+        appointment = await self._appointments.get_by_id(data.appointmentId)
         if not appointment:
             raise AppointmentNotFoundError("Запись не найдена")
         if appointment.status != "completed":
@@ -48,13 +48,9 @@ class TipsService:
         if not washer_username:
             raise ValueError("На эту запись не назначен мойщик")
 
-        existing = await self._db.execute(
-            select(Tip).where(
-                Tip.appointmentId == data.appointmentId,
-                Tip.washerUsername == washer_username,
-            )
-        )
-        if existing.scalar_one_or_none():
+        if await self._tips.get_by_appointment_and_washer(
+            data.appointmentId, washer_username
+        ):
             raise DuplicateTipError("Чаевые на эту запись уже оставлены")
 
         tip = Tip(
@@ -65,7 +61,7 @@ class TipsService:
             status="pending",
             createdAt=datetime.now(timezone.utc).isoformat(),
         )
-        self._db.add(tip)
+        await self._tips.add(tip)
         try:
             await self._db.commit()
         except IntegrityError:
@@ -74,64 +70,30 @@ class TipsService:
         await self._db.refresh(tip)
         return tip
 
-    async def list_my_tips(self, username: str) -> list[tuple[Tip, Optional[Appointment]]]:
-        stmt = (
-            select(Tip, Appointment)
-            .join(Appointment, Tip.appointmentId == Appointment.id, isouter=True)
-            .where(Tip.washerUsername == username)
-            .order_by(Tip.createdAt.desc())
-        )
-        result = await self._db.execute(stmt)
-        return result.all()
+    async def list_my_tips(
+        self, username: str
+    ) -> list[tuple[Tip, Optional[Appointment]]]:
+        return await self._tips.list_with_appointments(username)
 
     async def get_tip_stats(self, username: str) -> dict:
-        total_res = await self._db.execute(
-            select(func.count(Tip.id)).where(Tip.washerUsername == username)
-        )
-        total_tips = total_res.scalar() or 0
+        return await self._tips.get_stats(username)
 
-        total_amount_res = await self._db.execute(
-            select(func.sum(Tip.amount)).where(
-                Tip.washerUsername == username,
-                Tip.status == "paid",
-            )
-        )
-        total_amount = total_amount_res.scalar() or 0
-
-        pending_amount_res = await self._db.execute(
-            select(func.sum(Tip.amount)).where(
-                Tip.washerUsername == username,
-                Tip.status == "pending",
-            )
-        )
-        pending_amount = pending_amount_res.scalar() or 0
-
-        return {
-            "totalTips": total_tips,
-            "totalAmount": total_amount,
-            "pendingAmount": pending_amount,
-        }
-
-    async def mark_tip_paid(self, tip_id: int, current_username: str, is_admin: bool) -> Tip:
-        result = await self._db.execute(select(Tip).where(Tip.id == tip_id))
-        tip = result.scalar_one_or_none()
+    async def mark_tip_paid(
+        self, tip_id: int, current_username: str, is_admin: bool
+    ) -> Tip:
+        tip = await self._tips.get_by_id(tip_id)
         if not tip:
             raise TipNotFoundError("Чаевые не найдены")
 
         if current_username != tip.washerUsername and not is_admin:
             raise TipAccessDeniedError("Нет прав на изменение статуса")
 
-        update_result = await self._db.execute(
-            update(Tip)
-            .where(Tip.id == tip_id, Tip.status == "pending")
-            .values(status="paid")
-        )
+        update_result = await self._tips.mark_paid(tip_id)
         await self._db.commit()
-        if update_result.rowcount == 0:
+        if update_result == 0:
             raise ValueError("Чаевые уже отмечены как полученные")
 
         await self._db.refresh(tip)
-        tip.status = "paid"
         return tip
 
     @staticmethod

@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List
 
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import ShiftTemplate, User
+from repositories.shift_template import ShiftTemplateRepository
 from schemas import (
     ShiftRequest,
     ShiftTemplateApplyRequest,
@@ -21,26 +21,24 @@ class ShiftTemplatesService:
     def __init__(self, db: AsyncSession, current_user: User) -> None:
         self._db = db
         self._current_user = current_user
+        self._templates = ShiftTemplateRepository(db)
         self._shifts_service = ShiftsService(db)
 
     def _is_admin(self) -> bool:
         return self._current_user.role == "admin"
 
     async def _ensure_owner_access(self, template: ShiftTemplate) -> None:
-        if template.ownerUsername != self._current_user.username.lower() and not self._is_admin():
+        if (
+            template.ownerUsername != self._current_user.username.lower()
+            and not self._is_admin()
+        ):
             raise HTTPException(status_code=403, detail="Доступ запрещён")
 
     async def list_templates(self) -> List[ShiftTemplateResponse]:
-        if self._is_admin():
-            stmt = select(ShiftTemplate).order_by(ShiftTemplate.name)
-        else:
-            stmt = (
-                select(ShiftTemplate)
-                .where(ShiftTemplate.ownerUsername == self._current_user.username.lower())
-                .order_by(ShiftTemplate.name)
-            )
-        result = await self._db.execute(stmt)
-        rows = result.scalars().all()
+        rows = await self._templates.list_for_owner(
+            self._current_user.username.lower(),
+            include_all=self._is_admin(),
+        )
         return [ShiftTemplateResponse.model_validate(r) for r in rows]
 
     async def create_template(
@@ -48,7 +46,7 @@ class ShiftTemplatesService:
     ) -> ShiftTemplateResponse:
         owner = self._current_user.username.lower()
         if payload.isDefault:
-            await self._clear_owner_default(owner)
+            await self._templates.clear_owner_default(owner)
 
         template = ShiftTemplate(
             ownerUsername=owner,
@@ -56,7 +54,7 @@ class ShiftTemplatesService:
             isDefault=payload.isDefault,
             slots=[s.model_dump() for s in payload.slots],
         )
-        self._db.add(template)
+        await self._templates.add(template)
         await self._db.commit()
         await self._db.refresh(template)
         return ShiftTemplateResponse.model_validate(template)
@@ -64,7 +62,7 @@ class ShiftTemplatesService:
     async def update_template(
         self, template_id: int, payload: ShiftTemplateUpdateRequest
     ) -> ShiftTemplateResponse:
-        template = await self._db.get(ShiftTemplate, template_id)
+        template = await self._templates.get_by_id(template_id)
         if template is None:
             raise HTTPException(status_code=404, detail="Шаблон не найден")
         await self._ensure_owner_access(template)
@@ -75,7 +73,7 @@ class ShiftTemplatesService:
             template.slots = [s.model_dump() for s in payload.slots]
         if payload.isDefault is not None:
             if payload.isDefault and not template.isDefault:
-                await self._clear_owner_default(template.ownerUsername)
+                await self._templates.clear_owner_default(template.ownerUsername)
             template.isDefault = payload.isDefault
 
         await self._db.commit()
@@ -83,17 +81,17 @@ class ShiftTemplatesService:
         return ShiftTemplateResponse.model_validate(template)
 
     async def delete_template(self, template_id: int) -> None:
-        template = await self._db.get(ShiftTemplate, template_id)
+        template = await self._templates.get_by_id(template_id)
         if template is None:
             raise HTTPException(status_code=404, detail="Шаблон не найден")
         await self._ensure_owner_access(template)
-        await self._db.delete(template)
+        await self._templates.delete(template)
         await self._db.commit()
 
     async def apply_template(
         self, template_id: int, payload: ShiftTemplateApplyRequest
     ) -> int:
-        template = await self._db.get(ShiftTemplate, template_id)
+        template = await self._templates.get_by_id(template_id)
         if template is None:
             raise HTTPException(status_code=404, detail="Шаблон не найден")
         await self._ensure_owner_access(template)
@@ -103,7 +101,9 @@ class ShiftTemplatesService:
         except ValueError:
             raise HTTPException(status_code=400, detail="Неверный формат weekStart")
         if monday.weekday() != 0:
-            raise HTTPException(status_code=400, detail="weekStart должен быть понедельником")
+            raise HTTPException(
+                status_code=400, detail="weekStart должен быть понедельником"
+            )
 
         target_user_id = payload.targetUserId
         if target_user_id is None:
@@ -133,13 +133,3 @@ class ShiftTemplatesService:
                 raise HTTPException(status_code=403, detail=str(e))
 
         return created
-
-    async def _clear_owner_default(self, owner_username: str) -> None:
-        stmt = (
-            select(ShiftTemplate)
-            .where(ShiftTemplate.ownerUsername == owner_username)
-            .where(ShiftTemplate.isDefault.is_(True))
-        )
-        result = await self._db.execute(stmt)
-        for row in result.scalars().all():
-            row.isDefault = False

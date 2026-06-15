@@ -32,7 +32,7 @@ class TestBulkOperations:
                 "appointmentIds": ["bulk_appt_0", "bulk_appt_1", "bulk_appt_2"],
                 "washerUsername": "washer_test",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -40,7 +40,9 @@ class TestBulkOperations:
         assert data["failed"] == 0
 
     @pytest.mark.asyncio
-    async def test_bulk_assign_washer_skips_cancelled(self, async_client, db_session, admin_token):
+    async def test_bulk_assign_washer_skips_cancelled(
+        self, async_client, db_session, admin_token
+    ):
         """Bulk assign skips cancelled appointments."""
         appt = Appointment(
             id="bulk_appt_cancel",
@@ -63,7 +65,7 @@ class TestBulkOperations:
                 "appointmentIds": ["bulk_appt_cancel"],
                 "washerUsername": "washer_test",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -95,7 +97,7 @@ class TestBulkOperations:
                 "appointmentIds": ["bulk_cancel_0", "bulk_cancel_1"],
                 "reason": "Технические работы",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -103,7 +105,9 @@ class TestBulkOperations:
         assert data["failed"] == 0
 
     @pytest.mark.asyncio
-    async def test_bulk_cancel_skips_completed(self, async_client, db_session, admin_token):
+    async def test_bulk_cancel_skips_completed(
+        self, async_client, db_session, admin_token
+    ):
         """Bulk cancel skips completed appointments."""
         appt = Appointment(
             id="bulk_cancel_comp",
@@ -126,7 +130,7 @@ class TestBulkOperations:
                 "appointmentIds": ["bulk_cancel_comp"],
                 "reason": "Технические работы",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -158,7 +162,7 @@ class TestBulkOperations:
                 "appointmentIds": ["bulk_status_0", "bulk_status_1"],
                 "status": "in_progress",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -171,7 +175,7 @@ class TestBulkOperations:
         response = await async_client.post(
             "/api/admin/bulk/cancel",
             json={"appointmentIds": ["a"], "reason": ""},
-            headers={"Authorization": f"Bearer {client_token}"}
+            headers={"Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 403
 
@@ -184,7 +188,7 @@ class TestBulkOperations:
                 "appointmentIds": ["nonexistent_1", "nonexistent_2"],
                 "status": "completed",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()

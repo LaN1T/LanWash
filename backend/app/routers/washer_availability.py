@@ -80,7 +80,11 @@ async def update_availability(
                 status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
             )
     rows = await service.update_availability(user_id, payload.entries)
-    return {"entries": [WasherAvailabilityResponse.model_validate(r).model_dump() for r in rows]}
+    return {
+        "entries": [
+            WasherAvailabilityResponse.model_validate(r).model_dump() for r in rows
+        ]
+    }
 
 
 @router.delete("/{user_id}/availability")

@@ -25,12 +25,15 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/support", tags=["support"])
 
 
-async def _admin_tokens(db: AsyncSession, exclude_user_ids: Optional[set[int]] = None) -> list[str]:
+async def _admin_tokens(
+    db: AsyncSession, exclude_user_ids: Optional[set[int]] = None
+) -> list[str]:
     from models import FcmToken
+
     stmt = (
         select(FcmToken.token)
         .join(User, FcmToken.username == User.username)
-        .where(User.role == 'admin')
+        .where(User.role == "admin")
     )
     if exclude_user_ids:
         stmt = stmt.where(User.id.not_in(exclude_user_ids))
@@ -40,6 +43,7 @@ async def _admin_tokens(db: AsyncSession, exclude_user_ids: Optional[set[int]] =
 
 async def _user_tokens(db: AsyncSession, user_id: int) -> list[str]:
     from models import FcmToken
+
     user_res = await db.execute(select(User.username).where(User.id == user_id))
     username = user_res.scalar_one_or_none()
     if not username:
@@ -48,21 +52,27 @@ async def _user_tokens(db: AsyncSession, user_id: int) -> list[str]:
     return [r[0] for r in res.all() if r[0]]
 
 
-def _to_message_response(msg: SupportMessage, users: dict[int, User]) -> SupportMessageResponse:
+def _to_message_response(
+    msg: SupportMessage, users: dict[int, User]
+) -> SupportMessageResponse:
     sender = users.get(msg.senderId) if msg.senderId else None
     return SupportMessageResponse(
         id=msg.id,
         chatId=msg.chatId,
         senderRole=msg.senderRole,
         senderId=msg.senderId,
-        senderName=sender.displayName if sender else ("Ассистент" if msg.senderRole == "ai" else None),
+        senderName=sender.displayName
+        if sender
+        else ("Ассистент" if msg.senderRole == "ai" else None),
         content=msg.content,
         isAiDraft=bool(msg.isAiDraft),
         createdAt=msg.createdAt,
     )
 
 
-def _to_chat_response(chat: SupportChat, users: dict[int, User], last_msg: Optional[str]) -> SupportChatResponse:
+def _to_chat_response(
+    chat: SupportChat, users: dict[int, User], last_msg: Optional[str]
+) -> SupportChatResponse:
     user = users.get(chat.userId)
     admin = users.get(chat.assignedAdminId) if chat.assignedAdminId else None
     return SupportChatResponse(
@@ -76,7 +86,9 @@ def _to_chat_response(chat: SupportChat, users: dict[int, User], last_msg: Optio
         unreadByUser=chat.unreadByUser,
         unreadByAdmin=chat.unreadByAdmin,
         lastMessageAt=chat.lastMessageAt,
-        lastMessagePreview=(last_msg[:80] + "...") if last_msg and len(last_msg) > 80 else last_msg,
+        lastMessagePreview=(last_msg[:80] + "...")
+        if last_msg and len(last_msg) > 80
+        else last_msg,
         createdAt=chat.createdAt,
     )
 
@@ -131,16 +143,21 @@ async def create_chat(
             await db.commit()
             users_map = {current_user.id: current_user}
             try:
-                await broadcast(chat.id, {
-                    "type": "new_message",
-                    "data": _to_message_response(ai_msg, users_map).model_dump(),
-                })
+                await broadcast(
+                    chat.id,
+                    {
+                        "type": "new_message",
+                        "data": _to_message_response(ai_msg, users_map).model_dump(),
+                    },
+                )
             except Exception as e:
                 logger.warning("support_broadcast_failed", error=str(e))
         else:
             chat.status = "waiting_admin"
             await db.commit()
-            tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
+            tokens = await _admin_tokens(
+                db, exclude_user_ids=connected_user_ids(chat.id) or None
+            )
             if tokens:
                 try:
                     await fcm_service.send_notification_to_tokens(
@@ -177,7 +194,9 @@ async def list_my_chats(
     chats = res.scalars().all()
     if not chats:
         return []
-    user_ids = {c.userId for c in chats} | {c.assignedAdminId for c in chats if c.assignedAdminId}
+    user_ids = {c.userId for c in chats} | {
+        c.assignedAdminId for c in chats if c.assignedAdminId
+    }
     users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
     users = {u.id: u for u in users_res.scalars().all()}
 
@@ -186,10 +205,12 @@ async def list_my_chats(
         select(
             SupportMessage.chatId,
             SupportMessage.content,
-            func.row_number().over(
+            func.row_number()
+            .over(
                 partition_by=SupportMessage.chatId,
-                order_by=SupportMessage.createdAt.desc()
-            ).label("rn"),
+                order_by=SupportMessage.createdAt.desc(),
+            )
+            .label("rn"),
         )
         .where(SupportMessage.chatId.in_(chat_ids))
         .subquery()
@@ -219,7 +240,11 @@ async def list_all_chats(
     if not chats:
         return []
 
-    user_ids = {c.userId for c in chats} | {c.assignedAdminId for c in chats if c.assignedAdminId} | {current_user.id}
+    user_ids = (
+        {c.userId for c in chats}
+        | {c.assignedAdminId for c in chats if c.assignedAdminId}
+        | {current_user.id}
+    )
     users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
     users = {u.id: u for u in users_res.scalars().all()}
 
@@ -228,10 +253,12 @@ async def list_all_chats(
         select(
             SupportMessage.chatId,
             SupportMessage.content,
-            func.row_number().over(
+            func.row_number()
+            .over(
                 partition_by=SupportMessage.chatId,
-                order_by=SupportMessage.createdAt.desc()
-            ).label("rn"),
+                order_by=SupportMessage.createdAt.desc(),
+            )
+            .label("rn"),
         )
         .where(SupportMessage.chatId.in_(chat_ids))
         .subquery()
@@ -321,15 +348,21 @@ async def send_message(
 
     users = {current_user.id: current_user}
     try:
-        await broadcast(chat_id, {
-            "type": "new_message",
-            "data": _to_message_response(msg, users).model_dump(),
-        })
+        await broadcast(
+            chat_id,
+            {
+                "type": "new_message",
+                "data": _to_message_response(msg, users).model_dump(),
+            },
+        )
         if auto_assigned:
-            await broadcast(chat_id, {
-                "type": "status_update",
-                "data": {"assignedAdminId": current_user.id, "status": chat.status},
-            })
+            await broadcast(
+                chat_id,
+                {
+                    "type": "status_update",
+                    "data": {"assignedAdminId": current_user.id, "status": chat.status},
+                },
+            )
     except Exception as e:
         logger.warning("support_broadcast_failed", error=str(e))
 
@@ -351,7 +384,9 @@ async def send_message(
         if chat.status == "admin_assigned":
             # Human admin is actively handling this chat — do not auto-reply
             await db.commit()
-            tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
+            tokens = await _admin_tokens(
+                db, exclude_user_ids=connected_user_ids(chat.id) or None
+            )
             if tokens:
                 try:
                     await fcm_service.send_notification_to_tokens(
@@ -386,16 +421,21 @@ async def send_message(
                 chat.lastMessageAt = ai_msg.createdAt
                 await db.commit()
                 try:
-                    await broadcast(chat_id, {
-                        "type": "new_message",
-                        "data": _to_message_response(ai_msg, users).model_dump(),
-                    })
+                    await broadcast(
+                        chat_id,
+                        {
+                            "type": "new_message",
+                            "data": _to_message_response(ai_msg, users).model_dump(),
+                        },
+                    )
                 except Exception as e:
                     logger.warning("support_broadcast_failed", error=str(e))
             else:
                 chat.status = "waiting_admin"
                 await db.commit()
-                tokens = await _admin_tokens(db, exclude_user_ids=connected_user_ids(chat.id) or None)
+                tokens = await _admin_tokens(
+                    db, exclude_user_ids=connected_user_ids(chat.id) or None
+                )
                 if tokens:
                     try:
                         await fcm_service.send_notification_to_tokens(
@@ -451,7 +491,13 @@ async def assign_chat(
     chat.updatedAt = datetime.now().isoformat()
     await db.commit()
     try:
-        await broadcast(chat_id, {"type": "status_update", "data": {"assignedAdminId": current_user.id, "status": chat.status}})
+        await broadcast(
+            chat_id,
+            {
+                "type": "status_update",
+                "data": {"assignedAdminId": current_user.id, "status": chat.status},
+            },
+        )
     except Exception as e:
         logger.warning("support_broadcast_failed", error=str(e))
 
@@ -494,7 +540,9 @@ async def close_chat(
     chat.updatedAt = datetime.now().isoformat()
     await db.commit()
     try:
-        await broadcast(chat_id, {"type": "status_update", "data": {"status": chat.status}})
+        await broadcast(
+            chat_id, {"type": "status_update", "data": {"status": chat.status}}
+        )
     except Exception as e:
         logger.warning("support_broadcast_failed", error=str(e))
     return {"ok": True}

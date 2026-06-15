@@ -47,7 +47,9 @@ async def create_tip(
     except DuplicateTipError as e:
         raise HTTPException(status_code=409, detail=str(e))
     except IntegrityError:
-        raise HTTPException(status_code=409, detail="Чаевые на эту запись уже оставлены")
+        raise HTTPException(
+            status_code=409, detail="Чаевые на эту запись уже оставлены"
+        )
 
     resp_data = {
         "id": tip.id,
@@ -114,7 +116,9 @@ async def mark_tip_paid(
 ):
     svc = TipsService(db)
     try:
-        tip = await svc.mark_tip_paid(tip_id, current_user.username, current_user.role == "admin")
+        tip = await svc.mark_tip_paid(
+            tip_id, current_user.username, current_user.role == "admin"
+        )
     except TipNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except TipAccessDeniedError as e:

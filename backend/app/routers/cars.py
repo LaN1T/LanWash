@@ -72,9 +72,7 @@ async def update_car(
     try:
         return await svc.update_car(car_id, current_user.id, req)
     except CarNotFoundError:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "Автомобиль не найден"
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Автомобиль не найден")
     except CarAccessDeniedError:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
@@ -99,9 +97,7 @@ async def delete_car(
     try:
         await svc.delete_car(car_id, current_user.id)
     except CarNotFoundError:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "Автомобиль не найден"
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Автомобиль не найден")
     except CarAccessDeniedError:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,

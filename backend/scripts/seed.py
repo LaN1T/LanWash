@@ -15,8 +15,8 @@ from faker import Faker
 from passlib.context import CryptContext
 from sqlalchemy import func, select
 
-from db.session import AsyncSessionLocal
 from db.init import init_db
+from db.session import AsyncSessionLocal
 from models import (
     Appointment,
     LogEntry,
@@ -39,7 +39,10 @@ BOXES = [0, 1]
 
 
 def get_test_url():
-    base = os.getenv("DATABASE_URL", "postgresql+asyncpg://lanwash_user:password@localhost:5432/lanwash_db")
+    base = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://lanwash_user:password@localhost:5432/lanwash_db",
+    )
     if "://" in base:
         scheme, rest = base.split("://", 1)
         if "@" in rest:
@@ -64,44 +67,60 @@ async def create_users(session):
 
     # 2 admins
     for i in range(2):
-        users.append(User(
-            username=f"test_admin_{i+1}",
-            passwordHash=TEST_PASSWORD_HASH,
-            role="admin",
-            displayName=fake.name(),
-            phone=fake.phone_number(),
-            carModel="",
-            carNumber="",
-            createdAt=format_dt(datetime.now()),
-        ))
+        users.append(
+            User(
+                username=f"test_admin_{i + 1}",
+                passwordHash=TEST_PASSWORD_HASH,
+                role="admin",
+                displayName=fake.name(),
+                phone=fake.phone_number(),
+                carModel="",
+                carNumber="",
+                createdAt=format_dt(datetime.now()),
+            )
+        )
 
     # 10 washers
     for i in range(10):
-        users.append(User(
-            username=f"test_washer_{i+1}",
-            passwordHash=TEST_PASSWORD_HASH,
-            role="washer",
-            displayName=fake.name(),
-            phone=fake.phone_number(),
-            carModel="",
-            carNumber="",
-            createdAt=format_dt(datetime.now()),
-        ))
+        users.append(
+            User(
+                username=f"test_washer_{i + 1}",
+                passwordHash=TEST_PASSWORD_HASH,
+                role="washer",
+                displayName=fake.name(),
+                phone=fake.phone_number(),
+                carModel="",
+                carNumber="",
+                createdAt=format_dt(datetime.now()),
+            )
+        )
 
     # 50 clients
-    car_models = ["Toyota Camry", "BMW X5", "Mercedes C-Class", "Audi A6", "Hyundai Solaris",
-                  "Kia Rio", "Volkswagen Polo", "Lada Vesta", "Skoda Octavia", "Nissan Qashqai"]
+    car_models = [
+        "Toyota Camry",
+        "BMW X5",
+        "Mercedes C-Class",
+        "Audi A6",
+        "Hyundai Solaris",
+        "Kia Rio",
+        "Volkswagen Polo",
+        "Lada Vesta",
+        "Skoda Octavia",
+        "Nissan Qashqai",
+    ]
     for i in range(50):
-        users.append(User(
-            username=f"test_client_{i+1}",
-            passwordHash=TEST_PASSWORD_HASH,
-            role="client",
-            displayName=fake.name(),
-            phone=fake.phone_number(),
-            carModel=random.choice(car_models),
-            carNumber=fake.license_plate(),
-            createdAt=format_dt(datetime.now()),
-        ))
+        users.append(
+            User(
+                username=f"test_client_{i + 1}",
+                passwordHash=TEST_PASSWORD_HASH,
+                role="client",
+                displayName=fake.name(),
+                phone=fake.phone_number(),
+                carModel=random.choice(car_models),
+                carNumber=fake.license_plate(),
+                createdAt=format_dt(datetime.now()),
+            )
+        )
 
     session.add_all(users)
     await session.commit()
@@ -142,24 +161,30 @@ async def create_appointments(session, users, wash_types, services):
         original = base_price + extra_price
         paid = int(original * (100 - promo_discount) / 100)
 
-        appointments.append(Appointment(
-            id=f"test_appt_{i+1}",
-            userId=client.id,
-            clientName=client.displayName,
-            carModel=client.carModel,
-            carNumber=client.carNumber,
-            dateTime=format_dt(dt),
-            washTypeId=wash_type.id,
-            additionalServices=json.dumps(extras),
-            status=status,
-            notes=fake.sentence(nb_words=6) if random.random() < 0.3 else "",
-            ownerUsername=client.username,
-            originalPrice=original,
-            paidPrice=paid,
-            promoPrice=original - paid,
-            box_index=random.choice(BOXES),
-            assignedWasher=json.dumps([random.choice(washers).username] if washers and status != "scheduled" else []),
-        ))
+        appointments.append(
+            Appointment(
+                id=f"test_appt_{i + 1}",
+                userId=client.id,
+                clientName=client.displayName,
+                carModel=client.carModel,
+                carNumber=client.carNumber,
+                dateTime=format_dt(dt),
+                washTypeId=wash_type.id,
+                additionalServices=json.dumps(extras),
+                status=status,
+                notes=fake.sentence(nb_words=6) if random.random() < 0.3 else "",
+                ownerUsername=client.username,
+                originalPrice=original,
+                paidPrice=paid,
+                promoPrice=original - paid,
+                box_index=random.choice(BOXES),
+                assignedWasher=json.dumps(
+                    [random.choice(washers).username]
+                    if washers and status != "scheduled"
+                    else []
+                ),
+            )
+        )
 
     session.add_all(appointments)
     await session.commit()
@@ -176,16 +201,18 @@ async def create_shifts(session, washers):
         for washer in random.sample(washers, k=random.randint(3, 6)):
             start_h = random.randint(8, 14)
             duration = random.choice([4, 6, 8, 10])
-            shifts.append(Shift(
-                userId=washer.id,
-                date=date_str,
-                startTime=f"{start_h:02d}:00",
-                endTime=f"{(start_h + duration) % 24:02d}:00",
-                status="confirmed",
-                createdBy="test_admin_1",
-                createdAt=format_dt(now),
-                updatedAt=format_dt(now),
-            ))
+            shifts.append(
+                Shift(
+                    userId=washer.id,
+                    date=date_str,
+                    startTime=f"{start_h:02d}:00",
+                    endTime=f"{(start_h + duration) % 24:02d}:00",
+                    status="confirmed",
+                    createdBy="test_admin_1",
+                    createdAt=format_dt(now),
+                    updatedAt=format_dt(now),
+                )
+            )
 
     session.add_all(shifts)
     await session.commit()
@@ -201,14 +228,18 @@ async def create_reviews(session, clients, appointments):
         client = next((u for u in clients if u.id == appt.userId), None)
         if not client:
             continue
-        reviews.append(Review(
-            userId=client.id,
-            userName=client.displayName,
-            rating=random.choices([3, 4, 5], weights=[5, 20, 75])[0],
-            comment=fake.sentence(nb_words=10) if random.random() < 0.7 else "",
-            isPublished=1 if random.random() < 0.8 else 0,
-            createdAt=format_dt(datetime.now() - timedelta(days=random.randint(0, 30))),
-        ))
+        reviews.append(
+            Review(
+                userId=client.id,
+                userName=client.displayName,
+                rating=random.choices([3, 4, 5], weights=[5, 20, 75])[0],
+                comment=fake.sentence(nb_words=10) if random.random() < 0.7 else "",
+                isPublished=1 if random.random() < 0.8 else 0,
+                createdAt=format_dt(
+                    datetime.now() - timedelta(days=random.randint(0, 30))
+                ),
+            )
+        )
 
     session.add_all(reviews)
     await session.commit()
@@ -218,19 +249,30 @@ async def create_reviews(session, clients, appointments):
 
 async def create_logs(session, users):
     """Create activity logs."""
-    actions = ["login", "create_appointment", "update_appointment", "delete_appointment",
-               "view_report", "add_shift", "update_consumable"]
+    actions = [
+        "login",
+        "create_appointment",
+        "update_appointment",
+        "delete_appointment",
+        "view_report",
+        "add_shift",
+        "update_consumable",
+    ]
     logs = []
     for _ in range(200):
         user = random.choice(users)
         action = random.choice(actions)
-        logs.append(LogEntry(
-            username=user.username,
-            action=action,
-            details=fake.sentence(nb_words=4),
-            timestamp=format_dt(datetime.now() - timedelta(days=random.randint(0, 30),
-                                                            hours=random.randint(0, 23))),
-        ))
+        logs.append(
+            LogEntry(
+                username=user.username,
+                action=action,
+                details=fake.sentence(nb_words=4),
+                timestamp=format_dt(
+                    datetime.now()
+                    - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
+                ),
+            )
+        )
 
     session.add_all(logs)
     await session.commit()
@@ -247,9 +289,13 @@ async def main():
 
     async with AsyncSessionLocal() as session:
         # Check if already seeded
-        res = await session.execute(select(func.count(User.id)).where(User.username.like("test_%")))
+        res = await session.execute(
+            select(func.count(User.id)).where(User.username.like("test_%"))
+        )
         if res.scalar() > 0:
-            print("⚠️  Test data already exists. Run clean.py first if you want fresh data.")
+            print(
+                "⚠️  Test data already exists. Run clean.py first if you want fresh data."
+            )
             return
 
         # Fetch base data created by init_db

@@ -44,7 +44,7 @@ async def list_reviews(
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     svc = ReviewsService(db)
-    published_only = published or (current_user is None or current_user.role != 'admin')
+    published_only = published or (current_user is None or current_user.role != "admin")
     return await svc.list_reviews(published_only, limit)
 
 
@@ -81,8 +81,10 @@ async def create_review(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.id != data.userId and current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Можно оставлять отзыв только от своего имени")
+    if current_user.id != data.userId and current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Можно оставлять отзыв только от своего имени"
+        )
 
     svc = ReviewsService(db)
     try:
@@ -99,13 +101,14 @@ async def create_review(
 
 # ─── Admin endpoints ─────────────────────────────────────────────────────────
 
+
 @router.get("/admin/all", response_model=List[ReviewResponse])
 @limiter.limit("60/minute")
 async def list_all_reviews(
     request: Request,
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
@@ -120,7 +123,7 @@ async def moderate_review(
     review_id: int,
     data: ReviewModerateRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
@@ -137,7 +140,7 @@ async def delete_review(
     request: Request,
     review_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin required")
