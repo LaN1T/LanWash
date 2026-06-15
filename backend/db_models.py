@@ -98,6 +98,8 @@ class Appointment(Base):
         Index('ix_appointments_promo', 'promoId'),
         Index('ix_appointments_subscription', 'subscriptionId'),
         Index('ix_appointments_box', 'box_index'),
+        Index('ix_appointments_assigned_washer', 'assignedWasher'),
+        Index('ix_appointments_hidden_admin', 'isHiddenFromAdmin'),
     )
     id = Column(String, primary_key=True)
     userId = Column(Integer, ForeignKey('users.id'), nullable=True)
@@ -233,6 +235,7 @@ class ConsumableUsageLog(Base):
     __table_args__ = (
         Index('ix_usage_log_appointment', 'appointmentId'),
         Index('ix_usage_log_consumable', 'consumableId'),
+        Index('ix_usage_log_timestamp', 'timestamp'),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     appointmentId = Column(String, ForeignKey('appointments.id'), nullable=False)
@@ -242,6 +245,10 @@ class ConsumableUsageLog(Base):
 
 class ConsumableRefillLog(Base):
     __tablename__ = 'consumable_refill_log'
+    __table_args__ = (
+        Index('ix_refill_log_consumable', 'consumableId'),
+        Index('ix_refill_log_timestamp', 'timestamp'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     consumableId = Column(String, ForeignKey('consumables.id'), nullable=False)
     amount = Column(Float, nullable=False)
@@ -268,6 +275,9 @@ class Shift(Base):
 
 class NotificationQueue(Base):
     __tablename__ = 'notification_queue'
+    __table_args__ = (
+        Index('ix_notification_queue_sent', 'sentAt'),
+    )
     id = Column(Integer, primary_key=True, autoincrement=True)
     telegramId = Column(String, nullable=False)
     message = Column(String, nullable=False)

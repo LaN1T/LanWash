@@ -68,6 +68,7 @@ class WasherPublicResponse(BaseModel):
     id: int
     username: str
     displayName: str
+    role: str = "washer"
     avatarUrl: str = ""
 
 

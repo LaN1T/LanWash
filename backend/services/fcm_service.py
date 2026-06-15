@@ -49,26 +49,33 @@ class FCMService:
         if not tokens:
             return
 
-        message = messaging.MulticastMessage(
-            notification=messaging.Notification(title=title, body=body),
-            data=data,
-            tokens=tokens,
-        )
-        try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(messaging.send_each_for_multicast, message),
-                timeout=10.0,
+        # FCM multicast supports up to 500 tokens per request.
+        batch_size = 500
+        total_success = 0
+        total_failure = 0
+        for i in range(0, len(tokens), batch_size):
+            batch = tokens[i:i + batch_size]
+            message = messaging.MulticastMessage(
+                notification=messaging.Notification(title=title, body=body),
+                data=data,
+                tokens=batch,
             )
-            logger.info("fcm_message_sent", success=response.success_count, failure=response.failure_count)
-            if response.failure_count > 0:
-                for resp in response.responses:
-                    if not resp.success:
-                        logger.warning("fcm_token_failed", error=str(resp.exception))
-            return response
-        except asyncio.TimeoutError:
-            logger.error("fcm_send_timeout")
-        except Exception as e:
-            logger.error("fcm_send_error", error=str(e))
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(messaging.send_each_for_multicast, message),
+                    timeout=10.0,
+                )
+                total_success += response.success_count
+                total_failure += response.failure_count
+                if response.failure_count > 0:
+                    for resp in response.responses:
+                        if not resp.success:
+                            logger.warning("fcm_token_failed", error=str(resp.exception))
+            except asyncio.TimeoutError:
+                logger.error("fcm_send_timeout")
+            except Exception as e:
+                logger.error("fcm_send_error", error=str(e))
+        logger.info("fcm_message_sent", success=total_success, failure=total_failure)
 
     async def send_notification_to_topic(self, topic: str, title: str, body: str, data: Dict[str, Any] = None):
         if not firebase_admin._apps:

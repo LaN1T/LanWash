@@ -50,7 +50,7 @@ class OfflineRepository {
             id: Value(_requireInt(item, 'id')),
             username: _requireString(item, 'username'),
             displayName: _requireString(item, 'displayName'),
-            role: _requireString(item, 'role'),
+            role: _asString(item['role']) ?? 'client',
             avatarUrl: Value(_asString(item['avatarUrl'])),
           );
         }).toList(),
