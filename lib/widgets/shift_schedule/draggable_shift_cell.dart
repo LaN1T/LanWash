@@ -8,8 +8,12 @@ import '../../screens/shared/shift_schedule_screen.dart';
 /// Wraps [ShiftCell] with drag & drop affordances.
 ///
 /// When [shift] is not null and [isDraggable] is true, the cell can be dragged.
-/// When [isDropTarget] is true, the cell accepts dropped shifts and reports
-/// them via [onMove].
+/// When [shift] is null and [isDropTarget] is true, the cell accepts dropped
+/// shifts and reports them via [onMove].
+///
+/// A filled cell is only a drag source; an empty cell is only a drop target.
+/// This avoids nesting a [Draggable] inside a [DragTarget], which can trigger
+/// framework element-lifecycle assertions.
 class DraggableShiftCell extends StatelessWidget {
   final User washer;
   final DateTime date;
@@ -40,9 +44,8 @@ class DraggableShiftCell extends StatelessWidget {
     this.onMove,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    Widget cell = ShiftCell(
+  Widget _buildCell() {
+    return ShiftCell(
       washer: washer,
       date: date,
       shift: shift,
@@ -53,9 +56,12 @@ class DraggableShiftCell extends StatelessWidget {
       onPaste: onPaste,
       onClear: onClear,
     );
+  }
 
-    if (isDraggable && shift != null) {
-      cell = Draggable<Shift>(
+  @override
+  Widget build(BuildContext context) {
+    if (shift != null && isDraggable) {
+      return Draggable<Shift>(
         data: shift,
         feedback: Material(
           color: Colors.transparent,
@@ -84,16 +90,12 @@ class DraggableShiftCell extends StatelessWidget {
             ),
           ),
         ),
-        childWhenDragging: Opacity(
-          opacity: 0.35,
-          child: cell,
-        ),
-        child: cell,
+        child: _buildCell(),
       );
     }
 
     if (isDropTarget) {
-      cell = DragTarget<Shift>(
+      return DragTarget<Shift>(
         onWillAcceptWithDetails: (_) => true,
         onAcceptWithDetails: (details) => onMove?.call(details.data),
         builder: (context, candidateData, rejectedData) {
@@ -106,12 +108,12 @@ class DraggableShiftCell extends StatelessWidget {
                   ? Border.all(color: AppStyles.primary, width: 2)
                   : null,
             ),
-            child: cell,
+            child: _buildCell(),
           );
         },
       );
     }
 
-    return cell;
+    return _buildCell();
   }
 }
