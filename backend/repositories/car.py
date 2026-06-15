@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Car
@@ -27,18 +27,22 @@ class CarRepository(BaseRepository[Car]):
         )
         return result.scalar_one_or_none()
 
-    async def set_non_primary_for_user(self, user_id: int, exclude_id: int | None = None) -> None:
+    async def set_non_primary_for_user(
+        self, user_id: int, exclude_id: int | None = None
+    ) -> None:
         stmt = (
-            select(Car)
+            update(Car)
             .where(Car.userId == user_id, Car.isPrimary.is_(True))
+            .values(isPrimary=False)
+            .execution_options(synchronize_session="fetch")
         )
         if exclude_id is not None:
             stmt = stmt.where(Car.id != exclude_id)
-        result = await self._db.execute(stmt)
-        for car in result.scalars().all():
-            car.isPrimary = False
+        await self._db.execute(stmt)
 
-    async def get_oldest_for_user(self, user_id: int, exclude_id: int | None = None) -> Car | None:
+    async def get_oldest_for_user(
+        self, user_id: int, exclude_id: int | None = None
+    ) -> Car | None:
         stmt = (
             select(Car)
             .where(Car.userId == user_id)
