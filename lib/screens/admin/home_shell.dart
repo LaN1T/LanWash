@@ -38,11 +38,11 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final appointmentBadges = context.select<AppointmentProvider,
-            ({bool loading, int favCount})>(
-        (ap) => (loading: ap.loading, favCount: ap.favoriteAppointments.length));
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final loading = appointmentProvider.loading;
+    final favCount = appointmentProvider.favoriteAppointments.length;
     final theme = Theme.of(context);
-    if (appointmentBadges.loading) {
+    if (loading) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: Center(
@@ -61,7 +61,6 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     // У админа считаем только избранные ЗАПИСИ (не услуги клиента)
-    final favCount = appointmentBadges.favCount;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -160,8 +159,8 @@ class _HomeShellState extends State<HomeShell> {
   Widget _buildDrawer(BuildContext ctx) {
     final username = ctx.select<AuthProvider, String>((a) => a.username);
     final isAdmin = ctx.select<AuthProvider, bool>((a) => a.isAdmin);
-    final favCount =
-        ctx.select<AppointmentProvider, int>((ap) => ap.favoriteAppointments.length);
+    final favCount = ctx.select<AppointmentProvider, int>(
+        (ap) => ap.favoriteAppointments.length);
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -540,8 +539,7 @@ class _HomeShellState extends State<HomeShell> {
 class _NotesBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final count =
-        context.select<NoteProvider, int>((np) => np.unreadNotes);
+    final count = context.watch<NoteProvider>().unreadNotes;
 
     return Badge(
       isLabelVisible: count > 0,
@@ -556,8 +554,7 @@ class _NotesBadge extends StatelessWidget {
 class _SupportBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final count = context.select<SupportProvider, int>(
-        (sp) => sp.unreadAdminCount);
+    final count = context.watch<SupportProvider>().unreadAdminCount;
 
     return Badge(
       isLabelVisible: count > 0,
