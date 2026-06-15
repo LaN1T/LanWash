@@ -35,6 +35,18 @@ class UserRepository(BaseRepository[User]):
         )
         return list(result.scalars().all())
 
+    async def list_client_usernames(
+        self, *, limit: int, offset: int
+    ) -> list[str]:
+        result = await self._db.execute(
+            select(User.username)
+            .where(User.role == "client")
+            .order_by(User.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        return [row[0] for row in result.all() if row[0]]
+
     async def update_fields(self, pk: int, updates: dict) -> int:
         result = await self._db.execute(
             update(User).where(User.id == pk).values(updates)

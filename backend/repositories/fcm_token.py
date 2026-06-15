@@ -14,3 +14,9 @@ class FcmTokenRepository(BaseRepository[FcmToken]):
             select(FcmToken).where(FcmToken.username == username)
         )
         return result.scalar_one_or_none()
+
+    async def list_tokens_by_username(self, username: str) -> list[str]:
+        result = await self._db.execute(
+            select(FcmToken.token).where(FcmToken.username == username)
+        )
+        return [row[0] for row in result.all() if row[0]]

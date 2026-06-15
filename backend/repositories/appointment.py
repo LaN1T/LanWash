@@ -168,3 +168,18 @@ class AppointmentRepository(BaseRepository[Appointment]):
             .limit(limit)
         )
         return list(result.all())
+
+    async def list_completed_by_owners(
+        self, usernames: list[str]
+    ) -> list[Appointment]:
+        if not usernames:
+            return []
+        result = await self._db.execute(
+            select(Appointment)
+            .where(
+                Appointment.ownerUsername.in_(usernames),
+                Appointment.status == "completed",
+            )
+            .order_by(Appointment.dateTime.asc())
+        )
+        return list(result.scalars().all())
