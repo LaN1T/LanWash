@@ -12,6 +12,7 @@ import '../../widgets/shift_schedule/shift_filter_bar.dart';
 
 import '../../widgets/shift_schedule/shift_requests_panel.dart';
 import '../../widgets/shift_schedule/shift_templates_sheet.dart';
+import '../../widgets/shift_schedule/draggable_shift_cell.dart';
 import '../../models/shift_template.dart';
 
 class ShiftScheduleScreen extends StatefulWidget {
@@ -528,6 +529,51 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (ok != null && mounted) {
       _showSnack('Смена возвращена на рассмотрение');
       _loadData();
+    }
+  }
+
+  Future<void> _handleShiftMove(
+      Shift moved, User targetWasher, DateTime targetDate) async {
+    final fmt = DateFormat('yyyy-MM-dd');
+    final targetDateStr = fmt.format(targetDate);
+
+    // No-op drop on the same cell.
+    if (moved.userId == targetWasher.id && moved.date == targetDateStr) {
+      return;
+    }
+
+    final existing = _findShift(targetWasher.id!, targetDate);
+    if (existing != null && existing.id != moved.id) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Перезаписать смену?'),
+          content: const Text(
+              'В целевой ячейке уже есть смена. Продолжить и заменить её?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Перезаписать',
+                  style: TextStyle(color: AppStyles.danger)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    final result = await context
+        .read<ApiService>()
+        .moveShift(moved.id, targetWasher.id!, targetDateStr);
+    if (result != null && mounted) {
+      _showSnack('Смена перемещена');
+      _loadData();
+    } else if (mounted) {
+      _showSnack('Не удалось переместить смену', isError: true);
     }
   }
 
@@ -1166,11 +1212,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                   return _wrapHighlight(
                     highlight,
                     matchesFilter
-                        ? ShiftCell(
+                        ? DraggableShiftCell(
                             washer: w,
                             date: d,
                             shift: shift,
                             canEdit: _canEdit(w),
+                            isDraggable: _isAdmin && shift != null,
+                            isDropTarget: _isAdmin,
                             dayShifts: dayShifts,
                             onTap: () => _openEditor(w, d, shift),
                             onCopy: shift != null
@@ -1182,6 +1230,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                             onClear: shift != null
                                 ? () => _deleteShift(shift)
                                 : null,
+                            onMove: (moved) => _handleShiftMove(moved, w, d),
                           )
                         : const SizedBox(height: 72),
                   );
