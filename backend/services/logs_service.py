@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import LogEntry
+from repositories.log_entry import LogEntryRepository
 
 
 class LogAccessDeniedError(Exception):
@@ -15,25 +16,13 @@ class LogsService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._logs = LogEntryRepository(db)
 
     async def get_all(self, limit: int, offset: int = 0) -> list[LogEntry]:
-        result = await self._db.execute(
-            select(LogEntry)
-            .order_by(LogEntry.timestamp.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        return list(result.scalars().all())
+        return await self._logs.list_all(limit=limit, offset=offset)
 
     async def get_by_user(self, username: str, limit: int, offset: int = 0) -> list[LogEntry]:
-        result = await self._db.execute(
-            select(LogEntry)
-            .where(LogEntry.username == username)
-            .order_by(LogEntry.timestamp.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        return list(result.scalars().all())
+        return await self._logs.list_by_user(username, limit=limit, offset=offset)
 
     async def create_log(self, username: str, action: str, details: str) -> LogEntry:
         new_log = LogEntry(
