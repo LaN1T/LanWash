@@ -4,7 +4,6 @@ import json
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.redis_client import get_redis
@@ -12,9 +11,13 @@ from models import (
     Consumable,
     ConsumableRefillLog,
     ConsumableUsageLog,
-    Service,
     ServiceConsumable,
 )
+from repositories.consumable import ConsumableRepository
+from repositories.consumable_refill_log import ConsumableRefillLogRepository
+from repositories.consumable_usage_log import ConsumableUsageLogRepository
+from repositories.service import ServiceRepository
+from repositories.service_consumable import ServiceConsumableRepository
 from schemas import (
     ConsumableRequest,
     RefillRequest,
@@ -39,33 +42,27 @@ class ConsumablesService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._consumables = ConsumableRepository(db)
+        self._services = ServiceRepository(db)
+        self._service_consumables = ServiceConsumableRepository(db)
+        self._refill_logs = ConsumableRefillLogRepository(db)
+        self._usage_logs = ConsumableUsageLogRepository(db)
 
     async def get_all_consumables(self) -> list[Consumable]:
-        result = await self._db.execute(select(Consumable).order_by(Consumable.name.asc()))
-        return list(result.scalars().all())
+        return await self._consumables.list_all_ordered()
 
     async def get_consumables_by_service(self, service_id: str) -> list[ServiceConsumable]:
-        result = await self._db.execute(
-            select(ServiceConsumable)
-            .where(ServiceConsumable.serviceId == service_id)
-            .order_by(ServiceConsumable.consumableId.asc())
-        )
-        return list(result.scalars().all())
+        return await self._service_consumables.list_by_service(service_id)
 
     async def create_consumable(self, req: ConsumableRequest) -> Consumable:
         new_consumable = Consumable(id=str(uuid.uuid4()), name=req.name, unit=req.unit)
-        self._db.add(new_consumable)
+        await self._consumables.add(new_consumable)
         await self._db.commit()
         await self._db.refresh(new_consumable)
         return new_consumable
 
     async def get_low_stock_alerts(self) -> list[Consumable]:
-        result = await self._db.execute(
-            select(Consumable)
-            .where(Consumable.currentStock < Consumable.minStock)
-            .order_by(Consumable.name.asc())
-        )
-        return list(result.scalars().all())
+        return await self._consumables.list_low_stock_alerts()
 
     _FORECAST_CACHE_TTL_SECONDS = 300
 
@@ -95,38 +92,31 @@ class ConsumablesService:
         return data
 
     async def get_consumable(self, consumable_id: str) -> Consumable | None:
-        result = await self._db.execute(select(Consumable).where(Consumable.id == consumable_id))
-        return result.scalar_one_or_none()
+        return await self._consumables.get_by_id(consumable_id)
 
     async def update_consumable(self, consumable_id: str, req: ConsumableRequest) -> Consumable | None:
-        result = await self._db.execute(
-            update(Consumable)
-            .where(Consumable.id == consumable_id)
-            .values(name=req.name, unit=req.unit)
-        )
-        await self._db.commit()
-        if result.rowcount == 0:
+        consumable = await self._consumables.get_by_id(consumable_id)
+        if not consumable:
             return None
-        return await self.get_consumable(consumable_id)
+        consumable.name = req.name
+        consumable.unit = req.unit
+        await self._db.commit()
+        await self._db.refresh(consumable)
+        return consumable
 
     async def delete_consumable(self, consumable_id: str) -> bool:
-        await self._db.execute(
-            delete(ServiceConsumable).where(ServiceConsumable.consumableId == consumable_id)
-        )
-        result = await self._db.execute(
-            delete(Consumable).where(Consumable.id == consumable_id)
-        )
+        await self._service_consumables.delete_by_consumable_id(consumable_id)
+        deleted = await self._consumables.delete_by_id(consumable_id)
         await self._db.commit()
-        return result.rowcount > 0
+        return deleted
 
     async def refill_consumable(self, consumable_id: str, req: RefillRequest, refilled_by: str) -> Consumable | None:
-        result = await self._db.execute(select(Consumable).where(Consumable.id == consumable_id))
-        consumable = result.scalar_one_or_none()
+        consumable = await self._consumables.get_by_id(consumable_id)
         if not consumable:
             return None
         old_stock = consumable.currentStock
         consumable.currentStock += req.amount
-        self._db.add(
+        await self._refill_logs.add(
             ConsumableRefillLog(
                 consumableId=consumable_id,
                 amount=req.amount,
@@ -141,12 +131,7 @@ class ConsumablesService:
         return consumable
 
     async def get_refill_history(self, consumable_id: str) -> list[dict]:
-        result = await self._db.execute(
-            select(ConsumableRefillLog)
-            .where(ConsumableRefillLog.consumableId == consumable_id)
-            .order_by(ConsumableRefillLog.timestamp.desc())
-        )
-        logs = result.scalars().all()
+        logs = await self._refill_logs.list_by_consumable(consumable_id)
         return [
             {
                 "id": log.id,
@@ -160,20 +145,14 @@ class ConsumablesService:
         ]
 
     async def get_consumable_forecast(self, consumable_id: str) -> dict | None:
-        res = await self._db.execute(select(Consumable).where(Consumable.id == consumable_id))
-        consumable = res.scalar_one_or_none()
+        consumable = await self._consumables.get_by_id(consumable_id)
         if not consumable:
             return None
 
         thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
-        usage_res = await self._db.execute(
-            select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0))
-            .where(
-                ConsumableUsageLog.consumableId == consumable_id,
-                ConsumableUsageLog.timestamp >= thirty_days_ago,
-            )
+        total_used_30d = await self._usage_logs.sum_usage_since(
+            consumable_id, thirty_days_ago
         )
-        total_used_30d = usage_res.scalar() or 0.0
 
         avg_daily = total_used_30d / 30.0 if total_used_30d > 0 else 0.0
         days_left = None
@@ -194,25 +173,21 @@ class ConsumablesService:
         }
 
     async def link_consumable_to_service(self, req: ServiceConsumableRequest) -> dict:
-        res_s = await self._db.execute(select(Service).where(Service.id == req.serviceId))
-        if not res_s.scalar_one_or_none():
+        service = await self._services.get_by_id(req.serviceId)
+        if not service:
             raise ConsumableNotFoundError(f"Услуга с id={req.serviceId} не найдена")
 
-        res_c = await self._db.execute(select(Consumable).where(Consumable.id == req.consumableId))
-        if not res_c.scalar_one_or_none():
+        consumable = await self._consumables.get_by_id(req.consumableId)
+        if not consumable:
             raise ConsumableNotFoundError(f"Расходник с id={req.consumableId} не найден")
 
-        existing = await self._db.execute(
-            select(ServiceConsumable).where(
-                ServiceConsumable.serviceId == req.serviceId,
-                ServiceConsumable.consumableId == req.consumableId,
-            )
+        link = await self._service_consumables.get_by_service_and_consumable(
+            req.serviceId, req.consumableId
         )
-        link = existing.scalar_one_or_none()
         if link:
             link.quantity_per_service = req.quantity_per_service
         else:
-            self._db.add(
+            await self._service_consumables.add(
                 ServiceConsumable(
                     serviceId=req.serviceId,
                     consumableId=req.consumableId,
@@ -228,14 +203,11 @@ class ConsumablesService:
         }
 
     async def unlink_consumable_from_service(self, service_id: str, consumable_id: str) -> bool:
-        result = await self._db.execute(
-            delete(ServiceConsumable).where(
-                ServiceConsumable.serviceId == service_id,
-                ServiceConsumable.consumableId == consumable_id,
-            )
+        deleted = await self._service_consumables.delete_by_service_and_consumable(
+            service_id, consumable_id
         )
         await self._db.commit()
-        return result.rowcount > 0
+        return deleted
 
     # ─── Excel export / import helpers ───────────────────────────────────────
 
@@ -303,8 +275,8 @@ class ConsumablesService:
         for cell in ws_stock[1]:
             self._style_header(cell)
 
-        result = await self._db.execute(select(Consumable).order_by(Consumable.name.asc()))
-        for c in result.scalars().all():
+        all_consumables = await self._consumables.list_all_ordered()
+        for c in all_consumables:
             status = "Низкий" if c.currentStock < c.minStock else "В норме"
             ws_stock.append([
                 self._sanitize_excel(c.id),
@@ -323,20 +295,12 @@ class ConsumablesService:
         for cell in ws_refill[1]:
             self._style_header(cell)
 
-        query_refill = select(ConsumableRefillLog).order_by(ConsumableRefillLog.timestamp.desc())
-        if date_from:
-            query_refill = query_refill.where(ConsumableRefillLog.timestamp >= date_from)
-        if date_to:
-            query_refill = query_refill.where(ConsumableRefillLog.timestamp <= date_to)
-
-        refill_logs = (await self._db.execute(query_refill)).scalars().all()
+        refill_logs = await self._refill_logs.list_by_date_range(date_from, date_to)
         refill_cids = {log.consumableId for log in refill_logs}
         cons_names: dict[str, str] = {}
         if refill_cids:
-            c_res = await self._db.execute(
-                select(Consumable.id, Consumable.name).where(Consumable.id.in_(refill_cids))
-            )
-            cons_names = {cid: name for cid, name in c_res.all()}
+            consumables = await self._consumables.get_by_ids(list(refill_cids))
+            cons_names = {c.id: c.name for c in consumables}
 
         for log in refill_logs:
             name = cons_names.get(log.consumableId, log.consumableId)
@@ -357,19 +321,12 @@ class ConsumablesService:
         for cell in ws_usage[1]:
             self._style_header(cell)
 
-        query_usage = select(ConsumableUsageLog)
-        if date_from:
-            query_usage = query_usage.where(ConsumableUsageLog.timestamp >= date_from)
-        if date_to:
-            query_usage = query_usage.where(ConsumableUsageLog.timestamp <= date_to)
-        usage_logs = (await self._db.execute(query_usage)).scalars().all()
-
+        usage_logs = await self._usage_logs.list_by_date_range(date_from, date_to)
         usage_cids = {log.consumableId for log in usage_logs}
-        consumables_res = await self._db.execute(
-            select(Consumable.id, Consumable.name, Consumable.unit)
-            .where(Consumable.id.in_(usage_cids))
-        )
-        consumables_map = {cid: (name, unit) for cid, name, unit in consumables_res.all()}
+        consumables_map: dict[str, tuple[str, str]] = {}
+        if usage_cids:
+            consumables = await self._consumables.get_by_ids(list(usage_cids))
+            consumables_map = {c.id: (c.name, c.unit) for c in consumables}
 
         usage_sums: dict[str, float] = {}
         for log in usage_logs:
@@ -393,18 +350,9 @@ class ConsumablesService:
         for cell in ws_forecast[1]:
             self._style_header(cell)
 
-        all_consumables = (await self._db.execute(select(Consumable))).scalars().all()
+        all_consumables = await self._consumables.list_all()
         thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
-
-        usage_sums_res = await self._db.execute(
-            select(
-                ConsumableUsageLog.consumableId,
-                func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0),
-            )
-            .where(ConsumableUsageLog.timestamp >= thirty_days_ago)
-            .group_by(ConsumableUsageLog.consumableId)
-        )
-        usage_sums_map = {cid: float(total) for cid, total in usage_sums_res.all()}
+        usage_sums_map = await self._usage_logs.sum_usage_grouped_since(thirty_days_ago)
 
         for c in all_consumables:
             total_used = usage_sums_map.get(c.id, 0.0)
@@ -479,7 +427,7 @@ class ConsumablesService:
         errors: list[str] = []
         processed = 0
 
-        all_consumables = (await self._db.execute(select(Consumable))).scalars().all()
+        all_consumables = await self._consumables.list_all()
         consumables_by_name = {c.name.lower(): c for c in all_consumables}
 
         for row in ws.iter_rows(min_row=2, values_only=True):
@@ -509,7 +457,7 @@ class ConsumablesService:
 
             old_stock = consumable.currentStock
             consumable.currentStock += amount
-            self._db.add(
+            await self._refill_logs.add(
                 ConsumableRefillLog(
                     consumableId=consumable.id,
                     amount=amount,
