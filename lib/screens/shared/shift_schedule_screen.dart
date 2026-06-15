@@ -376,6 +376,7 @@ class BulkActionsMenu extends StatelessWidget {
 
 class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   bool _loading = true;
+  String? _loadError;
   List<User> _washers = [];
   List<Shift> _shifts = [];
   List<Map<String, dynamic>> _currentShifts = [];
@@ -411,45 +412,67 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   }
 
   Future<void> _jumpToMyNearestShiftWeek() async {
-    final api = context.read<ApiService>();
-    final myShifts = await api.getMyShifts();
-    if (myShifts.isNotEmpty) {
-      final now = DateTime.now();
-      Shift? nearest;
-      var minDiff = const Duration(days: 365);
-      for (final s in myShifts) {
-        final d = DateTime.parse(s.date);
-        final diff = d.difference(now).abs();
-        if (diff < minDiff) {
-          minDiff = diff;
-          nearest = s;
+    try {
+      final api = context.read<ApiService>();
+      final myShifts = await api.getMyShifts();
+      if (myShifts.isNotEmpty) {
+        final now = DateTime.now();
+        Shift? nearest;
+        var minDiff = const Duration(days: 365);
+        for (final s in myShifts) {
+          final d = DateTime.parse(s.date);
+          final diff = d.difference(now).abs();
+          if (diff < minDiff) {
+            minDiff = diff;
+            nearest = s;
+          }
+        }
+        if (nearest != null) {
+          final d = DateTime.parse(nearest.date);
+          setState(() => _weekStart = _mondayOf(d));
         }
       }
-      if (nearest != null) {
-        final d = DateTime.parse(nearest.date);
-        setState(() => _weekStart = _mondayOf(d));
-      }
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: failed to load nearest shift week: $e\n$st');
     }
     if (mounted) _loadData();
   }
 
   Future<void> _loadData() async {
-    setState(() => _loading = true);
-    final api = context.read<ApiService>();
-    final washers = await api.getWashers();
-    final end = _weekStart.add(const Duration(days: 6));
-    final fmt = DateFormat('yyyy-MM-dd');
-    final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
-    final current = await api.getCurrentShifts();
-    final templates = await api.getShiftTemplates();
-    if (mounted) {
-      setState(() {
-        _washers = washers;
-        _shifts = shifts;
-        _currentShifts = current;
-        _templates = templates;
-        _loading = false;
-      });
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final api = context.read<ApiService>();
+      final end = _weekStart.add(const Duration(days: 6));
+      final fmt = DateFormat('yyyy-MM-dd');
+
+      final results = await Future.wait([
+        api.getWashers(),
+        api.getShifts(fmt.format(_weekStart), fmt.format(end)),
+        api.getCurrentShifts(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _washers = results[0] as List<User>;
+          _shifts = results[1] as List<Shift>;
+          _currentShifts = results[2] as List<Map<String, dynamic>>;
+          _loading = false;
+        });
+      }
+
+      // Templates are loaded separately so they can't block the main schedule.
+      _loadTemplates();
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: _loadData failed: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _loadError = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -594,8 +617,12 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   }
 
   Future<void> _loadTemplates() async {
-    final templates = await context.read<ApiService>().getShiftTemplates();
-    if (mounted) setState(() => _templates = templates);
+    try {
+      final templates = await context.read<ApiService>().getShiftTemplates();
+      if (mounted) setState(() => _templates = templates);
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: failed to load templates: $e\n$st');
+    }
   }
 
   Future<void> _saveCurrentWeekAsTemplate(String name) async {
@@ -1003,9 +1030,29 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _washers.isEmpty
-              ? const Center(child: Text('Нет мойщиков для отображения'))
-              : LayoutBuilder(
+          : _loadError != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, color: AppStyles.danger, size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Не удалось загрузить расписание:\n$_loadError',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _loadData,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                )
+              : _washers.isEmpty
+                  ? const Center(child: Text('Нет мойщиков для отображения'))
+                  : LayoutBuilder(
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= 1100;
                     return Row(
