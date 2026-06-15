@@ -44,9 +44,19 @@ async def mark_sent(
     notification_id: int,
 ) -> None:
     """Mark a notification as sent."""
+    await mark_sent_batch(db, [notification_id])
+
+
+async def mark_sent_batch(
+    db: AsyncSession,
+    notification_ids: List[int],
+) -> None:
+    """Mark multiple notifications as sent in a single UPDATE."""
+    if not notification_ids:
+        return
     await db.execute(
         update(NotificationQueue)
-        .where(NotificationQueue.id == notification_id)
+        .where(NotificationQueue.id.in_(notification_ids))
         .values(sentAt=datetime.now().isoformat())
     )
     await db.commit()

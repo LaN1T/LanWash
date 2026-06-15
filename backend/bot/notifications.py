@@ -1,18 +1,10 @@
 import asyncio
 
 from aiogram import Bot
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import get_settings
-from services.notification_service import get_pending_notifications, mark_sent
-
-settings = get_settings()
-
-# Use the same DATABASE_URL from settings
-database_url = settings.database_url
-engine = create_async_engine(database_url, echo=False)
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+from database import AsyncSessionLocal
+from services.notification_service import get_pending_notifications, mark_sent_batch
 
 
 async def poll_notifications(bot: Bot):
@@ -20,16 +12,19 @@ async def poll_notifications(bot: Bot):
     while True:
         await asyncio.sleep(30)
         try:
-            async with async_session() as db:
+            async with AsyncSessionLocal() as db:
                 notifications = await get_pending_notifications(db, limit=100)
+                sent_ids = []
                 for notification in notifications:
                     try:
                         await bot.send_message(
                             chat_id=int(notification.telegramId),
                             text=notification.message,
                         )
-                        await mark_sent(db, notification.id)
+                        sent_ids.append(notification.id)
                     except Exception as e:
                         print(f"Failed to send notification {notification.id}: {e}")
+                if sent_ids:
+                    await mark_sent_batch(db, sent_ids)
         except Exception as e:
             print(f"Notification poller error: {e}")
