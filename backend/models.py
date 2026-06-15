@@ -395,6 +395,11 @@ class ShiftResponse(BaseModel):
     updatedAt: str
 
 
+class ShiftMoveRequest(BaseModel):
+    targetUserId: int = Field(..., ge=1)
+    targetDate: str = Field(..., max_length=10, description="YYYY-MM-DD")
+
+
 # ─── Shift Templates ─────────────────────────────────────────────────────────
 class ShiftTemplateSlot(BaseModel):
     weekday: int = Field(..., ge=1, le=7, description="1=Monday ... 7=Sunday")
