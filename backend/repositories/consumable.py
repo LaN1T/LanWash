@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Consumable
@@ -9,11 +9,14 @@ class ConsumableRepository(BaseRepository[Consumable]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Consumable)
 
-    async def list_all_ordered(self) -> list[Consumable]:
+    async def update_by_id(self, consumable_id: str, **values) -> Consumable | None:
         result = await self._db.execute(
-            select(Consumable).order_by(Consumable.name.asc())
+            update(Consumable)
+            .where(Consumable.id == consumable_id)
+            .values(**values)
+            .returning(Consumable)
         )
-        return list(result.scalars().all())
+        return result.scalar_one_or_none()
 
     async def list_low_stock_alerts(self) -> list[Consumable]:
         result = await self._db.execute(

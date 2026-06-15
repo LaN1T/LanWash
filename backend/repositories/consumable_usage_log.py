@@ -17,6 +17,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
             stmt = stmt.where(ConsumableUsageLog.timestamp >= date_from)
         if date_to:
             stmt = stmt.where(ConsumableUsageLog.timestamp <= date_to)
+        stmt = stmt.order_by(ConsumableUsageLog.timestamp.desc())
         result = await self._db.execute(stmt)
         return list(result.scalars().all())
 

@@ -1,5 +1,5 @@
-import io
 import asyncio
+import io
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -10,7 +10,6 @@ from core.redis_client import get_redis
 from models import (
     Consumable,
     ConsumableRefillLog,
-    ConsumableUsageLog,
     ServiceConsumable,
 )
 from repositories.consumable import ConsumableRepository
@@ -49,7 +48,7 @@ class ConsumablesService:
         self._usage_logs = ConsumableUsageLogRepository(db)
 
     async def get_all_consumables(self) -> list[Consumable]:
-        return await self._consumables.list_all_ordered()
+        return await self._consumables.list_all(order_by=Consumable.name.asc())
 
     async def get_consumables_by_service(self, service_id: str) -> list[ServiceConsumable]:
         return await self._service_consumables.list_by_service(service_id)
@@ -95,14 +94,13 @@ class ConsumablesService:
         return await self._consumables.get_by_id(consumable_id)
 
     async def update_consumable(self, consumable_id: str, req: ConsumableRequest) -> Consumable | None:
-        consumable = await self._consumables.get_by_id(consumable_id)
-        if not consumable:
+        updated = await self._consumables.update_by_id(
+            consumable_id, name=req.name, unit=req.unit
+        )
+        if updated is None:
             return None
-        consumable.name = req.name
-        consumable.unit = req.unit
         await self._db.commit()
-        await self._db.refresh(consumable)
-        return consumable
+        return updated
 
     async def delete_consumable(self, consumable_id: str) -> bool:
         await self._service_consumables.delete_by_consumable_id(consumable_id)
@@ -275,7 +273,7 @@ class ConsumablesService:
         for cell in ws_stock[1]:
             self._style_header(cell)
 
-        all_consumables = await self._consumables.list_all_ordered()
+        all_consumables = await self._consumables.list_all(order_by=Consumable.name.asc())
         for c in all_consumables:
             status = "Низкий" if c.currentStock < c.minStock else "В норме"
             ws_stock.append([
