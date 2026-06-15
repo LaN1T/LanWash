@@ -1051,19 +1051,20 @@ class ApiService {
 
 
   Future<List<Shift>> getTodayShifts() async {
-    final result = await ApiClient.get('/shifts/today');
+    final result = await ApiClient.getList('/shifts/today');
     return result.when(
-      success: (data) => (data as List<dynamic>)
-          .map((e) => Shift.fromMap(e as Map<String, dynamic>))
+      success: (list) => list
+          .cast<Map<String, dynamic>>()
+          .map((m) => Shift.fromMap(m))
           .toList(),
       failure: (_) => [],
     );
   }
 
   Future<List<Map<String, dynamic>>> getCurrentShifts() async {
-    final result = await ApiClient.get('/shifts/current');
+    final result = await ApiClient.getList('/shifts/current');
     return result.when(
-      success: (data) => (data as List<dynamic>).cast<Map<String, dynamic>>(),
+      success: (list) => list.cast<Map<String, dynamic>>(),
       failure: (_) => [],
     );
   }

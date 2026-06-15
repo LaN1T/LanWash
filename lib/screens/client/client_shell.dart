@@ -320,18 +320,18 @@ class _FavoritesBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final favCount = context.select<CatalogProvider, int>((cp) {
-      final favSet = context.read<FavoriteProvider>().serviceFavorites;
-      return cp.services.where((s) => favSet.contains(s.id)).length;
-    });
-
-    return Badge(
-      isLabelVisible: favCount > 0,
-      label: Text('$favCount'),
-      backgroundColor: AppStyles.primary,
-      child: Icon(
-        selected ? Icons.star_rounded : Icons.star_outline,
-        color: selected ? AppStyles.primary : null,
+    return Selector2<CatalogProvider, FavoriteProvider, int>(
+      selector: (_, catalog, favorite) => catalog.services
+          .where((s) => favorite.serviceFavorites.contains(s.id))
+          .length,
+      builder: (_, favCount, __) => Badge(
+        isLabelVisible: favCount > 0,
+        label: Text('$favCount'),
+        backgroundColor: AppStyles.primary,
+        child: Icon(
+          selected ? Icons.star_rounded : Icons.star_outline,
+          color: selected ? AppStyles.primary : null,
+        ),
       ),
     );
   }
