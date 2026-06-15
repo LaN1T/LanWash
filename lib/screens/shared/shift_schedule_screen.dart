@@ -7,6 +7,8 @@ import '../../models/shift.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../widgets/shift_schedule/shift_analytics_header.dart';
+import '../../widgets/shift_schedule/shift_filter_bar.dart';
 
 class ShiftScheduleScreen extends StatefulWidget {
   const ShiftScheduleScreen({super.key});
@@ -275,10 +277,15 @@ class ShiftCell extends StatelessWidget {
     return false;
   }
 
+  static bool hasConflict(Shift shift, List<Shift> dayShifts) =>
+      _hasConflict(shift, dayShifts);
+
   static int _minutes(String t) {
     final p = t.split(':');
     return int.parse(p[0]) * 60 + int.parse(p[1]);
   }
+
+  static int minutes(String t) => _minutes(t);
 }
 
 /// Horizontal list of avatar circles for washers currently on duty.
@@ -372,6 +379,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   int? _highlightedWasherId;
   Shift? _copiedShift;
   List<Shift>? _copiedWeek;
+  ShiftFilter _filter = ShiftFilter.all;
+
+  static const int _targetWeeklyMinutesPerWasher = 40 * 60;
 
   @override
   void initState() {
@@ -465,6 +475,51 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (_isAdmin) return true;
     final me = context.read<AuthProvider>().user;
     return me?.username == washer.username;
+  }
+
+  List<User> get _visibleWashers {
+    switch (_filter) {
+      case ShiftFilter.mine:
+        final me = context.read<AuthProvider>().user;
+        return _washers.where((w) => w.username == me?.username).toList();
+      case ShiftFilter.pending:
+      case ShiftFilter.conflicts:
+      case ShiftFilter.all:
+        return _washers;
+    }
+  }
+
+  List<Shift> get _confirmedShifts =>
+      _shifts.where((s) => s.status == 'confirmed').toList();
+
+  double get _totalConfirmedHours =>
+      _confirmedShifts.fold<int>(0, (sum, s) => sum + s.durationMinutes) / 60.0;
+
+  int get _pendingCount => _shifts.where((s) => s.status == 'pending').length;
+
+  int get _conflictCount {
+    var count = 0;
+    final fmt = DateFormat('yyyy-MM-dd');
+    for (final washer in _washers) {
+      for (var i = 0; i < 7; i++) {
+        final date = fmt.format(_weekStart.add(Duration(days: i)));
+        final day = _shifts
+            .where((s) => s.userId == washer.id && s.date == date)
+            .toList();
+        for (final shift in day) {
+          if (ShiftCell.hasConflict(shift, day)) count++;
+        }
+      }
+    }
+    return count ~/ 2;
+  }
+
+  double? get _utilizationPercent {
+    final availableMinutes = _washers.length * _targetWeeklyMinutesPerWasher;
+    if (availableMinutes == 0) return null;
+    final confirmedMinutes =
+        _confirmedShifts.fold<int>(0, (sum, s) => sum + s.durationMinutes);
+    return (confirmedMinutes / availableMinutes) * 100;
   }
 
   void _copyShift(Shift shift) {
@@ -725,18 +780,41 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
             onPressed: () => _changeWeek(1),
           ),
           const SizedBox(width: 8),
-          if (_isAdmin)
-            BulkActionsMenu(
-              onApproveAll: () => _confirmBulkAction('approve'),
-              onRejectAll: () => _confirmBulkAction('reject'),
+          if (_isAdmin && _pendingCount > 0) ...[
+            TextButton.icon(
+              onPressed: () => _confirmBulkAction('approve'),
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Одобрить все'),
+              style: TextButton.styleFrom(foregroundColor: AppStyles.success),
             ),
+            TextButton.icon(
+              onPressed: () => _confirmBulkAction('reject'),
+              icon: const Icon(Icons.close, size: 18),
+              label: const Text('Отклонить все'),
+              style: TextButton.styleFrom(foregroundColor: AppStyles.danger),
+            ),
+          ],
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _washers.isEmpty
               ? const Center(child: Text('Нет мойщиков для отображения'))
-              : _buildTable(),
+              : Column(
+                  children: [
+                    ShiftAnalyticsHeader(
+                      totalConfirmedHours: _totalConfirmedHours,
+                      pendingCount: _pendingCount,
+                      conflictCount: _conflictCount,
+                      utilizationPercent: _utilizationPercent,
+                    ),
+                    ShiftFilterBar(
+                      selected: _filter,
+                      onChanged: (f) => setState(() => _filter = f),
+                    ),
+                    Expanded(child: _buildTable()),
+                  ],
+                ),
     );
   }
 
@@ -782,7 +860,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                 ],
               ),
               // Rows
-              ..._washers.map((w) {
+              ..._visibleWashers.map((w) {
                 final highlight = _highlightedWasherId == w.id;
                 var totalMinutes = 0;
                 final shiftCells = days.map((d) {
@@ -793,21 +871,35 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
                   final dayShifts = _shifts
                       .where((s) => s.userId == w.id && s.date == fmt.format(d))
                       .toList();
+                  final hasConflict =
+                      shift != null && ShiftCell.hasConflict(shift, dayShifts);
+                  final matchesFilter = _filter == ShiftFilter.all ||
+                      _filter == ShiftFilter.mine ||
+                      (_filter == ShiftFilter.pending &&
+                          shift?.status == 'pending') ||
+                      (_filter == ShiftFilter.conflicts && hasConflict);
+
                   return _wrapHighlight(
                     highlight,
-                    ShiftCell(
-                      washer: w,
-                      date: d,
-                      shift: shift,
-                      canEdit: _canEdit(w),
-                      dayShifts: dayShifts,
-                      onTap: () => _openEditor(w, d, shift),
-                      onCopy: shift != null ? () => _copyShift(shift) : null,
-                      onPaste: shift == null && _copiedShift != null
-                          ? () => _pasteShift(w, d)
-                          : null,
-                      onClear: shift != null ? () => _deleteShift(shift) : null,
-                    ),
+                    matchesFilter
+                        ? ShiftCell(
+                            washer: w,
+                            date: d,
+                            shift: shift,
+                            canEdit: _canEdit(w),
+                            dayShifts: dayShifts,
+                            onTap: () => _openEditor(w, d, shift),
+                            onCopy: shift != null
+                                ? () => _copyShift(shift)
+                                : null,
+                            onPaste: shift == null && _copiedShift != null
+                                ? () => _pasteShift(w, d)
+                                : null,
+                            onClear: shift != null
+                                ? () => _deleteShift(shift)
+                                : null,
+                          )
+                        : const SizedBox(height: 72),
                   );
                 }).toList();
 
@@ -935,6 +1027,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   Widget _hoursCell(int totalMinutes) {
     final hours = totalMinutes / 60;
     final hasHours = totalMinutes > 0;
+    final isOvertime = totalMinutes > _targetWeeklyMinutesPerWasher;
+    final isNearLimit = !isOvertime &&
+        totalMinutes >= (_targetWeeklyMinutesPerWasher * 0.8).round();
     return Container(
       height: 72,
       alignment: Alignment.center,
@@ -943,9 +1038,13 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: hasHours ? FontWeight.w700 : FontWeight.w600,
-          color: hasHours
-              ? AppStyles.primary
-              : AppStyles.adaptiveTextSecondary(context),
+          color: isOvertime
+              ? AppStyles.danger
+              : isNearLimit
+                  ? AppStyles.warning
+                  : hasHours
+                      ? AppStyles.primary
+                      : AppStyles.adaptiveTextSecondary(context),
         ),
       ),
     );
