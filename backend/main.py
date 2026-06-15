@@ -38,6 +38,7 @@ from routers import (
     reports,
     reviews,
     services,
+    shift_templates,
     shifts,
     subscriptions,
     support,
@@ -280,6 +281,7 @@ app.include_router(reports.router, dependencies=[Depends(check_roles(["admin", "
 app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
+app.include_router(shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
 app.include_router(reviews.router)
 app.include_router(cars.router)
 app.include_router(referrals.router)

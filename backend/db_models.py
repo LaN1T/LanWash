@@ -1,5 +1,6 @@
 from sqlalchemy import (
     Boolean,
+    JSON,
     Column,
     Float,
     ForeignKey,
@@ -272,6 +273,18 @@ class Shift(Base):
     createdBy = Column(String, nullable=False)
     createdAt = Column(String, nullable=False)
     updatedAt = Column(String, nullable=False)
+
+class ShiftTemplate(Base):
+    __tablename__ = 'shift_templates'
+    __table_args__ = (
+        Index('ix_shift_templates_owner', 'ownerUsername'),
+    )
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ownerUsername = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    isDefault = Column(Boolean, nullable=False, default=False)
+    slots = Column(JSON, nullable=False, default=list)
+
 
 class NotificationQueue(Base):
     __tablename__ = 'notification_queue'

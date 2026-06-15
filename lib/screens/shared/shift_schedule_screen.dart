@@ -10,6 +10,10 @@ import '../../services/api_service.dart';
 import '../../widgets/shift_schedule/shift_analytics_header.dart';
 import '../../widgets/shift_schedule/shift_filter_bar.dart';
 
+import '../../widgets/shift_schedule/shift_requests_panel.dart';
+import '../../widgets/shift_schedule/shift_templates_sheet.dart';
+import '../../models/shift_template.dart';
+
 class ShiftScheduleScreen extends StatefulWidget {
   const ShiftScheduleScreen({super.key});
 
@@ -372,6 +376,7 @@ class BulkActionsMenu extends StatelessWidget {
 
 class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   bool _loading = true;
+  String? _loadError;
   List<User> _washers = [];
   List<Shift> _shifts = [];
   List<Map<String, dynamic>> _currentShifts = [];
@@ -380,6 +385,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   Shift? _copiedShift;
   List<Shift>? _copiedWeek;
   ShiftFilter _filter = ShiftFilter.all;
+  List<ShiftTemplate> _templates = [];
 
   static const int _targetWeeklyMinutesPerWasher = 40 * 60;
 
@@ -406,43 +412,67 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   }
 
   Future<void> _jumpToMyNearestShiftWeek() async {
-    final api = context.read<ApiService>();
-    final myShifts = await api.getMyShifts();
-    if (myShifts.isNotEmpty) {
-      final now = DateTime.now();
-      Shift? nearest;
-      var minDiff = const Duration(days: 365);
-      for (final s in myShifts) {
-        final d = DateTime.parse(s.date);
-        final diff = d.difference(now).abs();
-        if (diff < minDiff) {
-          minDiff = diff;
-          nearest = s;
+    try {
+      final api = context.read<ApiService>();
+      final myShifts = await api.getMyShifts();
+      if (myShifts.isNotEmpty) {
+        final now = DateTime.now();
+        Shift? nearest;
+        var minDiff = const Duration(days: 365);
+        for (final s in myShifts) {
+          final d = DateTime.parse(s.date);
+          final diff = d.difference(now).abs();
+          if (diff < minDiff) {
+            minDiff = diff;
+            nearest = s;
+          }
+        }
+        if (nearest != null) {
+          final d = DateTime.parse(nearest.date);
+          setState(() => _weekStart = _mondayOf(d));
         }
       }
-      if (nearest != null) {
-        final d = DateTime.parse(nearest.date);
-        setState(() => _weekStart = _mondayOf(d));
-      }
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: failed to load nearest shift week: $e\n$st');
     }
     if (mounted) _loadData();
   }
 
   Future<void> _loadData() async {
-    setState(() => _loading = true);
-    final api = context.read<ApiService>();
-    final washers = await api.getWashers();
-    final end = _weekStart.add(const Duration(days: 6));
-    final fmt = DateFormat('yyyy-MM-dd');
-    final shifts = await api.getShifts(fmt.format(_weekStart), fmt.format(end));
-    final current = await api.getCurrentShifts();
-    if (mounted) {
-      setState(() {
-        _washers = washers;
-        _shifts = shifts;
-        _currentShifts = current;
-        _loading = false;
-      });
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final api = context.read<ApiService>();
+      final end = _weekStart.add(const Duration(days: 6));
+      final fmt = DateFormat('yyyy-MM-dd');
+
+      final results = await Future.wait([
+        api.getWashers(),
+        api.getShifts(fmt.format(_weekStart), fmt.format(end)),
+        api.getCurrentShifts(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _washers = results[0] as List<User>;
+          _shifts = results[1] as List<Shift>;
+          _currentShifts = results[2] as List<Map<String, dynamic>>;
+          _loading = false;
+        });
+      }
+
+      // Templates are loaded separately so they can't block the main schedule.
+      _loadTemplates();
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: _loadData failed: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _loadError = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -475,6 +505,202 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (_isAdmin) return true;
     final me = context.read<AuthProvider>().user;
     return me?.username == washer.username;
+  }
+
+  Future<void> _approveShiftFromPanel(Shift shift) async {
+    final ok = await context.read<ApiService>().approveShift(shift.id);
+    if (ok != null && mounted) {
+      _showSnack('Смена одобрена');
+      _loadData();
+    }
+  }
+
+  Future<void> _rejectShiftFromPanel(Shift shift) async {
+    final ok = await context.read<ApiService>().rejectShift(shift.id);
+    if (ok != null && mounted) {
+      _showSnack('Смена отклонена');
+      _loadData();
+    }
+  }
+
+  Future<void> _reopenShiftFromPanel(Shift shift) async {
+    final ok = await context.read<ApiService>().reopenShift(shift.id);
+    if (ok != null && mounted) {
+      _showSnack('Смена возвращена на рассмотрение');
+      _loadData();
+    }
+  }
+
+  void _jumpToShift(Shift shift) {
+    try {
+      final washer = _washers.firstWhere((w) => w.id == shift.userId);
+      setState(() {
+        _highlightedWasherId = washer.id;
+        _weekStart = _mondayOf(DateTime.parse(shift.date));
+      });
+      _loadData();
+    } catch (_) {}
+  }
+
+  void _showRequestsBottomSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, __) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: ShiftRequestsPanel(
+            shifts: _shifts,
+            washers: _washers,
+            onApprove: _approveShiftFromPanel,
+            onReject: _rejectShiftFromPanel,
+            onUndo: (shift, _) {
+              Navigator.of(context).pop();
+              _reopenShiftFromPanel(shift);
+            },
+            onJump: (shift) {
+              Navigator.of(context).pop();
+              _jumpToShift(shift);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openTemplatesSheet() {
+    final target = _effectiveTargetWasher;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.8,
+        expand: false,
+        builder: (_, __) => ShiftTemplatesSheet(
+          templates: _templates,
+          targetWasher: target,
+          weekStart: _weekStart,
+          onRefresh: _loadTemplates,
+          onSave: (name, _) => _saveCurrentWeekAsTemplate(name),
+          onApply: (template) => _applyTemplate(template, target),
+          onDelete: (template) => _deleteTemplate(template),
+          onSetDefault: (template, isDefault) => _setDefaultTemplate(template, isDefault),
+        ),
+      ),
+    );
+  }
+
+  User? get _selectedWasher {
+    if (_highlightedWasherId != null) {
+      try {
+        return _washers.firstWhere((w) => w.id == _highlightedWasherId);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  User? get _effectiveTargetWasher {
+    if (_selectedWasher != null) return _selectedWasher;
+    if (_isWasher) {
+      final me = context.read<AuthProvider>().user;
+      try {
+        return _washers.firstWhere((w) => w.username == me?.username);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  Future<void> _loadTemplates() async {
+    try {
+      final templates = await context.read<ApiService>().getShiftTemplates();
+      if (mounted) setState(() => _templates = templates);
+    } catch (e, st) {
+      debugPrint('ShiftSchedule: failed to load templates: $e\n$st');
+    }
+  }
+
+  Future<void> _saveCurrentWeekAsTemplate(String name) async {
+    final washer = _effectiveTargetWasher;
+    if (washer == null) {
+      _showSnack('Выберите мойщика (тап по строке)');
+      return;
+    }
+
+    final slots = _shifts
+        .where((s) => s.userId == washer.id)
+        .map((s) {
+          final date = DateTime.parse(s.date);
+          return ShiftTemplateSlot(
+            weekday: date.weekday,
+            startTime: s.startTime,
+            endTime: s.endTime,
+          );
+        })
+        .toList()
+      ..sort((a, b) => a.weekday.compareTo(b.weekday));
+
+    if (slots.isEmpty) {
+      _showSnack('У выбранного мойщика нет смен на текущей неделе');
+      return;
+    }
+
+    final api = context.read<ApiService>();
+    final template = await api.createShiftTemplate(
+      ShiftTemplate(
+        id: 0,
+        ownerUsername: '',
+        name: name,
+        isDefault: false,
+        slots: slots,
+      ),
+    );
+    if (template != null && mounted) {
+      _showSnack('Шаблон сохранён');
+      _loadTemplates();
+    }
+  }
+
+  Future<void> _applyTemplate(ShiftTemplate template, User? target) async {
+    final washer = target ?? _selectedWasher;
+    if (washer == null) {
+      _showSnack('Выберите мойщика');
+      return;
+    }
+
+    final fmt = DateFormat('yyyy-MM-dd');
+    final count = await context.read<ApiService>().applyShiftTemplate(
+      template.id,
+      weekStart: fmt.format(_weekStart),
+      targetUserId: washer.id,
+    );
+    if (mounted) {
+      _showSnack(count > 0 ? 'Применено $count смен' : 'Не удалось применить шаблон');
+      _loadData();
+    }
+  }
+
+  Future<void> _deleteTemplate(ShiftTemplate template) async {
+    final ok = await context.read<ApiService>().deleteShiftTemplate(template.id);
+    if (ok && mounted) {
+      _showSnack('Шаблон удалён');
+      _loadTemplates();
+    }
+  }
+
+  Future<void> _setDefaultTemplate(ShiftTemplate template, bool isDefault) async {
+    final updated = await context.read<ApiService>().updateShiftTemplate(
+      template.copyWith(isDefault: isDefault),
+    );
+    if (updated != null && mounted) {
+      _showSnack(isDefault ? 'Шаблон по умолчанию установлен' : 'По умолчанию снят');
+      _loadTemplates();
+    }
   }
 
   List<User> get _visibleWashers {
@@ -794,26 +1020,84 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
               style: TextButton.styleFrom(foregroundColor: AppStyles.danger),
             ),
           ],
+          TextButton.icon(
+            onPressed: _openTemplatesSheet,
+            icon: const Icon(Icons.calendar_view_week, size: 18),
+            label: const Text('Шаблоны'),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _washers.isEmpty
-              ? const Center(child: Text('Нет мойщиков для отображения'))
-              : Column(
-                  children: [
-                    ShiftAnalyticsHeader(
-                      totalConfirmedHours: _totalConfirmedHours,
-                      pendingCount: _pendingCount,
-                      conflictCount: _conflictCount,
-                      utilizationPercent: _utilizationPercent,
-                    ),
-                    ShiftFilterBar(
-                      selected: _filter,
-                      onChanged: (f) => setState(() => _filter = f),
-                    ),
-                    Expanded(child: _buildTable()),
-                  ],
+          : _loadError != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, color: AppStyles.danger, size: 48),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Не удалось загрузить расписание:\n$_loadError',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _loadData,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                )
+              : _washers.isEmpty
+                  ? const Center(child: Text('Нет мойщиков для отображения'))
+                  : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 1100;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              ShiftAnalyticsHeader(
+                                totalConfirmedHours: _totalConfirmedHours,
+                                pendingCount: _pendingCount,
+                                conflictCount: _conflictCount,
+                                utilizationPercent: _utilizationPercent,
+                              ),
+                              ShiftFilterBar(
+                                selected: _filter,
+                                onChanged: (f) => setState(() => _filter = f),
+                              ),
+                              Expanded(child: _buildTable()),
+                            ],
+                          ),
+                        ),
+                        if (isWide)
+                          ShiftRequestsPanel(
+                            shifts: _shifts,
+                            washers: _washers,
+                            onApprove: _approveShiftFromPanel,
+                            onReject: _rejectShiftFromPanel,
+                            onUndo: (shift, _) => _reopenShiftFromPanel(shift),
+                            onJump: _jumpToShift,
+                          ),
+                      ],
+                    );
+                  },
+                ),
+      floatingActionButton: _loading || _washers.isEmpty
+          ? null
+          : MediaQuery.sizeOf(context).width >= 1100
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: () => _showRequestsBottomSheet(context),
+                  icon: const Icon(Icons.format_list_bulleted),
+                  label: Text(
+                    'Заявки${_pendingCount > 0 ? " ($_pendingCount)" : ""}',
+                  ),
                 ),
     );
   }

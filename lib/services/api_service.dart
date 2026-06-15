@@ -14,6 +14,7 @@ import '../models/report_entry.dart';
 import '../models/promo.dart';
 import '../models/wash_type.dart';
 import '../models/shift.dart';
+import '../models/shift_template.dart';
 import '../models/consumable.dart';
 import '../models/daily_report.dart';
 import '../models/review.dart';
@@ -1029,6 +1030,76 @@ class ApiService {
         }
         return null;
       },
+    );
+  }
+
+  Future<Shift?> reopenShift(int shiftId) async {
+    final result = await ApiClient.put('/shifts/$shiftId/reopen');
+    return result.when(
+      success: (data) => Shift.fromMap(data),
+      failure: (err) async {
+        if (_isNetworkError(err)) {
+          await _queueMutation(
+            action: 'reopen_shift',
+            endpoint: '/shifts/$shiftId/reopen',
+            method: 'PUT',
+            payload: {'id': shiftId},
+          );
+        }
+        return null;
+      },
+    );
+  }
+
+  // ─── Shift Templates ───────────────────────────────────────────────────────
+  Future<List<ShiftTemplate>> getShiftTemplates() async {
+    final result = await ApiClient.getList('/shift-templates/');
+    return result.when(
+      success: (list) => list
+          .cast<Map<String, dynamic>>()
+          .map(ShiftTemplate.fromMap)
+          .toList(),
+      failure: (_) => [],
+    );
+  }
+
+  Future<ShiftTemplate?> createShiftTemplate(ShiftTemplate template) async {
+    final result = await ApiClient.post('/shift-templates/', body: template.toMap());
+    return result.when(
+      success: (data) => ShiftTemplate.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<ShiftTemplate?> updateShiftTemplate(ShiftTemplate template) async {
+    final result = await ApiClient.put(
+      '/shift-templates/${template.id}',
+      body: template.toMap(),
+    );
+    return result.when(
+      success: (data) => ShiftTemplate.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> deleteShiftTemplate(int id) async {
+    final result = await ApiClient.delete('/shift-templates/$id');
+    return result.isSuccess;
+  }
+
+  Future<int> applyShiftTemplate(
+    int templateId, {
+    required String weekStart,
+    int? targetUserId,
+  }) async {
+    final body = {
+      'weekStart': weekStart,
+      if (targetUserId != null) 'targetUserId': targetUserId,
+    };
+    final result = await ApiClient.post('/shift-templates/$templateId/apply', body: body);
+    return result.when(
+      success: (data) => (data['applied'] as int?) ?? 0,
+      failure: (_) => 0,
     );
   }
 

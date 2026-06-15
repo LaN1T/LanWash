@@ -175,6 +175,26 @@ async def reject_shift(
         raise HTTPException(status_code=404, detail="Смена не найдена")
 
 
+@router.put("/{shift_id}/reopen", response_model=ShiftResponse)
+@limiter.limit("10/minute")
+async def reopen_shift(
+    request: Request,
+    shift_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403, detail="Только администратор может возвращать смены на рассмотрение"
+        )
+
+    svc = ShiftsService(db)
+    try:
+        return await svc.reopen_shift(shift_id)
+    except ShiftNotFoundError:
+        raise HTTPException(status_code=404, detail="Смена не найдена")
+
+
 @router.delete("/{shift_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
 async def delete_shift(

@@ -100,7 +100,7 @@ class ShiftRequestCard extends StatelessWidget {
                         label: const Text('Одобрить'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppStyles.success,
-                          side: BorderSide(color: AppStyles.success),
+                          side: const BorderSide(color: AppStyles.success),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
@@ -117,7 +117,7 @@ class ShiftRequestCard extends StatelessWidget {
                         label: const Text('Отклонить'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppStyles.danger,
-                          side: BorderSide(color: AppStyles.danger),
+                          side: const BorderSide(color: AppStyles.danger),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
