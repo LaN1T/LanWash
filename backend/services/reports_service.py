@@ -202,7 +202,7 @@ class ReportsService:
         avg_check = avg_check or 0
 
         box_rows = await self._appointment_repo.get_box_occupancy_in_period(start, end)
-        box_occupancy = {f"box{r[0] + 1}": r[1] for r in box_rows}
+        box_occupancy = {f"box{(r[0] or 0) + 1}": r[1] for r in box_rows}
 
         wash_types_map = await self._wash_type_repo.list_all_id_name_map()
         services_map = await self._service_repo.list_all_id_name_map()

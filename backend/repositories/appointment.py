@@ -1,3 +1,6 @@
+from collections.abc import AsyncGenerator
+from decimal import Decimal
+
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -186,7 +189,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def get_car_model_stats_in_period(
         self, start_iso: str, end_iso: str
-    ) -> list[tuple[str | None, float, int]]:
+    ) -> list[tuple[str | None, Decimal | None, int]]:
         result = await self._db.execute(
             select(
                 Appointment.carModel,
@@ -206,7 +209,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def stream_popular_services_fields_in_period(
         self, start_iso: str, end_iso: str
-    ):
+    ) -> AsyncGenerator[tuple[str | None, str | None, str | None], None]:
         query = select(
             Appointment.additionalServices,
             Appointment.promoId,
@@ -233,7 +236,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def get_completed_stats_in_period(
         self, start_iso: str, end_iso: str
-    ) -> tuple[int, int | None, float | None]:
+    ) -> tuple[int, Decimal | None, Decimal | None]:
         result = await self._db.execute(
             select(
                 func.count(Appointment.id),

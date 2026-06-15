@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +46,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
 
     async def stream_usage_with_appointment_in_period(
         self, start_iso: str, end_iso: str
-    ):
+    ) -> AsyncGenerator[tuple[str, str, str, float, str, str | None], None]:
         query = (
             select(
                 Consumable.id,
