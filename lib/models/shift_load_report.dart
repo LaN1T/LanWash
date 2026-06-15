@@ -40,6 +40,17 @@ class ShiftLoadReport {
           map['availabilityCoverage'] as Map<String, dynamic>),
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'startDate': startDate,
+        'endDate': endDate,
+        'targetWeeklyMinutesPerWasher': targetWeeklyMinutesPerWasher,
+        'dailyHours': dailyHours.map((e) => e.toMap()).toList(),
+        'washerStats': washerStats.map((e) => e.toMap()).toList(),
+        'statusCounts': statusCounts.toMap(),
+        'conflictCount': conflictCount,
+        'availabilityCoverage': availabilityCoverage.toMap(),
+      };
 }
 
 class ShiftLoadDailyEntry {
@@ -60,6 +71,12 @@ class ShiftLoadDailyEntry {
       pendingMinutes: map['pendingMinutes'] as int? ?? 0,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'date': date,
+        'confirmedMinutes': confirmedMinutes,
+        'pendingMinutes': pendingMinutes,
+      };
 }
 
 class ShiftLoadWasherStat {
@@ -95,6 +112,17 @@ class ShiftLoadWasherStat {
       isUnderload: map['isUnderload'] as bool? ?? false,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'userId': userId,
+        'displayName': displayName,
+        'confirmedMinutes': confirmedMinutes,
+        'pendingMinutes': pendingMinutes,
+        'rejectedMinutes': rejectedMinutes,
+        'utilizationPercent': utilizationPercent,
+        'isOvertime': isOvertime,
+        'isUnderload': isUnderload,
+      };
 }
 
 class ShiftLoadStatusCounts {
@@ -115,6 +143,12 @@ class ShiftLoadStatusCounts {
       rejected: map['rejected'] as int? ?? 0,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'confirmed': confirmed,
+        'pending': pending,
+        'rejected': rejected,
+      };
 }
 
 class ShiftLoadAvailabilityCoverage {
@@ -135,4 +169,10 @@ class ShiftLoadAvailabilityCoverage {
       unknownDays: map['unknownDays'] as int? ?? 0,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'availableDays': availableDays,
+        'unavailableDays': unavailableDays,
+        'unknownDays': unknownDays,
+      };
 }
