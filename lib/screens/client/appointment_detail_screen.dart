@@ -141,10 +141,12 @@ class _ClientAppointmentDetailScreenState
                 constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.3),
                 decoration: AppStyles.cardDecoration,
-                child: ListView(
+                child: ListView.builder(
                   shrinkWrap: true,
                   padding: EdgeInsets.zero,
-                  children: a.additionalServices.map((id) {
+                  itemCount: a.additionalServices.length,
+                  itemBuilder: (context, index) {
+                    final id = a.additionalServices[index];
                     final svc = services.firstWhere((s) => s.id == id,
                         orElse: () => Service(
                             id: id,
@@ -171,7 +173,7 @@ class _ClientAppointmentDetailScreenState
                                 fontWeight: FontWeight.w600, fontSize: 14)),
                       ]),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
               const SizedBox(height: 20),
@@ -365,11 +367,11 @@ class _ClientAppointmentDetailScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.volunteer_activism,
                   color: AppStyles.success, size: 24),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Поблагодарить мойщика',
