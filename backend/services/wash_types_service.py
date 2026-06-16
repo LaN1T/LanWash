@@ -1,8 +1,8 @@
-from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
 from models import WashType, WashTypeIncludedExtra
+from repositories import WashTypeRepository, WashTypeIncludedExtraRepository
 from schemas import WashTypeRequest
 
 
@@ -11,18 +11,8 @@ class WashTypesService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
-
-    async def _extras_map(self, wash_type_ids: list[str]) -> dict[str, list[str]]:
-        if not wash_type_ids:
-            return {}
-        extras_res = await self._db.execute(
-            select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
-            .where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
-        )
-        extras_map: dict[str, list[str]] = {}
-        for wt_id, extra_id in extras_res.all():
-            extras_map.setdefault(wt_id, []).append(extra_id)
-        return extras_map
+        self._wash_types = WashTypeRepository(db)
+        self._included_extras = WashTypeIncludedExtraRepository(db)
 
     async def get_all(self) -> list[dict]:
         cache_key = "wash_types:all"
@@ -30,11 +20,10 @@ class WashTypesService:
         if cached is not None:
             return cached
 
-        result = await self._db.execute(
-            select(WashType).order_by(WashType.sortOrder.asc())
+        wash_types = await self._wash_types.list_all_sorted()
+        extras_map = await self._included_extras.list_extras_for_wash_types(
+            [wt.id for wt in wash_types]
         )
-        wash_types = list(result.scalars().all())
-        extras_map = await self._extras_map([wt.id for wt in wash_types])
         data = [
             {
                 "id": wt.id,
@@ -52,26 +41,16 @@ class WashTypesService:
         return data
 
     async def get_one(self, wash_type_id: str) -> WashType | None:
-        result = await self._db.execute(
-            select(WashType).where(WashType.id == wash_type_id)
-        )
-        return result.scalar_one_or_none()
+        return await self._wash_types.get_by_id(wash_type_id)
 
     async def get_included_extra_ids(self, wash_type_id: str) -> list[str]:
-        res = await self._db.execute(
-            select(WashTypeIncludedExtra.extraServiceId)
-            .where(WashTypeIncludedExtra.washTypeId == wash_type_id)
-        )
-        return [r[0] for r in res.all()]
+        return await self._included_extras.list_extra_ids_for_wash_type(wash_type_id)
 
     async def _invalidate_cache(self) -> None:
         await cache.delete("wash_types:all")
 
     async def update(self, wash_type_id: str, req: WashTypeRequest) -> WashType | None:
-        result = await self._db.execute(
-            select(WashType).where(WashType.id == wash_type_id)
-        )
-        wt = result.scalar_one_or_none()
+        wt = await self._wash_types.get_by_id(wash_type_id)
         if not wt:
             return None
 
@@ -82,13 +61,9 @@ class WashTypesService:
         wt.durationMinutes = req.durationMinutes
         wt.sortOrder = req.sortOrder
 
-        await self._db.execute(
-            delete(WashTypeIncludedExtra).where(
-                WashTypeIncludedExtra.washTypeId == wash_type_id
-            )
-        )
+        await self._included_extras.delete_by_wash_type(wash_type_id)
         for extra_id in req.includedExtraIds:
-            self._db.add(
+            await self._included_extras.add(
                 WashTypeIncludedExtra(
                     washTypeId=wash_type_id, extraServiceId=extra_id
                 )
