@@ -18,6 +18,12 @@ class ConsumableRepository(BaseRepository[Consumable]):
         )
         return result.scalar_one_or_none()
 
+    async def list_all_sorted(self) -> list[Consumable]:
+        result = await self._db.execute(
+            select(Consumable).order_by(Consumable.name.asc())
+        )
+        return list(result.scalars().all())
+
     async def list_low_stock_alerts(self) -> list[Consumable]:
         result = await self._db.execute(
             select(Consumable)

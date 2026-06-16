@@ -199,6 +199,18 @@ class AppointmentRepository(BaseRepository[Appointment]):
         )
         return list(result.scalars().all())
 
+    async def list_scheduled_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[Appointment]:
+        result = await self._db.execute(
+            select(Appointment).where(
+                Appointment.status == "scheduled",
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+            )
+        )
+        return list(result.scalars().all())
+
     async def get_car_model_stats_in_period(
         self, start_iso: str, end_iso: str
     ) -> list[tuple[str | None, Decimal | None, int]]:
