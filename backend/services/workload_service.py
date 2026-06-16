@@ -4,17 +4,16 @@ import os
 from datetime import datetime, timedelta
 
 import structlog
-from sqlalchemy import and_, select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import (
-    Appointment,
-    Promo,
-    PromoIncludedExtra,
-    Service,
-    WashType,
-    WashTypeIncludedExtra,
-)
+from models import Appointment
+from repositories.appointment import AppointmentRepository
+from repositories.promo import PromoRepository
+from repositories.promo_included_extra import PromoIncludedExtraRepository
+from repositories.service import ServiceRepository
+from repositories.wash_type import WashTypeRepository
+from repositories.wash_type_included_extra import WashTypeIncludedExtraRepository
 
 logger = structlog.get_logger()
 
@@ -23,30 +22,37 @@ _DISABLE_ADVISORY_LOCK = os.getenv("DISABLE_ADVISORY_LOCK") == "true" or os.gete
 
 NUM_BOXES = 2  # Можно вынести в конфиг или БД
 
+
 class WorkloadService:
     @staticmethod
     async def get_appointment_duration(db: AsyncSession, wash_type_id: str, additional_services_json: str, promo_id: str = None) -> int:
         """
         Calculates total duration in minutes, excluding extra services already covered by the wash type.
         """
+        wash_types = WashTypeRepository(db)
+        wash_type_extras = WashTypeIncludedExtraRepository(db)
+        promos = PromoRepository(db)
+        promo_extras = PromoIncludedExtraRepository(db)
+        services = ServiceRepository(db)
+
         # 1. Базовая длительность типа мойки
-        res_wt = await db.execute(select(WashType.durationMinutes).where(WashType.id == wash_type_id))
-        base_duration = res_wt.scalar() or 30
+        wt_durations = await wash_types.get_durations([wash_type_id])
+        base_duration = wt_durations.get(wash_type_id, 30)
 
         # 2. Получаем услуги, уже включённые в этот тип мойки
-        res_included = await db.execute(select(WashTypeIncludedExtra.extraServiceId).where(WashTypeIncludedExtra.washTypeId == wash_type_id))
-        included_ids = {row[0] for row in res_included.all()}
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types([wash_type_id])
+        included_ids = set(wt_included_raw.get(wash_type_id, []))
 
         # 3. Длительность промо (если есть)
         if promo_id:
-            res_promo = await db.execute(select(Promo.duration).where(Promo.id == promo_id))
-            p_dur = res_promo.scalar()
+            promo_durations = await promos.get_durations([promo_id])
+            p_dur = promo_durations.get(promo_id)
             if p_dur and p_dur > 0:
                 base_duration = p_dur
 
             # Также получаем услуги, включённые в промо, чтобы исключить их
-            res_promo_inc = await db.execute(select(PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId == promo_id))
-            included_ids.update({row[0] for row in res_promo_inc.all()})
+            promo_included_raw = await promo_extras.list_extras_for_promos([promo_id])
+            included_ids.update(promo_included_raw.get(promo_id, []))
 
         # 4. Длительность дополнительных услуг
         total_duration = base_duration
@@ -59,8 +65,8 @@ class WorkloadService:
             # Исключаем уже включённые услуги
             filtered_ids = [eid for eid in extra_ids if eid not in included_ids]
             if filtered_ids:
-                res_extras = await db.execute(select(Service.durationMinutes).where(Service.id.in_(filtered_ids)))
-                total_duration += sum(res_extras.scalars().all())
+                svc_durations = await services.get_durations(filtered_ids)
+                total_duration += sum(svc_durations.get(eid, 0) for eid in filtered_ids)
 
         return total_duration
 
@@ -72,6 +78,12 @@ class WorkloadService:
         if not appointments:
             return {}
 
+        wash_types = WashTypeRepository(db)
+        wash_type_extras = WashTypeIncludedExtraRepository(db)
+        promos = PromoRepository(db)
+        promo_extras = PromoIncludedExtraRepository(db)
+        services = ServiceRepository(db)
+
         wash_type_ids = {a.washTypeId for a in appointments}
         promo_ids = {a.promoId for a in appointments if a.promoId}
         all_service_ids: set = set()
@@ -82,45 +94,23 @@ class WorkloadService:
                 pass
 
         # Wash type durations
-        wt_durations = {}
-        if wash_type_ids:
-            wt_res = await db.execute(
-                select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids))
-            )
-            wt_durations = {row[0]: row[1] for row in wt_res.all()}
+        wt_durations = await wash_types.get_durations(list(wash_type_ids))
 
         # Wash type included extras
-        wt_included: dict[str, set] = {}
-        if wash_type_ids:
-            wti_res = await db.execute(
-                select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
-                .where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
-            )
-            for wt_id, svc_id in wti_res.all():
-                wt_included.setdefault(wt_id, set()).add(svc_id)
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(list(wash_type_ids))
+        wt_included: dict[str, set] = {
+            wt_id: set(extra_ids) for wt_id, extra_ids in wt_included_raw.items()
+        }
 
         # Promo durations and included extras
-        promo_durations = {}
-        promo_included: dict[str, set] = {}
-        if promo_ids:
-            pr_res = await db.execute(
-                select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids))
-            )
-            promo_durations = {row[0]: row[1] for row in pr_res.all()}
-            pri_res = await db.execute(
-                select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
-                .where(PromoIncludedExtra.promoId.in_(promo_ids))
-            )
-            for pr_id, svc_id in pri_res.all():
-                promo_included.setdefault(pr_id, set()).add(svc_id)
+        promo_durations = await promos.get_durations(list(promo_ids))
+        promo_included_raw = await promo_extras.list_extras_for_promos(list(promo_ids))
+        promo_included: dict[str, set] = {
+            promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
+        }
 
         # Service durations
-        svc_durations = {}
-        if all_service_ids:
-            svc_res = await db.execute(
-                select(Service.id, Service.durationMinutes).where(Service.id.in_(all_service_ids))
-            )
-            svc_durations = {row[0]: row[1] for row in svc_res.all()}
+        svc_durations = await services.get_durations(list(all_service_ids))
 
         result = {}
         for a in appointments:
@@ -179,20 +169,16 @@ class WorkloadService:
                 lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
                 await db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(lock_id=lock_id))
 
-        query = select(Appointment).where(
-            and_(
-                Appointment.dateTime >= day_start,
-                Appointment.dateTime <= day_end,
-                Appointment.status != 'cancelled'
-            )
-        )
-        if exclude_appt_id:
-            query = query.where(Appointment.id != exclude_appt_id)
-
-        res = await db.execute(query)
-        day_appointments = res.scalars().all()
+        appointments = AppointmentRepository(db)
+        day_appointments = await appointments.list_for_day(day_start, day_end, exclude_appt_id)
 
         # --- Batch preload all duration data to avoid N+1 queries ---
+        wash_types = WashTypeRepository(db)
+        wash_type_extras = WashTypeIncludedExtraRepository(db)
+        promos = PromoRepository(db)
+        promo_extras = PromoIncludedExtraRepository(db)
+        services = ServiceRepository(db)
+
         wash_type_ids = {a.washTypeId for a in day_appointments}
         promo_ids = {a.promoId for a in day_appointments if a.promoId}
         all_service_ids = set()
@@ -203,33 +189,23 @@ class WorkloadService:
                 pass
 
         # Wash type durations
-        wt_durations = {}
-        if wash_type_ids:
-            wt_res = await db.execute(select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids)))
-            wt_durations = {row[0]: row[1] for row in wt_res.all()}
+        wt_durations = await wash_types.get_durations(list(wash_type_ids))
 
         # Wash type included extras
-        wt_included = {}
-        if wash_type_ids:
-            wti_res = await db.execute(select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId).where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids)))
-            for wt_id, svc_id in wti_res.all():
-                wt_included.setdefault(wt_id, set()).add(svc_id)
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(list(wash_type_ids))
+        wt_included: dict[str, set] = {
+            wt_id: set(extra_ids) for wt_id, extra_ids in wt_included_raw.items()
+        }
 
         # Promo durations and included extras
-        promo_durations = {}
-        promo_included = {}
-        if promo_ids:
-            pr_res = await db.execute(select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids)))
-            promo_durations = {row[0]: row[1] for row in pr_res.all()}
-            pri_res = await db.execute(select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId).where(PromoIncludedExtra.promoId.in_(promo_ids)))
-            for pr_id, svc_id in pri_res.all():
-                promo_included.setdefault(pr_id, set()).add(svc_id)
+        promo_durations = await promos.get_durations(list(promo_ids))
+        promo_included_raw = await promo_extras.list_extras_for_promos(list(promo_ids))
+        promo_included: dict[str, set] = {
+            promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
+        }
 
         # Service durations
-        svc_durations = {}
-        if all_service_ids:
-            svc_res = await db.execute(select(Service.id, Service.durationMinutes).where(Service.id.in_(all_service_ids)))
-            svc_durations = {row[0]: row[1] for row in svc_res.all()}
+        svc_durations = await services.get_durations(list(all_service_ids))
 
         def _compute_duration(appt) -> int:
             base = wt_durations.get(appt.washTypeId, 30)
@@ -283,55 +259,46 @@ class WorkloadService:
         day_start = f"{date_str}T00:00:00"
         day_end = f"{date_str}T23:59:59"
 
-        # Load appointments for the date
-        res = await db.execute(
-            select(Appointment).where(
-                and_(
-                    Appointment.dateTime >= day_start,
-                    Appointment.dateTime <= day_end,
-                    Appointment.status != 'cancelled'
-                )
-            )
-        )
-        appts = res.scalars().all()
+        appointments = AppointmentRepository(db)
+        appts = await appointments.list_for_day(day_start, day_end)
 
         if not appts:
             return {"num_boxes": NUM_BOXES, "busy_slots": [[] for _ in range(NUM_BOXES)]}
 
+        wash_types = WashTypeRepository(db)
+        wash_type_extras = WashTypeIncludedExtraRepository(db)
+        promos = PromoRepository(db)
+        promo_extras = PromoIncludedExtraRepository(db)
+        services = ServiceRepository(db)
+
         # Collect all IDs needed
         wash_type_ids = {a.washTypeId for a in appts}
         promo_ids = {a.promoId for a in appts if a.promoId}
+        all_service_ids = set()
+        for a in appts:
+            try:
+                all_service_ids.update(json.loads(a.additionalServices))
+            except Exception:
+                pass
 
         # Bulk load wash types
-        wt_res = await db.execute(select(WashType.id, WashType.durationMinutes).where(WashType.id.in_(wash_type_ids)))
-        wt_durations = {row[0]: row[1] for row in wt_res.all()}
+        wt_durations = await wash_types.get_durations(list(wash_type_ids))
 
         # Bulk load wash type included extras
-        wtie_res = await db.execute(
-            select(WashTypeIncludedExtra.washTypeId, WashTypeIncludedExtra.extraServiceId)
-            .where(WashTypeIncludedExtra.washTypeId.in_(wash_type_ids))
-        )
-        wt_included = {}
-        for wtid, esid in wtie_res.all():
-            wt_included.setdefault(wtid, set()).add(esid)
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(list(wash_type_ids))
+        wt_included: dict[str, set] = {
+            wt_id: set(extra_ids) for wt_id, extra_ids in wt_included_raw.items()
+        }
 
         # Bulk load promo durations
-        promo_durations = {}
-        promo_included = {}
-        if promo_ids:
-            pr_res = await db.execute(select(Promo.id, Promo.duration).where(Promo.id.in_(promo_ids)))
-            promo_durations = {row[0]: row[1] for row in pr_res.all()}
-
-            pie_res = await db.execute(
-                select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
-                .where(PromoIncludedExtra.promoId.in_(promo_ids))
-            )
-            for pid, esid in pie_res.all():
-                promo_included.setdefault(pid, set()).add(esid)
+        promo_durations = await promos.get_durations(list(promo_ids))
+        promo_included_raw = await promo_extras.list_extras_for_promos(list(promo_ids))
+        promo_included: dict[str, set] = {
+            promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
+        }
 
         # Bulk load all services durations (small table, just load all)
-        svc_res = await db.execute(select(Service.id, Service.durationMinutes))
-        svc_durations = {row[0]: row[1] for row in svc_res.all()}
+        svc_durations = await services.get_durations(list(all_service_ids))
 
         busy_by_box = [[] for _ in range(NUM_BOXES)]
 
@@ -369,5 +336,6 @@ class WorkloadService:
             "num_boxes": NUM_BOXES,
             "busy_slots": busy_by_box
         }
+
 
 workload_service = WorkloadService()

@@ -12,6 +12,24 @@ class AppointmentRepository(BaseRepository[Appointment]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Appointment)
 
+    async def list_for_day(
+        self,
+        day_start: str,
+        day_end: str,
+        exclude_appt_id: str | None = None,
+    ) -> list[Appointment]:
+        query = select(Appointment).where(
+            and_(
+                Appointment.dateTime >= day_start,
+                Appointment.dateTime <= day_end,
+                Appointment.status != "cancelled",
+            )
+        )
+        if exclude_appt_id:
+            query = query.where(Appointment.id != exclude_appt_id)
+        result = await self._db.execute(query)
+        return list(result.scalars().all())
+
     async def count_completed_by_owner(self, username: str) -> int:
         result = await self._db.execute(
             select(func.count(Appointment.id)).where(

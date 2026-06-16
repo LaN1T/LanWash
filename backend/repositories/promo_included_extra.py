@@ -20,3 +20,17 @@ class PromoIncludedExtraRepository(BaseRepository[PromoIncludedExtra]):
         for promo_id, extra_id in result.all():
             extras_map.setdefault(promo_id, []).append(extra_id)
         return extras_map
+
+    async def list_extras_for_promos(
+        self, promo_ids: list[str]
+    ) -> dict[str, list[str]]:
+        if not promo_ids:
+            return {}
+        result = await self._db.execute(
+            select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
+            .where(PromoIncludedExtra.promoId.in_(promo_ids))
+        )
+        extras_map: dict[str, list[str]] = {}
+        for promo_id, extra_id in result.all():
+            extras_map.setdefault(promo_id, []).append(extra_id)
+        return extras_map

@@ -34,3 +34,13 @@ class ServiceRepository(BaseRepository[Service]):
             select(Service.id, Service.name, Service.category)
         )
         return {row[0]: (row[1], row[2]) for row in result.all()}
+
+    async def get_durations(self, service_ids: list[str]) -> dict[str, int]:
+        if not service_ids:
+            return {}
+        result = await self._db.execute(
+            select(Service.id, Service.durationMinutes).where(
+                Service.id.in_(service_ids)
+            )
+        )
+        return {row[0]: row[1] for row in result.all()}
