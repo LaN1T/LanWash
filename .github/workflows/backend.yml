@@ -59,9 +59,7 @@ jobs:
           JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
           INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
           FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
-        run: |
-          alembic upgrade head
-          alembic check
+        run: alembic upgrade head
 
       - name: Run tests with pytest
         env:

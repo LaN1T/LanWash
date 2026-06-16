@@ -19,11 +19,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.create_unique_constraint(
-        "uq_tip_appointment_washer", "tips", ["appointmentId", "washerUsername"]
-    )
+    with op.batch_alter_table("tips", schema=None) as batch_op:
+        batch_op.create_unique_constraint(
+            "uq_tip_appointment_washer", ["appointmentId", "washerUsername"]
+        )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_constraint("uq_tip_appointment_washer", "tips", type_="unique")
+    with op.batch_alter_table("tips", schema=None) as batch_op:
+        batch_op.drop_constraint("uq_tip_appointment_washer", type_="unique")

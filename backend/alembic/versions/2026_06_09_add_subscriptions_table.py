@@ -42,18 +42,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.add_column(
-        "appointments",
-        sa.Column(
-            "subscriptionId",
-            sa.Integer(),
-            sa.ForeignKey("subscriptions.id"),
-            nullable=True,
-        ),
-    )
+    with op.batch_alter_table("appointments", schema=None) as batch_op:
+        batch_op.add_column(sa.Column("subscriptionId", sa.Integer(), nullable=True))
+        batch_op.create_foreign_key(
+            "fk_appointments_subscription", "subscriptions", ["subscriptionId"], ["id"]
+        )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("appointments", "subscriptionId")
+    with op.batch_alter_table("appointments", schema=None) as batch_op:
+        batch_op.drop_constraint("fk_appointments_subscription", type_="foreignkey")
+        batch_op.drop_column("subscriptionId")
     op.drop_table("subscriptions")

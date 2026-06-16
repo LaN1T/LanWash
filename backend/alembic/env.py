@@ -11,6 +11,7 @@ from alembic import context
 # Add parent dir to path so we can import db_models
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+import models  # noqa: E402,F401 - registers model tables on Base.metadata
 from core.config import get_settings  # noqa: E402
 from db.base import Base  # noqa: E402
 
