@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/language_provider.dart';
+import '../shared/splash_screen.dart';
 
 // ─── Маска телефона: +7 (999) 000-00-00 ──────────────────────────────────────
 class _PhoneInputFormatter extends TextInputFormatter {
@@ -178,21 +179,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Form(
               key: _formKey,
               child: Column(children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppStyles.primaryGradient,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppStyles.primary.withValues(alpha: 0.25),
-                        blurRadius: 20,
-                      )
-                    ],
-                  ),
-                  child: const Icon(Icons.person_add_rounded,
-                      color: Colors.white, size: 36),
+                const LanWashLogo(
+                  circleSize: 72,
+                  showTitle: false,
+                  showSubtitle: false,
+                  showLoader: false,
                 ),
                 const SizedBox(height: 20),
                 Text(lang.tr('register_title'),

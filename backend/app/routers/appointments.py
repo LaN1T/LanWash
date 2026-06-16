@@ -1453,8 +1453,7 @@ async def scan_appointment_qr(
             username=current_user.username,
             action="qr_scan",
             details=(
-                f"Сканирован QR-код записи {appt.id}, "
-                "статус изменён на in_progress"
+                f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress"
             ),
             timestamp=datetime.now().isoformat(),
         )
@@ -1526,8 +1525,7 @@ async def report_late(
             username=current_user.username,
             action="report_late",
             details=(
-                f"Клиент сообщил об опоздании на {req.minutes} "
-                f"мин для записи {appt.id}"
+                f"Клиент сообщил об опоздании на {req.minutes} мин для записи {appt.id}"
             ),
             timestamp=datetime.now().isoformat(),
         )

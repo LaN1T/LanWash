@@ -10,6 +10,7 @@ import '../../providers/support_provider.dart';
 import '../../services/notification_service.dart'; // Add this
 import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
+import '../shared/splash_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
@@ -64,15 +65,12 @@ class _ClientShellState extends State<ClientShell> {
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
         title: Row(children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppStyles.primaryGradient,
-            ),
-            child:
-                const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
+          const LanWashLogo(
+            circleSize: 34,
+            showTitle: false,
+            showSubtitle: false,
+            showLoader: false,
+            shadowBlur: null,
           ),
           const SizedBox(width: 10),
           Text(_titles[_index],
@@ -139,11 +137,11 @@ class _ClientShellState extends State<ClientShell> {
   }
 
   Widget _buildDrawer(BuildContext ctx) {
-    final username = ctx.select<AuthProvider, String>((a) => a.username);
-    final favCount = ctx.select<CatalogProvider, int>((cp) {
-      final favSet = ctx.read<FavoriteProvider>().serviceFavorites;
-      return cp.services.where((s) => favSet.contains(s.id)).length;
-    });
+    final username = ctx.watch<AuthProvider>().username;
+    final catalog = ctx.watch<CatalogProvider>();
+    final favSet = ctx.watch<FavoriteProvider>().serviceFavorites;
+    final favCount =
+        catalog.services.where((s) => favSet.contains(s.id)).length;
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -156,20 +154,11 @@ class _ClientShellState extends State<ClientShell> {
             color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppStyles.primaryGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppStyles.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                    )
-                  ],
-                ),
-                child: const Icon(Icons.local_car_wash,
-                    color: Colors.white, size: 32),
+              const LanWashLogo(
+                circleSize: 60,
+                showTitle: false,
+                showSubtitle: false,
+                showLoader: false,
               ),
               const SizedBox(height: 14),
               Text('LanWash',
@@ -201,7 +190,6 @@ class _ClientShellState extends State<ClientShell> {
               Icons.calendar_today_rounded, 'Мои записи', null),
           _drawerItem(ctx, 2, Icons.star_outline, Icons.star_rounded,
               'Избранное', favCount > 0 ? '$favCount' : null),
-
 
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
@@ -296,11 +284,11 @@ class _AppointmentsBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasUnseenChanges = context.select<AppointmentProvider, bool>((ap) =>
-        ap.appointments.any((a) =>
+    final ap = context.watch<AppointmentProvider>();
+    final hasUnseenChanges = ap.appointments.any((a) =>
             (a.isModifiedByAdmin || a.isModifiedByWasher) &&
             !a.isSeenByClient) ||
-        ap.hasDeletedByAdmin);
+        ap.hasDeletedByAdmin;
 
     return Badge(
       isLabelVisible: hasUnseenChanges,
@@ -340,8 +328,7 @@ class _FavoritesBadge extends StatelessWidget {
 class _SupportBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final count = context.select<SupportProvider, int>(
-        (sp) => sp.unreadClientCount);
+    final count = context.watch<SupportProvider>().unreadClientCount;
 
     return Badge(
       isLabelVisible: count > 0,

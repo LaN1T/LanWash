@@ -189,7 +189,10 @@ class WorkloadService:
             is_postgres = getattr(dialect_name, "name", "") == "postgresql"
             if is_postgres:
                 lock_input = day_start.encode()
-                lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], "little")
+                lock_id = int.from_bytes(
+                    hashlib.md5(lock_input, usedforsecurity=False).digest()[:4],
+                    "little",
+                )
                 await db.execute(
                     text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(
                         lock_id=lock_id

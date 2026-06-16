@@ -14,6 +14,7 @@ import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
+import '../shared/splash_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 import '../admin/notes_screen.dart';
@@ -61,13 +62,13 @@ class _WasherShellState extends State<WasherShell> {
       appBar: AppBar(
         elevation: 0,
         title: Row(children: [
-          Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                  shape: BoxShape.circle, gradient: AppStyles.primaryGradient),
-              child: const Icon(Icons.local_car_wash,
-                  color: Colors.white, size: 18)),
+          const LanWashLogo(
+            circleSize: 34,
+            showTitle: false,
+            showSubtitle: false,
+            showLoader: false,
+            shadowBlur: null,
+          ),
           const SizedBox(width: 10),
           Text(
             _tabIndex == 0
@@ -131,21 +132,11 @@ class _WasherShellState extends State<WasherShell> {
             color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppStyles.primaryGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppStyles.primary.withValues(alpha: 0.25),
-                      blurRadius: 16,
-                    )
-                  ],
-                ),
-                child: const Icon(Icons.local_car_wash,
-                    color: Colors.white, size: 28),
+              const LanWashLogo(
+                circleSize: 56,
+                showTitle: false,
+                showSubtitle: false,
+                showLoader: false,
               ),
               const SizedBox(height: 14),
               Text('LanWash',
@@ -347,7 +338,6 @@ class _WasherShellState extends State<WasherShell> {
       ),
     );
   }
-
 
   void _confirmLogout(BuildContext ctx) {
     showDialog(

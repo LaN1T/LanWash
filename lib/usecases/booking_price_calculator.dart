@@ -21,9 +21,9 @@ class BookingPriceCalculator {
   bool get isPromo => promo != null;
 
   Set<String> get lockedExtras => <String>{
-    ...?washType?.includedExtraIds,
-    if (isPromo) ...promo!.includedExtraIds,
-  };
+        ...?washType?.includedExtraIds,
+        if (isPromo) ...promo!.includedExtraIds,
+      };
 
   Service? _serviceById(String id) {
     try {

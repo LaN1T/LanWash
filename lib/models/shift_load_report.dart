@@ -33,8 +33,8 @@ class ShiftLoadReport {
           .cast<Map<String, dynamic>>()
           .map(ShiftLoadWasherStat.fromMap)
           .toList(),
-      statusCounts:
-          ShiftLoadStatusCounts.fromMap(map['statusCounts'] as Map<String, dynamic>),
+      statusCounts: ShiftLoadStatusCounts.fromMap(
+          map['statusCounts'] as Map<String, dynamic>),
       conflictCount: map['conflictCount'] as int? ?? 0,
       availabilityCoverage: ShiftLoadAvailabilityCoverage.fromMap(
           map['availabilityCoverage'] as Map<String, dynamic>),
@@ -107,7 +107,8 @@ class ShiftLoadWasherStat {
       confirmedMinutes: map['confirmedMinutes'] as int? ?? 0,
       pendingMinutes: map['pendingMinutes'] as int? ?? 0,
       rejectedMinutes: map['rejectedMinutes'] as int? ?? 0,
-      utilizationPercent: (map['utilizationPercent'] as num?)?.toDouble() ?? 0.0,
+      utilizationPercent:
+          (map['utilizationPercent'] as num?)?.toDouble() ?? 0.0,
       isOvertime: map['isOvertime'] as bool? ?? false,
       isUnderload: map['isUnderload'] as bool? ?? false,
     );

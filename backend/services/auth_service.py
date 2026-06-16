@@ -267,7 +267,12 @@ class AuthService:
             },
             expires_delta=access_token_expires,
         )
-        return {"user": user, "access_token": access_token, "token_type": "bearer"}
+        return {
+            "user": user,
+            "access_token": access_token,
+            # OAuth2 token type, not a password.
+            "token_type": "bearer",  # nosec: B105
+        }
 
     @atomic
     async def register(self, req) -> dict:
@@ -333,7 +338,12 @@ class AuthService:
             expires_delta=access_token_expires,
         )
 
-        return {"user": new_user, "access_token": access_token, "token_type": "bearer"}
+        return {
+            "user": new_user,
+            "access_token": access_token,
+            # OAuth2 token type, not a password.
+            "token_type": "bearer",  # nosec: B105
+        }
 
     @atomic
     async def _create_telegram_user(
@@ -401,7 +411,12 @@ class AuthService:
             expires_delta=access_token_expires,
         )
 
-        return {"user": user, "access_token": access_token, "token_type": "bearer"}
+        return {
+            "user": user,
+            "access_token": access_token,
+            # OAuth2 token type, not a password.
+            "token_type": "bearer",  # nosec: B105
+        }
 
     async def link_telegram(
         self, username: str, password: str, telegram_id: str
@@ -427,7 +442,12 @@ class AuthService:
             expires_delta=access_token_expires,
         )
 
-        return {"user": user, "access_token": access_token, "token_type": "bearer"}
+        return {
+            "user": user,
+            "access_token": access_token,
+            # OAuth2 token type, not a password.
+            "token_type": "bearer",  # nosec: B105
+        }
 
     async def get_washers(self) -> list[dict]:
         cache_key = "washers:list"

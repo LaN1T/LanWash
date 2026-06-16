@@ -25,11 +25,15 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.add_column("users", sa.Column("referralCode", sa.String(), nullable=True))
     op.create_index("ix_users_referralCode", "users", ["referralCode"], unique=False)
-    op.create_unique_constraint("uq_users_referral_code", "users", ["referralCode"])
+    with op.batch_alter_table("users", schema=None) as batch_op:
+        batch_op.create_unique_constraint(
+            "uq_users_referral_code", ["referralCode"]
+        )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_constraint("uq_users_referral_code", "users", type_="unique")
+    with op.batch_alter_table("users", schema=None) as batch_op:
+        batch_op.drop_constraint("uq_users_referral_code", type_="unique")
     op.drop_index("ix_users_referralCode", table_name="users")
     op.drop_column("users", "referralCode")

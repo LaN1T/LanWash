@@ -52,17 +52,37 @@ settings = get_settings()
 
 def _get_test_database_url() -> str:
     parsed = urlparse(settings.database_url)
+    if parsed.scheme.startswith("sqlite"):
+        # Use SQLite as-is (in-memory or file). No per-test DB rewrite needed.
+        return settings.database_url
     return urlunparse(parsed._replace(path="/lanwash_test"))
 
 
 # Create the test engine at module import time and patch the database module
 # *before* the FastAPI app is imported. This makes app startup (lifespan/init_db)
 # and all database sessions point to the disposable test database.
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 
-_test_engine = create_async_engine(
-    _get_test_database_url(), echo=False, future=True, poolclass=NullPool
-)
+# In-memory SQLite loses its data when the connection is closed. NullPool
+# opens a brand-new connection for every request, so the schema created by
+# create_all and the seed data inserted afterwards end up in different empty
+# databases. Pin the pool size to a single connection for in-memory SQLite;
+# for PostgreSQL keep NullPool to avoid stale connections.
+_db_url = _get_test_database_url()
+_is_sqlite_memory = _db_url.startswith("sqlite+aiosqlite:///:memory:")
+_poolclass = AsyncAdaptedQueuePool if _is_sqlite_memory else NullPool
+
+_create_engine_kwargs = {
+    "echo": False,
+    "future": True,
+    "poolclass": _poolclass,
+}
+if _is_sqlite_memory:
+    _create_engine_kwargs["pool_size"] = 1
+    _create_engine_kwargs["max_overflow"] = 0
+    _create_engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+_test_engine = create_async_engine(_db_url, **_create_engine_kwargs)
 
 import db.engine as _db_engine_module
 import db.init as _db_init_module
@@ -113,14 +133,30 @@ from main import app
 
 limiter.enabled = False
 
+# Disable Prometheus instrumentation during tests: some versions of
+# prometheus-fastapi-instrumentator trip over Starlette's IncludedRouter
+# (AttributeError: '_IncludedRouter' object has no attribute 'path').
+from prometheus_fastapi_instrumentator.middleware import (
+    PrometheusInstrumentatorMiddleware,
+)
+
+
+def _safe_get_handler(self, request):
+    return "unknown", False
+
+
+PrometheusInstrumentatorMiddleware._get_handler = _safe_get_handler
+
 import asyncpg
 from httpx import ASGITransport, AsyncClient
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def _create_test_database():
-    """Ensure the disposable PostgreSQL test database exists."""
+    """Ensure the disposable test database exists (PostgreSQL only)."""
     test_url = _get_test_database_url()
+    if urlparse(test_url).scheme.startswith("sqlite"):
+        return
     # Connect to the maintenance 'postgres' DB using the same encoded credentials.
     admin_dsn = test_url.replace("postgresql+asyncpg://", "postgresql://").replace(
         "/lanwash_test", "/postgres"

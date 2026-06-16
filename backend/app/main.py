@@ -339,5 +339,10 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "app.main:app", host="0.0.0.0", port=8000, reload=False, proxy_headers=True
+        "app.main:app",
+        # Intentionally bind all interfaces inside the container.
+        host="0.0.0.0",  # nosec: B104
+        port=8000,
+        reload=False,
+        proxy_headers=True,
     )

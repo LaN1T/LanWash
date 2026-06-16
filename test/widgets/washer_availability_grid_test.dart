@@ -54,9 +54,15 @@ void main() {
     await tester.pump();
     expect(find.byIcon(Icons.help_outline), findsWidgets);
 
-    // Mark the first day unavailable again and save
+    // Fourth tap -> available again
     await tester.tap(firstCell);
     await tester.pump();
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+
+    // Fifth tap -> unavailable, then save
+    await tester.tap(firstCell);
+    await tester.pump();
+    expect(find.byIcon(Icons.cancel), findsOneWidget);
     await tester.tap(find.text('Сохранить'));
     await tester.pump();
 

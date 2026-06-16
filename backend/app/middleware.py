@@ -33,13 +33,20 @@ _METRICS_MAX_PER_MINUTE = 60
 
 
 def add_cors_middleware(app):
+    # In development/testing allow any origin so local frontends on dynamic
+    # ports (Flutter, Vite, ngrok, etc.) work without reconfiguring env vars.
+    if not settings.is_production:
+        cors_kwargs = {"allow_origin_regex": ".*"}
+    else:
+        cors_kwargs = {"allow_origins": settings.cors_origins}
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
         expose_headers=_EXPOSED_HEADERS,
+        **cors_kwargs,
     )
 
 

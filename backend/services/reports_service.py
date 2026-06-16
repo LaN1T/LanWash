@@ -40,8 +40,10 @@ class CarPriceService:
         model_lower = car_model.lower()
         for key, price in base_prices.items():
             if key in model_lower:
-                return price + random.randint(-100000, 100000)
-        return random.randint(1500000, 3500000)
+                # Demo pricing only; no cryptographic use.
+                return price + random.randint(-100000, 100000)  # nosec: B311
+        # Demo pricing only; no cryptographic use.
+        return random.randint(1500000, 3500000)  # nosec: B311
 
 
 class ReportsService:
