@@ -49,7 +49,7 @@ jobs:
       - name: Security scan
         run: |
           pip install bandit pip-audit
-          bandit -r . -f json -o bandit-report.json
+          bandit -r . -c bandit.yaml -f json -o bandit-report.json
           pip-audit --requirement requirements.txt
 
       - name: Verify migrations
