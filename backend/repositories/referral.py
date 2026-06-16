@@ -41,12 +41,12 @@ class ReferralRepository(BaseRepository[Referral]):
         )
         return list(result.scalars().all())
 
-    async def mark_claimed_batch(self, referral_ids: list[int], now: str) -> int:
+    async def mark_claimed_batch(self, referral_ids: list[int]) -> int:
         if not referral_ids:
             return 0
         result = await self._db.execute(
             update(Referral)
             .where(Referral.id.in_(referral_ids))
-            .values(rewardClaimed=True, createdAt=now)
+            .values(rewardClaimed=True)
         )
         return result.rowcount or 0

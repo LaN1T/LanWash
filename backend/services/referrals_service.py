@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import User
@@ -19,7 +17,7 @@ class ReferralsService:
     async def get_my_referral_stats(self, user: User) -> dict:
         if not user.referralCode:
             code = await _ensure_unique_referral_code(self._db)
-            await self._users.update_referral_code(user.id, code)
+            await self._users.update_fields(user.id, {"referralCode": code})
             await self._db.commit()
             user.referralCode = code
 
@@ -60,9 +58,5 @@ class ReferralsService:
         if not unclaimed:
             return 0
 
-        now = datetime.now().isoformat()
         referral_ids = [r.id for r in unclaimed]
-        await self._referrals.mark_claimed_batch(referral_ids, now)
-
-        await self._db.commit()
-        return len(unclaimed)
+        return await self._referrals.mark_claimed_batch(referral_ids)

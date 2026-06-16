@@ -53,12 +53,6 @@ class UserRepository(BaseRepository[User]):
         )
         return result.rowcount or 0
 
-    async def update_referral_code(self, user_id: int, code: str) -> int:
-        result = await self._db.execute(
-            update(User).where(User.id == user_id).values(referralCode=code)
-        )
-        return result.rowcount or 0
-
     async def get_display_names_by_usernames(
         self, usernames: list[str]
     ) -> dict[str, str | None]:
