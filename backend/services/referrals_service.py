@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Referral, User
+from models import User
+from repositories import ReferralRepository, UserRepository
 from schemas import ReferralResponse
 from services.auth_service import _ensure_unique_referral_code
 
@@ -13,29 +13,18 @@ class ReferralsService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
+        self._referrals = ReferralRepository(db)
+        self._users = UserRepository(db)
 
     async def get_my_referral_stats(self, user: User) -> dict:
         if not user.referralCode:
             code = await _ensure_unique_referral_code(self._db)
-            await self._db.execute(
-                update(User).where(User.id == user.id).values(referralCode=code)
-            )
+            await self._users.update_referral_code(user.id, code)
             await self._db.commit()
             user.referralCode = code
 
-        total_res = await self._db.execute(
-            select(func.count(Referral.id)).where(Referral.referrerId == user.id)
-        )
-        total_referrals = total_res.scalar() or 0
-
-        claimed_res = await self._db.execute(
-            select(func.count(Referral.id)).where(
-                Referral.referrerId == user.id,
-                Referral.rewardClaimed.is_(True),
-            )
-        )
-        claimed_rewards = claimed_res.scalar() or 0
-
+        total_referrals = await self._referrals.count_by_referrer(user.id)
+        claimed_rewards = await self._referrals.count_claimed_by_referrer(user.id)
         pending_rewards = total_referrals - claimed_rewards
 
         return {
@@ -46,24 +35,19 @@ class ReferralsService:
         }
 
     async def get_my_referrals(self, user_id: int) -> list[ReferralResponse]:
-        result = await self._db.execute(
-            select(Referral).where(Referral.referrerId == user_id)
-        )
-        referrals = result.scalars().all()
+        referrals = await self._referrals.list_by_referrer(user_id)
 
         referred_ids = [r.referredId for r in referrals]
         names_map = {}
         if referred_ids:
-            users_res = await self._db.execute(select(User).where(User.id.in_(referred_ids)))
-            for u in users_res.scalars().all():
-                names_map[u.id] = u.displayName
+            names_map = await self._users.get_display_names_by_ids(referred_ids)
 
         return [
             ReferralResponse(
                 id=r.id,
                 referrerId=r.referrerId,
                 referredId=r.referredId,
-                referredName=names_map.get(r.referredId, "—"),
+                referredName=names_map.get(r.referredId, "—") or "—",
                 rewardClaimed=r.rewardClaimed,
                 createdAt=r.createdAt,
             )
@@ -71,21 +55,14 @@ class ReferralsService:
         ]
 
     async def claim_rewards(self, user_id: int) -> int:
-        result = await self._db.execute(
-            select(Referral).where(
-                Referral.referrerId == user_id,
-                Referral.rewardClaimed.is_(False),
-            ).with_for_update()
-        )
-        unclaimed = result.scalars().all()
+        unclaimed = await self._referrals.get_unclaimed_for_update(user_id)
 
         if not unclaimed:
             return 0
 
         now = datetime.now().isoformat()
-        for r in unclaimed:
-            r.rewardClaimed = True
-            r.createdAt = now
+        referral_ids = [r.id for r in unclaimed]
+        await self._referrals.mark_claimed_batch(referral_ids, now)
 
         await self._db.commit()
         return len(unclaimed)
