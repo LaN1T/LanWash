@@ -213,9 +213,7 @@ class AvatarAccessDeniedError(Exception):
 
 
 # Dummy hash for constant-time login (prevents user enumeration via timing)
-_DUMMY_ARGON2_HASH = (
-    "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"  # noqa: E501
-)
+_DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"  # noqa: E501
 
 # Referral code alphabet: excludes ambiguous chars 0, O, I, l, 1
 _REFERRAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"

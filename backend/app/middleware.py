@@ -48,7 +48,9 @@ def add_security_middleware(app):
     app.add_middleware(RequestIdMiddleware)
 
 
-async def metrics_rate_limit_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]):
+async def metrics_rate_limit_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+):
     if request.url.path == "/metrics":
         now = time.time()
         ip = request.client.host if request.client else "unknown"
@@ -61,13 +63,17 @@ async def metrics_rate_limit_middleware(request: Request, call_next: Callable[[R
     return await call_next(request)
 
 
-async def app_check_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]):
+async def app_check_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+):
     if request.url.path not in _EXCLUDED_APP_CHECK_PATHS:
         await verify_app_check_token(request)
     return await call_next(request)
 
 
-async def business_metrics_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]):
+async def business_metrics_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+):
     if request.url.path == "/metrics":
         try:
             await update_business_metrics()
@@ -76,7 +82,9 @@ async def business_metrics_middleware(request: Request, call_next: Callable[[Req
     return await call_next(request)
 
 
-async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]):
+async def log_requests(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+):
     start = time.time()
     try:
         response = await call_next(request)

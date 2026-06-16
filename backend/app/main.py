@@ -6,7 +6,16 @@ import time
 from datetime import datetime, timezone
 
 import structlog
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Request,
+    Security,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -59,7 +68,10 @@ _start_time = datetime.now(timezone.utc)
 
 app = FastAPI(
     title="LanWash API",
-    description="REST API для системы управления автомойкой. Поддерживает роли: client, washer, admin.",
+    description=(
+        "REST API для системы управления автомойкой. "
+        "Поддерживает роли: client, washer, admin."
+    ),
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs" if not settings.is_production else None,
@@ -73,9 +85,11 @@ os.makedirs(uploads_dir, exist_ok=True)
 
 @app.get("/uploads/avatars/{filename}")
 @limiter.limit("60/minute")
-async def get_avatar(request: Request, filename: str, current_user=Depends(get_current_user)):
+async def get_avatar(
+    request: Request, filename: str, current_user=Depends(get_current_user)
+):
     """Serve avatar images with auth check."""
-    if not filename or re.search(r'[/\\]', filename) or filename.startswith('.'):
+    if not filename or re.search(r"[/\\]", filename) or filename.startswith("."):
         raise HTTPException(400, "Invalid filename")
     filepath = os.path.join(uploads_dir, "avatars", os.path.basename(filename))
     if not await asyncio.to_thread(os.path.exists, filepath):
@@ -118,6 +132,7 @@ app.middleware("http")(log_requests)
 
 # Debug routes only in development
 if settings.debug:
+
     @app.get("/debug/routes", dependencies=[Depends(check_roles(["admin"]))])
     async def get_routes():
         return [{"path": route.path} for route in app.routes]
@@ -129,11 +144,17 @@ app.include_router(appointments.router)
 app.include_router(services.router)
 app.include_router(logs.router)
 app.include_router(notes.router)
-app.include_router(reports.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
-app.include_router(consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
+app.include_router(
+    reports.router, dependencies=[Depends(check_roles(["admin", "washer"]))]
+)
+app.include_router(
+    consumables.router, dependencies=[Depends(check_roles(["admin", "washer"]))]
+)
 app.include_router(wash_types.router)
 app.include_router(shifts.router)
-app.include_router(shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))])
+app.include_router(
+    shift_templates.router, dependencies=[Depends(check_roles(["admin", "washer"]))]
+)
 app.include_router(washer_availability.router)
 app.include_router(reviews.router)
 app.include_router(cars.router)
@@ -152,18 +173,24 @@ TELEGRAM_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 
 @app.post("/webhook")
 @limiter.limit("20/minute")
-async def telegram_webhook(request: Request, update: dict, x_telegram_bot_api_secret_token: str = Header(None)):
+async def telegram_webhook(
+    request: Request, update: dict, x_telegram_bot_api_secret_token: str = Header(None)
+):
     if not TELEGRAM_SECRET:
         raise HTTPException(500, "Webhook secret not configured")
     if x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
         raise HTTPException(403, "Invalid secret token")
     from bot.webhook import process_update
+
     return await process_update(update)
 
 
 # Telegram Mini App static files (must be after ALL API routes)
-miniapp_dir = os.path.join(os.path.dirname(__file__), "..", "..", "telegram-miniapp", "dist")
+miniapp_dir = os.path.join(
+    os.path.dirname(__file__), "..", "..", "telegram-miniapp", "dist"
+)
 if os.path.exists(miniapp_dir):
+
     @app.get("/{path:path}")
     async def serve_miniapp(path: str):
         headers = {
@@ -175,7 +202,11 @@ if os.path.exists(miniapp_dir):
         norm_miniapp = os.path.normpath(miniapp_dir)
         if not file_path.startswith(norm_miniapp):
             raise HTTPException(403, "Invalid path")
-        if path and await asyncio.to_thread(os.path.exists, file_path) and await asyncio.to_thread(os.path.isfile, file_path):
+        if (
+            path
+            and await asyncio.to_thread(os.path.exists, file_path)
+            and await asyncio.to_thread(os.path.isfile, file_path)
+        ):
             return FileResponse(file_path, headers=headers)
         return FileResponse(os.path.join(miniapp_dir, "index.html"), headers=headers)
 else:
@@ -188,7 +219,11 @@ _ws_attempts: dict[str, list[float]] = {}
 
 def _cleanup_ws_attempts() -> None:
     now = time.time()
-    stale = [ip for ip, attempts in _ws_attempts.items() if not any(now - t < 60 for t in attempts)]
+    stale = [
+        ip
+        for ip, attempts in _ws_attempts.items()
+        if not any(now - t < 60 for t in attempts)
+    ]
     for ip in stale:
         _ws_attempts.pop(ip, None)
 
@@ -302,4 +337,7 @@ async def _websocket_heartbeat(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False, proxy_headers=True)
+
+    uvicorn.run(
+        "app.main:app", host="0.0.0.0", port=8000, reload=False, proxy_headers=True
+    )

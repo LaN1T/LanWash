@@ -110,7 +110,9 @@ async def export_consumables(
 
 @router.get("/import-template")
 @limiter.limit("10/minute")
-async def download_import_template(request: Request, current_user: User = Depends(check_roles(["admin", "washer"]))): 
+async def download_import_template(
+    request: Request, current_user: User = Depends(check_roles(["admin", "washer"]))
+):
     """Скачать пустой шаблон Excel для импорта пополнений."""
     svc = ConsumablesService(db=None)  # no DB needed
     try:
@@ -121,7 +123,11 @@ async def download_import_template(request: Request, current_user: User = Depend
     return StreamingResponse(
         io.BytesIO(data),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=consumables_import_template.xlsx"},
+        headers={
+            "Content-Disposition": (
+                "attachment; filename=consumables_import_template.xlsx"
+            )
+        },
     )
 
 
@@ -155,6 +161,7 @@ async def import_refills(
 
 
 # ========== Динамические пути ==========
+
 
 @router.get("/{consumable_id}", response_model=ConsumableResponse)
 @limiter.limit("60/minute")

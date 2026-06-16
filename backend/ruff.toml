@@ -2,4 +2,11 @@
 extend-per-file-ignores = {
     "services/ai_draft_service.py" = ["E501"],
     "tests/conftest.py" = ["E402"],
+    "models/models.py" = ["N815", "N805"],
+    "schemas/schemas.py" = ["N815"],
+    "app/routers/appointments.py" = ["N806"],
+    "alembic/versions/*.py" = ["E501"],
+    "db/seed.py" = ["E501"],
+    "scripts/seed.py" = ["E501"],
+    "scripts/clean.py" = ["E501"],
 }

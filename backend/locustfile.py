@@ -13,6 +13,7 @@ TEST_PASSWORD = "testpass123"
 
 class AnonymousUser(HttpUser):
     """Unauthenticated user — only public endpoints."""
+
     weight = 1
     wait_time = between(1, 5)
 
@@ -22,14 +23,18 @@ class AnonymousUser(HttpUser):
 
     @task(1)
     def login_attempt(self):
-        self.client.post("/api/auth/login", json={
-            "username": "nonexistent_user",
-            "password": "wrongpass",
-        })
+        self.client.post(
+            "/api/auth/login",
+            json={
+                "username": "nonexistent_user",
+                "password": "wrongpass",
+            },
+        )
 
 
 class ClientUser(HttpUser):
     """Authenticated client creating and managing appointments."""
+
     weight = 5
     wait_time = between(2, 8)
 
@@ -40,10 +45,13 @@ class ClientUser(HttpUser):
         self.login()
 
     def login(self):
-        resp = self.client.post("/api/auth/login", json={
-            "username": self.username,
-            "password": TEST_PASSWORD,
-        })
+        resp = self.client.post(
+            "/api/auth/login",
+            json={
+                "username": self.username,
+                "password": TEST_PASSWORD,
+            },
+        )
         if resp.status_code == 200:
             self.token = resp.json()["access_token"]
         else:
@@ -64,6 +72,7 @@ class ClientUser(HttpUser):
         extras = random.sample(extras_pool, k=random.randint(0, 3))
 
         import uuid as _uuid
+
         payload = {
             "id": str(_uuid.uuid4()),
             "clientName": f"Client {self.client_id}",
@@ -75,7 +84,9 @@ class ClientUser(HttpUser):
             "ownerUsername": self.username,
             "notes": "",
         }
-        resp = self.client.post("/api/appointments/", json=payload, headers=self._auth())
+        resp = self.client.post(
+            "/api/appointments/", json=payload, headers=self._auth()
+        )
         if resp.status_code == 200:
             self.created_appointment_id = resp.json().get("id")
 
@@ -93,6 +104,7 @@ class ClientUser(HttpUser):
 
 class WasherUser(HttpUser):
     """Authenticated washer viewing shifts and updating appointments."""
+
     weight = 2
     wait_time = between(3, 10)
 
@@ -103,10 +115,13 @@ class WasherUser(HttpUser):
         self.login()
 
     def login(self):
-        resp = self.client.post("/api/auth/login", json={
-            "username": self.username,
-            "password": TEST_PASSWORD,
-        })
+        resp = self.client.post(
+            "/api/auth/login",
+            json={
+                "username": self.username,
+                "password": TEST_PASSWORD,
+            },
+        )
         if resp.status_code == 200:
             self.token = resp.json()["access_token"]
         else:
@@ -115,10 +130,13 @@ class WasherUser(HttpUser):
     @task(5)
     def list_shifts(self):
         from datetime import datetime, timedelta
+
         today = datetime.now()
         start = today.strftime("%Y-%m-%d")
         end = (today + timedelta(days=7)).strftime("%Y-%m-%d")
-        self.client.get(f"/api/shifts/?start_date={start}&end_date={end}", headers=self._auth())
+        self.client.get(
+            f"/api/shifts/?start_date={start}&end_date={end}", headers=self._auth()
+        )
 
     @task(4)
     def list_appointments(self):
@@ -134,6 +152,7 @@ class WasherUser(HttpUser):
 
 class AdminUser(HttpUser):
     """Authenticated admin viewing reports and stats."""
+
     weight = 1
     wait_time = between(5, 15)
 
@@ -144,10 +163,13 @@ class AdminUser(HttpUser):
         self.login()
 
     def login(self):
-        resp = self.client.post("/api/auth/login", json={
-            "username": self.username,
-            "password": TEST_PASSWORD,
-        })
+        resp = self.client.post(
+            "/api/auth/login",
+            json={
+                "username": self.username,
+                "password": TEST_PASSWORD,
+            },
+        )
         if resp.status_code == 200:
             self.token = resp.json()["access_token"]
         else:
@@ -171,7 +193,9 @@ class AdminUser(HttpUser):
 
     @task(1)
     def delete_notification(self):
-        self.client.delete(f"/api/notifications/{random.randint(1, 100)}", headers=self._auth())
+        self.client.delete(
+            f"/api/notifications/{random.randint(1, 100)}", headers=self._auth()
+        )
 
     def _auth(self):
         return {"Authorization": f"Bearer {self.token}"} if self.token else {}

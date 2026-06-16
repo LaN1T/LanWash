@@ -12,7 +12,7 @@ from schemas import (
     ShiftTemplateResponse,
     ShiftTemplateUpdateRequest,
 )
-from services.auth_service import check_roles, get_current_user
+from services.auth_service import get_current_user
 from services.shift_templates_service import ShiftTemplatesService
 
 router = APIRouter(prefix="/api/shift-templates", tags=["shift-templates"])

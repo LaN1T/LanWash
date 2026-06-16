@@ -14,7 +14,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 def get_admin_url():
     """Build admin connection URL (connects to 'postgres' db to manage lanwash_test)."""
-    base = os.getenv("DATABASE_URL", "postgresql+asyncpg://lanwash_user:password@localhost:5432/lanwash_db")
+    base = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://lanwash_user:password@localhost:5432/lanwash_db",
+    )
     # Replace any db name with 'postgres' for admin operations
     if "://" in base:
         scheme, rest = base.split("://", 1)
@@ -28,7 +31,10 @@ def get_admin_url():
 
 def get_test_url():
     """Build test database URL."""
-    base = os.getenv("DATABASE_URL", "postgresql+asyncpg://lanwash_user:password@localhost:5432/lanwash_db")
+    base = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://lanwash_user:password@localhost:5432/lanwash_db",
+    )
     if "://" in base:
         scheme, rest = base.split("://", 1)
         if "@" in rest:
@@ -45,15 +51,19 @@ async def drop_and_recreate():
     print(f"Test URL:  {test_url}")
 
     # 1. Connect to postgres db as admin
-    admin_engine = create_async_engine(admin_url, echo=False, isolation_level="AUTOCOMMIT")
+    admin_engine = create_async_engine(
+        admin_url, echo=False, isolation_level="AUTOCOMMIT"
+    )
     try:
         async with admin_engine.connect() as conn:
             # Terminate existing connections to lanwash_test
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 SELECT pg_terminate_backend(pid)
                 FROM pg_stat_activity
                 WHERE datname = 'lanwash_test' AND pid <> pg_backend_pid()
-            """))
+            """)
+            )
             await conn.execute(text("DROP DATABASE IF EXISTS lanwash_test"))
             await conn.execute(text("CREATE DATABASE lanwash_test"))
             print("✅ Database lanwash_test recreated")
@@ -62,7 +72,8 @@ async def drop_and_recreate():
         # Fallback: connect to lanwash_test and truncate all tables
         test_engine = create_async_engine(test_url, echo=False)
         async with test_engine.connect() as conn:
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 DO $$ DECLARE
                     r RECORD;
                 BEGIN
@@ -70,7 +81,8 @@ async def drop_and_recreate():
                         EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
                     END LOOP;
                 END $$;
-            """))
+            """)
+            )
             await conn.commit()
             print("✅ All tables truncated")
         await test_engine.dispose()

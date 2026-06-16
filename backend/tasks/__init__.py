@@ -21,6 +21,7 @@ async def update_metrics(ctx):
     await update_business_metrics()
     try:
         from core.background import get_arq_pool
+
         pool = await get_arq_pool()
         await pool.enqueue_job("update_metrics", _defer_by=30)
     except Exception as e:
@@ -67,5 +68,11 @@ async def check_inventory_forecast(ctx, db=None):
 class WorkerSettings:
     """ARQ worker configuration."""
 
-    functions = [send_notification, update_metrics, check_inventory_forecast, send_fcm_notification, send_reminders_task]
+    functions = [
+        send_notification,
+        update_metrics,
+        check_inventory_forecast,
+        send_fcm_notification,
+        send_reminders_task,
+    ]
     redis_settings = REDIS_SETTINGS

@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -11,7 +10,6 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 from core.background import close_arq_pool, get_arq_pool
 from core.config import get_settings
 from core.logging import configure_logging
-from core.metrics import update_business_metrics
 from db.engine import engine
 from db.init import init_db
 
@@ -22,9 +20,11 @@ _start_time = datetime.now(timezone.utc)
 
 
 if settings.sentry_dsn:
+
     def _sentry_scrub_sensitive(event, hint):
         """Remove sensitive data from Sentry events."""
         from sentry_sdk.utils import AnnotatedValue
+
         if event.get("exception"):
             for value in event.get("exception", {}).get("values", []):
                 if value.get("stacktrace"):
@@ -32,8 +32,20 @@ if settings.sentry_dsn:
                         if frame.get("vars"):
                             for key in list(frame["vars"].keys()):
                                 key_lower = key.lower()
-                                if any(s in key_lower for s in ("password", "token", "secret", "authorization", "api_key", "apikey")):
-                                    frame["vars"][key] = AnnotatedValue("[Filtered]", {"rem": ["scrubbed"]})
+                                if any(
+                                    s in key_lower
+                                    for s in (
+                                        "password",
+                                        "token",
+                                        "secret",
+                                        "authorization",
+                                        "api_key",
+                                        "apikey",
+                                    )
+                                ):
+                                    frame["vars"][key] = AnnotatedValue(
+                                        "[Filtered]", {"rem": ["scrubbed"]}
+                                    )
         if event.get("request"):
             req = event["request"]
             for key in ("cookies", "data", "headers", "env"):
@@ -43,8 +55,21 @@ if settings.sentry_dsn:
                 if not isinstance(container, dict):
                     continue
                 for k in list(container.keys()):
-                    if any(s in k.lower() for s in ("password", "token", "secret", "authorization", "api_key", "apikey", "cookie")):
-                        container[k] = AnnotatedValue("[Filtered]", {"rem": ["scrubbed"]})
+                    if any(
+                        s in k.lower()
+                        for s in (
+                            "password",
+                            "token",
+                            "secret",
+                            "authorization",
+                            "api_key",
+                            "apikey",
+                            "cookie",
+                        )
+                    ):
+                        container[k] = AnnotatedValue(
+                            "[Filtered]", {"rem": ["scrubbed"]}
+                        )
         return event
 
     sentry_sdk.init(
@@ -96,6 +121,7 @@ async def lifespan(app: FastAPI):
     await close_arq_pool()
     try:
         from core.redis_client import get_redis
+
         r = await get_redis()
         if r:
             await r.aclose()

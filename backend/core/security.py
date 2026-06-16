@@ -17,13 +17,16 @@ if not _key_str:
         )
     # Fallback для dev/testing только — сгенерировать временный ключ
     from cryptography.fernet import Fernet as _Fernet
+
     _key_str = _Fernet.generate_key().decode()
 
 key = _key_str.encode()
 cipher_suite = Fernet(key)
 
+
 def encrypt_token(token: str) -> str:
     return cipher_suite.encrypt(token.encode()).decode()
+
 
 def decrypt_token(encrypted_token: str) -> str:
     return cipher_suite.decrypt(encrypted_token.encode()).decode()

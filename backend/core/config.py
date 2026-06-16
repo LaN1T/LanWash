@@ -56,9 +56,7 @@ class Settings(BaseSettings):
         raw = self.allowed_origins
         if not raw:
             if self.is_production:
-                raise ValueError(
-                    "ALLOWED_ORIGINS must be set in production"
-                )
+                raise ValueError("ALLOWED_ORIGINS must be set in production")
             return [
                 "http://localhost:8080",
                 "http://localhost:3000",

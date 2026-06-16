@@ -15,7 +15,7 @@ from typing import Optional
 from core.redis_client import get_redis
 
 MAX_ATTEMPTS = int(os.getenv("BRUTE_FORCE_MAX_ATTEMPTS", "5"))
-WINDOW_SECONDS = int(os.getenv("BRUTE_FORCE_WINDOW_SECONDS", "300"))   # 5 min
+WINDOW_SECONDS = int(os.getenv("BRUTE_FORCE_WINDOW_SECONDS", "300"))  # 5 min
 LOCKOUT_SECONDS = int(os.getenv("BRUTE_FORCE_LOCKOUT_SECONDS", "900"))  # 15 min
 
 _IN_MEMORY: dict[str, list[float]] = {}
