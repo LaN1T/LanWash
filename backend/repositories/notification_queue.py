@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +25,7 @@ class NotificationQueueRepository(BaseRepository[NotificationQueue]):
         )
         return await self.add(notification)
 
-    async def get_pending(self, limit: int = 100) -> List[NotificationQueue]:
+    async def get_pending(self, limit: int = 100) -> list[NotificationQueue]:
         """Return unsent notifications ordered by creation time."""
         result = await self._db.execute(
             select(self._model)
@@ -36,7 +35,7 @@ class NotificationQueueRepository(BaseRepository[NotificationQueue]):
         )
         return list(result.scalars().all())
 
-    async def mark_sent_batch(self, notification_ids: List[int]) -> None:
+    async def mark_sent_batch(self, notification_ids: list[int]) -> None:
         """Bulk-update sentAt for the given notification IDs (not committed)."""
         if not notification_ids:
             return

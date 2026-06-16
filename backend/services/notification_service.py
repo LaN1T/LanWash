@@ -1,5 +1,3 @@
-from typing import List
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import NotificationQueue
@@ -22,7 +20,7 @@ async def add_notification(
 async def get_pending_notifications(
     db: AsyncSession,
     limit: int = 100,
-) -> List[NotificationQueue]:
+) -> list[NotificationQueue]:
     """Get unsent notifications."""
     repo = NotificationQueueRepository(db)
     return await repo.get_pending(limit)
@@ -38,9 +36,11 @@ async def mark_sent(
 
 async def mark_sent_batch(
     db: AsyncSession,
-    notification_ids: List[int],
+    notification_ids: list[int],
 ) -> None:
     """Mark multiple notifications as sent in a single UPDATE."""
+    if not notification_ids:
+        return
     repo = NotificationQueueRepository(db)
     await repo.mark_sent_batch(notification_ids)
     await db.commit()
