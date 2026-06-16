@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
 from models import WashType, WashTypeIncludedExtra
-from repositories import WashTypeRepository, WashTypeIncludedExtraRepository
+from repositories import WashTypeIncludedExtraRepository, WashTypeRepository
 from schemas import WashTypeRequest
 
 
@@ -64,9 +64,7 @@ class WashTypesService:
         await self._included_extras.delete_by_wash_type(wash_type_id)
         for extra_id in req.includedExtraIds:
             await self._included_extras.add(
-                WashTypeIncludedExtra(
-                    washTypeId=wash_type_id, extraServiceId=extra_id
-                )
+                WashTypeIncludedExtra(washTypeId=wash_type_id, extraServiceId=extra_id)
             )
 
         await self._db.commit()

@@ -1,9 +1,8 @@
 import os
 import sys
 from datetime import datetime
-from urllib.parse import urlparse, urlunparse, quote
+from urllib.parse import urlparse, urlunparse
 
-import pytest
 import pytest_asyncio
 
 # Load the project-root .env (PostgreSQL credentials) before importing app settings.
@@ -43,9 +42,10 @@ os.environ.setdefault(
 # Добавляем backend в PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core.config import get_settings
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from core.config import get_settings
 
 settings = get_settings()
 
@@ -65,8 +65,8 @@ _test_engine = create_async_engine(
 )
 
 import db.engine as _db_engine_module
-import db.session as _db_session_module
 import db.init as _db_init_module
+import db.session as _db_session_module
 from db.init import init_db as _orig_init_db
 
 _db_engine_module.engine = _test_engine
@@ -83,13 +83,12 @@ async def _noop_init_db():
 _db_init_module.init_db = _noop_init_db
 
 # Imports that must happen after env vars / patches are in place
-from core.limiter import limiter
-from models import Base, User
-
 # Patch @atomic so tests can share a rolled-back connection-level transaction
 # across requests.  When a transaction is already active the decorator creates
 # a savepoint; otherwise it behaves like the original decorator.
 import core.transaction as _transaction_module
+from core.limiter import limiter
+from models import Base, User
 
 _orig_atomic = _transaction_module.atomic
 
@@ -194,10 +193,13 @@ async def async_client(db_session):
 @pytest_asyncio.fixture
 async def admin_token(async_client):
     """Токен администратора (из seed_data)."""
-    response = await async_client.post("/api/auth/login", json={
-        "username": "admin",
-        "password": os.getenv("INITIAL_ADMIN_PASSWORD"),
-    })
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "admin",
+            "password": os.getenv("INITIAL_ADMIN_PASSWORD"),
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -206,6 +208,7 @@ async def admin_token(async_client):
 async def washer_token(async_client, db_session):
     """Токен мойщика (создаётся напрямую в БД с role='washer')."""
     from services.auth_service import get_password_hash
+
     user = User(
         username="washer_test",
         passwordHash=get_password_hash("TestPass123!"),
@@ -216,10 +219,13 @@ async def washer_token(async_client, db_session):
     db_session.add(user)
     await db_session.commit()
 
-    response = await async_client.post("/api/auth/login", json={
-        "username": "washer_test",
-        "password": "TestPass123!",
-    })
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "washer_test",
+            "password": "TestPass123!",
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -227,15 +233,21 @@ async def washer_token(async_client, db_session):
 @pytest_asyncio.fixture
 async def client_token(async_client):
     """Токен обычного клиента (создаётся на лету)."""
-    await async_client.post("/api/auth/register", json={
-        "username": "client_test",
-        "password": "TestPass123!",
-        "displayName": "Client Test",
-    })
-    response = await async_client.post("/api/auth/login", json={
-        "username": "client_test",
-        "password": "TestPass123!",
-    })
+    await async_client.post(
+        "/api/auth/register",
+        json={
+            "username": "client_test",
+            "password": "TestPass123!",
+            "displayName": "Client Test",
+        },
+    )
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "client_test",
+            "password": "TestPass123!",
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -244,6 +256,7 @@ async def client_token(async_client):
 async def other_washer_token(async_client, db_session):
     """Токен другого мойщика (не назначенного на записи)."""
     from services.auth_service import get_password_hash
+
     user = User(
         username="other_washer",
         passwordHash=get_password_hash("TestPass123!"),
@@ -254,9 +267,12 @@ async def other_washer_token(async_client, db_session):
     db_session.add(user)
     await db_session.commit()
 
-    response = await async_client.post("/api/auth/login", json={
-        "username": "other_washer",
-        "password": "TestPass123!",
-    })
+    response = await async_client.post(
+        "/api/auth/login",
+        json={
+            "username": "other_washer",
+            "password": "TestPass123!",
+        },
+    )
     assert response.status_code == 200
     return response.json()["access_token"]

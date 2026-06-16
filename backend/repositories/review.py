@@ -9,7 +9,9 @@ class ReviewRepository(BaseRepository[Review]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Review)
 
-    async def list_published_or_all(self, published_only: bool, limit: int) -> list[Review]:
+    async def list_published_or_all(
+        self, published_only: bool, limit: int
+    ) -> list[Review]:
         stmt = select(Review)
         if published_only:
             stmt = stmt.where(Review.isPublished == 1)
@@ -32,7 +34,9 @@ class ReviewRepository(BaseRepository[Review]):
         )
         return list(result.scalars().all())
 
-    async def exists_for_user_appointment(self, user_id: int, appointment_id: str) -> bool:
+    async def exists_for_user_appointment(
+        self, user_id: int, appointment_id: str
+    ) -> bool:
         result = await self._db.execute(
             select(Review).where(
                 Review.userId == user_id,

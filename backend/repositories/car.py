@@ -43,12 +43,7 @@ class CarRepository(BaseRepository[Car]):
     async def get_oldest_for_user(
         self, user_id: int, exclude_id: int | None = None
     ) -> Car | None:
-        stmt = (
-            select(Car)
-            .where(Car.userId == user_id)
-            .order_by(Car.id.asc())
-            .limit(1)
-        )
+        stmt = select(Car).where(Car.userId == user_id).order_by(Car.id.asc()).limit(1)
         if exclude_id is not None:
             stmt = stmt.where(Car.id != exclude_id)
         result = await self._db.execute(stmt)

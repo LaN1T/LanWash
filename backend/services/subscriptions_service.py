@@ -30,7 +30,9 @@ class SubscriptionsService:
     async def get_my_subscriptions(self, user_id: int) -> list[Subscription]:
         return await self._subscriptions.list_active_for_user(user_id)
 
-    async def create_subscription(self, req: SubscriptionCreateRequest, admin_username: str) -> Subscription:
+    async def create_subscription(
+        self, req: SubscriptionCreateRequest, admin_username: str
+    ) -> Subscription:
         user = await self._users.get_by_id(req.userId)
         if not user:
             raise UserNotFoundError()
@@ -57,7 +59,9 @@ class SubscriptionsService:
         return sub
 
     async def use_subscription(self, subscription_id: int, user_id: int) -> dict:
-        sub = await self._subscriptions.get_active_for_user_with_lock(subscription_id, user_id)
+        sub = await self._subscriptions.get_active_for_user_with_lock(
+            subscription_id, user_id
+        )
         if not sub:
             raise SubscriptionNotFoundError()
 

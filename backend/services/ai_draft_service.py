@@ -119,7 +119,7 @@ async def _groq_chat_completion(
                     await ai_record_failure(is_rate_limit=True)
                     if is_last:
                         return None
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
                 resp.raise_for_status()
                 data = resp.json()
@@ -136,7 +136,7 @@ async def _groq_chat_completion(
                 )
                 last_exception = e
                 if e.response.status_code >= 500:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
                 break
             except Exception as e:
@@ -155,6 +155,7 @@ async def _gemini_classify(prompt: str) -> Optional[str]:
         return None
     try:
         from google.genai import types
+
         response = await asyncio.wait_for(
             genai_client.aio.models.generate_content(
                 model="gemini-1.5-flash-latest",
@@ -181,6 +182,7 @@ async def _gemini_draft(prompt: str) -> Optional[str]:
         return None
     try:
         from google.genai import types
+
         response = await asyncio.wait_for(
             genai_client.aio.models.generate_content(
                 model="gemini-1.5-flash-latest",

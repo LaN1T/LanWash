@@ -20,7 +20,9 @@ class LogsService:
     async def get_all(self, limit: int, offset: int = 0) -> list[LogEntry]:
         return await self._logs.list_all(limit=limit, offset=offset)
 
-    async def get_by_user(self, username: str, limit: int, offset: int = 0) -> list[LogEntry]:
+    async def get_by_user(
+        self, username: str, limit: int, offset: int = 0
+    ) -> list[LogEntry]:
         return await self._logs.list_by_user(username, limit=limit, offset=offset)
 
     async def create_log(self, username: str, action: str, details: str) -> LogEntry:
@@ -28,7 +30,7 @@ class LogsService:
             username=username,
             action=action,
             details=details,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
         await self._logs.add(new_log)
         await self._db.commit()

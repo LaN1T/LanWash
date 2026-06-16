@@ -74,7 +74,9 @@ class CarsService:
         elif req.isPrimary is False and car.isPrimary:
             car.isPrimary = False
             if await self._cars.count_for_user(user_id) > 0:
-                oldest = await self._cars.get_oldest_for_user(user_id, exclude_id=car_id)
+                oldest = await self._cars.get_oldest_for_user(
+                    user_id, exclude_id=car_id
+                )
                 if oldest:
                     oldest.isPrimary = True
 

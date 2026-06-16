@@ -34,7 +34,9 @@ class ServicesService:
             return cached
 
         promos = await self._promos.list_all()
-        extras_map = await self._promo_extras.list_extras_for_promos([p.id for p in promos])
+        extras_map = await self._promo_extras.list_extras_for_promos(
+            [p.id for p in promos]
+        )
         data = [
             {
                 "id": p.id,
@@ -101,7 +103,7 @@ class ServicesService:
             category=req.category,
             isFavorite=int(req.isFavorite),
             isFromApi=int(req.isFromApi),
-            updatedAt=datetime.now().isoformat()
+            updatedAt=datetime.now().isoformat(),
         )
         await self._services.add(new_service)
         await self._db.commit()
@@ -144,7 +146,9 @@ class ServicesService:
             await self._service_favorites.delete_favorite(username, service_id)
             is_fav = False
         else:
-            await self._service_favorites.add(ServiceFavorite(username=username, serviceId=service_id))
+            await self._service_favorites.add(
+                ServiceFavorite(username=username, serviceId=service_id)
+            )
             is_fav = True
         await self._db.commit()
         return is_fav
@@ -158,7 +162,9 @@ class ServicesService:
             await self._extra_favorites.delete_favorite(username, service_id)
             is_fav = False
         else:
-            await self._extra_favorites.add(ExtraFavorite(username=username, serviceId=service_id))
+            await self._extra_favorites.add(
+                ExtraFavorite(username=username, serviceId=service_id)
+            )
             is_fav = True
         await self._db.commit()
         return is_fav

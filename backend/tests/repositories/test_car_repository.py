@@ -51,10 +51,12 @@ class TestCarRepository:
     async def test_count_for_user(self, db_session):
         user = await _create_user(db_session, "car_count_user")
         repo = CarRepository(db_session)
-        db_session.add_all([
-            Car(userId=user.id, brand="BMW", model="X5", number="А111БВ777"),
-            Car(userId=user.id, brand="Audi", model="A6", number="А222БВ777"),
-        ])
+        db_session.add_all(
+            [
+                Car(userId=user.id, brand="BMW", model="X5", number="А111БВ777"),
+                Car(userId=user.id, brand="Audi", model="A6", number="А222БВ777"),
+            ]
+        )
         await db_session.flush()
 
         assert await repo.count_for_user(user.id) == 2
@@ -80,7 +82,9 @@ class TestCarRepository:
     async def test_set_non_primary_for_user(self, db_session):
         user = await _create_user(db_session, "car_non_primary_user")
         repo = CarRepository(db_session)
-        car = Car(userId=user.id, brand="BMW", model="X5", number="А111БВ777", isPrimary=True)
+        car = Car(
+            userId=user.id, brand="BMW", model="X5", number="А111БВ777", isPrimary=True
+        )
         db_session.add(car)
         await db_session.flush()
 
@@ -94,8 +98,16 @@ class TestCarRepository:
     async def test_set_non_primary_for_user_excludes_id(self, db_session):
         user = await _create_user(db_session, "car_exclude_user")
         repo = CarRepository(db_session)
-        primary = Car(userId=user.id, brand="BMW", model="X5", number="А111БВ777", isPrimary=True)
-        other = Car(userId=user.id, brand="Audi", model="A6", number="А222БВ777", isPrimary=False)
+        primary = Car(
+            userId=user.id, brand="BMW", model="X5", number="А111БВ777", isPrimary=True
+        )
+        other = Car(
+            userId=user.id,
+            brand="Audi",
+            model="A6",
+            number="А222БВ777",
+            isPrimary=False,
+        )
         db_session.add_all([primary, other])
         await db_session.flush()
 

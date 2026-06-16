@@ -25,17 +25,24 @@ class WasherAvailabilityRepository(BaseRepository[WasherAvailability]):
         )
         return list(result.scalars().all())
 
-    async def list_for_dates(self, user_id: int, dates: list[str]) -> dict[str, WasherAvailability]:
+    async def list_for_dates(
+        self, user_id: int, dates: list[str]
+    ) -> dict[str, WasherAvailability]:
         if not dates:
             return {}
         result = await self._db.execute(
             select(WasherAvailability).where(
-                and_(WasherAvailability.userId == user_id, WasherAvailability.date.in_(dates))
+                and_(
+                    WasherAvailability.userId == user_id,
+                    WasherAvailability.date.in_(dates),
+                )
             )
         )
         return {row.date: row for row in result.scalars().all()}
 
-    async def delete_for_range(self, user_id: int, start_date: str, end_date: str) -> int:
+    async def delete_for_range(
+        self, user_id: int, start_date: str, end_date: str
+    ) -> int:
         result = await self._db.execute(
             delete(WasherAvailability).where(
                 and_(

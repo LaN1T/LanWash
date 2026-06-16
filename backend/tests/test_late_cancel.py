@@ -7,7 +7,15 @@ from models import LogEntry
 class TestLateAndCancel:
     """Тесты опоздания и отмены с причиной."""
 
-    async def _create_appointment(self, async_client, token, appt_id, date_time, status="scheduled", owner="client_test"):
+    async def _create_appointment(
+        self,
+        async_client,
+        token,
+        appt_id,
+        date_time,
+        status="scheduled",
+        owner="client_test",
+    ):
         """Хелпер для создания записи."""
         resp = await async_client.post(
             "/api/appointments/",
@@ -39,7 +47,9 @@ class TestLateAndCancel:
 
     @pytest.mark.asyncio
     async def test_report_late_owner(self, async_client, client_token, db_session):
-        await self._create_appointment(async_client, client_token, "appt_late_1", "2099-05-01T10:00:00")
+        await self._create_appointment(
+            async_client, client_token, "appt_late_1", "2099-05-01T10:00:00"
+        )
         resp = await async_client.post(
             "/api/appointments/appt_late_1/late",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -60,7 +70,9 @@ class TestLateAndCancel:
 
     @pytest.mark.asyncio
     async def test_report_late_idempotent(self, async_client, client_token):
-        await self._create_appointment(async_client, client_token, "appt_late_idem", "2099-05-08T10:00:00")
+        await self._create_appointment(
+            async_client, client_token, "appt_late_idem", "2099-05-08T10:00:00"
+        )
         resp1 = await async_client.post(
             "/api/appointments/appt_late_idem/late",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -77,8 +89,12 @@ class TestLateAndCancel:
         assert resp2.json()["late_minutes"] == 15
 
     @pytest.mark.asyncio
-    async def test_report_late_forbidden_admin(self, async_client, admin_token, client_token):
-        await self._create_appointment(async_client, client_token, "appt_late_2", "2099-05-02T10:00:00")
+    async def test_report_late_forbidden_admin(
+        self, async_client, admin_token, client_token
+    ):
+        await self._create_appointment(
+            async_client, client_token, "appt_late_2", "2099-05-02T10:00:00"
+        )
         resp = await async_client.post(
             "/api/appointments/appt_late_2/late",
             headers={"Authorization": f"Bearer {admin_token}"},
@@ -87,9 +103,13 @@ class TestLateAndCancel:
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_report_late_wrong_status(self, async_client, client_token, admin_token):
+    async def test_report_late_wrong_status(
+        self, async_client, client_token, admin_token
+    ):
         # Создаём через клиента, затем админ меняет статус на completed
-        await self._create_appointment(async_client, client_token, "appt_late_3", "2099-05-03T10:00:00")
+        await self._create_appointment(
+            async_client, client_token, "appt_late_3", "2099-05-03T10:00:00"
+        )
         await async_client.put(
             "/api/appointments/appt_late_3",
             headers={"Authorization": f"Bearer {admin_token}"},
@@ -125,7 +145,9 @@ class TestLateAndCancel:
 
     @pytest.mark.asyncio
     async def test_report_late_invalid_minutes(self, async_client, client_token):
-        await self._create_appointment(async_client, client_token, "appt_late_4", "2099-05-04T10:00:00")
+        await self._create_appointment(
+            async_client, client_token, "appt_late_4", "2099-05-04T10:00:00"
+        )
         resp = await async_client.post(
             "/api/appointments/appt_late_4/late",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -134,8 +156,12 @@ class TestLateAndCancel:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_cancel_with_reason_owner(self, async_client, client_token, db_session):
-        await self._create_appointment(async_client, client_token, "appt_cancel_1", "2099-05-05T10:00:00")
+    async def test_cancel_with_reason_owner(
+        self, async_client, client_token, db_session
+    ):
+        await self._create_appointment(
+            async_client, client_token, "appt_cancel_1", "2099-05-05T10:00:00"
+        )
         resp = await async_client.post(
             "/api/appointments/appt_cancel_1/cancel-reason",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -156,8 +182,12 @@ class TestLateAndCancel:
         assert "appt_cancel_1" in log.details
 
     @pytest.mark.asyncio
-    async def test_cancel_in_progress_appointment(self, async_client, client_token, admin_token, db_session):
-        await self._create_appointment(async_client, client_token, "appt_cancel_ip", "2099-05-09T10:00:00")
+    async def test_cancel_in_progress_appointment(
+        self, async_client, client_token, admin_token, db_session
+    ):
+        await self._create_appointment(
+            async_client, client_token, "appt_cancel_ip", "2099-05-09T10:00:00"
+        )
         # Admin changes status to in_progress
         await async_client.put(
             "/api/appointments/appt_cancel_ip",
@@ -207,8 +237,12 @@ class TestLateAndCancel:
         assert "Сломалась машина" in log.details
 
     @pytest.mark.asyncio
-    async def test_cancel_with_reason_forbidden(self, async_client, washer_token, client_token):
-        await self._create_appointment(async_client, client_token, "appt_cancel_2", "2099-05-06T10:00:00")
+    async def test_cancel_with_reason_forbidden(
+        self, async_client, washer_token, client_token
+    ):
+        await self._create_appointment(
+            async_client, client_token, "appt_cancel_2", "2099-05-06T10:00:00"
+        )
         resp = await async_client.post(
             "/api/appointments/appt_cancel_2/cancel-reason",
             headers={"Authorization": f"Bearer {washer_token}"},
@@ -218,7 +252,9 @@ class TestLateAndCancel:
 
     @pytest.mark.asyncio
     async def test_cancel_with_reason_empty(self, async_client, client_token):
-        await self._create_appointment(async_client, client_token, "appt_cancel_3", "2099-05-07T10:00:00")
+        await self._create_appointment(
+            async_client, client_token, "appt_cancel_3", "2099-05-07T10:00:00"
+        )
         resp = await async_client.post(
             "/api/appointments/appt_cancel_3/cancel-reason",
             headers={"Authorization": f"Bearer {client_token}"},

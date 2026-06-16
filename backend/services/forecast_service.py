@@ -24,9 +24,13 @@ async def generate_forecast(
     db: AsyncSession, reference_date=None, days: int = 7
 ) -> ForecastResponse:
     if reference_date is None:
-        reference_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        reference_date = datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
     else:
-        reference_date = reference_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        reference_date = reference_date.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
     history_start = reference_date - timedelta(weeks=_WEEKS_HISTORY)
     history_start_str = history_start.isoformat()

@@ -82,16 +82,22 @@ class ReportsService:
         report = []
         for car_model, avg_check, visit_count in rows:
             avg_car_price = await CarPriceService.get_average_price(car_model or "")
-            report.append({
-                "carModel": car_model,
-                "avgCheck": round(float(avg_check), 2),
-                "avgCarPrice": avg_car_price,
-                "visitCount": visit_count,
-                "ratio": round((avg_check / avg_car_price * 100) if avg_car_price > 0 else 0, 4),
-            })
+            report.append(
+                {
+                    "carModel": car_model,
+                    "avgCheck": round(float(avg_check), 2),
+                    "avgCarPrice": avg_car_price,
+                    "visitCount": visit_count,
+                    "ratio": round(
+                        (avg_check / avg_car_price * 100) if avg_car_price > 0 else 0, 4
+                    ),
+                }
+            )
         return {"date": date, "data": report}
 
-    async def popular_additional_services(self, date: str, category: str | None) -> dict:
+    async def popular_additional_services(
+        self, date: str, category: str | None
+    ) -> dict:
         service_map = await self._service_repo.list_all_id_name_category_map()
         id_to_name = {s_id: name for s_id, (name, _) in service_map.items()}
         id_to_cat = {s_id: cat for s_id, (_, cat) in service_map.items()}
@@ -103,7 +109,9 @@ class ReportsService:
 
         service_counts: dict[str, int] = defaultdict(int)
 
-        async for row in self._appointment_repo.stream_popular_services_fields_in_period(
+        async for (
+            row
+        ) in self._appointment_repo.stream_popular_services_fields_in_period(
             start, end
         ):
             add_services_json, promo_id, wash_type_id = row
@@ -136,14 +144,18 @@ class ReportsService:
                 elif final_cat == category:
                     service_counts[final_name] += 1
 
-            if is_promo and (category is None or category == "Все" or category == "Акции"):
+            if is_promo and (
+                category is None or category == "Все" or category == "Акции"
+            ):
                 promo_name = promo_id_to_name.get(promo_id)
                 if promo_name:
                     service_counts[promo_name] += 1
 
         report_data = [
             {"serviceName": name, "count": count}
-            for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)
+            for name, count in sorted(
+                service_counts.items(), key=lambda i: i[1], reverse=True
+            )
         ]
         return {"date": date, "data": report_data}
 
@@ -153,12 +165,16 @@ class ReportsService:
 
         cons_to_cats: dict[str, set[str]] = defaultdict(set)
 
-        sc_links = await self._service_consumable_repo.list_all_service_consumable_pairs()
+        sc_links = (
+            await self._service_consumable_repo.list_all_service_consumable_pairs()
+        )
         for s_id, c_id in sc_links:
             cat = id_to_cat.get(s_id, "Прочее")
             cons_to_cats[c_id].add(cat)
 
-        wt_consumable_ids = await self._wash_type_consumable_repo.list_all_consumable_ids()
+        wt_consumable_ids = (
+            await self._wash_type_consumable_repo.list_all_consumable_ids()
+        )
         for c_id in wt_consumable_ids:
             cons_to_cats[c_id].add(WASH_CATEGORY)
 
@@ -167,7 +183,14 @@ class ReportsService:
         sums: dict[str, float] = defaultdict(float)
         units: dict[str, str] = {}
 
-        async for c_id, name, unit, qty, app_id, promo_id in self._consumable_usage_log_repo.stream_usage_with_appointment_in_period(
+        async for (
+            c_id,
+            name,
+            unit,
+            qty,
+            app_id,
+            promo_id,
+        ) in self._consumable_usage_log_repo.stream_usage_with_appointment_in_period(
             start, end
         ):
             cats = cons_to_cats.get(c_id, set())
@@ -188,16 +211,21 @@ class ReportsService:
             {"consumableName": n, "unit": units[n], "totalUsed": round(v, 2)}
             for n, v in sums.items()
         ]
-        return {"date": date, "data": sorted(data, key=lambda x: x["totalUsed"], reverse=True)}
+        return {
+            "date": date,
+            "data": sorted(data, key=lambda x: x["totalUsed"], reverse=True),
+        }
 
     async def daily_report(self, date: str) -> dict:
         start, end = self._day_bounds(date)
 
         appointments_count = await self._appointment_repo.count_in_period(start, end)
 
-        completed_count, revenue, avg_check = await self._appointment_repo.get_completed_stats_in_period(
-            start, end
-        )
+        (
+            completed_count,
+            revenue,
+            avg_check,
+        ) = await self._appointment_repo.get_completed_stats_in_period(start, end)
         revenue = revenue or 0
         avg_check = avg_check or 0
 
@@ -207,7 +235,8 @@ class ReportsService:
         wash_types_map = await self._wash_type_repo.list_all_id_name_map()
         services_map = await self._service_repo.list_all_id_name_map()
 
-        appt_rows = await self._appointment_repo.list_wash_type_and_additional_services_in_period(
+        appt_repo = self._appointment_repo
+        appt_rows = await appt_repo.list_wash_type_and_additional_services_in_period(
             start, end
         )
         service_counts: dict[str, int] = defaultdict(int)
@@ -224,7 +253,9 @@ class ReportsService:
 
         top_services = [
             {"name": name, "count": count}
-            for name, count in sorted(service_counts.items(), key=lambda i: i[1], reverse=True)[:5]
+            for name, count in sorted(
+                service_counts.items(), key=lambda i: i[1], reverse=True
+            )[:5]
         ]
 
         shifts = await self._shift_repo.list_for_range(date, date)
@@ -232,13 +263,21 @@ class ReportsService:
         washers_map = await self._user_repo.get_display_names_by_ids(washer_ids)
 
         washers_on_shift = [
-            {"name": washers_map.get(s.userId, "Unknown"), "start": s.startTime, "end": s.endTime}
+            {
+                "name": washers_map.get(s.userId, "Unknown"),
+                "start": s.startTime,
+                "end": s.endTime,
+            }
             for s in shifts
         ]
 
         low_stock_consumables = await self._consumable_repo.list_low_stock_alerts()
         consumables_alert = [
-            {"name": c.name, "currentStock": round(float(c.currentStock), 1), "minStock": round(float(c.minStock), 1)}
+            {
+                "name": c.name,
+                "currentStock": round(float(c.currentStock), 1),
+                "minStock": round(float(c.minStock), 1),
+            }
             for c in low_stock_consumables
         ]
 
@@ -261,10 +300,7 @@ class ReportsService:
         availability = await self._washer_availability_repo.list_for_range_all(
             start_date, end_date
         )
-        washers = {
-            u.id: u.displayName
-            for u in await self._user_repo.list_washers()
-        }
+        washers = {u.id: u.displayName for u in await self._user_repo.list_washers()}
 
         start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()

@@ -1,0 +1,5 @@
+[lint]
+extend-per-file-ignores = {
+    "services/ai_draft_service.py" = ["E501"],
+    "tests/conftest.py" = ["E402"],
+}

@@ -25,8 +25,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
 
     async def sum_usage_since(self, consumable_id: str, since: str) -> float:
         result = await self._db.execute(
-            select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0))
-            .where(
+            select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0)).where(
                 ConsumableUsageLog.consumableId == consumable_id,
                 ConsumableUsageLog.timestamp >= since,
             )

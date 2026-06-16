@@ -63,6 +63,8 @@ class WasherAvailabilityService:
     async def delete_availability(
         self, user_id: int, start_date: str, end_date: str
     ) -> int:
-        deleted = await self._availability.delete_for_range(user_id, start_date, end_date)
+        deleted = await self._availability.delete_for_range(
+            user_id, start_date, end_date
+        )
         await self._db.commit()
         return deleted

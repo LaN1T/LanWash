@@ -110,11 +110,13 @@ class TestTipRepository:
         db_session.add_all([appt1, appt2, appt3])
         await db_session.flush()
 
-        db_session.add_all([
-            _tip(appt1.id, status="pending", amount=100),
-            _tip(appt2.id, status="paid", amount=200),
-            _tip(appt3.id, washer="other_washer", status="paid", amount=300),
-        ])
+        db_session.add_all(
+            [
+                _tip(appt1.id, status="pending", amount=100),
+                _tip(appt2.id, status="paid", amount=200),
+                _tip(appt3.id, washer="other_washer", status="paid", amount=300),
+            ]
+        )
         await db_session.flush()
 
         stats = await repo.get_stats("washer_tip")

@@ -15,8 +15,9 @@ class PromoIncludedExtraRepository(BaseRepository[PromoIncludedExtra]):
         if not promo_ids:
             return {}
         result = await self._db.execute(
-            select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
-            .where(PromoIncludedExtra.promoId.in_(promo_ids))
+            select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId).where(
+                PromoIncludedExtra.promoId.in_(promo_ids)
+            )
         )
         extras_map: dict[str, list[str]] = {}
         for promo_id, extra_id in result.all():

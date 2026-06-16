@@ -31,7 +31,9 @@ class ShiftsService:
             start_date, end_date, user_id=None if is_admin else user_id
         )
 
-    async def list_today_shifts(self, today: str, user_id: int, is_admin: bool) -> list[Shift]:
+    async def list_today_shifts(
+        self, today: str, user_id: int, is_admin: bool
+    ) -> list[Shift]:
         return await self._shifts.list_today(
             today, user_id=None if is_admin else user_id
         )
@@ -47,14 +49,16 @@ class ShiftsService:
             start_m = self._time_to_minutes(shift.startTime)
             end_m = self._time_to_minutes(shift.endTime)
             if start_m <= current_minutes <= end_m:
-                on_duty.append({
-                    "shiftId": shift.id,
-                    "userId": user.id,
-                    "name": user.displayName,
-                    "phone": user.phone,
-                    "start": shift.startTime,
-                    "end": shift.endTime,
-                })
+                on_duty.append(
+                    {
+                        "shiftId": shift.id,
+                        "userId": user.id,
+                        "name": user.displayName,
+                        "phone": user.phone,
+                        "start": shift.startTime,
+                        "end": shift.endTime,
+                    }
+                )
         return on_duty
 
     async def list_my_shifts(self, user_id: int, limit: int) -> list[Shift]:
@@ -135,7 +139,9 @@ class ShiftsService:
         await self._db.refresh(shift)
         return shift
 
-    async def delete_shift(self, shift_id: int, caller_username: str, is_admin: bool) -> None:
+    async def delete_shift(
+        self, shift_id: int, caller_username: str, is_admin: bool
+    ) -> None:
         shift = await self._shifts.get_by_id(shift_id)
         if not shift:
             raise ShiftNotFoundError()
@@ -189,5 +195,5 @@ class ShiftsService:
 
     @staticmethod
     def _time_to_minutes(time_str: str) -> int:
-        h, m = map(int, time_str.split(':'))
+        h, m = map(int, time_str.split(":"))
         return h * 60 + m

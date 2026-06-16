@@ -48,7 +48,9 @@ class TipsService:
         if not washer_username:
             raise ValueError("На эту запись не назначен мойщик")
 
-        if await self._tips.get_by_appointment_and_washer(data.appointmentId, washer_username):
+        if await self._tips.get_by_appointment_and_washer(
+            data.appointmentId, washer_username
+        ):
             raise DuplicateTipError("Чаевые на эту запись уже оставлены")
 
         tip = Tip(
@@ -68,13 +70,17 @@ class TipsService:
         await self._db.refresh(tip)
         return tip
 
-    async def list_my_tips(self, username: str) -> list[tuple[Tip, Optional[Appointment]]]:
+    async def list_my_tips(
+        self, username: str
+    ) -> list[tuple[Tip, Optional[Appointment]]]:
         return await self._tips.list_with_appointments(username)
 
     async def get_tip_stats(self, username: str) -> dict:
         return await self._tips.get_stats(username)
 
-    async def mark_tip_paid(self, tip_id: int, current_username: str, is_admin: bool) -> Tip:
+    async def mark_tip_paid(
+        self, tip_id: int, current_username: str, is_admin: bool
+    ) -> Tip:
         tip = await self._tips.get_by_id(tip_id)
         if not tip:
             raise TipNotFoundError("Чаевые не найдены")

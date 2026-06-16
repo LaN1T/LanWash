@@ -19,11 +19,13 @@ class TestLogEntryRepository:
     @pytest.mark.asyncio
     async def test_list_by_user(self, db_session):
         repo = LogEntryRepository(db_session)
-        db_session.add_all([
-            _log("log_user_a", "login", "2099-01-01T00:00:00"),
-            _log("log_user_a", "logout", "2099-01-02T00:00:00"),
-            _log("log_user_b", "login", "2099-01-03T00:00:00"),
-        ])
+        db_session.add_all(
+            [
+                _log("log_user_a", "login", "2099-01-01T00:00:00"),
+                _log("log_user_a", "logout", "2099-01-02T00:00:00"),
+                _log("log_user_b", "login", "2099-01-03T00:00:00"),
+            ]
+        )
         await db_session.flush()
 
         rows = await repo.list_by_user("log_user_a", limit=10)
@@ -34,11 +36,13 @@ class TestLogEntryRepository:
     @pytest.mark.asyncio
     async def test_list_by_user_pagination(self, db_session):
         repo = LogEntryRepository(db_session)
-        db_session.add_all([
-            _log("log_user_c", "a", "2099-01-01T00:00:00"),
-            _log("log_user_c", "b", "2099-01-02T00:00:00"),
-            _log("log_user_c", "c", "2099-01-03T00:00:00"),
-        ])
+        db_session.add_all(
+            [
+                _log("log_user_c", "a", "2099-01-01T00:00:00"),
+                _log("log_user_c", "b", "2099-01-02T00:00:00"),
+                _log("log_user_c", "c", "2099-01-03T00:00:00"),
+            ]
+        )
         await db_session.flush()
 
         rows = await repo.list_by_user("log_user_c", limit=2, offset=0)
@@ -53,10 +57,12 @@ class TestLogEntryRepository:
     @pytest.mark.asyncio
     async def test_clear_all(self, db_session):
         repo = LogEntryRepository(db_session)
-        db_session.add_all([
-            _log("log_user_d", "action1"),
-            _log("log_user_e", "action2"),
-        ])
+        db_session.add_all(
+            [
+                _log("log_user_d", "action1"),
+                _log("log_user_e", "action2"),
+            ]
+        )
         await db_session.flush()
 
         assert await repo.count() == 2

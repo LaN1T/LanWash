@@ -176,7 +176,10 @@ class TestConsumables:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
-        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         assert len(response.content) > 100
 
     @pytest.mark.asyncio
@@ -186,7 +189,10 @@ class TestConsumables:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
-        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         assert len(response.content) > 100
 
     @pytest.mark.asyncio
@@ -206,7 +212,13 @@ class TestConsumables:
         response = await async_client.post(
             "/api/consumables/import-refills",
             headers={"Authorization": f"Bearer {admin_token}"},
-            files={"file": ("refills.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "refills.xlsx",
+                    buf,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -230,7 +242,13 @@ class TestConsumables:
         response = await async_client.post(
             "/api/consumables/import-refills",
             headers={"Authorization": f"Bearer {admin_token}"},
-            files={"file": ("refills.xlsx", buf, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "refills.xlsx",
+                    buf,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
         assert response.status_code == 200
         data = response.json()

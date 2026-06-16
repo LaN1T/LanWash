@@ -47,11 +47,19 @@ class TestAppointmentRepository:
     async def test_get_status_counts_in_period(self, db_session):
         user = await _create_user(db_session, "appt_status_user")
         repo = AppointmentRepository(db_session)
-        db_session.add_all([
-            _appointment("a1", user.username, "2026-06-10T10:00:00", status="completed"),
-            _appointment("a2", user.username, "2026-06-11T10:00:00", status="completed"),
-            _appointment("a3", user.username, "2026-06-12T10:00:00", status="cancelled"),
-        ])
+        db_session.add_all(
+            [
+                _appointment(
+                    "a1", user.username, "2026-06-10T10:00:00", status="completed"
+                ),
+                _appointment(
+                    "a2", user.username, "2026-06-11T10:00:00", status="completed"
+                ),
+                _appointment(
+                    "a3", user.username, "2026-06-12T10:00:00", status="cancelled"
+                ),
+            ]
+        )
         await db_session.flush()
 
         counts = await repo.get_status_counts_in_period(
@@ -73,11 +81,23 @@ class TestAppointmentRepository:
     async def test_get_revenue_stats_in_period(self, db_session):
         user = await _create_user(db_session, "appt_revenue_user")
         repo = AppointmentRepository(db_session)
-        db_session.add_all([
-            _appointment("a4", user.username, "2026-06-10T10:00:00", paid_price=1000),
-            _appointment("a5", user.username, "2026-06-11T10:00:00", paid_price=2000),
-            _appointment("a6", user.username, "2026-06-12T10:00:00", status="cancelled", paid_price=5000),
-        ])
+        db_session.add_all(
+            [
+                _appointment(
+                    "a4", user.username, "2026-06-10T10:00:00", paid_price=1000
+                ),
+                _appointment(
+                    "a5", user.username, "2026-06-11T10:00:00", paid_price=2000
+                ),
+                _appointment(
+                    "a6",
+                    user.username,
+                    "2026-06-12T10:00:00",
+                    status="cancelled",
+                    paid_price=5000,
+                ),
+            ]
+        )
         await db_session.flush()
 
         total, average = await repo.get_revenue_stats_in_period(
@@ -91,11 +111,19 @@ class TestAppointmentRepository:
     async def test_count_completed_by_owner(self, db_session):
         user = await _create_user(db_session, "appt_owner_user")
         repo = AppointmentRepository(db_session)
-        db_session.add_all([
-            _appointment("a7", user.username, "2026-06-10T10:00:00", status="completed"),
-            _appointment("a8", user.username, "2026-06-11T10:00:00", status="completed"),
-            _appointment("a9", user.username, "2026-06-12T10:00:00", status="scheduled"),
-        ])
+        db_session.add_all(
+            [
+                _appointment(
+                    "a7", user.username, "2026-06-10T10:00:00", status="completed"
+                ),
+                _appointment(
+                    "a8", user.username, "2026-06-11T10:00:00", status="completed"
+                ),
+                _appointment(
+                    "a9", user.username, "2026-06-12T10:00:00", status="scheduled"
+                ),
+            ]
+        )
         await db_session.flush()
 
         assert await repo.count_completed_by_owner(user.username) == 2

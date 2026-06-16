@@ -36,8 +36,10 @@ class ShiftRepository(BaseRepository[Shift]):
     async def list_current(
         self, today: str, status: str = "confirmed", user_id: int | None = None
     ) -> list[tuple[Shift, User]]:
-        stmt = select(Shift, User).join(User, Shift.userId == User.id).where(
-            and_(Shift.date == today, Shift.status == status)
+        stmt = (
+            select(Shift, User)
+            .join(User, Shift.userId == User.id)
+            .where(and_(Shift.date == today, Shift.status == status))
         )
         if user_id is not None:
             stmt = stmt.where(Shift.userId == user_id)

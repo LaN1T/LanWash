@@ -9,7 +9,9 @@ class ShiftTemplateRepository(BaseRepository[ShiftTemplate]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, ShiftTemplate)
 
-    async def list_for_owner(self, owner_username: str, include_all: bool = False) -> list[ShiftTemplate]:
+    async def list_for_owner(
+        self, owner_username: str, include_all: bool = False
+    ) -> list[ShiftTemplate]:
         stmt = select(ShiftTemplate)
         if not include_all:
             stmt = stmt.where(ShiftTemplate.ownerUsername == owner_username)

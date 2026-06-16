@@ -27,7 +27,9 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         )
         return list(result.scalars().all())
 
-    async def get_active_for_user_with_lock(self, subscription_id: int, user_id: int) -> Subscription | None:
+    async def get_active_for_user_with_lock(
+        self, subscription_id: int, user_id: int
+    ) -> Subscription | None:
         today = datetime.now().isoformat()[:10]
         result = await self._db.execute(
             select(Subscription)
@@ -42,7 +44,9 @@ class SubscriptionRepository(BaseRepository[Subscription]):
     async def count_active_for_user(self, user_id: int) -> int:
         today = datetime.now().isoformat()[:10]
         result = await self._db.execute(
-            select(func.count(Subscription.id)).where(*self._active_filters(user_id, today))
+            select(func.count(Subscription.id)).where(
+                *self._active_filters(user_id, today)
+            )
         )
         return result.scalar() or 0
 

@@ -10,9 +10,7 @@ class UserRepository(BaseRepository[User]):
         super().__init__(db, User)
 
     async def get_by_username(self, username: str) -> User | None:
-        result = await self._db.execute(
-            select(User).where(User.username == username)
-        )
+        result = await self._db.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
     async def get_by_telegram_id(self, telegram_id: str) -> User | None:
@@ -22,22 +20,16 @@ class UserRepository(BaseRepository[User]):
         return result.scalar_one_or_none()
 
     async def get_by_referral_code(self, code: str) -> User | None:
-        result = await self._db.execute(
-            select(User).where(User.referralCode == code)
-        )
+        result = await self._db.execute(select(User).where(User.referralCode == code))
         return result.scalar_one_or_none()
 
     async def list_washers(self) -> list[User]:
         result = await self._db.execute(
-            select(User)
-            .where(User.role == "washer")
-            .order_by(User.displayName.asc())
+            select(User).where(User.role == "washer").order_by(User.displayName.asc())
         )
         return list(result.scalars().all())
 
-    async def list_client_usernames(
-        self, *, limit: int, offset: int
-    ) -> list[str]:
+    async def list_client_usernames(self, *, limit: int, offset: int) -> list[str]:
         result = await self._db.execute(
             select(User.username)
             .where(User.role == "client")
@@ -59,15 +51,11 @@ class UserRepository(BaseRepository[User]):
         if not usernames:
             return {}
         result = await self._db.execute(
-            select(User.username, User.displayName).where(
-                User.username.in_(usernames)
-            )
+            select(User.username, User.displayName).where(User.username.in_(usernames))
         )
         return {row[0]: row[1] for row in result.all()}
 
-    async def get_display_names_by_ids(
-        self, ids: list[int]
-    ) -> dict[int, str | None]:
+    async def get_display_names_by_ids(self, ids: list[int]) -> dict[int, str | None]:
         if not ids:
             return {}
         result = await self._db.execute(
@@ -95,15 +83,15 @@ class UserRepository(BaseRepository[User]):
         filters = []
 
         if q:
-            escaped_q = q.replace('%', r'\%').replace('_', r'\_')
+            escaped_q = q.replace("%", r"\%").replace("_", r"\_")
             safe_q = f"%{escaped_q}%"
             filters.append(
                 or_(
-                    User.displayName.ilike(safe_q, escape='\\'),
-                    User.username.ilike(safe_q, escape='\\'),
-                    User.phone.ilike(safe_q, escape='\\'),
-                    User.carModel.ilike(safe_q, escape='\\'),
-                    User.carNumber.ilike(safe_q, escape='\\'),
+                    User.displayName.ilike(safe_q, escape="\\"),
+                    User.username.ilike(safe_q, escape="\\"),
+                    User.phone.ilike(safe_q, escape="\\"),
+                    User.carModel.ilike(safe_q, escape="\\"),
+                    User.carNumber.ilike(safe_q, escape="\\"),
                 )
             )
 

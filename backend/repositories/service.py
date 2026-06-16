@@ -20,8 +20,8 @@ class ServiceRepository(BaseRepository[Service]):
             select(distinct(Service.category)).order_by(Service.category)
         )
         categories = [r[0] for r in result.all()]
-        if 'Акции' not in categories:
-            categories.append('Акции')
+        if "Акции" not in categories:
+            categories.append("Акции")
             categories.sort()
         return categories
 

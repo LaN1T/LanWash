@@ -11,11 +11,15 @@ class ServiceFavoriteRepository(BaseRepository[ServiceFavorite]):
 
     async def list_service_ids_for_user(self, username: str) -> list[str]:
         result = await self._db.execute(
-            select(ServiceFavorite.serviceId).where(ServiceFavorite.username == username)
+            select(ServiceFavorite.serviceId).where(
+                ServiceFavorite.username == username
+            )
         )
         return result.scalars().all()
 
-    async def get_favorite(self, username: str, service_id: str) -> ServiceFavorite | None:
+    async def get_favorite(
+        self, username: str, service_id: str
+    ) -> ServiceFavorite | None:
         result = await self._db.execute(
             select(ServiceFavorite).where(
                 ServiceFavorite.username == username,

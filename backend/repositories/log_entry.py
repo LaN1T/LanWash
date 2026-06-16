@@ -18,7 +18,9 @@ class LogEntryRepository(BaseRepository[LogEntry]):
         )
         return list(result.scalars().all())
 
-    async def list_by_user(self, username: str, limit: int, offset: int = 0) -> list[LogEntry]:
+    async def list_by_user(
+        self, username: str, limit: int, offset: int = 0
+    ) -> list[LogEntry]:
         result = await self._db.execute(
             select(LogEntry)
             .where(LogEntry.username == username)

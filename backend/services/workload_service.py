@@ -18,16 +18,25 @@ from repositories.wash_type_included_extra import WashTypeIncludedExtraRepositor
 logger = structlog.get_logger()
 
 # Advisory locks can block the event loop under concurrent load testing.
-_DISABLE_ADVISORY_LOCK = os.getenv("DISABLE_ADVISORY_LOCK") == "true" or os.getenv("ENVIRONMENT") == "testing"
+_DISABLE_ADVISORY_LOCK = (
+    os.getenv("DISABLE_ADVISORY_LOCK") == "true"
+    or os.getenv("ENVIRONMENT") == "testing"
+)
 
 NUM_BOXES = 2  # Можно вынести в конфиг или БД
 
 
 class WorkloadService:
     @staticmethod
-    async def get_appointment_duration(db: AsyncSession, wash_type_id: str, additional_services_json: str, promo_id: str = None) -> int:
+    async def get_appointment_duration(
+        db: AsyncSession,
+        wash_type_id: str,
+        additional_services_json: str,
+        promo_id: str = None,
+    ) -> int:
         """
-        Calculates total duration in minutes, excluding extra services already covered by the wash type.
+        Calculates total duration in minutes, excluding extra services already
+        covered by the wash type.
         """
         wash_types = WashTypeRepository(db)
         wash_type_extras = WashTypeIncludedExtraRepository(db)
@@ -40,7 +49,9 @@ class WorkloadService:
         base_duration = wt_durations.get(wash_type_id, 30)
 
         # 2. Получаем услуги, уже включённые в этот тип мойки
-        wt_included_raw = await wash_type_extras.list_extras_for_wash_types([wash_type_id])
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(
+            [wash_type_id]
+        )
         included_ids = set(wt_included_raw.get(wash_type_id, []))
 
         # 3. Длительность промо (если есть)
@@ -97,7 +108,9 @@ class WorkloadService:
         wt_durations = await wash_types.get_durations(list(wash_type_ids))
 
         # Wash type included extras
-        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(list(wash_type_ids))
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(
+            list(wash_type_ids)
+        )
         wt_included: dict[str, set] = {
             wt_id: set(extra_ids) for wt_id, extra_ids in wt_included_raw.items()
         }
@@ -106,7 +119,8 @@ class WorkloadService:
         promo_durations = await promos.get_durations(list(promo_ids))
         promo_included_raw = await promo_extras.list_extras_for_promos(list(promo_ids))
         promo_included: dict[str, set] = {
-            promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
+            promo_id: set(extra_ids)
+            for promo_id, extra_ids in promo_included_raw.items()
         }
 
         # Service durations
@@ -134,13 +148,18 @@ class WorkloadService:
     @staticmethod
     def _safe_parse_iso(dt_str: str) -> datetime:
         try:
-            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
             return dt.replace(tzinfo=None)
         except (ValueError, TypeError):
             raise ValueError(f"Invalid ISO datetime: {dt_str}")
 
     @staticmethod
-    async def find_available_box(db: AsyncSession, dt_str: str, duration_minutes: int, exclude_appt_id: str = None) -> int:
+    async def find_available_box(
+        db: AsyncSession,
+        dt_str: str,
+        duration_minutes: int,
+        exclude_appt_id: str = None,
+    ) -> int:
         """
         Finds the first available box index (0 to NUM_BOXES-1).
         Returns -1 if no box is available.
@@ -151,26 +170,36 @@ class WorkloadService:
         # Проверяем все записи, которые могут пересекаться.
         # Так как end_time не хранится, вычисляем его для каждой записи.
         # Для оптимизации загружаем все записи за этот день.
-        day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-        day_end = start_dt.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+        day_start = start_dt.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).isoformat()
+        day_end = start_dt.replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        ).isoformat()
 
         # Advisory lock на уровне дня для предотвращения race condition при бронировании
         # Работает только на PostgreSQL; на SQLite пропускаем
         if not _DISABLE_ADVISORY_LOCK:
             # Проверяем движок БД — advisory lock есть только в PostgreSQL
-            dialect_name = getattr(getattr(db, 'bind', None), 'dialect', None)
+            dialect_name = getattr(getattr(db, "bind", None), "dialect", None)
             if dialect_name is None:
                 # AsyncSession — достаём sync_session.bind
-                sync_bind = getattr(getattr(db, 'sync_session', None), 'bind', None)
-                dialect_name = getattr(sync_bind, 'dialect', None)
-            is_postgres = getattr(dialect_name, 'name', '') == 'postgresql'
+                sync_bind = getattr(getattr(db, "sync_session", None), "bind", None)
+                dialect_name = getattr(sync_bind, "dialect", None)
+            is_postgres = getattr(dialect_name, "name", "") == "postgresql"
             if is_postgres:
                 lock_input = day_start.encode()
-                lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], 'little')
-                await db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(lock_id=lock_id))
+                lock_id = int.from_bytes(hashlib.md5(lock_input).digest()[:4], "little")
+                await db.execute(
+                    text("SELECT pg_advisory_xact_lock(:lock_id)").bindparams(
+                        lock_id=lock_id
+                    )
+                )
 
         appointments = AppointmentRepository(db)
-        day_appointments = await appointments.list_for_day(day_start, day_end, exclude_appt_id)
+        day_appointments = await appointments.list_for_day(
+            day_start, day_end, exclude_appt_id
+        )
 
         # --- Batch preload all duration data to avoid N+1 queries ---
         wash_types = WashTypeRepository(db)
@@ -192,7 +221,9 @@ class WorkloadService:
         wt_durations = await wash_types.get_durations(list(wash_type_ids))
 
         # Wash type included extras
-        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(list(wash_type_ids))
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(
+            list(wash_type_ids)
+        )
         wt_included: dict[str, set] = {
             wt_id: set(extra_ids) for wt_id, extra_ids in wt_included_raw.items()
         }
@@ -201,7 +232,8 @@ class WorkloadService:
         promo_durations = await promos.get_durations(list(promo_ids))
         promo_included_raw = await promo_extras.list_extras_for_promos(list(promo_ids))
         promo_included: dict[str, set] = {
-            promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
+            promo_id: set(extra_ids)
+            for promo_id, extra_ids in promo_included_raw.items()
         }
 
         # Service durations
@@ -222,6 +254,7 @@ class WorkloadService:
             filtered = [eid for eid in extra_ids if eid not in included]
             total = base + sum(svc_durations.get(eid, 0) for eid in filtered)
             return total
+
         # --- End batch preload ---
 
         # Для каждого бокса проверяем, свободен ли он в интервале [start_dt, end_dt]
@@ -238,12 +271,23 @@ class WorkloadService:
 
                 # Проверка пересечения
                 if start_dt < appt_end and end_dt > appt_start:
-                    logger.debug("box_conflict", box=box_idx + 1, appt_id=appt.id, appt_start=appt_start.isoformat(), appt_end=appt_end.isoformat())
+                    logger.debug(
+                        "box_conflict",
+                        box=box_idx + 1,
+                        appt_id=appt.id,
+                        appt_start=appt_start.isoformat(),
+                        appt_end=appt_end.isoformat(),
+                    )
                     is_free = False
                     break
 
             if is_free:
-                logger.debug("box_found", box=box_idx + 1, dt_str=dt_str, duration=duration_minutes)
+                logger.debug(
+                    "box_found",
+                    box=box_idx + 1,
+                    dt_str=dt_str,
+                    duration=duration_minutes,
+                )
                 return box_idx
 
         logger.debug("no_free_box", dt_str=dt_str, duration=duration_minutes)
@@ -263,7 +307,10 @@ class WorkloadService:
         appts = await appointments.list_for_day(day_start, day_end)
 
         if not appts:
-            return {"num_boxes": NUM_BOXES, "busy_slots": [[] for _ in range(NUM_BOXES)]}
+            return {
+                "num_boxes": NUM_BOXES,
+                "busy_slots": [[] for _ in range(NUM_BOXES)],
+            }
 
         wash_types = WashTypeRepository(db)
         wash_type_extras = WashTypeIncludedExtraRepository(db)
@@ -285,7 +332,9 @@ class WorkloadService:
         wt_durations = await wash_types.get_durations(list(wash_type_ids))
 
         # Bulk load wash type included extras
-        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(list(wash_type_ids))
+        wt_included_raw = await wash_type_extras.list_extras_for_wash_types(
+            list(wash_type_ids)
+        )
         wt_included: dict[str, set] = {
             wt_id: set(extra_ids) for wt_id, extra_ids in wt_included_raw.items()
         }
@@ -294,7 +343,8 @@ class WorkloadService:
         promo_durations = await promos.get_durations(list(promo_ids))
         promo_included_raw = await promo_extras.list_extras_for_promos(list(promo_ids))
         promo_included: dict[str, set] = {
-            promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
+            promo_id: set(extra_ids)
+            for promo_id, extra_ids in promo_included_raw.items()
         }
 
         # Bulk load durations for referenced additional services.
@@ -315,7 +365,11 @@ class WorkloadService:
 
             total_duration = base_duration
             try:
-                extra_ids = json.loads(appt.additionalServices) if appt.additionalServices else []
+                extra_ids = (
+                    json.loads(appt.additionalServices)
+                    if appt.additionalServices
+                    else []
+                )
             except Exception:
                 extra_ids = []
 
@@ -327,15 +381,11 @@ class WorkloadService:
             end = start + timedelta(minutes=total_duration)
 
             if 0 <= appt.box_index < NUM_BOXES:
-                busy_by_box[appt.box_index].append({
-                    "start": start.isoformat(),
-                    "end": end.isoformat()
-                })
+                busy_by_box[appt.box_index].append(
+                    {"start": start.isoformat(), "end": end.isoformat()}
+                )
 
-        return {
-            "num_boxes": NUM_BOXES,
-            "busy_slots": busy_by_box
-        }
+        return {"num_boxes": NUM_BOXES, "busy_slots": busy_by_box}
 
 
 workload_service = WorkloadService()

@@ -46,7 +46,6 @@ async def test_request_id_preserved(client):
 async def test_request_id_in_logs(client, caplog):
     import logging
 
-
     # Ensure structlog/stdio logs are captured
     caplog.set_level(logging.INFO, logger="main")
 

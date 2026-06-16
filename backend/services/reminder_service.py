@@ -84,7 +84,10 @@ async def _process_batch(
             days_int = int(days_since)
 
             title = "Пора на мойку!"
-            body = f"Прошло {days_int} дней с вашей последней {wash_type_name}. Записываемся?"
+            body = (
+                f"Прошло {days_int} дней с вашей последней {wash_type_name}. "
+                "Записываемся?"
+            )
             data = {"type": "reminder", "screen": "booking"}
 
             try:
@@ -104,7 +107,9 @@ async def _process_batch(
 
         except Exception as e:
             error_count += 1
-            logger.warning("reminder_processing_failed", username=username, error=str(e))
+            logger.warning(
+                "reminder_processing_failed", username=username, error=str(e)
+            )
 
     return sent_count, skipped_count, error_count
 
@@ -136,9 +141,7 @@ async def check_and_send_reminders(db: AsyncSession) -> dict:
     # Stream client usernames in batches directly from the DB
     offset = 0
     while True:
-        batch = await users_repo.list_client_usernames(
-            limit=_BATCH_SIZE, offset=offset
-        )
+        batch = await users_repo.list_client_usernames(limit=_BATCH_SIZE, offset=offset)
         if not batch:
             break
         s, sk, e = await _process_batch(

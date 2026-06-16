@@ -33,9 +33,7 @@ class ReviewsService:
         self._reviews = ReviewRepository(db)
         self._appointments = AppointmentRepository(db)
 
-    async def list_reviews(
-        self, published_only: bool, limit: int
-    ) -> list[Review]:
+    async def list_reviews(self, published_only: bool, limit: int) -> list[Review]:
         return await self._reviews.list_published_or_all(published_only, limit)
 
     async def list_my_reviews(self, user_id: int, limit: int) -> list[Review]:
@@ -45,7 +43,11 @@ class ReviewsService:
         return await self._reviews.exists_for_user_appointment(user_id, appointment_id)
 
     async def create_review(
-        self, data: ReviewCreateRequest, current_user_id: int, current_user_username: str, current_user_display_name: str
+        self,
+        data: ReviewCreateRequest,
+        current_user_id: int,
+        current_user_username: str,
+        current_user_display_name: str,
     ) -> Review:
         if data.appointmentId is not None:
             appointment = await self._appointments.get_by_id(data.appointmentId)
@@ -53,10 +55,14 @@ class ReviewsService:
                 raise ReviewBadRequestError("Запись не найдена")
             if appointment.ownerUsername != current_user_username:
                 raise ReviewPermissionError("Нельзя оставить отзыв на чужую запись")
-            if appointment.status != 'completed':
-                raise ReviewBadRequestError("Можно оставить отзыв только на завершённую мойку")
+            if appointment.status != "completed":
+                raise ReviewBadRequestError(
+                    "Можно оставить отзыв только на завершённую мойку"
+                )
 
-            if await self._reviews.exists_for_user_appointment(current_user_id, data.appointmentId):
+            if await self._reviews.exists_for_user_appointment(
+                current_user_id, data.appointmentId
+            ):
                 raise ReviewDuplicateError("Отзыв на эту запись уже существует")
 
         review = Review(
@@ -80,7 +86,9 @@ class ReviewsService:
     async def list_all_reviews(self, limit: int) -> list[Review]:
         return await self._reviews.list_all(limit)
 
-    async def moderate_review(self, review_id: int, data: ReviewModerateRequest) -> Review:
+    async def moderate_review(
+        self, review_id: int, data: ReviewModerateRequest
+    ) -> Review:
         review = await self._reviews.get_by_id(review_id)
         if not review:
             raise ReviewNotFoundError()

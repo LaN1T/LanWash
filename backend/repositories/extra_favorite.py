@@ -15,7 +15,9 @@ class ExtraFavoriteRepository(BaseRepository[ExtraFavorite]):
         )
         return result.scalars().all()
 
-    async def get_favorite(self, username: str, service_id: str) -> ExtraFavorite | None:
+    async def get_favorite(
+        self, username: str, service_id: str
+    ) -> ExtraFavorite | None:
         result = await self._db.execute(
             select(ExtraFavorite).where(
                 ExtraFavorite.username == username,

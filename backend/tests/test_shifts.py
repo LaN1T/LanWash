@@ -30,7 +30,7 @@ class TestShifts:
                 "startTime": "09:00",
                 "endTime": "18:00",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 201
         data = response.json()
@@ -39,7 +39,9 @@ class TestShifts:
         assert data["endTime"] == "18:00"
 
     @pytest.mark.asyncio
-    async def test_create_shift_invalid_time_range(self, async_client, db_session, admin_token):
+    async def test_create_shift_invalid_time_range(
+        self, async_client, db_session, admin_token
+    ):
         """Start time must be before end time."""
         washer = User(
             username="shift_washer2",
@@ -61,7 +63,7 @@ class TestShifts:
                 "startTime": "18:00",
                 "endTime": "09:00",
             },
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 400
 
@@ -94,8 +96,7 @@ class TestShifts:
         await db_session.commit()
 
         response = await async_client.get(
-            "/api/shifts/today",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/api/shifts/today", headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -133,8 +134,7 @@ class TestShifts:
         await db_session.commit()
 
         response = await async_client.get(
-            "/api/shifts/current",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/api/shifts/current", headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -142,7 +142,9 @@ class TestShifts:
         assert data[0]["name"] == "Shift Washer 4"
 
     @pytest.mark.asyncio
-    async def test_current_shifts_excludes_outside_range(self, async_client, db_session, admin_token):
+    async def test_current_shifts_excludes_outside_range(
+        self, async_client, db_session, admin_token
+    ):
         """Current endpoint excludes shifts that don't cover current time."""
         washer = User(
             username="shift_washer5",
@@ -174,8 +176,7 @@ class TestShifts:
         await db_session.commit()
 
         response = await async_client.get(
-            "/api/shifts/current",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            "/api/shifts/current", headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -214,6 +215,6 @@ class TestShifts:
 
         response = await async_client.delete(
             f"/api/shifts/{shift.id}",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 204

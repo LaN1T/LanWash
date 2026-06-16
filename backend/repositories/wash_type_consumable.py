@@ -22,5 +22,7 @@ class WashTypeConsumableRepository(BaseRepository[WashTypeConsumable]):
         return list(result.scalars().all())
 
     async def list_all_consumable_ids(self) -> list[str]:
-        result = await self._db.execute(select(WashTypeConsumable.consumableId).distinct())
+        result = await self._db.execute(
+            select(WashTypeConsumable.consumableId).distinct()
+        )
         return [row[0] for row in result.all()]

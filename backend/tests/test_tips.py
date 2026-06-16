@@ -1,11 +1,19 @@
-
 import pytest
 
 
 class TestTips:
     """Тесты чаевых для мойщиков."""
 
-    async def _create_appointment_as_admin(self, async_client, admin_token, appt_id, date_time, status="completed", owner="client_test", assigned_washer='["washer_test"]'):
+    async def _create_appointment_as_admin(
+        self,
+        async_client,
+        admin_token,
+        appt_id,
+        date_time,
+        status="completed",
+        owner="client_test",
+        assigned_washer='["washer_test"]',
+    ):
         """Хелпер для создания записи от имени админа с нужными параметрами."""
         resp = await async_client.post(
             "/api/appointments/",
@@ -36,10 +44,17 @@ class TestTips:
         return resp
 
     @pytest.mark.asyncio
-    async def test_create_tip_for_completed_appointment(self, async_client, client_token, admin_token):
+    async def test_create_tip_for_completed_appointment(
+        self, async_client, client_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_1", "2099-05-01T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_1",
+            "2099-05-01T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -61,10 +76,17 @@ class TestTips:
         assert data.get("sbpUrl") is not None
 
     @pytest.mark.asyncio
-    async def test_create_tip_for_non_completed_appointment(self, async_client, client_token, admin_token):
+    async def test_create_tip_for_non_completed_appointment(
+        self, async_client, client_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_2", "2099-05-02T10:00:00",
-            status="scheduled", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_2",
+            "2099-05-02T10:00:00",
+            status="scheduled",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -81,7 +103,9 @@ class TestTips:
         assert "только за завершённую мойку" in resp.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_create_tip_for_other_user_appointment(self, async_client, client_token, admin_token):
+    async def test_create_tip_for_other_user_appointment(
+        self, async_client, client_token, admin_token
+    ):
         from db.session import AsyncSessionLocal
         from models import User
         from services.auth_service import get_password_hash
@@ -98,15 +122,23 @@ class TestTips:
             await session.commit()
             await session.refresh(other_user)
 
-        login_resp = await async_client.post("/api/auth/login", json={
-            "username": "other_client_tip",
-            "password": "TestPass123!",
-        })
+        login_resp = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "other_client_tip",
+                "password": "TestPass123!",
+            },
+        )
         assert login_resp.status_code == 200
 
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_3", "2099-05-03T10:00:00",
-            status="completed", owner="other_client_tip", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_3",
+            "2099-05-03T10:00:00",
+            status="completed",
+            owner="other_client_tip",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -125,8 +157,13 @@ class TestTips:
     @pytest.mark.asyncio
     async def test_create_tip_no_washer(self, async_client, client_token, admin_token):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_4", "2099-05-04T10:00:00",
-            status="completed", owner="client_test", assigned_washer="[]"
+            async_client,
+            admin_token,
+            "appt_tip_4",
+            "2099-05-04T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer="[]",
         )
         assert appt_resp.status_code == 200
 
@@ -143,10 +180,17 @@ class TestTips:
         assert "не назначен мойщик" in resp.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_washer_lists_tips(self, async_client, client_token, washer_token, admin_token):
+    async def test_washer_lists_tips(
+        self, async_client, client_token, washer_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_5", "2099-05-05T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_5",
+            "2099-05-05T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -171,10 +215,17 @@ class TestTips:
         assert any(t["amount"] == 200 for t in data)
 
     @pytest.mark.asyncio
-    async def test_mark_tip_paid(self, async_client, client_token, washer_token, admin_token):
+    async def test_mark_tip_paid(
+        self, async_client, client_token, washer_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_6", "2099-05-06T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_6",
+            "2099-05-06T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -198,10 +249,17 @@ class TestTips:
         assert mark_resp.json()["status"] == "paid"
 
     @pytest.mark.asyncio
-    async def test_mark_tip_paid_by_non_owner(self, async_client, client_token, washer_token, other_washer_token, admin_token):
+    async def test_mark_tip_paid_by_non_owner(
+        self, async_client, client_token, washer_token, other_washer_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_7", "2099-05-07T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_7",
+            "2099-05-07T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -227,8 +285,13 @@ class TestTips:
     @pytest.mark.asyncio
     async def test_create_duplicate_tip(self, async_client, client_token, admin_token):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_8", "2099-05-08T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_8",
+            "2099-05-08T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -256,10 +319,17 @@ class TestTips:
         assert "уже оставлены" in resp2.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_mark_paid_idempotent(self, async_client, client_token, washer_token, admin_token):
+    async def test_mark_paid_idempotent(
+        self, async_client, client_token, washer_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_9", "2099-05-09T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_9",
+            "2099-05-09T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -290,21 +360,30 @@ class TestTips:
         assert "уже отмечены" in mark2.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_create_tip_concurrent_race(self, async_client, client_token, admin_token):
+    async def test_create_tip_concurrent_race(
+        self, async_client, client_token, admin_token
+    ):
         """Симулирует состояние гонки, когда IntegrityError возникает на commit."""
         from sqlalchemy.exc import IntegrityError
         from sqlalchemy.ext.asyncio import AsyncSession
 
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_race", "2099-05-20T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_race",
+            "2099-05-20T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
         original_commit = AsyncSession.commit
 
         async def fake_commit(self):
-            raise IntegrityError("insert", {}, Exception("UNIQUE constraint failed: tips.appointmentId"))
+            raise IntegrityError(
+                "insert", {}, Exception("UNIQUE constraint failed: tips.appointmentId")
+            )
 
         AsyncSession.commit = fake_commit
         try:
@@ -323,10 +402,17 @@ class TestTips:
             AsyncSession.commit = original_commit
 
     @pytest.mark.asyncio
-    async def test_create_tip_amount_too_high(self, async_client, client_token, admin_token):
+    async def test_create_tip_amount_too_high(
+        self, async_client, client_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_10", "2099-05-10T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_10",
+            "2099-05-10T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 
@@ -342,10 +428,17 @@ class TestTips:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_tip_sbp_url_in_response(self, async_client, client_token, admin_token):
+    async def test_create_tip_sbp_url_in_response(
+        self, async_client, client_token, admin_token
+    ):
         appt_resp = await self._create_appointment_as_admin(
-            async_client, admin_token, "appt_tip_11", "2099-05-11T10:00:00",
-            status="completed", owner="client_test", assigned_washer='["washer_test"]'
+            async_client,
+            admin_token,
+            "appt_tip_11",
+            "2099-05-11T10:00:00",
+            status="completed",
+            owner="client_test",
+            assigned_washer='["washer_test"]',
         )
         assert appt_resp.status_code == 200
 

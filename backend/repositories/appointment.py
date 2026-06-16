@@ -124,8 +124,9 @@ class AppointmentRepository(BaseRepository[Appointment]):
         self, start_iso: str, end_iso: str
     ) -> tuple[Decimal | None, Decimal | None]:
         result = await self._db.execute(
-            select(func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice))
-            .where(
+            select(
+                func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice)
+            ).where(
                 Appointment.dateTime >= start_iso,
                 Appointment.dateTime < end_iso,
                 Appointment.status == "completed",
@@ -160,8 +161,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         self, start_iso: str, end_iso: str
     ) -> list[tuple[str, str, int | None]]:
         result = await self._db.execute(
-            select(Appointment.date, Appointment.status, Appointment.paidPrice)
-            .where(
+            select(Appointment.date, Appointment.status, Appointment.paidPrice).where(
                 Appointment.dateTime >= start_iso,
                 Appointment.dateTime < end_iso,
             )
@@ -172,8 +172,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         self, start_iso: str, end_iso: str
     ) -> list[tuple[str | None, int | None]]:
         result = await self._db.execute(
-            select(Appointment.assignedWasher, Appointment.paidPrice)
-            .where(
+            select(Appointment.assignedWasher, Appointment.paidPrice).where(
                 Appointment.dateTime >= start_iso,
                 Appointment.dateTime < end_iso,
                 Appointment.status == "completed",
@@ -202,9 +201,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         )
         return list(result.all())
 
-    async def list_completed_by_owners(
-        self, usernames: list[str]
-    ) -> list[Appointment]:
+    async def list_completed_by_owners(self, usernames: list[str]) -> list[Appointment]:
         if not usernames:
             return []
         result = await self._db.execute(
@@ -284,8 +281,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
                 func.count(Appointment.id),
                 func.sum(Appointment.paidPrice),
                 func.avg(Appointment.paidPrice),
-            )
-            .where(
+            ).where(
                 and_(
                     Appointment.dateTime >= start_iso,
                     Appointment.dateTime < end_iso,
@@ -320,8 +316,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         self, start_iso: str, end_iso: str
     ) -> list[tuple[str | None, str | None]]:
         result = await self._db.execute(
-            select(Appointment.washTypeId, Appointment.additionalServices)
-            .where(
+            select(Appointment.washTypeId, Appointment.additionalServices).where(
                 and_(
                     Appointment.dateTime >= start_iso,
                     Appointment.dateTime < end_iso,

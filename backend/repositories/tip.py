@@ -9,7 +9,9 @@ class TipRepository(BaseRepository[Tip]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Tip)
 
-    async def get_by_appointment_and_washer(self, appointment_id: str, washer_username: str) -> Tip | None:
+    async def get_by_appointment_and_washer(
+        self, appointment_id: str, washer_username: str
+    ) -> Tip | None:
         result = await self._db.execute(
             select(Tip).where(
                 Tip.appointmentId == appointment_id,
@@ -18,7 +20,9 @@ class TipRepository(BaseRepository[Tip]):
         )
         return result.scalar_one_or_none()
 
-    async def list_with_appointments(self, username: str) -> list[tuple[Tip, Appointment | None]]:
+    async def list_with_appointments(
+        self, username: str
+    ) -> list[tuple[Tip, Appointment | None]]:
         result = await self._db.execute(
             select(Tip, Appointment)
             .join(Appointment, Tip.appointmentId == Appointment.id, isouter=True)

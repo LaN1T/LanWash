@@ -140,7 +140,9 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
 
 
 @pytest.mark.asyncio
-async def test_availability_coverage(async_client, admin_token, washer_token, db_session):
+async def test_availability_coverage(
+    async_client, admin_token, washer_token, db_session
+):
     washers = await async_client.get(
         "/api/auth/washers",
         headers={"Authorization": f"Bearer {washer_token}"},

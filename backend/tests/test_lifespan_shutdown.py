@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -13,7 +14,9 @@ async def test_lifespan_closes_arq_pool_and_engine():
     with (
         patch("app.lifespan.init_db", new_callable=AsyncMock) as mock_init_db,
         patch("app.lifespan.get_arq_pool", new_callable=AsyncMock) as mock_get_arq_pool,
-        patch("app.lifespan.close_arq_pool", new_callable=AsyncMock) as mock_close_arq_pool,
+        patch(
+            "app.lifespan.close_arq_pool", new_callable=AsyncMock
+        ) as mock_close_arq_pool,
         patch("app.lifespan.engine", new_callable=AsyncMock) as mock_engine,
         patch("core.redis_client.get_redis", new_callable=AsyncMock) as mock_get_redis,
     ):

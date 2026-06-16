@@ -147,7 +147,11 @@ class AdminService:
             start_iso, end_iso, limit=5
         )
         top_clients = [
-            {"name": row[0] or "Unknown", "visits": row[1], "totalSpent": int(row[2] or 0)}
+            {
+                "name": row[0] or "Unknown",
+                "visits": row[1],
+                "totalSpent": int(row[2] or 0),
+            }
             for row in client_rows
         ]
 
@@ -209,7 +213,9 @@ class AdminService:
 
         return forecast
 
-    async def bulk_assign_washer(self, appointment_ids: list[str], washer_username: str) -> dict:
+    async def bulk_assign_washer(
+        self, appointment_ids: list[str], washer_username: str
+    ) -> dict:
         appointments = await self._appointments.get_by_ids(appointment_ids)
 
         found_ids = {a.id for a in appointments}
@@ -221,7 +227,9 @@ class AdminService:
         processed = 0
         for appt in appointments:
             if appt.status == "cancelled":
-                errors.append(f"{appt.id}: нельзя назначить мойщика на отменённую запись")
+                errors.append(
+                    f"{appt.id}: нельзя назначить мойщика на отменённую запись"
+                )
                 continue
             appt.assignedWasher = json.dumps([washer_username])
             appt.isModifiedByAdmin = 1
@@ -303,6 +311,7 @@ class AdminService:
         )
 
         from schemas import UserListItem
+
         return {
             "items": [UserListItem.model_validate(u) for u in items],
             "total": total,

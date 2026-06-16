@@ -18,7 +18,9 @@ class WasherNoteRepository(BaseRepository[WasherNote]):
         )
         return list(result.scalars().all())
 
-    async def list_by_user(self, username: str, limit: int, offset: int = 0) -> list[WasherNote]:
+    async def list_by_user(
+        self, username: str, limit: int, offset: int = 0
+    ) -> list[WasherNote]:
         result = await self._db.execute(
             select(WasherNote)
             .where(WasherNote.username == username)
@@ -36,9 +38,7 @@ class WasherNoteRepository(BaseRepository[WasherNote]):
 
     async def mark_read(self, note_id: int) -> int:
         result = await self._db.execute(
-            update(WasherNote)
-            .where(WasherNote.id == note_id)
-            .values(isRead=1)
+            update(WasherNote).where(WasherNote.id == note_id).values(isRead=1)
         )
         return result.rowcount
 
