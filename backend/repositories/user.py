@@ -75,6 +75,12 @@ class UserRepository(BaseRepository[User]):
         )
         return {row[0]: row[1] for row in result.all()}
 
+    async def get_display_name_by_id(self, user_id: int) -> str | None:
+        result = await self._db.execute(
+            select(User.displayName).where(User.id == user_id)
+        )
+        return result.scalar_one_or_none()
+
     async def search(
         self,
         *,
