@@ -59,4 +59,6 @@ class ReferralsService:
             return 0
 
         referral_ids = [r.id for r in unclaimed]
-        return await self._referrals.mark_claimed_batch(referral_ids)
+        claimed = await self._referrals.mark_claimed_batch(referral_ids)
+        await self._db.commit()
+        return claimed
