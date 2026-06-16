@@ -297,7 +297,7 @@ class WorkloadService:
             promo_id: set(extra_ids) for promo_id, extra_ids in promo_included_raw.items()
         }
 
-        # Bulk load all services durations (small table, just load all)
+        # Bulk load durations for referenced additional services.
         svc_durations = await services.get_durations(list(all_service_ids))
 
         busy_by_box = [[] for _ in range(NUM_BOXES)]

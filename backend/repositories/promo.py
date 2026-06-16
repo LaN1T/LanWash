@@ -17,7 +17,7 @@ class PromoRepository(BaseRepository[Promo]):
         result = await self._db.execute(select(Promo.id, Promo.name))
         return {row[0]: row[1] for row in result.all()}
 
-    async def get_durations(self, promo_ids: list[str]) -> dict[str, int | None]:
+    async def get_durations(self, promo_ids: list[str]) -> dict[str, int]:
         if not promo_ids:
             return {}
         result = await self._db.execute(

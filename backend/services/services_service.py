@@ -34,7 +34,7 @@ class ServicesService:
             return cached
 
         promos = await self._promos.list_all()
-        extras_map = await self._promo_extras.map_by_promo_ids([p.id for p in promos])
+        extras_map = await self._promo_extras.list_extras_for_promos([p.id for p in promos])
         data = [
             {
                 "id": p.id,
