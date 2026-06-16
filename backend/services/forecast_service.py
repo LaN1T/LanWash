@@ -1,10 +1,9 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Appointment
+from repositories.appointment import AppointmentRepository
 from schemas import ForecastResponse, ForecastSlot
 from services.workload_service import NUM_BOXES
 
@@ -33,17 +32,10 @@ async def generate_forecast(
     history_start_str = history_start.isoformat()
     history_end_str = reference_date.isoformat()
 
-    result = await db.execute(
-        select(Appointment.dateTime)
-        .where(
-            and_(
-                Appointment.status == "completed",
-                Appointment.dateTime >= history_start_str,
-                Appointment.dateTime < history_end_str,
-            )
-        )
+    repo = AppointmentRepository(db)
+    rows = await repo.list_completed_datetimes_in_period(
+        history_start_str, history_end_str
     )
-    rows = result.all()
 
     # Aggregate counts by (weekday, hour)
     counts: dict[tuple[int, int], int] = defaultdict(int)

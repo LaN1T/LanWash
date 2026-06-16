@@ -77,6 +77,18 @@ class AppointmentRepository(BaseRepository[Appointment]):
         )
         return list(result.scalars().all())
 
+    async def list_completed_datetimes_in_period(
+        self, start_iso: str, end_iso: str
+    ) -> list[tuple[str]]:
+        result = await self._db.execute(
+            select(Appointment.dateTime).where(
+                Appointment.status == "completed",
+                Appointment.dateTime >= start_iso,
+                Appointment.dateTime < end_iso,
+            )
+        )
+        return list(result.all())
+
     async def get_status_counts_in_period(
         self, start_iso: str, end_iso: str
     ) -> list[tuple[str, int]]:
