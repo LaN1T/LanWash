@@ -38,9 +38,11 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final appointmentBadges = context.select<AppointmentProvider,
-            ({bool loading, int favCount})>(
-        (ap) => (loading: ap.loading, favCount: ap.favoriteAppointments.length));
+    final appointmentProvider = context.watch<AppointmentProvider>();
+    final appointmentBadges = (
+      loading: appointmentProvider.loading,
+      favCount: appointmentProvider.favoriteAppointments.length,
+    );
     final theme = Theme.of(context);
     if (appointmentBadges.loading) {
       return Scaffold(
@@ -540,8 +542,7 @@ class _HomeShellState extends State<HomeShell> {
 class _NotesBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final count =
-        context.select<NoteProvider, int>((np) => np.unreadNotes);
+    final count = context.watch<NoteProvider>().unreadNotes;
 
     return Badge(
       isLabelVisible: count > 0,
@@ -556,8 +557,7 @@ class _NotesBadge extends StatelessWidget {
 class _SupportBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final count = context.select<SupportProvider, int>(
-        (sp) => sp.unreadAdminCount);
+    final count = context.watch<SupportProvider>().unreadAdminCount;
 
     return Badge(
       isLabelVisible: count > 0,

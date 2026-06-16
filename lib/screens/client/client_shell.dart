@@ -139,11 +139,10 @@ class _ClientShellState extends State<ClientShell> {
   }
 
   Widget _buildDrawer(BuildContext ctx) {
-    final username = ctx.select<AuthProvider, String>((a) => a.username);
-    final favCount = ctx.select<CatalogProvider, int>((cp) {
-      final favSet = ctx.read<FavoriteProvider>().serviceFavorites;
-      return cp.services.where((s) => favSet.contains(s.id)).length;
-    });
+    final username = ctx.watch<AuthProvider>().username;
+    final catalog = ctx.watch<CatalogProvider>();
+    final favSet = ctx.watch<FavoriteProvider>().serviceFavorites;
+    final favCount = catalog.services.where((s) => favSet.contains(s.id)).length;
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -296,11 +295,11 @@ class _AppointmentsBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasUnseenChanges = context.select<AppointmentProvider, bool>((ap) =>
-        ap.appointments.any((a) =>
+    final ap = context.watch<AppointmentProvider>();
+    final hasUnseenChanges = ap.appointments.any((a) =>
             (a.isModifiedByAdmin || a.isModifiedByWasher) &&
             !a.isSeenByClient) ||
-        ap.hasDeletedByAdmin);
+        ap.hasDeletedByAdmin;
 
     return Badge(
       isLabelVisible: hasUnseenChanges,
@@ -340,8 +339,7 @@ class _FavoritesBadge extends StatelessWidget {
 class _SupportBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final count = context.select<SupportProvider, int>(
-        (sp) => sp.unreadClientCount);
+    final count = context.watch<SupportProvider>().unreadClientCount;
 
     return Badge(
       isLabelVisible: count > 0,
