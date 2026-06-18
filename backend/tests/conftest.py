@@ -61,16 +61,16 @@ def _get_test_database_url() -> str:
 # Create the test engine at module import time and patch the database module
 # *before* the FastAPI app is imported. This makes app startup (lifespan/init_db)
 # and all database sessions point to the disposable test database.
-from sqlalchemy.pool import NullPool, StaticPool
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 
 # In-memory SQLite loses its data when the connection is closed. NullPool
 # opens a brand-new connection for every request, so the schema created by
 # create_all and the seed data inserted afterwards end up in different empty
-# databases. Use StaticPool to keep a single connection alive for the whole
-# session; for PostgreSQL keep NullPool to avoid stale connections.
+# databases. Pin the pool size to a single connection for in-memory SQLite;
+# for PostgreSQL keep NullPool to avoid stale connections.
 _db_url = _get_test_database_url()
 _is_sqlite_memory = _db_url.startswith("sqlite+aiosqlite:///:memory:")
-_poolclass = StaticPool if _is_sqlite_memory else NullPool
+_poolclass = AsyncAdaptedQueuePool if _is_sqlite_memory else NullPool
 
 _create_engine_kwargs = {
     "echo": False,
@@ -78,6 +78,8 @@ _create_engine_kwargs = {
     "poolclass": _poolclass,
 }
 if _is_sqlite_memory:
+    _create_engine_kwargs["pool_size"] = 1
+    _create_engine_kwargs["max_overflow"] = 0
     _create_engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 _test_engine = create_async_engine(_db_url, **_create_engine_kwargs)
