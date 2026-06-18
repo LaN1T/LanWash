@@ -75,4 +75,6 @@ flutter {
     source = "../.."
 }
 
-apply(plugin = "com.google.gms.google-services")
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
