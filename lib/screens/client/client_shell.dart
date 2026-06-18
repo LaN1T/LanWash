@@ -10,6 +10,7 @@ import '../../providers/support_provider.dart';
 import '../../services/notification_service.dart'; // Add this
 import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
+import '../shared/splash_screen.dart';
 import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
@@ -64,15 +65,12 @@ class _ClientShellState extends State<ClientShell> {
           child: Container(height: 1, color: AppStyles.adaptiveBorder(context)),
         ),
         title: Row(children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppStyles.primaryGradient,
-            ),
-            child:
-                const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
+          const LanWashLogo(
+            circleSize: 34,
+            showTitle: false,
+            showSubtitle: false,
+            showLoader: false,
+            shadowBlur: null,
           ),
           const SizedBox(width: 10),
           Text(_titles[_index],
@@ -155,20 +153,11 @@ class _ClientShellState extends State<ClientShell> {
             color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppStyles.primaryGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppStyles.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                    )
-                  ],
-                ),
-                child: const Icon(Icons.local_car_wash,
-                    color: Colors.white, size: 32),
+              const LanWashLogo(
+                circleSize: 60,
+                showTitle: false,
+                showSubtitle: false,
+                showLoader: false,
               ),
               const SizedBox(height: 14),
               Text('LanWash',

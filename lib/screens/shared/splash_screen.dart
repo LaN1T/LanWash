@@ -3,7 +3,6 @@ import '../../app_styles.dart';
 
 /// Единый логотип-портрет для splash, drawer, login и т.д.
 class LanWashLogo extends StatelessWidget {
-  final double iconSize;
   final double circleSize;
   final double? shadowBlur;
   final bool showTitle;
@@ -12,7 +11,6 @@ class LanWashLogo extends StatelessWidget {
 
   const LanWashLogo({
     super.key,
-    this.iconSize = 64,
     this.circleSize = 120,
     this.shadowBlur = 28,
     this.showTitle = true,
@@ -49,10 +47,12 @@ class LanWashLogo extends StatelessWidget {
                   ]
                 : null,
           ),
-          child: Icon(
-            Icons.local_car_wash,
-            color: Colors.white,
-            size: iconSize,
+          child: Padding(
+            padding: EdgeInsets.all(circleSize * 0.08),
+            child: Image.asset(
+              'assets/icon/lw.png',
+              fit: BoxFit.contain,
+            ),
           ),
         ),
         if (showTitle) ...[

@@ -7,6 +7,7 @@ import '../../providers/note_provider.dart';
 import '../../providers/support_provider.dart';
 import '../../widgets/offline_status_indicator.dart';
 import '../shared/profile_screen.dart';
+import '../shared/splash_screen.dart';
 import 'appointments_screen.dart';
 import 'services_screen.dart';
 import 'favorites_screen.dart';
@@ -49,7 +50,13 @@ class _HomeShellState extends State<HomeShell> {
         backgroundColor: theme.scaffoldBackgroundColor,
         body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.local_car_wash, color: AppStyles.primary, size: 72),
+          const LanWashLogo(
+            circleSize: 72,
+            showTitle: false,
+            showSubtitle: false,
+            showLoader: false,
+            shadowBlur: null,
+          ),
           const SizedBox(height: 20),
           Text('LanWash',
               style: TextStyle(
@@ -70,15 +77,12 @@ class _HomeShellState extends State<HomeShell> {
       appBar: AppBar(
         elevation: 0,
         title: Row(children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppStyles.primaryGradient,
-            ),
-            child:
-                const Icon(Icons.local_car_wash, color: Colors.white, size: 18),
+          const LanWashLogo(
+            circleSize: 32,
+            showTitle: false,
+            showSubtitle: false,
+            showLoader: false,
+            shadowBlur: null,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -175,20 +179,11 @@ class _HomeShellState extends State<HomeShell> {
             color: AppStyles.adaptiveCard(ctx),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppStyles.primaryGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppStyles.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                    )
-                  ],
-                ),
-                child: const Icon(Icons.local_car_wash,
-                    color: Colors.white, size: 32),
+              const LanWashLogo(
+                circleSize: 60,
+                showTitle: false,
+                showSubtitle: false,
+                showLoader: false,
               ),
               const SizedBox(height: 14),
               Text('LanWash',
