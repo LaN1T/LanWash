@@ -72,7 +72,7 @@ jobs:
         run: flutter build apk --release --obfuscate --split-debug-info=symbols/
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -98,7 +98,7 @@ jobs:
         run: flutter build web --release
 
       - name: Upload Web artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-release
           path: build/web/
