@@ -72,4 +72,12 @@ jobs:
           FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
         run: |
           rm -f lanwash_test.db
-          python -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -v --tb=long 2>&1 | tee pytest.log
+
+      - name: Upload pytest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-log
+          path: backend/pytest.log
+          retention-days: 1
