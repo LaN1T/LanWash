@@ -55,18 +55,21 @@ jobs:
       - name: Verify migrations
         env:
           ENVIRONMENT: testing
-          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
-          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
-          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
-          FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
-        run: alembic upgrade head
-
-      - name: Run tests with pytest
-        env:
-          ENVIRONMENT: testing
-          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          DATABASE_URL: "sqlite+aiosqlite:///lanwash_test.db"
           JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
           INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
           FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
         run: |
+          rm -f lanwash_test.db
+          alembic upgrade head
+
+      - name: Run tests with pytest
+        env:
+          ENVIRONMENT: testing
+          DATABASE_URL: "sqlite+aiosqlite:///lanwash_test.db"
+          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
+        run: |
+          rm -f lanwash_test.db
           python -m pytest tests/ -v --tb=short
