@@ -3,6 +3,7 @@
 *.log
 *.pyc
 *.swp
+.env
 .DS_Store
 .atom/
 .build/
@@ -17,11 +18,6 @@ migrate_working_dir/
 *.ipr
 *.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -43,3 +39,82 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+*.db
+lanwash.db
+lanwash*.db
+
+# Flutter plugins
+.flutter-plugins
+
+# Python backend
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+backend/.env.local
+backend/lanwash.db
+backend/.pytest_cache/
+backend/.ruff_cache/
+**/*.db
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# macOS
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+
+# Firebase configuration files
+google-services.json
+GoogleService-Info.plist
+lib/config/firebase_options.dart
+# Web
+web/flutter_service_worker.js
+serviceAccountKey.json
+**/serviceAccountKey.json
+backend/serviceAccountKey.json
+
+firebase.json
+.omc/
+
+# IDE
+.metadata
+devtools_options.yaml
+
+# Python build
+backend/build/
+
+# Build artifacts (platform level)
+android/build/
+macos/build/
+ios/build/
+
+# Landing build output
+landing/assets/index-*.js
+landing/assets/index-*.css
+
+# AI docs (kept local)
+/docs/superpowers/plans/
+/docs/superpowers/specs/
+
+# pytest
+.pytest_cache/
+
+# Unused platforms
+/linux/
+/macos/
+/windows/
+/web/
+Plan.md
+macos/Runner/GoogleService-Info.plist
+macos/GoogleService-Info.plist

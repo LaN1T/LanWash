@@ -1,0 +1,7 @@
+# Dev / test dependencies
+pytest
+pytest-asyncio
+httpx
+argon2-cffi
+ruff
+aiosqlite

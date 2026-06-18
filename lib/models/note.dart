@@ -18,26 +18,26 @@ class Note {
   });
 
   factory Note.fromMap(Map<String, dynamic> m) => Note(
-    id: m['id'] as int?,
-    username: m['username'] ?? '',
-    title: m['title'] ?? '',
-    message: m['message'] ?? '',
-    category: m['category'] ?? 'general',
-    isRead: m['isRead'] == true || m['isRead'] == 1,
-    createdAt: m['createdAt'] != null
-        ? DateTime.parse(m['createdAt'])
-        : DateTime.now(),
-  );
+        id: m['id'] as int?,
+        username: m['username'] ?? '',
+        title: m['title'] ?? '',
+        message: m['message'] ?? '',
+        category: m['category'] ?? 'general',
+        isRead: m['isRead'] == true || m['isRead'] == 1,
+        createdAt: m['createdAt'] != null
+            ? DateTime.parse(m['createdAt'])
+            : DateTime.now(),
+      );
 
   Map<String, dynamic> toMap() => {
-    if (id != null) 'id': id,
-    'username': username,
-    'title': title,
-    'message': message,
-    'category': category,
-    'isRead': isRead ? 1 : 0,
-    'createdAt': createdAt.toIso8601String(),
-  };
+        if (id != null) 'id': id,
+        'username': username,
+        'title': title,
+        'message': message,
+        'category': category,
+        'isRead': isRead ? 1 : 0,
+        'createdAt': createdAt.toIso8601String(),
+      };
 
   static const categories = {
     'general': 'Общее',
@@ -47,4 +47,24 @@ class Note {
   };
 
   String get categoryLabel => categories[category] ?? category;
+
+  Note copyWith({
+    int? id,
+    String? username,
+    String? title,
+    String? message,
+    String? category,
+    bool? isRead,
+    DateTime? createdAt,
+  }) {
+    return Note(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      category: category ?? this.category,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

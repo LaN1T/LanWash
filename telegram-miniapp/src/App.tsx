@@ -1,0 +1,93 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useAuthStore } from './stores/authStore'
+import { useTelegram } from './hooks/useTelegram'
+import { telegramAuth } from './services/auth'
+import HomePage from './pages/client/HomePage'
+import BookingPage from './pages/client/BookingPage'
+import PromosPage from './pages/client/PromosPage'
+import MyBookingsPage from './pages/client/MyBookingsPage'
+import ProfilePage from './pages/client/ProfilePage'
+import WasherHomePage from './pages/washer/WasherHomePage'
+import Layout from './components/Layout'
+
+function App() {
+  const { initData, ready, isInTelegram } = useTelegram()
+  const { user, token, setAuth, setLoading } = useAuthStore()
+
+  useEffect(() => {
+    if (!initData || !ready) return
+    const auth = async () => {
+      setLoading(true)
+      try {
+        const res = await telegramAuth(initData)
+        setAuth(res.user, res.access_token)
+      } catch (e) {
+        console.error('Auth failed', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    auth()
+  }, [initData, ready])
+
+  if (!ready) {
+    return (
+      <BrowserRouter>
+        <Layout>
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <p>Загрузка...</p>
+          </div>
+        </Layout>
+      </BrowserRouter>
+    )
+  }
+
+  if (!token) {
+    return (
+      <BrowserRouter>
+        <Layout>
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>LanWash</h2>
+            {!isInTelegram ? (
+              <>
+                <p>Откройте приложение через Telegram бота</p>
+                <p style={{ fontSize: 12, color: '#888', marginTop: 20 }}>
+                  Или используйте основное приложение
+                </p>
+              </>
+            ) : (
+              <p>Ошибка авторизации. Попробуйте ещё раз.</p>
+            )}
+          </div>
+        </Layout>
+      </BrowserRouter>
+    )
+  }
+
+  return (
+    <BrowserRouter>
+      <Layout>
+        <Routes>
+          {user?.role === 'washer' ? (
+            <>
+              <Route path="/" element={<WasherHomePage />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/booking" element={<BookingPage />} />
+              <Route path="/promos" element={<PromosPage />} />
+              <Route path="/bookings" element={<MyBookingsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </>
+          )}
+        </Routes>
+      </Layout>
+    </BrowserRouter>
+  )
+}
+
+export default App

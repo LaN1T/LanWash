@@ -1,0 +1,83 @@
+name: Backend Tests
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint with ruff
+        run: |
+          ruff check . --select E,W,F,I,N
+
+      - name: Security scan
+        run: |
+          pip install bandit pip-audit
+          bandit -r . -c bandit.yaml -f json -o bandit-report.json
+          pip-audit --requirement requirements.txt
+
+      - name: Verify migrations
+        env:
+          ENVIRONMENT: testing
+          DATABASE_URL: "sqlite+aiosqlite:///lanwash_test.db"
+          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
+        run: |
+          rm -f lanwash_test.db
+          alembic upgrade head
+
+      - name: Run tests with pytest
+        env:
+          ENVIRONMENT: testing
+          DATABASE_URL: "sqlite+aiosqlite:///lanwash_test.db"
+          JWT_SECRET_KEY: ${{ secrets.TEST_JWT_SECRET_KEY }}
+          INITIAL_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          FCM_ENCRYPTION_KEY: ${{ secrets.TEST_FCM_ENCRYPTION_KEY }}
+        run: |
+          rm -f lanwash_test.db
+          python -m pytest tests/ -v --tb=long 2>&1 | tee pytest.log
+
+      - name: Upload pytest log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-log
+          path: backend/pytest.log
+          retention-days: 1

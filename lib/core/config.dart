@@ -1,0 +1,46 @@
+import 'package:flutter/foundation.dart';
+
+/// Централизованная конфигурация приложения.
+///
+/// API URL можно задать через dart-define при сборке:
+///   flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8000/api
+///
+/// Если не задан — используется fallback для текущей платформы.
+class AppConfig {
+  static const String _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  static String get baseUrl {
+    if (_apiBaseUrl.isNotEmpty) {
+      if (kReleaseMode && !_apiBaseUrl.startsWith('https://')) {
+        throw StateError('API_BASE_URL must use HTTPS in release mode');
+      }
+      return _apiBaseUrl;
+    }
+    // Fallback для development и локального тестирования.
+    // Для production-сборки (mobile/web) передайте API_BASE_URL через --dart-define.
+    if (kReleaseMode) {
+      // Desktop-сборки допускают локальный HTTP fallback для dev-тестирования.
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.macOS ||
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux)) {
+        return 'http://127.0.0.1:8000/api';
+      }
+      throw StateError(
+        'API_BASE_URL must be set via --dart-define=API_BASE_URL=... in release mode',
+      );
+    }
+    if (kIsWeb) {
+      return 'http://localhost:8000/api';
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000/api';
+    }
+    return 'http://127.0.0.1:8000/api';
+  }
+
+  static const Duration requestTimeout = Duration(seconds: 30);
+
+  // Фича-флаги
+  static const bool enableLogging = kDebugMode;
+}

@@ -1,49 +1,7 @@
 import 'dart:convert';
-
-enum WashType { basic, complex, premium }
-
-extension WashTypeX on WashType {
-  String get displayName => switch (this) {
-    WashType.basic   => 'Базовая мойка',
-    WashType.complex => 'Комплексная мойка',
-    WashType.premium => 'Премиум мойка',
-  };
-
-  String get description => switch (this) {
-    WashType.basic   => 'Активная пена, тщательная ручная очистка и финальное ополаскивание с сушкой',
-    WashType.complex => 'Базовая мойка + уборка салона, пылесос, чистка стёкол',
-    WashType.premium => 'Комплексная мойка + уход за пластиком, резиной и ароматизация',
-  };
-
-  /// Услуги, автоматически включённые в тип мойки (не влияют на цену)
-  List<String> get includedExtras => switch (this) {
-    WashType.basic   => [],
-    WashType.complex => ['Пылесосная уборка'],
-    WashType.premium => ['Чернение шин', 'Ароматизация'],
-  };
-
-  int get durationMinutes => switch (this) {
-    WashType.basic   => 30,
-    WashType.complex => 60,
-    WashType.premium => 90,
-  };
-
-  String get durationLabel {
-    final h = durationMinutes ~/ 60;
-    final m = durationMinutes % 60;
-    if (h == 0) return '$m мин';
-    return m == 0 ? '$h ч' : '$h ч $m мин';
-  }
-
-  int get basePrice => switch (this) {
-    WashType.basic   => 800,
-    WashType.complex => 1500,
-    WashType.premium => 3000,
-  };
-
-  static WashType fromString(String v) =>
-      WashType.values.firstWhere((e) => e.name == v, orElse: () => WashType.basic);
-}
+import 'package:flutter/foundation.dart';
+import 'service.dart';
+import 'wash_type.dart';
 
 class Appointment {
   final String id;
@@ -51,14 +9,24 @@ class Appointment {
   String carModel;
   String carNumber;
   DateTime dateTime;
-  WashType washType;
-  List<String> additionalServices;
+  String washTypeId; // внешний ключ → wash_types.id
+  List<String> additionalServices; // идентификаторы доп. услуг (services.id)
   String status;
   String notes;
   bool isFavorite;
   String ownerUsername;
   int promoPrice;
-  int paidPrice; // Фактически оплаченная цена (сохраняется при создании)
+  int paidPrice;
+  int originalPrice;
+  bool isModifiedByAdmin;
+  bool isModifiedByWasher;
+  bool isSeenByClient;
+  List<String> assignedWashers;
+  String? promoId; // внешний ключ → promos.id
+  int? carId; // внешний ключ → cars.id
+  int box_index;
+  int lateMinutes;
+  String cancelReason;
 
   Appointment({
     required this.id,
@@ -66,7 +34,7 @@ class Appointment {
     required this.carModel,
     required this.carNumber,
     required this.dateTime,
-    required this.washType,
+    required this.washTypeId,
     required this.additionalServices,
     required this.status,
     this.notes = '',
@@ -74,88 +42,191 @@ class Appointment {
     this.ownerUsername = '',
     this.promoPrice = 0,
     this.paidPrice = 0,
-  });
+    this.originalPrice = 0,
+    this.isModifiedByAdmin = false,
+    this.isModifiedByWasher = false,
+    this.isSeenByClient = false,
+    List<String>? assignedWashers,
+    this.promoId,
+    this.carId,
+    this.box_index = 0,
+    this.lateMinutes = 0,
+    this.cancelReason = '',
+  }) : assignedWashers = assignedWashers ?? [];
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'clientName': clientName,
-    'carModel': carModel,
-    'carNumber': carNumber,
-    'dateTime': dateTime.toIso8601String(),
-    'washType': washType.name,
-    'additionalServices': jsonEncode(additionalServices),
-    'status': status,
-    'notes': notes,
-    'isFavorite': isFavorite ? 1 : 0,
-    'ownerUsername': ownerUsername,
-    'promoPrice': promoPrice,
-    'paidPrice': paidPrice,
-  };
+        'id': id,
+        'clientName': clientName,
+        'carModel': carModel,
+        'carNumber': carNumber,
+        'dateTime': dateTime.toIso8601String(),
+        'washTypeId': washTypeId,
+        'additionalServices': jsonEncode(additionalServices),
+        'status': status,
+        'notes': notes,
+        'isFavorite': isFavorite,
+        'ownerUsername': ownerUsername,
+        'promoPrice': promoPrice,
+        'paidPrice': paidPrice,
+        'originalPrice': originalPrice,
+        'isModifiedByAdmin': isModifiedByAdmin,
+        'isModifiedByWasher': isModifiedByWasher,
+        'isSeenByClient': isSeenByClient,
+        'assignedWasher': jsonEncode(assignedWashers),
+        'promoId': promoId,
+        'carId': carId,
+        'box_index': box_index,
+        'late_minutes': lateMinutes,
+        'cancel_reason': cancelReason,
+      };
 
-  factory Appointment.fromMap(Map<String, dynamic> m) => Appointment(
-    id: m['id'],
-    clientName: m['clientName'],
-    carModel: m['carModel'],
-    carNumber: m['carNumber'],
-    dateTime: DateTime.parse(m['dateTime']),
-    washType: WashTypeX.fromString(m['washType']),
-    additionalServices: List<String>.from(jsonDecode(m['additionalServices'])),
-    status: m['status'],
-    notes: m['notes'] ?? '',
-    isFavorite: m['isFavorite'] == 1,
-    ownerUsername: m['ownerUsername'] ?? '',
-    promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
-    paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
-  );
+  factory Appointment.fromMap(Map<String, dynamic> m) {
+    try {
+      return Appointment(
+        id: m['id'] ?? '',
+        clientName: m['clientName'] ?? '',
+        carModel: m['carModel'] ?? '',
+        carNumber: m['carNumber'] ?? '',
+        dateTime: _parseDateTime(m['dateTime']),
+        washTypeId: m['washTypeId']?.toString() ?? '',
+        additionalServices: _parseExtras(m['additionalServices']),
+        status: m['status'] ?? 'scheduled',
+        notes: m['notes'] ?? '',
+        isFavorite: m['isFavorite'] == 1 || m['isFavorite'] == true,
+        ownerUsername: m['ownerUsername'] ?? '',
+        promoPrice: (m['promoPrice'] as num?)?.toInt() ?? 0,
+        paidPrice: (m['paidPrice'] as num?)?.toInt() ?? 0,
+        originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
+        isModifiedByAdmin:
+            m['isModifiedByAdmin'] == 1 || m['isModifiedByAdmin'] == true,
+        isModifiedByWasher:
+            m['isModifiedByWasher'] == 1 || m['isModifiedByWasher'] == true,
+        isSeenByClient: m['isSeenByClient'] == 1 || m['isSeenByClient'] == true,
+        assignedWashers: _parseWashers(m['assignedWasher']),
+        promoId: m['promoId']?.toString(),
+        carId: m['carId'] != null ? (m['carId'] as num).toInt() : null,
+        box_index: (m['box_index'] as num?)?.toInt() ?? 0,
+        lateMinutes: (m['late_minutes'] as num?)?.toInt() ?? 0,
+        cancelReason: m['cancel_reason']?.toString() ?? '',
+      );
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Appointment.fromMap error: $e | map: $m');
+      if (kDebugMode) debugPrint('Stack: $st');
+      rethrow;
+    }
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null || value == '') {
+      return DateTime.now();
+    }
+    try {
+      return DateTime.parse(value.toString());
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
+  static List<String> _parseExtras(dynamic v) {
+    if (v == null) return [];
+    if (v is List) return v.map((e) => e.toString()).toList();
+    if (v is String) {
+      if (v.isEmpty) return [];
+      try {
+        final decoded = jsonDecode(v);
+        if (decoded is List) return decoded.map((e) => e.toString()).toList();
+      } catch (_) {}
+    }
+    return [];
+  }
+
+  static List<String> _parseWashers(dynamic v) {
+    if (v == null || v == '') return [];
+    if (v is List) return List<String>.from(v);
+    if (v is String) {
+      try {
+        final decoded = jsonDecode(v);
+        if (decoded is List) return List<String>.from(decoded);
+      } catch (_) {
+        if (v.isNotEmpty) return [v];
+      }
+    }
+    return [];
+  }
 
   Appointment copyWith({
-    String? clientName, String? carModel, String? carNumber,
-    DateTime? dateTime, WashType? washType, List<String>? additionalServices,
-    String? status, String? notes, bool? isFavorite,
-    String? ownerUsername, int? promoPrice, int? paidPrice,
-  }) => Appointment(
-    id: id,
-    clientName: clientName ?? this.clientName,
-    carModel: carModel ?? this.carModel,
-    carNumber: carNumber ?? this.carNumber,
-    dateTime: dateTime ?? this.dateTime,
-    washType: washType ?? this.washType,
-    additionalServices: additionalServices ?? this.additionalServices,
-    status: status ?? this.status,
-    notes: notes ?? this.notes,
-    isFavorite: isFavorite ?? this.isFavorite,
-    ownerUsername: ownerUsername ?? this.ownerUsername,
-    promoPrice: promoPrice ?? this.promoPrice,
-    paidPrice: paidPrice ?? this.paidPrice,
-  );
+    String? clientName,
+    String? carModel,
+    String? carNumber,
+    DateTime? dateTime,
+    String? washTypeId,
+    List<String>? additionalServices,
+    String? status,
+    String? notes,
+    bool? isFavorite,
+    String? ownerUsername,
+    int? promoPrice,
+    int? paidPrice,
+    int? originalPrice,
+    bool? isModifiedByAdmin,
+    bool? isModifiedByWasher,
+    bool? isSeenByClient,
+    List<String>? assignedWashers,
+    String? promoId,
+    int? carId,
+    int? box_index,
+    int? lateMinutes,
+    String? cancelReason,
+  }) =>
+      Appointment(
+        id: id,
+        clientName: clientName ?? this.clientName,
+        carModel: carModel ?? this.carModel,
+        carNumber: carNumber ?? this.carNumber,
+        dateTime: dateTime ?? this.dateTime,
+        washTypeId: washTypeId ?? this.washTypeId,
+        additionalServices: additionalServices ?? this.additionalServices,
+        status: status ?? this.status,
+        notes: notes ?? this.notes,
+        isFavorite: isFavorite ?? this.isFavorite,
+        ownerUsername: ownerUsername ?? this.ownerUsername,
+        promoPrice: promoPrice ?? this.promoPrice,
+        paidPrice: paidPrice ?? this.paidPrice,
+        originalPrice: originalPrice ?? this.originalPrice,
+        isModifiedByAdmin: isModifiedByAdmin ?? this.isModifiedByAdmin,
+        isModifiedByWasher: isModifiedByWasher ?? this.isModifiedByWasher,
+        isSeenByClient: isSeenByClient ?? this.isSeenByClient,
+        assignedWashers: assignedWashers ?? List.from(this.assignedWashers),
+        promoId: promoId ?? this.promoId,
+        carId: carId ?? this.carId,
+        box_index: box_index ?? this.box_index,
+        lateMinutes: lateMinutes ?? this.lateMinutes,
+        cancelReason: cancelReason ?? this.cancelReason,
+      );
 
-  /// Итоговая цена — если сохранена, возвращаем её, иначе вычисляем
-  int get totalPrice {
+  bool get priceChanged => originalPrice > 0 && paidPrice != originalPrice;
+
+  /// Итоговая цена — если сохранена, возвращаем её, иначе считаем
+  /// по типу мойки и списку доп.услуг (исключая включённые автоматически).
+  int calculateTotalPrice(List<Service> allServices, WashType? washType) {
     if (paidPrice > 0) return paidPrice;
-    if (promoPrice > 0) return promoPrice;
-    const extraPrices = {
-      'Чернение шин': 300,
-      'Ароматизация': 300,
-      'Пылесосная уборка': 500,
-      'Полировка стёкол': 500,
-      'Антидождь': 600,
-      'Обработка арок': 600,
-      'Удаление битума': 700,
-      'Озонирование': 1000,
-      'Нанесение воска': 1200,
-      'Мойка двигателя': 1500,
-      'Нанесение силанта': 2000,
-      'Нанесение тефлона': 3000,
-      'Химчистка салона': 3500,
-      'Химчистка кожи': 5000,
-      'Детейлинг кузова': 8000,
-      'Керамическое покрытие': 15000,
-    };
-    final included = washType.includedExtras;
-    int p = washType.basePrice;
-    for (final e in additionalServices) {
-      if (!included.contains(e)) p += extraPrices[e] ?? 0;
+
+    final base = promoPrice > 0 ? promoPrice : (washType?.basePrice ?? 0);
+    final included = washType?.includedExtraIds.toSet() ?? <String>{};
+
+    int p = base;
+    for (final id in additionalServices) {
+      if (included.contains(id)) continue;
+      final svc = _findService(allServices, id);
+      if (svc != null) p += svc.price;
     }
     return p;
+  }
+
+  static Service? _findService(List<Service> services, String id) {
+    for (final s in services) {
+      if (s.id == id) return s;
+    }
+    return null;
   }
 }

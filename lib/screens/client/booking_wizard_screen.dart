@@ -1,145 +1,73 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../models/appointment.dart';
-import '../../models/service.dart';
-import '../../providers/app_provider.dart';
+import '../../models/promo.dart';
+import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../data/initial_data.dart';
+import '../../providers/catalog_provider.dart';
+import '../../models/car.dart';
+import '../../services/api_service.dart';
 import 'client_shell.dart';
-
-// ─── Транслитерация ───────────────────────────────────────────────────────────
-const _enToRu = {
-  'q':'й','w':'ц','e':'у','r':'к','t':'е','y':'н','u':'г','i':'ш','o':'щ','p':'з',
-  '[':'х',']':'ъ','a':'ф','s':'ы','d':'в','f':'а','g':'п','h':'р','j':'о','k':'л',
-  'l':'д',';':'ж',"'":'э','z':'я','x':'ч','c':'с','v':'м','b':'и','n':'т','m':'ь',
-  ',':'б','.':'ю',
-  'Q':'Й','W':'Ц','E':'У','R':'К','T':'Е','Y':'Н','U':'Г','I':'Ш','O':'Щ','P':'З',
-  'A':'Ф','S':'Ы','D':'В','F':'А','G':'П','H':'Р','J':'О','K':'Л','L':'Д',
-  'Z':'Я','X':'Ч','C':'С','V':'М','B':'И','N':'Т','M':'Ь',
-};
-const _ruToEn = {
-  'й':'q','ц':'w','у':'e','к':'r','е':'t','н':'y','г':'u','ш':'i','щ':'o','з':'p',
-  'ф':'a','ы':'s','в':'d','а':'f','п':'g','р':'h','о':'j','л':'k',
-  'д':'l','я':'z','ч':'x','с':'c','м':'v','и':'b','т':'n','ь':'m',
-  'Й':'Q','Ц':'W','У':'E','К':'R','Е':'T','Н':'Y','Г':'U','Ш':'I','Щ':'O','З':'P',
-  'Ф':'A','Ы':'S','В':'D','А':'F','П':'G','Р':'H','О':'J','Л':'K','Д':'L',
-  'Я':'Z','Ч':'X','С':'C','М':'V','И':'B','Т':'N','Ь':'M',
-};
-
-String _translitToRu(String input) =>
-    input.split('').map((c) => _enToRu[c] ?? c).join();
-
-String _translitToEn(String input) =>
-    input.split('').map((c) => _ruToEn[c] ?? c).join();
-
-void _applyTranslitRu(TextEditingController ctrl, String v) {
-  final converted = _translitToRu(v);
-  if (converted != v) {
-    ctrl.value = TextEditingValue(
-      text: converted,
-      selection: TextSelection.collapsed(offset: converted.length),
-    );
-  }
-}
-
-void _applyTranslitEn(TextEditingController ctrl, String v) {
-  final converted = _translitToEn(v);
-  if (converted != v) {
-    ctrl.value = TextEditingValue(
-      text: converted,
-      selection: TextSelection.collapsed(offset: converted.length),
-    );
-  }
-}
-
-// ─── Строгий форматтер А000АА000 ─────────────────────────────────────────────
-const _ruPlateLetters = 'АВЕКМНОРСТУХ';
-
-class _PlateInputFormatter extends TextInputFormatter {
-  static const _enToRuPlate = {
-    'A':'А','B':'В','E':'Е','K':'К','M':'М','H':'Н',
-    'O':'О','P':'Р','C':'С','T':'Т','Y':'У','X':'Х',
-  };
-  static const _ruLayoutToPlate = {
-    'ф':'А','и':'В','у':'Е','р':'К','ь':'М','т':'Н',
-    'щ':'О','з':'Р','с':'С','е':'Т','г':'У','ч':'Х',
-    'Ф':'А','И':'В','У':'Е','Р':'К','Ь':'М','Т':'Н',
-    'Щ':'О','З':'Р','С':'С','Е':'Т','Г':'У','Ч':'Х',
-  };
-
-  String _toPlateChar(String c) {
-    if (_ruPlateLetters.contains(c)) return c;
-    return _enToRuPlate[c] ?? _ruLayoutToPlate[c] ?? '';
-  }
-
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final raw = newValue.text.toUpperCase();
-    final buf = StringBuffer();
-    int pos = 0;
-    for (int i = 0; i < raw.length && pos < 9; i++) {
-      final c = raw[i];
-      if (pos == 0 || pos == 4 || pos == 5) {
-        final ruC = _toPlateChar(c);
-        if (ruC.isNotEmpty) { buf.write(ruC); pos++; }
-      } else if ((pos >= 1 && pos <= 3) || (pos >= 6 && pos <= 8)) {
-        if (RegExp(r'[0-9]').hasMatch(c)) { buf.write(c); pos++; }
-      }
-    }
-    final result = buf.toString();
-    return newValue.copyWith(
-      text: result,
-      selection: TextSelection.collapsed(offset: result.length),
-    );
-  }
-}
-
-String? _validatePlate(String? v) {
-  if (v == null || v.trim().isEmpty) return 'Введите номер';
-  return null;
-}
+import '../../core/service_locator.dart';
+import 'car_list_screen.dart';
+import 'booking/step_indicator.dart';
+import 'booking/datetime_step.dart';
+import 'booking/service_step.dart';
+import 'booking/confirmation_step.dart';
+import 'booking/bottom_bar.dart';
+import '../../usecases/booking_price_calculator.dart';
 
 // ─── Основной виджет ─────────────────────────────────────────────────────────
 class BookingWizardScreen extends StatefulWidget {
-  final Service? promoService;
-  const BookingWizardScreen({super.key, this.promoService});
-  @override State<BookingWizardScreen> createState() => _BWState();
+  final Promo? initialPromo;
+  final Appointment? templateAppointment;
+  const BookingWizardScreen(
+      {super.key, this.initialPromo, this.templateAppointment});
+  @override
+  State<BookingWizardScreen> createState() => _BWState();
 }
 
 class _BWState extends State<BookingWizardScreen> {
   final _pageCtrl = PageController();
-  final _step2ScrollCtrl = ScrollController();
+  final _serviceScrollCtrl = ScrollController();
   int _step = 0;
 
   late DateTime _selectedDate;
-  int _selectedSlot = 2;
+  int _selectedSlotIndex = -1; // -1 means no selection
 
-  late WashType _washType;
+  String _washTypeId = '';
   late Set<String> _extras;
   late TextEditingController _nameCtrl;
-  late TextEditingController _carCtrl;
+  late TextEditingController _brandCtrl;
+  late TextEditingController _modelCtrl;
+  String? _selectedBrand;
   late TextEditingController _numCtrl;
-  final _formKey  = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
+  bool _isSaving = false;
 
-  static const _slots = [
-    '09:00','10:00','11:00','12:00','13:00',
-    '14:00','15:00','16:00','17:00','18:00',
-  ];
+  List<Car> _cars = [];
+  int? _selectedCarId;
 
-  Service? get _promo => widget.promoService;
-  bool    get _isPromo => _promo != null;
+  Promo? get _promo =>
+      widget.templateAppointment != null ? null : widget.initialPromo;
+  bool get _isPromo => _promo != null;
 
-  bool get _weekendOnly {
-    if (!_isPromo) return false;
-    return getPromoConfig(_promo!.name)?.weekendOnly ?? false;
+  bool get _weekendOnly => _promo?.weekendOnly ?? false;
+
+  BookingPriceCalculator get _calculator {
+    final catalog = context.read<CatalogProvider>();
+    return BookingPriceCalculator(
+      washType: catalog.washTypeById(_washTypeId),
+      extras: _extras,
+      promo: _promo,
+      services: catalog.services,
+    );
   }
 
   DateTime _nextValidDate() {
-    DateTime d = DateTime.now().add(const Duration(days: 1));
+    DateTime d = DateTime.now();
     if (!_weekendOnly) return d;
     while (d.weekday != DateTime.saturday && d.weekday != DateTime.sunday) {
       d = d.add(const Duration(days: 1));
@@ -152,104 +80,161 @@ class _BWState extends State<BookingWizardScreen> {
     return d.weekday == DateTime.saturday || d.weekday == DateTime.sunday;
   }
 
+  void _updateBusySlots() {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    context.read<AppointmentProvider>().fetchBusySlots(dateStr);
+  }
+
+  bool _isSlotAvailable(DateTime dt, int duration) {
+    // Check if slot is in the past
+    if (dt.isBefore(DateTime.now())) return false;
+
+    // Logic from prompt: startTime + durationMinutes + 5 <= 22:00
+    final totalMinutes = dt.hour * 60 + dt.minute + duration + 5;
+    if (totalMinutes > 22 * 60) return false;
+
+    final busy =
+        context.read<AppointmentProvider>().busySlots['busy_slots'] as List?;
+    if (busy == null) return true;
+
+    final start = dt;
+    final end = dt.add(Duration(minutes: duration));
+
+    // Check if at least one box is free
+    for (int boxIdx = 0; boxIdx < busy.length; boxIdx++) {
+      bool isBoxFree = true;
+      for (final slot in busy[boxIdx]) {
+        final slotStart = DateTime.parse(slot['start']);
+        final slotEnd = DateTime.parse(slot['end']);
+
+        if (start.isBefore(slotEnd) && end.isAfter(slotStart)) {
+          isBoxFree = false;
+          break;
+        }
+      }
+      if (isBoxFree) return true;
+    }
+    return false;
+  }
+
+  int _getDuration() => _calculator.duration;
+
   @override
   void initState() {
     super.initState();
-    // Предзаполнить из профиля
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
-    _carCtrl  = TextEditingController(text: user?.carModel    ?? '');
-    _numCtrl  = TextEditingController(text: user?.carNumber   ?? '');
-
-    if (_isPromo) {
-      final cfg = getPromoConfig(_promo!.name);
-      _washType = WashTypeX.fromString(cfg?.washTypeName ?? 'basic');
-      _extras   = Set.from(cfg?.extras ?? []);
-    } else {
-      _washType = WashType.basic;
-      _extras   = {};
-    }
-    // Добавить автовключаемые услуги для начального типа
-    _extras.addAll(_washType.includedExtras);
+    final existingCar = user?.carModel ?? '';
+    final parts =
+        existingCar.trim().split(' ').where((s) => s.isNotEmpty).toList();
+    _brandCtrl =
+        TextEditingController(text: parts.isNotEmpty ? parts.first : '');
+    _modelCtrl = TextEditingController(
+        text: parts.length > 1 ? parts.sublist(1).join(' ') : '');
+    _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
+    _numCtrl = TextEditingController(text: user?.carNumber ?? '');
+    _extras = {};
     _selectedDate = _nextValidDate();
+
+    if (widget.templateAppointment != null) {
+      final template = widget.templateAppointment!;
+      _nameCtrl.text = template.clientName;
+      final carParts = template.carModel
+          .trim()
+          .split(' ')
+          .where((s) => s.isNotEmpty)
+          .toList();
+      _brandCtrl.text = carParts.isNotEmpty ? carParts.first : '';
+      _modelCtrl.text =
+          carParts.length > 1 ? carParts.sublist(1).join(' ') : '';
+      _selectedBrand = _brandCtrl.text.isNotEmpty ? _brandCtrl.text : null;
+      _numCtrl.text = template.carNumber;
+      final catalogProvider = context.read<CatalogProvider>();
+      final wtExists =
+          catalogProvider.washTypeById(template.washTypeId) != null;
+      _washTypeId = wtExists ? template.washTypeId : '';
+      _extras = Set.from(template.additionalServices);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFromProvider();
+      _updateBusySlots();
+      _loadCars();
+    });
+  }
+
+  Future<void> _loadCars() async {
+    final cars = await sl<ApiService>().getCars();
+    if (mounted) {
+      setState(() {
+        _cars = cars;
+        if (_cars.isNotEmpty) {
+          final primary =
+              _cars.where((c) => c.isPrimary).firstOrNull ?? _cars.first;
+          _selectedCarId = primary.id;
+          // Don't overwrite template appointment car data
+          if (widget.templateAppointment == null) {
+            _applyCarSelection(primary);
+          }
+        }
+      });
+    }
+  }
+
+  void _applyCarSelection(Car car) {
+    _brandCtrl.text = car.brand;
+    _modelCtrl.text = car.model;
+    _selectedBrand = car.brand.isNotEmpty ? car.brand : null;
+    _numCtrl.text = car.number;
+  }
+
+  void _initFromProvider() {
+    if (widget.templateAppointment != null) return;
+    final catalogProvider = context.read<CatalogProvider>();
+    if (_isPromo) {
+      _washTypeId = _promo!.washTypeId;
+      _extras = Set.from(_promo!.includedExtraIds);
+    } else {
+      final basic = catalogProvider.washTypeByCode('basic') ??
+          (catalogProvider.washTypes.isNotEmpty
+              ? catalogProvider.washTypes.first
+              : null);
+      _washTypeId = basic?.id ?? '';
+    }
+    _addIncludedExtras();
+    if (mounted) setState(() {});
+  }
+
+  void _addIncludedExtras() {
+    final wt = context.read<CatalogProvider>().washTypeById(_washTypeId);
+    if (wt != null) _extras.addAll(wt.includedExtraIds);
   }
 
   @override
   void dispose() {
     _pageCtrl.dispose();
-    _step2ScrollCtrl.dispose();
-    _nameCtrl.dispose(); _carCtrl.dispose(); _numCtrl.dispose();
+    _serviceScrollCtrl.dispose();
+    _nameCtrl.dispose();
+    _brandCtrl.dispose();
+    _modelCtrl.dispose();
+    _numCtrl.dispose();
     super.dispose();
   }
 
-  DateTime get _finalDateTime {
-    final p = _slots[_selectedSlot].split(':');
-    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
-        int.parse(p[0]), int.parse(p[1]));
-  }
-
-  /// Все услуги, включённые «бесплатно» (тип мойки + extras акции)
-  Set<String> get _lockedExtras {
-    final locked = <String>{..._washType.includedExtras};
-    if (_isPromo) {
-      final cfg = getPromoConfig(_promo!.name);
-      if (cfg != null) locked.addAll(cfg.extras);
-    }
-    return locked;
-  }
-
-  int get _regularPrice {
-    int p = _washType.basePrice;
-    final locked = _lockedExtras;
-    for (final e in _extras) {
-      if (!locked.contains(e)) p += extraServicePrices[e] ?? 0;
-    }
-    return p;
-  }
-
-  int get _extrasPrice {
-    int p = 0;
-    final locked = _lockedExtras;
-    for (final e in _extras) {
-      if (!locked.contains(e)) p += extraServicePrices[e] ?? 0;
-    }
-    return p;
-  }
-
-  int get _finalPrice => _isPromo ? _promo!.price + _extrasPrice : _regularPrice;
-  bool get _hasDiscount => _isPromo && _promo!.price < _regularPrice;
-
-  /// Суммарное время: тип мойки + все выбранные доп. услуги
-  String get _totalDurationLabel {
-    int total = _washType.durationMinutes;
-    for (final e in _extras) {
-      final durStr = extraServiceDurations[e];
-      if (durStr == null) continue;
-      // Парсим строки вида "15 мин", "1 ч", "1.5 ч", "3 ч"
-      if (durStr.contains('ч') && durStr.contains('мин')) {
-        final parts = durStr.split(' ');
-        total += (double.tryParse(parts[0]) ?? 0).toInt() * 60 +
-                 (int.tryParse(parts[2]) ?? 0);
-      } else if (durStr.contains('ч')) {
-        final h = double.tryParse(durStr.split(' ')[0]) ?? 0;
-        total += (h * 60).round();
-      } else if (durStr.contains('мин')) {
-        total += int.tryParse(durStr.split(' ')[0]) ?? 0;
-      }
-    }
-    if (_isPromo) total = _promo!.durationMinutes; // для акции берём из promo
-    final h = total ~/ 60;
-    final m = total % 60;
-    if (h == 0) return '$m мин';
-    return m == 0 ? '$h ч' : '$h ч $m мин';
-  }
-
   void _next() {
-    if (_step == 1 && !_formKey.currentState!.validate()) {
-      _step2ScrollCtrl.animateTo(0,
+    if (_step == 0 && !_formKey.currentState!.validate()) {
+      _serviceScrollCtrl.animateTo(0,
           duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
       return;
     }
+    if (_step == 1 && _selectedSlotIndex == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Пожалуйста, выберите время для записи.'),
+        backgroundColor: AppStyles.danger,
+      ));
+      return;
+    }
+
     if (_step < 2) {
       setState(() => _step++);
       _pageCtrl.nextPage(
@@ -267,56 +252,95 @@ class _BWState extends State<BookingWizardScreen> {
     }
   }
 
-  void _confirm() {
-    // Используем login (не displayName) для ownerUsername — гарантируем совпадение
-    final login = context.read<AuthProvider>().userLogin.toLowerCase();
-    context.read<AppProvider>().addAppointment(Appointment(
-      id: 'a_${DateTime.now().millisecondsSinceEpoch}',
-      clientName: _nameCtrl.text.trim(),
-      carModel: _carCtrl.text.trim(),
-      carNumber: _numCtrl.text.trim().toUpperCase(),
-      dateTime: _finalDateTime,
-      washType: _washType,
-      additionalServices: _extras.toList(),
-      status: 'scheduled',
-      notes: _isPromo ? 'Акция: ${_promo!.name}' : '',
-      ownerUsername: login,
-      promoPrice: _isPromo ? _promo!.price : 0,
-      paidPrice: _finalPrice,
-    ));
-    // Закрываем все экраны до ClientShell (включая папку акций)
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    ClientShell.shellKey.currentState?.switchToBookings();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Row(children: [
-        Icon(Icons.check_circle_rounded, color: Colors.white),
-        SizedBox(width: 10),
-        Text('Запись успешно создана!'),
-      ]),
-      backgroundColor: AppStyles.success,
-      duration: const Duration(seconds: 3),
-    ));
+  Future<void> _confirm() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    final auth = context.read<AuthProvider>();
+    final login = auth.userLogin.toLowerCase();
+    final selectedCar = _cars.where((c) => c.id == _selectedCarId).firstOrNull;
+    final ok = await context.read<AppointmentProvider>().addAppointment(
+        Appointment(
+          id: '',
+          clientName: _nameCtrl.text.trim(),
+          carModel: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
+          carNumber: _numCtrl.text.trim().toUpperCase(),
+          carId: selectedCar?.id,
+          dateTime: _finalDateTime,
+          washTypeId: _washTypeId,
+          additionalServices: _extras.toList(),
+          status: 'scheduled',
+          notes: _isPromo ? 'Акция: ${_promo!.name}' : '',
+          ownerUsername: login,
+          promoPrice: _isPromo
+              ? (_promo!.price > 0 ? _promo!.price : _calculator.promoBasePrice)
+              : 0,
+          paidPrice: _calculator.finalPrice,
+          promoId: _promo?.id,
+        ),
+        auth);
+    setState(() => _isSaving = false);
+    if (mounted) {
+      if (ok) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        ClientShell.shellKey.currentState?.switchToBookings();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Row(children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Запись успешно создана!'),
+          ]),
+          backgroundColor: AppStyles.success,
+          duration: Duration(seconds: 3),
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Не удалось создать запись. Попробуйте ещё раз.'),
+          backgroundColor: AppStyles.danger,
+        ));
+      }
+    }
+  }
+
+  DateTime get _finalDateTime {
+    if (_selectedSlotIndex == -1) return DateTime.now(); // Should not happen
+    final hour = 8 + (_selectedSlotIndex ~/ 2);
+    final minute = (_selectedSlotIndex % 2) * 30;
+    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day,
+        hour, minute);
   }
 
   @override
   Widget build(BuildContext context) {
+    final catalogProvider = context.watch<CatalogProvider>();
+    final washTypes = [...catalogProvider.washTypes]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+    if (_washTypeId.isEmpty && washTypes.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppStyles.bgPage,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppStyles.textPrimary,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: AppStyles.border)),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child:
+                Container(height: 1, color: AppStyles.adaptiveBorder(context))),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, size: 18),
           onPressed: _back,
         ),
         title: Row(children: [
-          const Text('Запись на мойку',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600,
-                  color: AppStyles.textPrimary)),
+          Text('Запись на мойку',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: AppStyles.adaptiveTextPrimary(context))),
           if (_isPromo) ...[
             const SizedBox(width: 8),
             Container(
@@ -325,825 +349,107 @@ class _BWState extends State<BookingWizardScreen> {
                 gradient: AppStyles.primaryGradient,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text('Акция', style: TextStyle(
-                  color: Colors.white, fontSize: 11,
-                  fontWeight: FontWeight.w600)),
+              child: const Text('Акция',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600)),
             ),
           ],
         ]),
       ),
       body: Column(children: [
-        _StepIndicator(current: _step),
+        StepIndicator(current: _step),
         Expanded(
           child: PageView(
             controller: _pageCtrl,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _Step1(
-                selectedDate: _selectedDate,
-                selectedSlot: _selectedSlot,
-                slots: _slots,
-                weekendOnly: _weekendOnly,
-                isDateAllowed: _isDateAllowed,
-                onDateChanged: (d) => setState(() => _selectedDate = d),
-                onSlotChanged: (i) => setState(() => _selectedSlot = i),
-              ),
-              _Step2(
-                scrollCtrl: _step2ScrollCtrl,
+              ServiceStep(
+                scrollCtrl: _serviceScrollCtrl,
                 formKey: _formKey,
-                washType: _washType,
+                washTypes: washTypes,
+                washTypeId: _washTypeId,
                 extras: _extras,
-                lockedExtras: _lockedExtras,
+                lockedExtras: _calculator.lockedExtras,
                 nameCtrl: _nameCtrl,
-                carCtrl: _carCtrl,
+                brandCtrl: _brandCtrl,
+                modelCtrl: _modelCtrl,
+                selectedBrand: _selectedBrand,
+                onBrandSelected: (brand) =>
+                    setState(() => _selectedBrand = brand),
                 numCtrl: _numCtrl,
                 isPromo: _isPromo,
+                cars: _cars,
+                selectedCarId: _selectedCarId,
+                onCarSelected: (carId) {
+                  setState(() {
+                    _selectedCarId = carId;
+                    final car = _cars.where((c) => c.id == carId).firstOrNull;
+                    if (car != null) _applyCarSelection(car);
+                  });
+                },
+                onAddCar: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CarListScreen()),
+                  );
+                  await _loadCars();
+                },
                 onWashTypeChanged: (wt) => setState(() {
-                  // Убрать включённые услуги старого типа (если не выбраны вручную)
-                  _extras.removeAll(_washType.includedExtras);
-                  _washType = wt;
-                  // Добавить включённые услуги нового типа
-                  _extras.addAll(wt.includedExtras);
+                  final oldWt = catalogProvider.washTypeById(_washTypeId);
+                  if (oldWt != null) _extras.removeAll(oldWt.includedExtraIds);
+                  _washTypeId = wt.id;
+                  _extras.addAll(wt.includedExtraIds);
                 }),
-                onExtrasChanged: (s, v) => setState(() {
-                  // Не позволяем снять заблокированные услуги (тип мойки + акция)
-                  if (!v && _lockedExtras.contains(s)) return;
-                  v ? _extras.add(s) : _extras.remove(s);
+                onExtrasChanged: (id, v) => setState(() {
+                  if (!v && _calculator.lockedExtras.contains(id)) return;
+                  v ? _extras.add(id) : _extras.remove(id);
                 }),
               ),
-              _Step3(
-                date: DateFormat('d MMMM yyyy, HH:mm', 'ru').format(_finalDateTime),
-                washType: _washType,
+              DateTimeStep(
+                selectedDate: _selectedDate,
+                selectedSlot: _selectedSlotIndex,
+                weekendOnly: _weekendOnly,
+                isDateAllowed: _isDateAllowed,
+                onDateChanged: (d) {
+                  setState(() {
+                    _selectedDate = d;
+                    _selectedSlotIndex = -1; // Reset selection
+                  });
+                  _updateBusySlots();
+                },
+                onSlotChanged: (i) => setState(() => _selectedSlotIndex = i),
+                isSlotAvailable: _isSlotAvailable,
+                getDuration: _getDuration,
+                getFinalDateTime: () => _finalDateTime,
+              ),
+              ConfirmationStep(
+                date: DateFormat('d MMMM yyyy, HH:mm', 'ru')
+                    .format(_finalDateTime),
+                washType: catalogProvider.washTypeById(_washTypeId),
                 extras: _extras.toList(),
+                services: catalogProvider.services,
                 name: _nameCtrl.text,
-                car: _carCtrl.text,
+                car: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
                 number: _numCtrl.text,
-                finalPrice: _finalPrice,
-                regularPrice: _regularPrice,
-                hasDiscount: _hasDiscount,
+                finalPrice: _calculator.finalPrice,
+                regularPrice: _calculator.regularPrice,
+                hasDiscount: _calculator.hasDiscount,
                 promoName: _isPromo ? _promo!.name : null,
-                totalDurationLabel: _totalDurationLabel,
+                totalDurationLabel: _calculator.durationLabel,
               ),
             ],
           ),
         ),
-        _BottomBar(step: _step, onAction: _step < 2 ? _next : _confirm),
-      ]),
-    );
-  }
-}
-
-// ─── Индикатор шагов ─────────────────────────────────────────────────────────
-class _StepIndicator extends StatelessWidget {
-  final int current;
-  const _StepIndicator({required this.current});
-  static const _steps = ['Дата и время', 'Услуги', 'Подтверждение'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      child: Row(children: List.generate(_steps.length * 2 - 1, (i) {
-        if (i.isOdd) {
-          return Expanded(child: Container(
-            height: 2,
-            decoration: BoxDecoration(
-              color: i ~/ 2 < current ? AppStyles.primary : AppStyles.border,
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ));
-        }
-        final idx    = i ~/ 2;
-        final done   = idx < current;
-        final active = idx == current;
-        return Column(mainAxisSize: MainAxisSize.min, children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: done ? AppStyles.primary :
-                     active ? AppStyles.primaryBg : AppStyles.bgMuted,
-              border: Border.all(
-                color: (done || active) ? AppStyles.primary : AppStyles.border,
-                width: active ? 2 : 1,
-              ),
-            ),
-            child: Center(child: done
-                ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
-                : Text('${idx + 1}', style: TextStyle(
-                    color: active ? AppStyles.primary : AppStyles.textSecondary,
-                    fontSize: 13, fontWeight: FontWeight.bold))),
-          ),
-          const SizedBox(height: 5),
-          Text(_steps[idx], style: TextStyle(
-            color: (done || active) ? AppStyles.primary : AppStyles.textMuted,
-            fontSize: 10, fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-          )),
-        ]);
-      })),
-    );
-  }
-}
-
-// ─── Шаг 1: Дата и время ─────────────────────────────────────────────────────
-class _Step1 extends StatelessWidget {
-  final DateTime selectedDate;
-  final int selectedSlot;
-  final List<String> slots;
-  final bool weekendOnly;
-  final bool Function(DateTime) isDateAllowed;
-  final ValueChanged<DateTime> onDateChanged;
-  final ValueChanged<int> onSlotChanged;
-  const _Step1({required this.selectedDate, required this.selectedSlot,
-    required this.slots, required this.weekendOnly, required this.isDateAllowed,
-    required this.onDateChanged, required this.onSlotChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final days = List.generate(14, (i) =>
-        DateTime.now().add(Duration(days: i + 1)));
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (weekendOnly)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppStyles.warningBg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppStyles.warning.withOpacity(0.3)),
-            ),
-            child: const Row(children: [
-              Icon(Icons.info_outline, color: AppStyles.warning, size: 16),
-              SizedBox(width: 8),
-              Text('Акция доступна только по выходным',
-                  style: TextStyle(color: AppStyles.warning, fontSize: 12,
-                      fontWeight: FontWeight.w500)),
-            ]),
-          ),
-        const Text('Выберите дату', style: AppStyles.headingMedium),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 82,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: days.length,
-            itemBuilder: (_, i) {
-              final d = days[i];
-              final sel = d.day == selectedDate.day && d.month == selectedDate.month;
-              final allowed = isDateAllowed(d);
-              return GestureDetector(
-                onTap: allowed ? () => onDateChanged(d) : null,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 62, margin: const EdgeInsets.only(right: 10),
-                  decoration: BoxDecoration(
-                    color: sel ? AppStyles.primary :
-                           !allowed ? AppStyles.bgMuted : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: sel ? AppStyles.primary : AppStyles.border),
-                    boxShadow: sel ? [BoxShadow(
-                        color: AppStyles.primary.withOpacity(0.25),
-                        blurRadius: 8, offset: const Offset(0, 3))] : [],
-                  ),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                    Text(DateFormat('EE', 'ru').format(d).toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-                            color: sel ? Colors.white70 :
-                                   !allowed ? AppStyles.textMuted :
-                                   AppStyles.textSecondary)),
-                    const SizedBox(height: 4),
-                    Text('${d.day}', style: TextStyle(fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: sel ? Colors.white :
-                               !allowed ? AppStyles.textMuted :
-                               AppStyles.textPrimary)),
-                    Text(DateFormat('MMM', 'ru').format(d),
-                        style: TextStyle(fontSize: 11,
-                            color: sel ? Colors.white70 :
-                                   !allowed ? AppStyles.textMuted :
-                                   AppStyles.textSecondary)),
-                  ]),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 28),
-        const Text('Выберите время', style: AppStyles.headingMedium),
-        const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 10,
-            childAspectRatio: 2.4,
-          ),
-          itemCount: slots.length,
-          itemBuilder: (_, i) {
-            final sel = i == selectedSlot;
-            return GestureDetector(
-              onTap: () => onSlotChanged(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  color: sel ? AppStyles.primary : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: sel ? AppStyles.primary : AppStyles.border),
-                ),
-                child: Center(child: Text(slots[i], style: TextStyle(
-                  color: sel ? Colors.white : AppStyles.textPrimary,
-                  fontSize: 14, fontWeight: FontWeight.w600,
-                ))),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppStyles.primaryBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.event_rounded, color: AppStyles.primary, size: 18),
-            const SizedBox(width: 10),
-            Text('Выбрано: ${DateFormat("d MMMM, HH:mm", "ru").format(
-              DateTime(selectedDate.year, selectedDate.month, selectedDate.day,
-                  int.parse(slots[selectedSlot].split(':')[0]),
-                  int.parse(slots[selectedSlot].split(':')[1])))}',
-              style: const TextStyle(color: AppStyles.primary, fontSize: 13,
-                  fontWeight: FontWeight.w500)),
-          ]),
+        BottomBar(
+          step: _step,
+          onAction: _step < 2 ? _next : () => _confirm(),
+          selectedTimeLabel: _selectedSlotIndex == -1
+              ? null
+              : DateFormat("d MMMM, HH:mm", "ru").format(_finalDateTime),
         ),
       ]),
     );
   }
-}
-
-// ─── Шаг 2: Услуги ───────────────────────────────────────────────────────────
-class _Step2 extends StatelessWidget {
-  final ScrollController? scrollCtrl;
-  final GlobalKey<FormState> formKey;
-  final WashType washType;
-  final Set<String> extras;
-  final Set<String> lockedExtras;
-  final TextEditingController nameCtrl, carCtrl, numCtrl;
-  final bool isPromo;
-  final ValueChanged<WashType> onWashTypeChanged;
-  final void Function(String, bool) onExtrasChanged;
-
-  _Step2({this.scrollCtrl, required this.formKey, required this.washType, required this.extras,
-    required this.lockedExtras,
-    required this.nameCtrl, required this.carCtrl, required this.numCtrl,
-    required this.isPromo, required this.onWashTypeChanged,
-    required this.onExtrasChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppProvider>();
-
-    return SingleChildScrollView(
-      controller: scrollCtrl,
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: formKey,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Данные авто
-          const Text('Ваши данные', style: AppStyles.headingMedium),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: nameCtrl,
-            style: const TextStyle(color: AppStyles.textPrimary),
-            decoration: AppStyles.inputDecoration('Ваше имя',
-                icon: Icons.person_outline_rounded),
-            textCapitalization: TextCapitalization.words,
-            onChanged: (v) => _applyTranslitRu(nameCtrl, v),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: carCtrl,
-            style: const TextStyle(color: AppStyles.textPrimary),
-            decoration: AppStyles.inputDecoration('Марка и модель авто',
-                icon: Icons.directions_car_outlined),
-            textCapitalization: TextCapitalization.words,
-            onChanged: (v) => _applyTranslitEn(carCtrl, v),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
-          ),
-          const SizedBox(height: 12),
-          // Гос номер: hint всегда виден через helperText
-          TextFormField(
-            controller: numCtrl,
-            style: const TextStyle(color: AppStyles.textPrimary,
-                letterSpacing: 1.5, fontWeight: FontWeight.w600),
-            decoration: _plateDecoration(),
-            inputFormatters: [_PlateInputFormatter()],
-            validator: _validatePlate,
-          ),
-          const SizedBox(height: 24),
-
-          // Тип мойки
-          Row(children: [
-            const Text('Тип мойки', style: AppStyles.headingMedium),
-            if (isPromo) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: AppStyles.primaryBg,
-                    borderRadius: BorderRadius.circular(6)),
-                child: const Text('Задано акцией',
-                    style: TextStyle(color: AppStyles.primary,
-                        fontSize: 11, fontWeight: FontWeight.w500)),
-              ),
-            ],
-          ]),
-          const SizedBox(height: 12),
-          Container(
-            decoration: AppStyles.cardDecoration,
-            child: Column(children: WashType.values.asMap().entries.map((entry) {
-              final wt  = entry.value;
-              final sel = washType == wt;
-              final last = entry.key == WashType.values.length - 1;
-              return Column(children: [
-                GestureDetector(
-                  onTap: isPromo ? null : () => onWashTypeChanged(wt),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: sel ? AppStyles.primaryBg : Colors.white,
-                    ),
-                    child: Row(children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 20, height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: sel ? AppStyles.primary : AppStyles.border,
-                              width: 2),
-                        ),
-                        child: sel ? Center(child: Container(
-                          width: 8, height: 8,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppStyles.primary),
-                        )) : null,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(wt.displayName, style: TextStyle(
-                            color: sel ? AppStyles.primary : AppStyles.textPrimary,
-                            fontSize: 15,
-                            fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
-                          )),
-                          const SizedBox(height: 2),
-                          Text(wt.description, style: const TextStyle(
-                            color: AppStyles.textSecondary,
-                            fontSize: 11,
-                          )),
-                          const SizedBox(height: 2),
-                          Row(children: [
-                            const Icon(Icons.access_time_rounded,
-                                size: 11, color: AppStyles.textSecondary),
-                            const SizedBox(width: 3),
-                            Text(wt.durationLabel, style: const TextStyle(
-                                color: AppStyles.textSecondary, fontSize: 11)),
-                          ]),
-                        ],
-                      )),
-                      Text('${wt.basePrice} ₽', style: TextStyle(
-                        color: sel ? AppStyles.primary : AppStyles.textSecondary,
-                        fontSize: 14, fontWeight: FontWeight.w600,
-                      )),
-                    ]),
-                  ),
-                ),
-                if (!last) Container(height: 1, color: AppStyles.border),
-              ]);
-            }).toList()),
-          ),
-          const SizedBox(height: 24),
-
-          // Доп. услуги
-          Row(children: [
-            const Text('Дополнительные услуги', style: AppStyles.headingMedium),
-            if (isPromo) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: AppStyles.primaryBg,
-                    borderRadius: BorderRadius.circular(6)),
-                child: const Text('Можно добавить',
-                    style: TextStyle(color: AppStyles.primary,
-                        fontSize: 11, fontWeight: FontWeight.w500)),
-              ),
-            ],
-          ]),
-          const SizedBox(height: 12),
-          Container(
-            decoration: AppStyles.cardDecoration,
-            child: Column(
-              children: additionalServiceOptions.asMap().entries.map((entry) {
-                final i        = entry.key;
-                final s        = entry.value;
-                final checked  = extras.contains(s);
-                final last     = i == additionalServiceOptions.length - 1;
-                final price    = extraServicePrices[s];
-                final dur      = extraServiceDurations[s];
-                final isFav    = provider.isExtraFavorite(s);
-                final isWashIncluded = washType.includedExtras.contains(s);
-                final isPromoIncluded = lockedExtras.contains(s) && !isWashIncluded;
-                final locked   = lockedExtras.contains(s);
-                return Column(children: [
-                  InkWell(
-                    onTap: locked ? null : () => onExtrasChanged(s, !checked),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(children: [
-                        // Чекбокс
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 20, height: 20,
-                          decoration: BoxDecoration(
-                            color: locked
-                                ? AppStyles.primary.withOpacity(0.6)
-                                : checked ? AppStyles.primary : Colors.white,
-                            borderRadius: BorderRadius.circular(5),
-                            border: Border.all(
-                                color: (locked || checked)
-                                    ? AppStyles.primary : AppStyles.border,
-                                width: 1.5),
-                          ),
-                          child: (locked || checked)
-                              ? Icon(
-                                  locked ? Icons.lock_rounded : Icons.check_rounded,
-                                  color: Colors.white, size: 13) : null,
-                        ),
-                        const SizedBox(width: 12),
-                        // Название + длительность
-                        Expanded(child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text(s, style: TextStyle(
-                            color: checked ? AppStyles.primary : AppStyles.textPrimary,
-                            fontSize: 14,
-                            fontWeight: checked ? FontWeight.w500 : FontWeight.normal,
-                          )),
-                          if (dur != null)
-                            Text(dur, style: const TextStyle(
-                                color: AppStyles.textSecondary, fontSize: 11)),
-                        ])),
-                        // Метка: «Включено», «Задано акцией» или цена
-                        if (isWashIncluded)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppStyles.primaryBg,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text('Включено',
-                                style: TextStyle(color: AppStyles.primary,
-                                    fontSize: 10, fontWeight: FontWeight.w600)),
-                          )
-                        else if (isPromoIncluded)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppStyles.favorite.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text('Задано акцией',
-                                style: TextStyle(color: AppStyles.favorite,
-                                    fontSize: 10, fontWeight: FontWeight.w600)),
-                          )
-                        else if (price != null)
-                          Text('+$price ₽', style: TextStyle(
-                            color: checked ? AppStyles.primary : AppStyles.textSecondary,
-                            fontSize: 13, fontWeight: FontWeight.w600,
-                          )),
-                        const SizedBox(width: 8),
-                        // Кнопка избранного
-                        GestureDetector(
-                          onTap: () => provider.toggleExtraFavorite(s),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              isFav ? Icons.star_rounded : Icons.star_outline_rounded,
-                              size: 20,
-                              color: isFav ? AppStyles.favorite : AppStyles.textMuted,
-                            ),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
-                  if (!last) Container(
-                      height: 1, color: AppStyles.border,
-                      margin: const EdgeInsets.only(left: 48)),
-                ]);
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-        ]),
-      ),
-    );
-  }
-
-  static InputDecoration _plateDecoration() {
-    final base = AppStyles.inputDecoration('Гос. номер',
-        hint: 'А000АА777', icon: Icons.pin_outlined);
-    return base.copyWith(
-      floatingLabelBehavior: FloatingLabelBehavior.always,
-      helperText: 'Формат: А000АА777 · EN→RU авто',
-      helperStyle: const TextStyle(
-          color: AppStyles.textSecondary, fontSize: 11),
-    );
-  }
-}
-
-// ─── Шаг 3: Подтверждение ────────────────────────────────────────────────────
-class _Step3 extends StatelessWidget {
-  final String date, name, car, number;
-  final WashType washType;
-  final List<String> extras;
-  final int finalPrice, regularPrice;
-  final bool hasDiscount;
-  final String? promoName;
-  final String totalDurationLabel;
-
-  const _Step3({required this.date, required this.washType, required this.extras,
-    required this.name, required this.car, required this.number,
-    required this.finalPrice, required this.regularPrice,
-    required this.hasDiscount, this.promoName, required this.totalDurationLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Подтверждение', style: AppStyles.headingMedium),
-        const SizedBox(height: 4),
-        const Text('Проверьте данные перед записью', style: AppStyles.bodyMedium),
-        const SizedBox(height: 20),
-
-        if (promoName != null) ...[
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: AppStyles.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(children: [
-              const Icon(Icons.local_offer_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(child: Text(promoName!,
-                  style: const TextStyle(color: Colors.white,
-                      fontSize: 13, fontWeight: FontWeight.w600))),
-            ]),
-          ),
-          const SizedBox(height: 14),
-        ],
-
-        _ConfirmCard(icon: Icons.event_rounded, label: 'Дата и время',
-            value: date, highlight: true),
-        const SizedBox(height: 10),
-
-        Container(
-          decoration: AppStyles.cardDecoration,
-          child: Column(children: [
-            _ConfirmRow(Icons.person_outline_rounded, 'Клиент', name),
-            Container(height: 1, color: AppStyles.border),
-            _ConfirmRow(Icons.directions_car_outlined, 'Автомобиль', car),
-            Container(height: 1, color: AppStyles.border),
-            _ConfirmRow(Icons.pin_outlined, 'Гос. номер', number),
-          ]),
-        ),
-        const SizedBox(height: 10),
-
-        Container(
-          decoration: AppStyles.cardDecoration,
-          child: Column(children: [
-            _ConfirmRow(Icons.local_car_wash_rounded, 'Тип мойки',
-                washType.displayName),
-            Container(height: 1, color: AppStyles.border),
-            _ConfirmRow(Icons.access_time_rounded, 'Время',
-                totalDurationLabel),
-            if (extras.isNotEmpty) ...[
-              Container(height: 1, color: AppStyles.border),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Row(children: [
-                    Icon(Icons.add_circle_outline_rounded,
-                        size: 16, color: AppStyles.textSecondary),
-                    SizedBox(width: 10),
-                    Text('Доп. услуги', style: TextStyle(
-                        color: AppStyles.textSecondary, fontSize: 13)),
-                  ]),
-                  const SizedBox(height: 10),
-                  Wrap(spacing: 8, runSpacing: 6,
-                    children: extras.map((e) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppStyles.primaryBg,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: AppStyles.primary.withOpacity(0.2)),
-                      ),
-                      child: Text(e, style: const TextStyle(
-                          color: AppStyles.primary, fontSize: 12,
-                          fontWeight: FontWeight.w500)),
-                    )).toList()),
-                ]),
-              ),
-            ],
-          ]),
-        ),
-        const SizedBox(height: 14),
-
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppStyles.primaryBg,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppStyles.primary.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.payments_outlined, color: AppStyles.primary, size: 22),
-            const SizedBox(width: 12),
-            const Text('Итого', style: TextStyle(color: AppStyles.textPrimary,
-                fontSize: 16, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('$finalPrice ₽', style: const TextStyle(
-                  color: AppStyles.primary, fontSize: 24,
-                  fontWeight: FontWeight.bold)),
-              if (hasDiscount)
-                Text('$regularPrice ₽', style: const TextStyle(
-                    color: AppStyles.textSecondary, fontSize: 14,
-                    decoration: TextDecoration.lineThrough,
-                    decorationColor: AppStyles.textSecondary)),
-            ]),
-          ]),
-        ),
-        if (hasDiscount) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppStyles.successBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppStyles.success.withOpacity(0.3)),
-            ),
-            child: Row(children: [
-              const Icon(Icons.savings_rounded, color: AppStyles.success, size: 16),
-              const SizedBox(width: 8),
-              Text('Экономия по акции: ${regularPrice - finalPrice} ₽',
-                  style: const TextStyle(color: AppStyles.success,
-                      fontSize: 13, fontWeight: FontWeight.w500)),
-            ]),
-          ),
-        ],
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppStyles.bgMuted,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Row(children: [
-            Icon(Icons.info_outline, color: AppStyles.textSecondary, size: 16),
-            SizedBox(width: 8),
-            Expanded(child: Text(
-              'После подтверждения администратор свяжется с вами для уточнения деталей',
-              style: TextStyle(color: AppStyles.textSecondary, fontSize: 12),
-            )),
-          ]),
-        ),
-        const SizedBox(height: 32),
-      ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConfirmCard extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  final bool highlight;
-  const _ConfirmCard({required this.icon, required this.label,
-    required this.value, this.highlight = false});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: AppStyles.cardDecoration,
-    child: Row(children: [
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppStyles.primaryBg,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: AppStyles.primary, size: 20),
-      ),
-      const SizedBox(width: 14),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: AppStyles.label),
-        const SizedBox(height: 3),
-        Text(value, style: TextStyle(
-          color: highlight ? AppStyles.primary : AppStyles.textPrimary,
-          fontSize: 16, fontWeight: FontWeight.w600,
-        )),
-      ]),
-    ]),
-  );
-}
-
-class _ConfirmRow extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  const _ConfirmRow(this.icon, this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    child: Row(children: [
-      Container(
-        width: 32, height: 32,
-        decoration: BoxDecoration(
-          color: AppStyles.bgMuted,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 16, color: AppStyles.textSecondary),
-      ),
-      const SizedBox(width: 12),
-      SizedBox(
-        width: 110,
-        child: Text(label, style: AppStyles.bodyMedium),
-      ),
-      Expanded(child: Text(value,
-          style: const TextStyle(color: AppStyles.textPrimary,
-              fontSize: 14, fontWeight: FontWeight.w600),
-          textAlign: TextAlign.right)),
-    ]),
-  );
-}
-
-class _BottomBar extends StatelessWidget {
-  final int step;
-  final VoidCallback onAction;
-  const _BottomBar({required this.step, required this.onAction});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      border: Border(top: BorderSide(color: AppStyles.border)),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04),
-          blurRadius: 12, offset: const Offset(0, -4))],
-    ),
-    child: SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: AppStyles.primaryButton,
-        onPressed: onAction,
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(step == 0 ? 'Далее: выбор услуг' :
-               step == 1 ? 'Далее: подтверждение' : 'Записаться',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          Icon(step == 2
-              ? Icons.check_circle_outline_rounded
-              : Icons.arrow_forward_rounded, size: 18),
-        ]),
-      ),
-    ),
-  );
 }
