@@ -10,10 +10,12 @@ class ShiftTemplatesSheet extends StatelessWidget {
   final User? targetWasher;
   final DateTime weekStart;
   final VoidCallback onRefresh;
-  final Future<void> Function(String name, List<ShiftTemplateSlot> slots) onSave;
+  final Future<void> Function(String name, List<ShiftTemplateSlot> slots)
+      onSave;
   final Future<void> Function(ShiftTemplate template) onApply;
   final Future<void> Function(ShiftTemplate template) onDelete;
-  final Future<void> Function(ShiftTemplate template, bool isDefault) onSetDefault;
+  final Future<void> Function(ShiftTemplate template, bool isDefault)
+      onSetDefault;
 
   const ShiftTemplatesSheet({
     super.key,

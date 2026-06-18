@@ -166,8 +166,8 @@ class _HomeShellState extends State<HomeShell> {
   Widget _buildDrawer(BuildContext ctx) {
     final username = ctx.select<AuthProvider, String>((a) => a.username);
     final isAdmin = ctx.select<AuthProvider, bool>((a) => a.isAdmin);
-    final favCount =
-        ctx.select<AppointmentProvider, int>((ap) => ap.favoriteAppointments.length);
+    final favCount = ctx.select<AppointmentProvider, int>(
+        (ap) => ap.favoriteAppointments.length);
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(

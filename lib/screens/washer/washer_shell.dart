@@ -339,7 +339,6 @@ class _WasherShellState extends State<WasherShell> {
     );
   }
 
-
   void _confirmLogout(BuildContext ctx) {
     showDialog(
       context: ctx,

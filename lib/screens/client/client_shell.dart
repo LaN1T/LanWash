@@ -140,7 +140,8 @@ class _ClientShellState extends State<ClientShell> {
     final username = ctx.watch<AuthProvider>().username;
     final catalog = ctx.watch<CatalogProvider>();
     final favSet = ctx.watch<FavoriteProvider>().serviceFavorites;
-    final favCount = catalog.services.where((s) => favSet.contains(s.id)).length;
+    final favCount =
+        catalog.services.where((s) => favSet.contains(s.id)).length;
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -189,7 +190,6 @@ class _ClientShellState extends State<ClientShell> {
               Icons.calendar_today_rounded, 'Мои записи', null),
           _drawerItem(ctx, 2, Icons.star_outline, Icons.star_rounded,
               'Избранное', favCount > 0 ? '$favCount' : null),
-
 
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
