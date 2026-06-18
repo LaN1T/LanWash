@@ -133,6 +133,20 @@ from main import app
 
 limiter.enabled = False
 
+# Disable Prometheus instrumentation during tests: some versions of
+# prometheus-fastapi-instrumentator trip over Starlette's IncludedRouter
+# (AttributeError: '_IncludedRouter' object has no attribute 'path').
+from prometheus_fastapi_instrumentator.middleware import (
+    PrometheusInstrumentatorMiddleware,
+)
+
+
+def _safe_get_handler(self, request):
+    return "unknown", False
+
+
+PrometheusInstrumentatorMiddleware._get_handler = _safe_get_handler
+
 import asyncpg
 from httpx import ASGITransport, AsyncClient
 
