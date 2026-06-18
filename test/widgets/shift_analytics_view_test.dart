@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:lanwash/models/shift_load_report.dart';
 import 'package:lanwash/widgets/shift_schedule/shift_analytics_view.dart';
 
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    await initializeDateFormatting('ru_RU');
+  });
+
   const report = ShiftLoadReport(
     startDate: '2026-06-08',
     endDate: '2026-06-14',
     targetWeeklyMinutesPerWasher: 2400,
     dailyHours: [
-      ShiftLoadDailyEntry(date: '2026-06-08', confirmedMinutes: 240, pendingMinutes: 60),
-      ShiftLoadDailyEntry(date: '2026-06-09', confirmedMinutes: 480, pendingMinutes: 0),
+      ShiftLoadDailyEntry(
+          date: '2026-06-08', confirmedMinutes: 240, pendingMinutes: 60),
+      ShiftLoadDailyEntry(
+          date: '2026-06-09', confirmedMinutes: 480, pendingMinutes: 0),
     ],
     washerStats: [
       ShiftLoadWasherStat(
@@ -43,7 +51,8 @@ void main() {
     ),
   );
 
-  testWidgets('renders KPI row, chart, washer stats and availability chips', (tester) async {
+  testWidgets('renders KPI row, chart, washer stats and availability chips',
+      (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -53,6 +62,7 @@ void main() {
         ),
       ),
     );
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Всего часов'), findsOneWidget);
     expect(find.text('На рассмотрении'), findsOneWidget);
@@ -63,8 +73,17 @@ void main() {
     expect(find.text('Доступность мойщиков'), findsOneWidget);
     expect(find.text('Иван'), findsOneWidget);
     expect(find.text('Петр'), findsOneWidget);
-    expect(find.text('Доступны: 10'), findsOneWidget);
-    expect(find.text('Недоступны: 2'), findsOneWidget);
-    expect(find.text('Не указано: 2'), findsOneWidget);
+    expect(
+      find.text('Доступны: 10', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Недоступны: 2', skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Не указано: 2', skipOffstage: false),
+      findsOneWidget,
+    );
   });
 }
