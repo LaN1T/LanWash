@@ -4,7 +4,15 @@ import pytest
 class TestAppointments:
     """Тесты жизненного цикла записей на мойку."""
 
-    async def _create_appointment(self, async_client, token, appt_id, date_time, status="scheduled", owner="client_test"):
+    async def _create_appointment(
+        self,
+        async_client,
+        token,
+        appt_id,
+        date_time,
+        status="scheduled",
+        owner="client_test",
+    ):
         """Хелпер для создания записи."""
         resp = await async_client.post(
             "/api/appointments/",
@@ -47,14 +55,22 @@ class TestAppointments:
         assert "box_index" in data
 
     @pytest.mark.asyncio
-    async def test_create_appointment_forbidden_other_owner(self, async_client, client_token):
+    async def test_create_appointment_forbidden_other_owner(
+        self, async_client, client_token
+    ):
         resp = await self._create_appointment(
-            async_client, client_token, "appt_2", "2099-05-02T11:00:00", owner="other_user"
+            async_client,
+            client_token,
+            "appt_2",
+            "2099-05-02T11:00:00",
+            owner="other_user",
         )
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_get_all_appointments_admin(self, async_client, admin_token, client_token):
+    async def test_get_all_appointments_admin(
+        self, async_client, admin_token, client_token
+    ):
         await self._create_appointment(
             async_client, client_token, "appt_3", "2099-06-01T09:00:00"
         )
@@ -84,7 +100,9 @@ class TestAppointments:
         assert any(a["id"] == "appt_4" for a in data)
 
     @pytest.mark.asyncio
-    async def test_get_appointments_by_owner_forbidden(self, async_client, client_token):
+    async def test_get_appointments_by_owner_forbidden(
+        self, async_client, client_token
+    ):
         response = await async_client.get(
             "/api/appointments/by-owner/other_user",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -144,7 +162,8 @@ class TestAppointments:
     async def test_delete_appointment_forbidden(self, async_client, client_token):
         # Создаём запись от имени другого пользователя через admin
         # (или просто пробуем удалить несуществующую — но лучше создать реальную)
-        # Создаём через client_token с owner=client_test, а удаляем тем же токеном — это ок
+        # Создаём через client_token с owner=client_test,
+        # а удаляем тем же токеном — это ок
         # Попробуем удалить чужую запись: создадим через другой токен
         pass  # Пропускаем, т.к. сложно создать чужую запись без admin
 
@@ -186,7 +205,11 @@ class TestAppointments:
     @pytest.mark.asyncio
     async def test_stats_admin(self, async_client, admin_token, client_token):
         await self._create_appointment(
-            async_client, client_token, "appt_9", "2099-12-01T10:00:00", status="completed"
+            async_client,
+            client_token,
+            "appt_9",
+            "2099-12-01T10:00:00",
+            status="completed",
         )
         response = await async_client.get(
             "/api/appointments/stats",
@@ -284,11 +307,13 @@ class TestAppointments:
         assert check_resp.json()["hasNotification"] is False
 
     @pytest.mark.asyncio
-    async def test_auto_assign_washer_on_create(self, async_client, db_session, admin_token):
+    async def test_auto_assign_washer_on_create(
+        self, async_client, db_session, admin_token
+    ):
         """When creating an appointment without washer, auto-assign from shift."""
         from datetime import datetime
 
-        from db_models import Shift, User
+        from models import Shift, User
 
         # Create a washer with a confirmed shift for today
         washer = User(
@@ -317,7 +342,11 @@ class TestAppointments:
         await db_session.commit()
 
         # Create appointment without assignedWasher (midday to avoid date rollover)
-        dt = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
+        dt = (
+            datetime.now()
+            .replace(hour=12, minute=0, second=0, microsecond=0)
+            .isoformat()
+        )
         resp = await async_client.post(
             "/api/appointments/",
             headers={"Authorization": f"Bearer {admin_token}"},
@@ -347,11 +376,13 @@ class TestAppointments:
         assert data["assignedWasher"] == '["auto_washer"]'
 
     @pytest.mark.asyncio
-    async def test_auto_assign_respects_admin_override(self, async_client, db_session, admin_token):
+    async def test_auto_assign_respects_admin_override(
+        self, async_client, db_session, admin_token
+    ):
         """Admin-specified washer is not overwritten by auto-assign."""
         from datetime import datetime, timedelta
 
-        from db_models import Shift, User
+        from models import Shift, User
 
         washer = User(
             username="auto_washer2",

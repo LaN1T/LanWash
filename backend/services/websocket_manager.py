@@ -57,7 +57,9 @@ class _WebSocketManager:
                 )
 
         if conns:
-            await asyncio.gather(*(_send(ws, uid) for ws, uid in conns), return_exceptions=True)
+            await asyncio.gather(
+                *(_send(ws, uid) for ws, uid in conns), return_exceptions=True
+            )
 
     def connected_user_ids(self, chat_id: int) -> Set[int]:
         return {uid for _, uid in self._connections.get(chat_id, [])}

@@ -17,7 +17,7 @@ class PdfExportService {
     final fontBold = pw.Font.helveticaBold();
 
     final logoImage = pw.MemoryImage(
-      (await rootBundle.load('assets/icon/icon.png')).buffer.asUint8List(),
+      (await rootBundle.load('assets/icon/app_icon.png')).buffer.asUint8List(),
     );
 
     pdf.addPage(

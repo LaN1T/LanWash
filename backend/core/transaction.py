@@ -17,7 +17,6 @@ Usage:
 from functools import wraps
 
 
-
 def atomic(func):
     """Decorator that wraps a service method in ``async with self._db.begin()``.
 

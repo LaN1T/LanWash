@@ -48,9 +48,8 @@ class SyncService {
   }
 
   Future<bool> _execute(String method, String endpoint, String payload) async {
-    final body = payload.isEmpty
-        ? null
-        : jsonDecode(payload) as Map<String, dynamic>?;
+    final body =
+        payload.isEmpty ? null : jsonDecode(payload) as Map<String, dynamic>?;
     switch (method.toUpperCase()) {
       case 'POST':
         final result = await _apiClient.post(endpoint, body: body);

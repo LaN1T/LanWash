@@ -2,17 +2,14 @@ import json
 from collections import Counter
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db_models import (
-    Appointment,
-    Consumable,
-    ConsumableUsageLog,
-    ServiceConsumable,
-    WashTypeConsumable,
-)
-from models import ConsumableForecastItem, InventoryForecastResponse
+from repositories.appointment import AppointmentRepository
+from repositories.consumable import ConsumableRepository
+from repositories.consumable_usage_log import ConsumableUsageLogRepository
+from repositories.service_consumable import ServiceConsumableRepository
+from repositories.wash_type_consumable import WashTypeConsumableRepository
+from schemas import ConsumableForecastItem, InventoryForecastResponse
 
 
 async def generate_inventory_forecast(
@@ -33,34 +30,23 @@ async def generate_inventory_forecast(
     end_iso = (reference_date + timedelta(days=7)).isoformat()
     ref_iso = reference_date.isoformat()
 
+    consumables_repo = ConsumableRepository(db)
+    usage_repo = ConsumableUsageLogRepository(db)
+    appointment_repo = AppointmentRepository(db)
+    wash_type_consumable_repo = WashTypeConsumableRepository(db)
+    service_consumable_repo = ServiceConsumableRepository(db)
+
     # Load all consumables once
-    consumables_result = await db.execute(
-        select(Consumable).order_by(Consumable.name.asc())
-    )
-    consumables = consumables_result.scalars().all()
+    consumables = await consumables_repo.list_all_sorted()
 
     if not consumables:
         return InventoryForecastResponse(items=[], generated_at=ref_iso)
 
     # Average daily usage per consumable over the last 30 days
-    usage_result = await db.execute(
-        select(
-            ConsumableUsageLog.consumableId,
-            func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0),
-        )
-        .where(ConsumableUsageLog.timestamp >= cutoff_iso)
-        .group_by(ConsumableUsageLog.consumableId)
-    )
-    usage_map = {cid: float(total) for cid, total in usage_result.all()}
+    usage_map = await usage_repo.sum_usage_grouped_since(cutoff_iso)
 
     # Upcoming scheduled appointments in the next 7 days
-    appointments_result = await db.execute(
-        select(Appointment)
-        .where(Appointment.status == "scheduled")
-        .where(Appointment.dateTime >= ref_iso)
-        .where(Appointment.dateTime < end_iso)
-    )
-    appointments = appointments_result.scalars().all()
+    appointments = await appointment_repo.list_scheduled_in_period(ref_iso, end_iso)
 
     wash_type_counts: Counter[str] = Counter()
     service_counts: Counter[str] = Counter()
@@ -77,12 +63,9 @@ async def generate_inventory_forecast(
     # Planned usage from wash type mappings
     planned_usage: dict[str, float] = {}
     if wash_type_counts:
-        wtc_result = await db.execute(
-            select(WashTypeConsumable).where(
-                WashTypeConsumable.washTypeId.in_(wash_type_counts.keys())
-            )
-        )
-        for wtc in wtc_result.scalars().all():
+        for wtc in await wash_type_consumable_repo.list_for_wash_types(
+            list(wash_type_counts.keys())
+        ):
             planned_usage[wtc.consumableId] = (
                 planned_usage.get(wtc.consumableId, 0.0)
                 + wtc.quantity_per_service * wash_type_counts[wtc.washTypeId]
@@ -90,12 +73,9 @@ async def generate_inventory_forecast(
 
     # Planned usage from additional service mappings
     if service_counts:
-        sc_result = await db.execute(
-            select(ServiceConsumable).where(
-                ServiceConsumable.serviceId.in_(service_counts.keys())
-            )
-        )
-        for sc in sc_result.scalars().all():
+        for sc in await service_consumable_repo.list_for_services(
+            list(service_counts.keys())
+        ):
             planned_usage[sc.consumableId] = (
                 planned_usage.get(sc.consumableId, 0.0)
                 + sc.quantity_per_service * service_counts[sc.serviceId]

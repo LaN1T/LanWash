@@ -4,6 +4,7 @@ import '../../app_styles.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/language_provider.dart';
+import '../shared/splash_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -138,23 +139,11 @@ class _LoginScreenState extends State<LoginScreen>
                           child:
                               Column(mainAxisSize: MainAxisSize.min, children: [
                             // ── Логотип ──────────────────────────────────────────
-                            Container(
-                              width: 88,
-                              height: 88,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: AppStyles.primaryGradient,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppStyles.primary
-                                        .withValues(alpha: 0.3),
-                                    blurRadius: 28,
-                                    spreadRadius: 2,
-                                  )
-                                ],
-                              ),
-                              child: const Icon(Icons.local_car_wash,
-                                  color: Colors.white, size: 44),
+                            const LanWashLogo(
+                              circleSize: 88,
+                              showTitle: false,
+                              showSubtitle: false,
+                              showLoader: false,
                             ),
                             const SizedBox(height: 24),
                             Text(lang.tr('app_name'),

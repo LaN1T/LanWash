@@ -2,7 +2,7 @@
 
 import structlog
 
-from database import AsyncSessionLocal
+from db.session import AsyncSessionLocal
 from services.reminder_service import check_and_send_reminders
 
 logger = structlog.get_logger()

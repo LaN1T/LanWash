@@ -1,9 +1,8 @@
 import asyncio
 
 from aiogram import Bot
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import AsyncSessionLocal
+from db.session import AsyncSessionLocal
 from services.notification_service import get_pending_notifications, mark_sent_batch
 
 

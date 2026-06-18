@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 import pytest_asyncio
 
-from db_models import Appointment, FcmToken, User
+from models import Appointment, FcmToken, User
 from services.reminder_service import check_and_send_reminders
 
 
@@ -19,7 +19,7 @@ async def setup_client_with_history(db_session):
         phone="",
         carModel="",
         carNumber="",
-        createdAt=datetime.now().isoformat()
+        createdAt=datetime.now().isoformat(),
     )
     db_session.add(client)
     await db_session.commit()
@@ -38,7 +38,7 @@ async def setup_client_with_history(db_session):
             additionalServices="[]",
             status="completed",
             ownerUsername=client.username,
-            box_index=1
+            box_index=1,
         )
         db_session.add(appt)
     await db_session.commit()
@@ -48,8 +48,12 @@ async def setup_client_with_history(db_session):
 
 class TestReminders:
     @pytest.mark.asyncio
-    async def test_reminder_sent_when_overdue(self, async_client, db_session, setup_client_with_history):
-        """When last wash was 30 days ago and avg interval is 7 days, reminder should be sent."""
+    async def test_reminder_sent_when_overdue(
+        self, async_client, db_session, setup_client_with_history
+    ):
+        """When last wash was 30 days ago and avg interval is 7 days,
+        reminder should be sent.
+        """
         user = setup_client_with_history
 
         # Add FCM token
@@ -57,7 +61,7 @@ class TestReminders:
             username=user.username,
             token="test_token_reminder_1",
             platform="android",
-            updatedAt=datetime.now().isoformat()
+            updatedAt=datetime.now().isoformat(),
         )
         db_session.add(token)
         await db_session.commit()
@@ -78,7 +82,7 @@ class TestReminders:
             phone="",
             carModel="",
             carNumber="",
-            createdAt=datetime.now().isoformat()
+            createdAt=datetime.now().isoformat(),
         )
         db_session.add(client_user)
         await db_session.commit()
@@ -98,7 +102,7 @@ class TestReminders:
                 additionalServices="[]",
                 status="completed",
                 ownerUsername=client_user.username,
-                box_index=1
+                box_index=1,
             )
             db_session.add(appt)
         await db_session.commit()
@@ -108,7 +112,9 @@ class TestReminders:
         assert result["skipped"] >= 1
 
     @pytest.mark.asyncio
-    async def test_reminder_skipped_with_few_appointments(self, async_client, db_session):
+    async def test_reminder_skipped_with_few_appointments(
+        self, async_client, db_session
+    ):
         """Clients with only 1 completed appointment should be skipped."""
         client_user = User(
             username="single_client",
@@ -118,7 +124,7 @@ class TestReminders:
             phone="",
             carModel="",
             carNumber="",
-            createdAt=datetime.now().isoformat()
+            createdAt=datetime.now().isoformat(),
         )
         db_session.add(client_user)
         await db_session.commit()
@@ -134,7 +140,7 @@ class TestReminders:
             additionalServices="[]",
             status="completed",
             ownerUsername=client_user.username,
-            box_index=1
+            box_index=1,
         )
         db_session.add(appt)
         await db_session.commit()
@@ -148,7 +154,7 @@ class TestReminders:
         """Admin can trigger reminders via endpoint."""
         response = await async_client.post(
             "/api/admin/trigger-reminders",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -157,10 +163,12 @@ class TestReminders:
         assert "errors" in data
 
     @pytest.mark.asyncio
-    async def test_trigger_reminders_endpoint_forbidden_client(self, async_client, client_token):
+    async def test_trigger_reminders_endpoint_forbidden_client(
+        self, async_client, client_token
+    ):
         """Client cannot trigger reminders."""
         response = await async_client.post(
             "/api/admin/trigger-reminders",
-            headers={"Authorization": f"Bearer {client_token}"}
+            headers={"Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 403

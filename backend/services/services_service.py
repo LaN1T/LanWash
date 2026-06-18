@@ -1,11 +1,15 @@
 from datetime import datetime
 
-from sqlalchemy import delete, distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
-from db_models import ExtraFavorite, Promo, PromoIncludedExtra, Service, ServiceFavorite
-from models import ServiceRequest
+from models import ExtraFavorite, Service, ServiceFavorite
+from repositories.extra_favorite import ExtraFavoriteRepository
+from repositories.promo import PromoRepository
+from repositories.promo_included_extra import PromoIncludedExtraRepository
+from repositories.service import ServiceRepository
+from repositories.service_favorite import ServiceFavoriteRepository
+from schemas import ServiceRequest
 
 
 class ServiceNotFoundError(Exception):
@@ -17,18 +21,11 @@ class ServicesService:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
-
-    async def _promo_extras_map(self, promo_ids: list[int]) -> dict[int, list[str]]:
-        if not promo_ids:
-            return {}
-        extras_res = await self._db.execute(
-            select(PromoIncludedExtra.promoId, PromoIncludedExtra.extraServiceId)
-            .where(PromoIncludedExtra.promoId.in_(promo_ids))
-        )
-        extras_map: dict[int, list[str]] = {}
-        for promo_id, extra_id in extras_res.all():
-            extras_map.setdefault(promo_id, []).append(extra_id)
-        return extras_map
+        self._services = ServiceRepository(db)
+        self._promos = PromoRepository(db)
+        self._promo_extras = PromoIncludedExtraRepository(db)
+        self._service_favorites = ServiceFavoriteRepository(db)
+        self._extra_favorites = ExtraFavoriteRepository(db)
 
     async def get_promos(self) -> list[dict]:
         cache_key = "services:promos"
@@ -36,9 +33,10 @@ class ServicesService:
         if cached is not None:
             return cached
 
-        result = await self._db.execute(select(Promo))
-        promos = list(result.scalars().all())
-        extras_map = await self._promo_extras_map([p.id for p in promos])
+        promos = await self._promos.list_all()
+        extras_map = await self._promo_extras.list_extras_for_promos(
+            [p.id for p in promos]
+        )
         data = [
             {
                 "id": p.id,
@@ -62,10 +60,7 @@ class ServicesService:
         if cached is not None:
             return cached
 
-        result = await self._db.execute(
-            select(Service).order_by(Service.category.asc(), Service.name.asc())
-        )
-        services = list(result.scalars().all())
+        services = await self._services.list_all_ordered()
         data = [
             {
                 "id": s.id,
@@ -89,13 +84,7 @@ class ServicesService:
         if cached is not None:
             return cached
 
-        result = await self._db.execute(
-            select(distinct(Service.category)).order_by(Service.category)
-        )
-        categories = [r[0] for r in result.all()]
-        if 'Акции' not in categories:
-            categories.append('Акции')
-            categories.sort()
+        categories = await self._services.list_categories()
         await cache.set(cache_key, categories, ttl=600)
         return categories
 
@@ -114,17 +103,16 @@ class ServicesService:
             category=req.category,
             isFavorite=int(req.isFavorite),
             isFromApi=int(req.isFromApi),
-            updatedAt=datetime.now().isoformat()
+            updatedAt=datetime.now().isoformat(),
         )
-        self._db.add(new_service)
+        await self._services.add(new_service)
         await self._db.commit()
         await self._db.refresh(new_service)
         await self._invalidate_service_cache()
         return new_service
 
     async def update_service(self, service_id: str, req: ServiceRequest) -> Service:
-        result = await self._db.execute(select(Service).where(Service.id == service_id))
-        service = result.scalar_one_or_none()
+        service = await self._services.get_by_id(service_id)
         if not service:
             raise ServiceNotFoundError()
 
@@ -143,64 +131,40 @@ class ServicesService:
         return service
 
     async def delete_service(self, service_id: str) -> bool:
-        result = await self._db.execute(delete(Service).where(Service.id == service_id))
+        deleted = await self._services.delete_by_id(service_id)
         await self._db.commit()
-        if result.rowcount > 0:
+        if deleted:
             await self._invalidate_service_cache()
-        return result.rowcount > 0
+        return deleted
 
     async def get_service_favorites(self, username: str) -> list[str]:
-        result = await self._db.execute(
-            select(ServiceFavorite.serviceId).where(ServiceFavorite.username == username)
-        )
-        return result.scalars().all()
+        return await self._service_favorites.list_service_ids_for_user(username)
 
     async def toggle_service_favorite(self, username: str, service_id: str) -> bool:
-        res = await self._db.execute(
-            select(ServiceFavorite).where(
-                ServiceFavorite.username == username,
-                ServiceFavorite.serviceId == service_id,
-            )
-        )
-        fav = res.scalar_one_or_none()
+        fav = await self._service_favorites.get_favorite(username, service_id)
         if fav:
-            await self._db.execute(
-                delete(ServiceFavorite).where(
-                    ServiceFavorite.username == username,
-                    ServiceFavorite.serviceId == service_id,
-                )
-            )
+            await self._service_favorites.delete_favorite(username, service_id)
             is_fav = False
         else:
-            self._db.add(ServiceFavorite(username=username, serviceId=service_id))
+            await self._service_favorites.add(
+                ServiceFavorite(username=username, serviceId=service_id)
+            )
             is_fav = True
         await self._db.commit()
         return is_fav
 
     async def get_extra_favorites(self, username: str) -> list[str]:
-        result = await self._db.execute(
-            select(ExtraFavorite.serviceId).where(ExtraFavorite.username == username)
-        )
-        return result.scalars().all()
+        return await self._extra_favorites.list_service_ids_for_user(username)
 
     async def toggle_extra_favorite(self, username: str, service_id: str) -> bool:
-        res = await self._db.execute(
-            select(ExtraFavorite).where(
-                ExtraFavorite.username == username,
-                ExtraFavorite.serviceId == service_id,
-            )
-        )
-        fav = res.scalar_one_or_none()
+        fav = await self._extra_favorites.get_favorite(username, service_id)
         if fav:
-            await self._db.execute(
-                delete(ExtraFavorite).where(
-                    ExtraFavorite.username == username,
-                    ExtraFavorite.serviceId == service_id,
-                )
-            )
+            await self._extra_favorites.delete_favorite(username, service_id)
             is_fav = False
         else:
-            self._db.add(ExtraFavorite(username=username, serviceId=service_id))
+            await self._extra_favorites.add(
+                ExtraFavorite(username=username, serviceId=service_id)
+            )
             is_fav = True
         await self._db.commit()
         return is_fav

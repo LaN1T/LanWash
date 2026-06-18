@@ -68,13 +68,18 @@ class ClientHomeScreen extends StatelessWidget {
             ),
             child: Column(children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.local_car_wash,
-                    color: Colors.white, size: 36),
+                child: Image.asset(
+                  'assets/icon/lw.png',
+                  width: 56,
+                  height: 56,
+                  color: Colors.white,
+                  fit: BoxFit.contain,
+                ),
               ),
               const SizedBox(height: 14),
               const Text('Записаться на мойку',

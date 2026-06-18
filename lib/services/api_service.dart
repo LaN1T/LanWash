@@ -58,7 +58,8 @@ class ApiService {
   static Future<void> deleteToken() => ApiClient.deleteToken();
 
   bool _isNetworkError(AppError err) =>
-      err.message.contains('Ошибка сети') || err.originalError is http.ClientException;
+      err.message.contains('Ошибка сети') ||
+      err.originalError is http.ClientException;
 
   Future<void> _queueMutation({
     required String action,
@@ -68,7 +69,8 @@ class ApiService {
   }) async {
     final repo = _offlineRepository;
     if (repo == null) return;
-    final id = '${action}_${payload['id'] ?? payload['appointmentId'] ?? DateTime.now().millisecondsSinceEpoch}';
+    final id =
+        '${action}_${payload['id'] ?? payload['appointmentId'] ?? DateTime.now().millisecondsSinceEpoch}';
     await repo.queueAction(
       id: id,
       action: action,
@@ -1070,16 +1072,15 @@ class ApiService {
   Future<List<ShiftTemplate>> getShiftTemplates() async {
     final result = await ApiClient.getList('/shift-templates/');
     return result.when(
-      success: (list) => list
-          .cast<Map<String, dynamic>>()
-          .map(ShiftTemplate.fromMap)
-          .toList(),
+      success: (list) =>
+          list.cast<Map<String, dynamic>>().map(ShiftTemplate.fromMap).toList(),
       failure: (_) => [],
     );
   }
 
   Future<ShiftTemplate?> createShiftTemplate(ShiftTemplate template) async {
-    final result = await ApiClient.post('/shift-templates/', body: template.toMap());
+    final result =
+        await ApiClient.post('/shift-templates/', body: template.toMap());
     return result.when(
       success: (data) => ShiftTemplate.fromMap(data),
       failure: (_) => null,
@@ -1111,7 +1112,8 @@ class ApiService {
       'weekStart': weekStart,
       if (targetUserId != null) 'targetUserId': targetUserId,
     };
-    final result = await ApiClient.post('/shift-templates/$templateId/apply', body: body);
+    final result =
+        await ApiClient.post('/shift-templates/$templateId/apply', body: body);
     return result.when(
       success: (data) => (data['applied'] as int?) ?? 0,
       failure: (_) => 0,
@@ -1141,9 +1143,8 @@ class ApiService {
     List<WasherAvailability> entries,
   ) async {
     final body = {
-      'entries': entries
-          .map((e) => {'date': e.date, 'status': e.status})
-          .toList(),
+      'entries':
+          entries.map((e) => {'date': e.date, 'status': e.status}).toList(),
     };
     final result = await ApiClient.put(
       '/washers/$userId/availability',

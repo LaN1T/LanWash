@@ -5,11 +5,11 @@ from typing import List, Optional
 
 import httpx
 import structlog
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from db_models import SupportChat, SupportMessage, User
+from models import SupportChat, SupportMessage
+from repositories import UserRepository
 from services.ai_resilience import (
     ai_cache_get,
     ai_cache_set,
@@ -119,7 +119,7 @@ async def _groq_chat_completion(
                     await ai_record_failure(is_rate_limit=True)
                     if is_last:
                         return None
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
                 resp.raise_for_status()
                 data = resp.json()
@@ -136,7 +136,7 @@ async def _groq_chat_completion(
                 )
                 last_exception = e
                 if e.response.status_code >= 500:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
                 break
             except Exception as e:
@@ -155,6 +155,7 @@ async def _gemini_classify(prompt: str) -> Optional[str]:
         return None
     try:
         from google.genai import types
+
         response = await asyncio.wait_for(
             genai_client.aio.models.generate_content(
                 model="gemini-1.5-flash-latest",
@@ -181,6 +182,7 @@ async def _gemini_draft(prompt: str) -> Optional[str]:
         return None
     try:
         from google.genai import types
+
         response = await asyncio.wait_for(
             genai_client.aio.models.generate_content(
                 model="gemini-1.5-flash-latest",
@@ -277,9 +279,9 @@ async def generate_admin_draft(
         logger.warning("ai_rate_limit_exceeded", chat_id=chat.id, context="admin_draft")
         return None
 
-    user_res = await db.execute(select(User).where(User.id == chat.userId))
-    user = user_res.scalar_one_or_none()
-    user_info = f"Клиент: {user.displayName if user else 'Неизвестно'}"
+    user_repo = UserRepository(db)
+    display_name = await user_repo.get_display_name_by_id(chat.userId)
+    user_info = f"Клиент: {display_name or 'Неизвестно'}"
 
     history = _build_history(messages[-10:])
     system = (

@@ -6,7 +6,10 @@ class BottomBar extends StatelessWidget {
   final void Function()? onAction;
   final String? selectedTimeLabel;
   const BottomBar(
-      {super.key, required this.step, required this.onAction, this.selectedTimeLabel});
+      {super.key,
+      required this.step,
+      required this.onAction,
+      this.selectedTimeLabel});
 
   @override
   Widget build(BuildContext context) => Container(

@@ -21,9 +21,7 @@ def verify_telegram_init_data(init_data: str) -> Optional[Dict]:
             return None
 
         # Sort by key and join with newlines
-        data_check_string = "\n".join(
-            f"{k}={v}" for k, v in sorted(parsed.items())
-        )
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
 
         bot_token = settings.telegram_bot_token
         if not bot_token:

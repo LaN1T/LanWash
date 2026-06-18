@@ -54,7 +54,9 @@ class ShiftAnalyticsView extends StatelessWidget {
           context,
           'На рассмотрении',
           '${report.statusCounts.pending}',
-          report.statusCounts.pending > 0 ? AppStyles.warning : AppStyles.success,
+          report.statusCounts.pending > 0
+              ? AppStyles.warning
+              : AppStyles.success,
         ),
         _kpiCard(
           context,
@@ -74,7 +76,8 @@ class ShiftAnalyticsView extends StatelessWidget {
     );
   }
 
-  Widget _kpiCard(BuildContext context, String title, String value, Color color) {
+  Widget _kpiCard(
+      BuildContext context, String title, String value, Color color) {
     return Container(
       width: 140,
       padding: const EdgeInsets.all(12),
@@ -254,7 +257,8 @@ class ShiftAnalyticsView extends StatelessWidget {
       runSpacing: 8,
       children: [
         _chip('Доступны', coverage.availableDays.toString(), AppStyles.success),
-        _chip('Недоступны', coverage.unavailableDays.toString(), AppStyles.danger),
+        _chip('Недоступны', coverage.unavailableDays.toString(),
+            AppStyles.danger),
         _chip('Не указано', coverage.unknownDays.toString(), Colors.grey),
       ],
     );
@@ -279,7 +283,8 @@ class ShiftAnalyticsView extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '$label: $value',
-            style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                fontSize: 12, color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),

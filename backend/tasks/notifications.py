@@ -7,7 +7,9 @@ from services.fcm_service import fcm_service
 logger = structlog.get_logger()
 
 
-async def send_fcm_notification(ctx, tokens: list[str], title: str, body: str, data: dict | None = None):
+async def send_fcm_notification(
+    ctx, tokens: list[str], title: str, body: str, data: dict | None = None
+):
     """Send an FCM push notification to a list of tokens.
 
     This task is intended to run inside the ARQ worker so that notification
@@ -17,7 +19,9 @@ async def send_fcm_notification(ctx, tokens: list[str], title: str, body: str, d
         return {"sent": 0, "skipped": True}
 
     try:
-        response = await fcm_service.send_notification_to_tokens(tokens, title, body, data)
+        response = await fcm_service.send_notification_to_tokens(
+            tokens, title, body, data
+        )
         logger.info(
             "arq_fcm_task_sent",
             tokens_count=len(tokens),

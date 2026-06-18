@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from db_models import User
+from models import User
 
 
 class TestUserSearch:
@@ -11,7 +11,7 @@ class TestUserSearch:
         """Admin can search users."""
         response = await async_client.get(
             "/api/admin/users?q=client",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -23,7 +23,7 @@ class TestUserSearch:
         """Filter users by role."""
         response = await async_client.get(
             "/api/admin/users?role=washer",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -46,7 +46,7 @@ class TestUserSearch:
 
         response = await async_client.get(
             "/api/admin/users?q=Иван",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -69,7 +69,7 @@ class TestUserSearch:
 
         response = await async_client.get(
             "/api/admin/users?q=79998887766",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -81,7 +81,7 @@ class TestUserSearch:
         """Pagination works."""
         response = await async_client.get(
             "/api/admin/users?limit=1&offset=0",
-            headers={"Authorization": f"Bearer {admin_token}"}
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -92,7 +92,6 @@ class TestUserSearch:
     async def test_search_users_forbidden_client(self, async_client, client_token):
         """Client cannot search users."""
         response = await async_client.get(
-            "/api/admin/users",
-            headers={"Authorization": f"Bearer {client_token}"}
+            "/api/admin/users", headers={"Authorization": f"Bearer {client_token}"}
         )
         assert response.status_code == 403

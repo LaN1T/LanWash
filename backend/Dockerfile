@@ -38,14 +38,18 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN groupadd -r lanwash && useradd -r -g lanwash lanwash
 
 # Copy only runtime application code
-COPY --chown=lanwash:lanwash main.py alembic.ini models.py database.py db_models.py ./
+COPY --chown=lanwash:lanwash main.py alembic.ini ./
+COPY --chown=lanwash:lanwash app/ app/
+COPY --chown=lanwash:lanwash db/ db/
+COPY --chown=lanwash:lanwash models/ models/
+COPY --chown=lanwash:lanwash schemas/ schemas/
+COPY --chown=lanwash:lanwash repositories/ repositories/
 COPY --chown=lanwash:lanwash core/ core/
-COPY --chown=lanwash:lanwash routers/ routers/
 COPY --chown=lanwash:lanwash services/ services/
 COPY --chown=lanwash:lanwash tasks/ tasks/
 COPY --chown=lanwash:lanwash bot/ bot/
 COPY --chown=lanwash:lanwash alembic/ alembic/
-COPY --chown=lanwash:lanwash migrations/ migrations/
+COPY --chown=lanwash:lanwash scripts/ scripts/
 
 # Switch to non-root user
 USER lanwash

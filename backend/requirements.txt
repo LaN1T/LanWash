@@ -4,7 +4,6 @@ uvicorn>=0.30.1
 pydantic
 pydantic-settings>=2.0
 python-dotenv>=1.2.2
-aiosqlite==0.20.0
 SQLAlchemy>=2.0.36
 asyncpg
 greenlet
@@ -16,8 +15,9 @@ argon2-cffi
 slowapi
 redis
 structlog>=24.0
-prometheus-fastapi-instrumentator<7.0.0
+prometheus-fastapi-instrumentator>=6.1.0,<7.0.0
 sentry-sdk[fastapi]>=2.0
 openpyxl
+Pillow
 arq>=0.25.0
 google-genai>=1.0

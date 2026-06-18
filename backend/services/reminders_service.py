@@ -19,6 +19,6 @@ class RemindersService:
             admin=admin_username,
             sent=result["sent"],
             skipped=result["skipped"],
-            errors=result["errors"]
+            errors=result["errors"],
         )
         return result

@@ -7,7 +7,7 @@ class TestReferralRegistration:
     @pytest.mark.asyncio
     async def test_register_with_referral_code(self, async_client, db_session):
         # Create referrer user directly in DB with a known referral code
-        from db_models import User
+        from models import User
         from services.auth_service import get_password_hash
 
         referrer = User(
@@ -22,12 +22,15 @@ class TestReferralRegistration:
         await db_session.commit()
 
         # Register new user with referral code
-        response = await async_client.post("/api/auth/register", json={
-            "username": "referred_user",
-            "password": "TestPass123!",
-            "displayName": "Referred",
-            "referralCode": "LANWASH1",
-        })
+        response = await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "referred_user",
+                "password": "TestPass123!",
+                "displayName": "Referred",
+                "referralCode": "LANWASH1",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["user"]["referralCode"] is not None
@@ -35,7 +38,8 @@ class TestReferralRegistration:
         # Verify referral row was created
         from sqlalchemy import select
 
-        from db_models import Referral
+        from models import Referral
+
         result = await db_session.execute(
             select(Referral).where(Referral.referrerId == referrer.id)
         )
@@ -46,19 +50,22 @@ class TestReferralRegistration:
 
     @pytest.mark.asyncio
     async def test_register_with_invalid_referral_code(self, async_client):
-        response = await async_client.post("/api/auth/register", json={
-            "username": "bad_ref_user",
-            "password": "TestPass123!",
-            "displayName": "Bad Ref",
-            "referralCode": "INVALID1",
-        })
+        response = await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "bad_ref_user",
+                "password": "TestPass123!",
+                "displayName": "Bad Ref",
+                "referralCode": "INVALID1",
+            },
+        )
         assert response.status_code == 400
         assert "Неверный реферальный код" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_cannot_self_refer(self, async_client, db_session):
         # Create user with referral code
-        from db_models import User
+        from models import User
         from services.auth_service import get_password_hash
 
         referrer = User(
@@ -73,12 +80,15 @@ class TestReferralRegistration:
         await db_session.commit()
 
         # Try to register with the same username and the same user's referral code
-        response = await async_client.post("/api/auth/register", json={
-            "username": "self_ref_user",
-            "password": "TestPass123!",
-            "displayName": "Self Ref",
-            "referralCode": "SELFREF1",
-        })
+        response = await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "self_ref_user",
+                "password": "TestPass123!",
+                "displayName": "Self Ref",
+                "referralCode": "SELFREF1",
+            },
+        )
         assert response.status_code == 400
         assert "Нельзя использовать свой реферальный код" in response.json()["detail"]
 
@@ -87,11 +97,14 @@ class TestReferralStats:
     @pytest.mark.asyncio
     async def test_referral_stats_auto_generates_code(self, async_client, db_session):
         # Register a user without a referral code
-        reg = await async_client.post("/api/auth/register", json={
-            "username": "auto_code_user",
-            "password": "TestPass123!",
-            "displayName": "Auto Code",
-        })
+        reg = await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "auto_code_user",
+                "password": "TestPass123!",
+                "displayName": "Auto Code",
+            },
+        )
         assert reg.status_code == 200
         token = reg.json()["access_token"]
 
@@ -110,7 +123,7 @@ class TestReferralStats:
 
     @pytest.mark.asyncio
     async def test_referral_list(self, async_client, db_session):
-        from db_models import Referral, User
+        from models import Referral, User
         from services.auth_service import get_password_hash
 
         # Create referrer
@@ -138,19 +151,24 @@ class TestReferralStats:
         await db_session.commit()
 
         # Create referral
-        db_session.add(Referral(
-            referrerId=referrer.id,
-            referredId=referred.id,
-            rewardClaimed=False,
-            createdAt=datetime.now().isoformat(),
-        ))
+        db_session.add(
+            Referral(
+                referrerId=referrer.id,
+                referredId=referred.id,
+                rewardClaimed=False,
+                createdAt=datetime.now().isoformat(),
+            )
+        )
         await db_session.commit()
 
         # Login as referrer
-        login = await async_client.post("/api/auth/login", json={
-            "username": "list_referrer",
-            "password": "TestPass123!",
-        })
+        login = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "list_referrer",
+                "password": "TestPass123!",
+            },
+        )
         token = login.json()["access_token"]
 
         # Get list
@@ -168,7 +186,7 @@ class TestReferralStats:
 class TestClaimReward:
     @pytest.mark.asyncio
     async def test_claim_reward(self, async_client, db_session):
-        from db_models import Referral, User
+        from models import Referral, User
         from services.auth_service import get_password_hash
 
         # Create referrer
@@ -204,27 +222,32 @@ class TestClaimReward:
         await db_session.commit()
 
         # Create unclaimed referrals
-        db_session.add_all([
-            Referral(
-                referrerId=referrer.id,
-                referredId=referred1.id,
-                rewardClaimed=False,
-                createdAt=datetime.now().isoformat(),
-            ),
-            Referral(
-                referrerId=referrer.id,
-                referredId=referred2.id,
-                rewardClaimed=False,
-                createdAt=datetime.now().isoformat(),
-            ),
-        ])
+        db_session.add_all(
+            [
+                Referral(
+                    referrerId=referrer.id,
+                    referredId=referred1.id,
+                    rewardClaimed=False,
+                    createdAt=datetime.now().isoformat(),
+                ),
+                Referral(
+                    referrerId=referrer.id,
+                    referredId=referred2.id,
+                    rewardClaimed=False,
+                    createdAt=datetime.now().isoformat(),
+                ),
+            ]
+        )
         await db_session.commit()
 
         # Login
-        login = await async_client.post("/api/auth/login", json={
-            "username": "claim_referrer",
-            "password": "TestPass123!",
-        })
+        login = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "claim_referrer",
+                "password": "TestPass123!",
+            },
+        )
         token = login.json()["access_token"]
 
         # Claim
@@ -237,6 +260,7 @@ class TestClaimReward:
 
         # Verify claimed
         from sqlalchemy import select
+
         result = await db_session.execute(
             select(Referral).where(Referral.referrerId == referrer.id)
         )

@@ -2,12 +2,14 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from db_models import Shift, User
+from models import Shift, User
 
 
 class TestShiftMove:
     @pytest.mark.asyncio
-    async def test_admin_moves_shift_to_another_date(self, async_client, db_session, admin_token):
+    async def test_admin_moves_shift_to_another_date(
+        self, async_client, db_session, admin_token
+    ):
         washer = User(
             username="move_washer1",
             passwordHash="fakehash",
@@ -50,7 +52,9 @@ class TestShiftMove:
         assert data["status"] == "confirmed"
 
     @pytest.mark.asyncio
-    async def test_admin_moves_shift_to_another_washer(self, async_client, db_session, admin_token):
+    async def test_admin_moves_shift_to_another_washer(
+        self, async_client, db_session, admin_token
+    ):
         washer_a = User(
             username="move_washer_a",
             passwordHash="fakehash",
@@ -96,7 +100,9 @@ class TestShiftMove:
         assert data["date"] == today
 
     @pytest.mark.asyncio
-    async def test_non_admin_cannot_move_shift(self, async_client, db_session, admin_token, washer_token):
+    async def test_non_admin_cannot_move_shift(
+        self, async_client, db_session, admin_token, washer_token
+    ):
         washer = User(
             username="move_washer_c",
             passwordHash="fakehash",
@@ -132,7 +138,9 @@ class TestShiftMove:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_move_target_user_not_found(self, async_client, db_session, admin_token):
+    async def test_move_target_user_not_found(
+        self, async_client, db_session, admin_token
+    ):
         washer = User(
             username="move_washer_d",
             passwordHash="fakehash",
@@ -168,7 +176,9 @@ class TestShiftMove:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_move_overwrites_existing_shift_at_target(self, async_client, db_session, admin_token):
+    async def test_move_overwrites_existing_shift_at_target(
+        self, async_client, db_session, admin_token
+    ):
         washer = User(
             username="move_washer_e",
             passwordHash="fakehash",
