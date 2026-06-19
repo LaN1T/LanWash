@@ -24,6 +24,7 @@ import 'providers/language_provider.dart';
 import 'services/api_service.dart';
 import 'services/car_catalog_service.dart';
 import 'services/notification_service.dart';
+import 'services/appointment_websocket_service.dart';
 import 'screens/shared/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/admin/home_shell.dart';
@@ -376,6 +377,7 @@ class _AppRouterState extends State<_AppRouter> {
   bool _logoutCallbackPending = false;
 
   StreamSubscription<Uri>? _linkSub;
+  StreamSubscription? _wsAuthFailureSub;
   Uri? _pendingUri;
 
   @override
@@ -388,6 +390,10 @@ class _AppRouterState extends State<_AppRouter> {
         context.read<CatalogProvider>().load();
       }
       _initDeepLinks();
+      _wsAuthFailureSub =
+          AppointmentWebSocketService().onAuthFailure.listen((_) {
+        if (mounted) context.read<AuthProvider>().logout();
+      });
     });
   }
 
@@ -413,6 +419,7 @@ class _AppRouterState extends State<_AppRouter> {
   @override
   void dispose() {
     _linkSub?.cancel();
+    _wsAuthFailureSub?.cancel();
     super.dispose();
   }
 
@@ -429,6 +436,7 @@ class _AppRouterState extends State<_AppRouter> {
         _logoutCallbackPending = false;
         context.read<AppointmentProvider>().clearData();
         context.read<FavoriteProvider>().clearData();
+        AppointmentWebSocketService().disconnect();
         if (!mounted) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
@@ -444,6 +452,10 @@ class _AppRouterState extends State<_AppRouter> {
         if (!mounted) return;
         context.read<AppointmentProvider>().init(auth);
         context.read<CatalogProvider>().load();
+        AppointmentWebSocketService().connect(
+          auth,
+          context.read<AppointmentProvider>(),
+        );
         Navigator.of(context).popUntil((route) => route.isFirst);
       });
     }
