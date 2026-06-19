@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/appointment.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
@@ -56,6 +56,43 @@ class AppointmentProvider extends ChangeNotifier {
       _appointmentList.where((a) => a.isFavorite).toList();
 
   void clearError() => _errorMessage = null;
+
+  /// Apply a single appointment update received via WebSocket.
+  /// For admin we do a full reload because of pagination cache.
+  Future<void> applyWebSocketAppointment(
+    Map<String, dynamic> map,
+    String event,
+    AuthProvider auth,
+  ) async {
+    try {
+      final appointment = Appointment.fromMap(map);
+
+      if (event == 'deleted') {
+        _appointmentList.removeWhere((a) => a.id == appointment.id);
+        notifyListeners();
+        return;
+      }
+
+      final idx = _appointmentList.indexWhere((a) => a.id == appointment.id);
+      if (idx != -1) {
+        _appointmentList[idx] = appointment;
+        notifyListeners();
+      } else if (auth.isAdmin) {
+        // Admin uses pagination cache; a full reload keeps cache consistent.
+        await reloadAppointments(auth);
+      } else {
+        _appointmentList.insert(0, appointment);
+        notifyListeners();
+      }
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('applyWebSocketAppointment error: $e\n$st');
+      _errorMessage = 'Ошибка обновления записи';
+      notifyListeners();
+      _notificationService.emitAppointmentUpdated(
+        map['id']?.toString() ?? '',
+      );
+    }
+  }
 
   void clearCache() {
     _cacheAppointments.clear();
@@ -131,7 +168,7 @@ class AppointmentProvider extends ChangeNotifier {
       _totalPages = _cacheTotalPages[page]!;
       notifyListeners();
 
-      _prefetchAdjacent(auth);
+      unawaited(_prefetchAdjacent(auth));
 
       try {
         final freshList = await _fetchAppointments(auth);
@@ -145,7 +182,7 @@ class AppointmentProvider extends ChangeNotifier {
       try {
         _appointmentList = await _fetchAppointments(auth);
         notifyListeners();
-        _prefetchAdjacent(auth);
+        unawaited(_prefetchAdjacent(auth));
       } catch (e) {
         _errorMessage = 'Ошибка загрузки записей';
         notifyListeners();
@@ -158,7 +195,7 @@ class AppointmentProvider extends ChangeNotifier {
     clearCache();
     _appointmentList = await _fetchAppointments(auth, targetDate: date);
     notifyListeners();
-    _prefetchAdjacent(auth);
+    unawaited(_prefetchAdjacent(auth));
   }
 
   Future<void> init(AuthProvider auth) async {
@@ -331,7 +368,9 @@ class AppointmentProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('toggleAppointmentFavorite error: $e');
+    }
   }
 
   Future<void> fetchBusySlots(String date) async {
@@ -368,7 +407,9 @@ class AppointmentProvider extends ChangeNotifier {
       await _api.clearDeletedNotification(_currentUser);
       _hasDeletedByAdmin = false;
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('clearDeletedByAdminFlag error: $e');
+    }
   }
 
   Future<void> clearModifiedFlag(String id) async {
@@ -382,7 +423,9 @@ class AppointmentProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('clearModifiedFlag error: $e');
+    }
   }
 
   Future<void> markAsSeen(String id) async {
@@ -395,7 +438,9 @@ class AppointmentProvider extends ChangeNotifier {
               _appointmentList[i].copyWith(isSeenByClient: true);
           notifyListeners();
         }
-      } catch (e) {}
+      } catch (e) {
+        if (kDebugMode) debugPrint('markAsSeen error: $e');
+      }
     }
   }
 }

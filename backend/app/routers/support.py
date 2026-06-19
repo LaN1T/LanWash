@@ -189,6 +189,7 @@ async def create_chat(
             chat.lastMessageAt = ai_msg.createdAt
             await db.commit()
             users_map = {current_user.id: current_user}
+            connected_ids = await connected_user_ids(chat.id)
             try:
                 await broadcast(
                     chat.id,
@@ -199,11 +200,15 @@ async def create_chat(
                 )
             except Exception as e:
                 logger.warning("support_broadcast_failed", error=str(e))
+            tokens = await _admin_tokens(
+                db, exclude_user_ids=connected_ids or None
+            )
         else:
             chat.status = "waiting_admin"
             await db.commit()
+            connected_ids = await connected_user_ids(chat.id)
             tokens = await _admin_tokens(
-                db, exclude_user_ids=connected_user_ids(chat.id) or None
+                db, exclude_user_ids=connected_ids or None
             )
             if tokens:
                 try:
@@ -445,8 +450,9 @@ async def send_message(
         if chat.status == "admin_assigned":
             # Human admin is actively handling this chat — do not auto-reply
             await db.commit()
+            connected_ids = await connected_user_ids(chat.id)
             tokens = await _admin_tokens(
-                db, exclude_user_ids=connected_user_ids(chat.id) or None
+                db, exclude_user_ids=connected_ids or None
             )
             if tokens:
                 try:
@@ -494,8 +500,9 @@ async def send_message(
             else:
                 chat.status = "waiting_admin"
                 await db.commit()
+                connected_ids = await connected_user_ids(chat.id)
                 tokens = await _admin_tokens(
-                    db, exclude_user_ids=connected_user_ids(chat.id) or None
+                    db, exclude_user_ids=connected_ids or None
                 )
                 if tokens:
                     try:

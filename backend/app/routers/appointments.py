@@ -1,12 +1,12 @@
 import json
 import uuid
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import Time, and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
@@ -42,6 +42,7 @@ from services.audit_service import log_admin_action
 from services.auth_service import check_roles, get_current_user
 from services.fcm_service import fcm_service
 from services.notification_service import add_notification
+from services.appointment_ws_manager import appointment_ws_manager
 from services.workload_service import workload_service
 
 logger = structlog.get_logger()
@@ -636,6 +637,11 @@ async def create(
 
     appointments_total.labels(status=effective_status).inc()
     await db.refresh(appt)
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "created")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="created", error=str(e))
+
     return appt
 
 
@@ -1016,6 +1022,11 @@ async def update_appt(
             )
 
     await db.refresh(appt)
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "updated")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="updated", error=str(e))
+
     return appt
 
 
@@ -1032,25 +1043,23 @@ async def delete_appt(
 ):
     # P0: IDOR check - Only admin or the owner can delete.
     result = await db.execute(
-        select(
-            Appointment.ownerUsername, Appointment.carModel, Appointment.dateTime
-        ).where(Appointment.id == appt_id)
+        select(Appointment).where(Appointment.id == appt_id)
     )
-    appt_info = result.first()
+    appt = result.scalar_one_or_none()
 
-    if not appt_info:
+    if not appt:
         raise HTTPException(404, "Запись не найдена")
     if (
-        current_user.username != appt_info.ownerUsername
+        current_user.username != appt.ownerUsername
         and current_user.role != "admin"
     ):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "У вас нет прав на удаление этой записи."
         )
 
-    owner = appt_info.ownerUsername
-    car_model = appt_info.carModel
-    date_time = appt_info.dateTime
+    owner = appt.ownerUsername
+    car_model = appt.carModel
+    date_time = appt.dateTime
     db.add(DeletedNotification(username=owner, createdAt=datetime.now()))
 
     # Отправка уведомления клиенту об удалении записи
@@ -1085,6 +1094,11 @@ async def delete_appt(
         )
 
     await db.commit()
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "deleted")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="deleted", error=str(e))
+
     return {"ok": True}
 
 
@@ -1207,6 +1221,10 @@ async def assign_washer(
 
     await db.commit()
     await db.refresh(appt)
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "assigned")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="assigned", error=str(e))
 
     # Уведомление мойщику при назначении или снятии
     tokens_res = await db.execute(
@@ -1480,6 +1498,11 @@ async def scan_appointment_qr(
                 )
 
     await db.refresh(appt)
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "qr_scanned")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="qr_scanned", error=str(e))
+
     return appt
 
 
@@ -1528,6 +1551,10 @@ async def report_late(
 
     await db.commit()
     await db.refresh(appt)
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "late")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="late", error=str(e))
 
     # FCM-уведомление админам (не блокируем ответ)
     admin_tokens_res = await db.execute(
@@ -1595,6 +1622,11 @@ async def cancel_with_reason(
 
     await db.commit()
     await db.refresh(appt)
+    try:
+        await appointment_ws_manager.notify_appointment(db, appt, "cancelled")
+    except Exception as e:
+        logger.warning("appointment_ws_broadcast_failed", event="cancelled", error=str(e))
+
     appointments_total.labels(status="cancelled").inc()
 
     # FCM-уведомление назначенным мойщикам и админам (не блокируем ответ)

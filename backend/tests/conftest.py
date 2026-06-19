@@ -84,6 +84,7 @@ import db.session as _db_session_module
 from db.init import init_db as _orig_init_db
 
 _db_engine_module.engine = _test_engine
+_db_session_module.async_engine = _test_engine
 _db_session_module.AsyncSessionLocal = sessionmaker(
     _test_engine, class_=AsyncSession, expire_on_commit=False
 )
