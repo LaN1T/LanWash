@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appID": "REPLACE_TEAM_ID.ru.lanwash.app",
+        "appID": "REPLACE_TEAM_ID.com.example.lanwash",
         "paths": ["*"]
       }
     ]
