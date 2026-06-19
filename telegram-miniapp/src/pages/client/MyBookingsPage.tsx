@@ -23,7 +23,7 @@ export default function MyBookingsPage() {
       setLoading(false)
       return
     }
-    api.get(`/appointments/by-owner/${username}`).then((res) => {
+    api.get(`/appointments/by-owner/${encodeURIComponent(username)}`).then((res) => {
       // Sort by date descending
       const sorted = (res.data || []).sort((a: Appointment, b: Appointment) =>
         new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()

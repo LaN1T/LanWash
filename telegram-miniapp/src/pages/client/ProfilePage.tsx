@@ -18,7 +18,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user?.username) {
-      api.get(`/auth/stats/${user.username}`).then((res) => {
+      api.get(`/auth/stats/${encodeURIComponent(user.username)}`).then((res) => {
         setStats(res.data)
         setLoading(false)
       }).catch(() => {
