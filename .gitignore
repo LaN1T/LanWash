@@ -111,6 +111,9 @@ landing/assets/index-*.css
 # pytest
 .pytest_cache/
 
+# Generated Prometheus web config (contains bcrypt hash)
+prometheus/web.config.yml
+
 # Unused platforms
 /linux/
 /macos/
