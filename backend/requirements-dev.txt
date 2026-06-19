@@ -5,3 +5,5 @@ httpx
 argon2-cffi
 ruff
 aiosqlite
+bandit==1.7.9
+pip-audit==2.7.3
