@@ -357,11 +357,14 @@ async def get_user_stats(
 async def logout(
     request: Request,
     current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
 ):
-    """Invalidate the current JWT token by blacklisting its jti."""
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        svc = AuthService(db=None)
-        await svc.logout(token)
+    """Invalidate the current JWT token by blacklisting its jti.
+
+    Both a valid token (via oauth2_scheme) and a valid current user
+    (via get_current_user) are required; missing/invalid credentials
+    will raise 401 before reaching this handler.
+    """
+    svc = AuthService(db=None)
+    await svc.logout(token)
     return {"status": "ok"}

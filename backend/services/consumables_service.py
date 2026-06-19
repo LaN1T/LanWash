@@ -478,7 +478,9 @@ class ConsumablesService:
         consumables_by_name = {c.name.lower(): c for c in all_consumables}
 
         for row in ws.iter_rows(min_row=2, values_only=True):
-            name = str(row[name_idx]).strip() if row[name_idx] else ""
+            name = self._sanitize_excel(
+                str(row[name_idx]).strip() if row[name_idx] else ""
+            )
             amount_raw = row[amount_idx]
             if not name:
                 continue

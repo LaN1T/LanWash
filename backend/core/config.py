@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     # App Check (optional)
     app_check_enforced: bool = False
+    firebase_app_id: str = ""
 
     # Error tracking (optional)
     sentry_dsn: str = ""

@@ -41,6 +41,11 @@ if settings.sentry_dsn:
                                         "authorization",
                                         "api_key",
                                         "apikey",
+                                        "jwt",
+                                        "access_token",
+                                        "initdata",
+                                        "fcm_token",
+                                        "telegram_bot_token",
                                     )
                                 ):
                                     frame["vars"][key] = AnnotatedValue(
@@ -65,6 +70,11 @@ if settings.sentry_dsn:
                             "api_key",
                             "apikey",
                             "cookie",
+                            "jwt",
+                            "access_token",
+                            "initdata",
+                            "fcm_token",
+                            "telegram_bot_token",
                         )
                     ):
                         container[k] = AnnotatedValue(
@@ -94,6 +104,10 @@ def _validate_production_settings():
         raise RuntimeError("DISABLE_RATE_LIMIT must not be set in production")
     if not settings.prometheus_api_token:
         raise RuntimeError("PROMETHEUS_API_TOKEN must be set in production")
+    if not settings.app_check_enforced:
+        raise RuntimeError("APP_CHECK_ENFORCED must be true in production")
+    if settings.app_check_enforced and not settings.firebase_app_id:
+        raise RuntimeError("FIREBASE_APP_ID must be set when App Check is enforced")
 
 
 @asynccontextmanager
