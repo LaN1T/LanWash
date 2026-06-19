@@ -4,11 +4,12 @@ import re
 from io import BytesIO
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.brute_force import is_locked_out, record_failed_attempt, reset_attempts
+from core.config import Settings, get_settings
 from core.limiter import limiter
 from db.session import get_db
 from models import User
@@ -55,6 +56,19 @@ router = APIRouter(
 )
 
 
+def _set_refresh_cookie(response: Response, token: str, settings: Settings) -> None:
+    secure = settings.is_production
+    response.set_cookie(
+        key="refresh_token",
+        value=token,
+        httponly=True,
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        secure=secure,
+        samesite="Lax",
+        path="/",
+    )
+
+
 @router.post(
     "/login",
     response_model=LoginResponse,
@@ -62,7 +76,10 @@ router = APIRouter(
 )
 @limiter.limit("10/minute")
 async def login(
-    req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)
+    req: LoginRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
 ):
     client_ip = request.client.host if request.client else "unknown"
     identifier = f"{client_ip}:{req.username.lower().strip()}"
@@ -77,6 +94,7 @@ async def login(
     try:
         result = await svc.login(req.username.lower().strip(), req.password)
         await reset_attempts(identifier)
+        _set_refresh_cookie(response, result["refresh_token"], get_settings())
         return result
     except InvalidCredentialsError as e:
         await record_failed_attempt(identifier)
@@ -90,7 +108,10 @@ async def login(
 )
 @limiter.limit("5/minute")
 async def register(
-    req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)
+    req: RegisterRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
 ):
     generic_error = HTTPException(
         status.HTTP_400_BAD_REQUEST,
@@ -131,6 +152,7 @@ async def register(
     try:
         result = await svc.register(req)
         await reset_attempts(identifier)
+        _set_refresh_cookie(response, result["refresh_token"], get_settings())
         return result
     except UsernameAlreadyExistsError:
         await record_failed_attempt(identifier)
@@ -155,11 +177,14 @@ async def register(
 async def telegram_auth(
     req: TelegramAuthRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     svc = AuthService(db)
     try:
-        return await svc.telegram_auth(req.initData)
+        result = await svc.telegram_auth(req.initData)
+        _set_refresh_cookie(response, result["refresh_token"], get_settings())
+        return result
     except InvalidCredentialsError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except RuntimeError:
@@ -175,13 +200,45 @@ async def telegram_auth(
 async def link_telegram(
     req: TelegramLinkRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     svc = AuthService(db)
     try:
-        return await svc.link_telegram(req.username, req.password, req.telegramId)
+        result = await svc.link_telegram(req.username, req.password, req.telegramId)
+        _set_refresh_cookie(response, result["refresh_token"], get_settings())
+        return result
     except InvalidCredentialsError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
+
+
+@router.post(
+    "/refresh",
+    response_model=LoginResponse,
+    summary="Обновление access-токена по refresh-токену",
+)
+@limiter.limit("10/minute")
+async def refresh(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Отсутствует refresh-токен"
+        )
+
+    svc = AuthService(db)
+    try:
+        result = await svc.refresh_access_token(refresh_token)
+    except HTTPException:
+        raise
+    except RuntimeError:
+        raise HTTPException(500, "Internal server error")
+
+    _set_refresh_cookie(response, result["refresh_token"], get_settings())
+    return result
 
 
 @router.get(
@@ -356,6 +413,7 @@ async def get_user_stats(
 @limiter.limit("10/minute")
 async def logout(
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     token: str = Depends(oauth2_scheme),
 ):
@@ -365,6 +423,8 @@ async def logout(
     (via get_current_user) are required; missing/invalid credentials
     will raise 401 before reaching this handler.
     """
+    refresh_token = request.cookies.get("refresh_token")
     svc = AuthService(db=None)
-    await svc.logout(token)
+    await svc.logout(token, refresh_token)
+    response.delete_cookie("refresh_token", path="/")
     return {"status": "ok"}

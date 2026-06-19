@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     # Security
     jwt_secret_key: str
+    jwt_refresh_token_expire_days: int = 7
     initial_admin_password: str
 
     # CORS

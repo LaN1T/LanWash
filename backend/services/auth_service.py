@@ -130,6 +130,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+    jti = str(uuid.uuid4())
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.jwt_refresh_token_expire_days
+    )
+    to_encode.update({"exp": expire, "jti": jti, "type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
 ) -> User:
@@ -259,17 +270,20 @@ class AuthService:
             raise InvalidCredentialsError("Неверный логин или пароль")
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token_data = {
+            "sub": user.username,
+            "role": user.role,
+            "pwd_ver": user.passwordVersion,
+        }
         access_token = create_access_token(
-            data={
-                "sub": user.username,
-                "role": user.role,
-                "pwd_ver": user.passwordVersion,
-            },
+            data=token_data,
             expires_delta=access_token_expires,
         )
+        refresh_token = create_refresh_token(token_data)
         return {
             "user": user,
             "access_token": access_token,
+            "refresh_token": refresh_token,
             # OAuth2 token type, not a password.
             "token_type": "bearer",  # nosec: B105
         }
@@ -329,18 +343,21 @@ class AuthService:
         await self._db.refresh(new_user)
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token_data = {
+            "sub": new_user.username,
+            "role": new_user.role,
+            "pwd_ver": new_user.passwordVersion,
+        }
         access_token = create_access_token(
-            data={
-                "sub": new_user.username,
-                "role": new_user.role,
-                "pwd_ver": new_user.passwordVersion,
-            },
+            data=token_data,
             expires_delta=access_token_expires,
         )
+        refresh_token = create_refresh_token(token_data)
 
         return {
             "user": new_user,
             "access_token": access_token,
+            "refresh_token": refresh_token,
             # OAuth2 token type, not a password.
             "token_type": "bearer",  # nosec: B105
         }
@@ -402,18 +419,21 @@ class AuthService:
                 )
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token_data = {
+            "sub": user.username,
+            "role": user.role,
+            "pwd_ver": user.passwordVersion,
+        }
         access_token = create_access_token(
-            data={
-                "sub": user.username,
-                "role": user.role,
-                "pwd_ver": user.passwordVersion,
-            },
+            data=token_data,
             expires_delta=access_token_expires,
         )
+        refresh_token = create_refresh_token(token_data)
 
         return {
             "user": user,
             "access_token": access_token,
+            "refresh_token": refresh_token,
             # OAuth2 token type, not a password.
             "token_type": "bearer",  # nosec: B105
         }
@@ -433,18 +453,21 @@ class AuthService:
         await self._db.commit()
 
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token_data = {
+            "sub": user.username,
+            "role": user.role,
+            "pwd_ver": user.passwordVersion,
+        }
         access_token = create_access_token(
-            data={
-                "sub": user.username,
-                "role": user.role,
-                "pwd_ver": user.passwordVersion,
-            },
+            data=token_data,
             expires_delta=access_token_expires,
         )
+        refresh_token = create_refresh_token(token_data)
 
         return {
             "user": user,
             "access_token": access_token,
+            "refresh_token": refresh_token,
             # OAuth2 token type, not a password.
             "token_type": "bearer",  # nosec: B105
         }
@@ -650,16 +673,81 @@ class AuthService:
             "points": points,
         }
 
-    async def logout(self, token: str) -> dict:
+    async def refresh_access_token(self, refresh_token: str) -> dict:
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Недействительный refresh-токен",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
         try:
             payload = jwt.decode(
-                token, get_settings().jwt_secret_key, algorithms=["HS256"]
+                refresh_token, get_settings().jwt_secret_key, algorithms=["HS256"]
             )
-            jti = payload.get("jti")
+        except jwt.JWTError:
+            raise credentials_exception
+
+        if payload.get("type") != "refresh":
+            raise credentials_exception
+
+        jti = payload.get("jti")
+        if jti and await is_token_blacklisted(jti):
+            raise credentials_exception
+
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+
+        user = await self._user_repo.get_by_username(username)
+        if user is None:
+            raise credentials_exception
+
+        token_pwd_ver = payload.get("pwd_ver")
+        user_pwd_ver = user.passwordVersion if user.passwordVersion is not None else 1
+        if token_pwd_ver != user_pwd_ver:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Password changed. Please log in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        token_data = {
+            "sub": user.username,
+            "role": user.role,
+            "pwd_ver": user.passwordVersion,
+        }
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
+        new_refresh_token = create_refresh_token(token_data)
+
+        if jti:
             exp = payload.get("exp")
-            if jti and exp:
+            if exp:
                 ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
                 await blacklist_token(jti, ttl)
-        except jwt.JWTError:
-            pass
+
+        return {
+            "user": user,
+            "access_token": access_token,
+            "refresh_token": new_refresh_token,
+            # OAuth2 token type, not a password.
+            "token_type": "bearer",  # nosec: B105
+        }
+
+    async def logout(self, token: str, refresh_token: str | None = None) -> dict:
+        for value in (token, refresh_token):
+            if not value:
+                continue
+            try:
+                payload = jwt.decode(
+                    value, get_settings().jwt_secret_key, algorithms=["HS256"]
+                )
+                jti = payload.get("jti")
+                exp = payload.get("exp")
+                if jti and exp:
+                    ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
+                    await blacklist_token(jti, ttl)
+            except jwt.JWTError:
+                pass
         return {"status": "ok"}
