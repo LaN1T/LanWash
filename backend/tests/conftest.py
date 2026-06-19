@@ -4,6 +4,7 @@ from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
 import pytest_asyncio
+from unittest.mock import AsyncMock
 
 # Load the project-root .env (PostgreSQL credentials) before importing app settings.
 # This overrides a possible backend/.env that still points to SQLite.
@@ -132,6 +133,12 @@ _transaction_module.atomic = _test_atomic
 from main import app
 
 limiter.enabled = False
+
+# Disable brute-force lockouts during tests so that repeated register/login
+# requests from the shared test client IP do not spill over between tests.
+import app.routers.auth as _auth_router_module  # noqa: E402
+
+_auth_router_module.is_locked_out = AsyncMock(return_value=False)
 
 # Disable Prometheus instrumentation during tests: some versions of
 # prometheus-fastapi-instrumentator trip over Starlette's IncludedRouter
