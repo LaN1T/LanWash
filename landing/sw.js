@@ -5,13 +5,19 @@ const STATIC_ASSETS = [
   '/css/style.css',
   '/js/main.js',
   '/js/translations.js',
-  '/js/gsap-animations.js',
-  '/assets/logo.svg',
-  '/assets/hero-bg.webp'
+  '/js/gsap-animations.js'
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(async cache => {
+      try {
+        await cache.addAll(STATIC_ASSETS);
+      } catch (err) {
+        console.error('Cache addAll failed:', err);
+      }
+    })
+  );
   self.skipWaiting();
 });
 
