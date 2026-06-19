@@ -78,6 +78,7 @@ class AppointmentProvider extends ChangeNotifier {
         _appointmentList[idx] = appointment;
         notifyListeners();
       } else if (auth.isAdmin) {
+        // Admin uses pagination cache; a full reload keeps cache consistent.
         await reloadAppointments(auth);
       } else {
         _appointmentList.insert(0, appointment);
@@ -85,7 +86,9 @@ class AppointmentProvider extends ChangeNotifier {
       }
     } catch (e, st) {
       if (kDebugMode) debugPrint('applyWebSocketAppointment error: $e\n$st');
-      NotificationService().emitAppointmentUpdated(
+      _errorMessage = 'Ошибка обновления записи';
+      notifyListeners();
+      _notificationService.emitAppointmentUpdated(
         map['id']?.toString() ?? '',
       );
     }
