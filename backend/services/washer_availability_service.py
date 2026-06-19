@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List
 
 from fastapi import HTTPException
@@ -19,7 +19,7 @@ class WasherAvailabilityService:
         self._users = UserRepository(db)
 
     async def get_availability(
-        self, user_id: int, start_date: str, end_date: str
+        self, user_id: int, start_date: date, end_date: date
     ) -> List[WasherAvailability]:
         return await self._availability.list_for_range(user_id, start_date, end_date)
 
@@ -31,7 +31,7 @@ class WasherAvailabilityService:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
 
         # Последняя запись для даты побеждает.
-        latest: dict[str, str] = {}
+        latest: dict[date, str] = {}
         for entry in entries:
             latest[entry.date] = entry.status
 
@@ -41,9 +41,9 @@ class WasherAvailabilityService:
 
         existing = await self._availability.list_for_dates(user_id, dates)
 
-        now = datetime.now().isoformat()
-        for date_str, status in latest.items():
-            row = existing.get(date_str)
+        now = datetime.now()
+        for date_obj, status in latest.items():
+            row = existing.get(date_obj)
             if row:
                 row.status = status
                 row.updatedAt = now
@@ -51,7 +51,7 @@ class WasherAvailabilityService:
                 await self._availability.add(
                     WasherAvailability(
                         userId=user_id,
-                        date=date_str,
+                        date=date_obj,
                         status=status,
                         updatedAt=now,
                     )
@@ -61,7 +61,7 @@ class WasherAvailabilityService:
         return await self._availability.list_for_range(user_id, min(dates), max(dates))
 
     async def delete_availability(
-        self, user_id: int, start_date: str, end_date: str
+        self, user_id: int, start_date: date, end_date: date
     ) -> int:
         deleted = await self._availability.delete_for_range(
             user_id, start_date, end_date

@@ -71,7 +71,7 @@ class ReviewsService:
             rating=data.rating,
             comment=data.comment,
             isPublished=0,
-            createdAt=datetime.now(timezone.utc).isoformat(),
+            createdAt=datetime.now(timezone.utc),
             appointmentId=data.appointmentId,
         )
         await self._reviews.add(review)

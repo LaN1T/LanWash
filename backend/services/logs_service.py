@@ -42,7 +42,7 @@ class LogsService:
             username=username,
             action=action,
             details=details,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(),
         )
         await self._logs.add(new_log)
         await self._db.commit()

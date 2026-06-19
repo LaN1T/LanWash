@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,21 +25,21 @@ class ShiftsService:
         self._users = UserRepository(db)
 
     async def list_shifts(
-        self, start_date: str, end_date: str, user_id: int, is_admin: bool
+        self, start_date: date, end_date: date, user_id: int, is_admin: bool
     ) -> list[Shift]:
         return await self._shifts.list_for_range(
             start_date, end_date, user_id=None if is_admin else user_id
         )
 
     async def list_today_shifts(
-        self, today: str, user_id: int, is_admin: bool
+        self, today: date, user_id: int, is_admin: bool
     ) -> list[Shift]:
         return await self._shifts.list_today(
             today, user_id=None if is_admin else user_id
         )
 
     async def list_current_shifts(
-        self, today: str, current_minutes: int, user_id: int, is_admin: bool
+        self, today: date, current_minutes: int, user_id: int, is_admin: bool
     ) -> list[dict]:
         rows = await self._shifts.list_current(
             today, user_id=None if is_admin else user_id
@@ -75,7 +75,7 @@ class ShiftsService:
             if target_user.username != caller_username:
                 raise PermissionError("Можно редактировать только свои смены")
 
-        now = datetime.now().isoformat()
+        now = datetime.now()
         status_val = "confirmed" if is_admin else "pending"
 
         existing = await self._shifts.get_by_user_and_date(req.userId, req.date)
@@ -114,7 +114,7 @@ class ShiftsService:
         if not shift:
             raise ShiftNotFoundError()
         shift.status = "confirmed"
-        shift.updatedAt = datetime.now().isoformat()
+        shift.updatedAt = datetime.now()
         await self._db.commit()
         await self._db.refresh(shift)
         return shift
@@ -124,7 +124,7 @@ class ShiftsService:
         if not shift:
             raise ShiftNotFoundError()
         shift.status = "rejected"
-        shift.updatedAt = datetime.now().isoformat()
+        shift.updatedAt = datetime.now()
         await self._db.commit()
         await self._db.refresh(shift)
         return shift
@@ -134,7 +134,7 @@ class ShiftsService:
         if not shift:
             raise ShiftNotFoundError()
         shift.status = "pending"
-        shift.updatedAt = datetime.now().isoformat()
+        shift.updatedAt = datetime.now()
         await self._db.commit()
         await self._db.refresh(shift)
         return shift
@@ -170,7 +170,7 @@ class ShiftsService:
         if not target_user:
             raise ValueError("Пользователь не найден")
 
-        now = datetime.now().isoformat()
+        now = datetime.now()
 
         # Удаляем смену в целевой ячейке, если она есть (перезапись).
         await self._shifts.delete_for_user_and_date(req.targetUserId, req.targetDate)
@@ -194,6 +194,8 @@ class ShiftsService:
         return new_shift
 
     @staticmethod
-    def _time_to_minutes(time_str: str) -> int:
-        h, m = map(int, time_str.split(":"))
+    def _time_to_minutes(t: time | str) -> int:
+        if isinstance(t, time):
+            return t.hour * 60 + t.minute
+        h, m = map(int, t.split(":"))
         return h * 60 + m

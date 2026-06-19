@@ -24,6 +24,6 @@ async def log_admin_action(
         new_values=json.dumps(new_values or {}),
         ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None,
-        created_at=datetime.now().isoformat(),
+        created_at=datetime.now(),
     )
     db.add(log)

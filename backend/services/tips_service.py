@@ -59,7 +59,7 @@ class TipsService:
             amount=data.amount,
             method=data.method,
             status="pending",
-            createdAt=datetime.now(timezone.utc).isoformat(),
+            createdAt=datetime.now(timezone.utc),
         )
         await self._tips.add(tip)
         try:

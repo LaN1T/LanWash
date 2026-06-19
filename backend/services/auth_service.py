@@ -324,7 +324,7 @@ class AuthService:
             phone=req.phone.strip(),
             carModel=req.carModel.strip(),
             carNumber=req.carNumber.strip(),
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             isFavoriteAdmin=0,
             referralCode=referral_code,
         )
@@ -336,7 +336,7 @@ class AuthService:
                 referrerId=referrer.id,
                 referredId=new_user.id,
                 rewardClaimed=False,
-                createdAt=datetime.now().isoformat(),
+                createdAt=datetime.now(),
             )
             await self._referral_repo.add(referral_row)
 
@@ -383,7 +383,7 @@ class AuthService:
             carModel="",
             carNumber="",
             avatarUrl=photo_url,
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             isFavoriteAdmin=0,
             telegramId=telegram_id,
             referralCode=referral_code,
@@ -567,13 +567,13 @@ class AuthService:
         if existing:
             existing.token = encrypt_token(req.token)
             existing.platform = req.platform
-            existing.updatedAt = datetime.now().isoformat()
+            existing.updatedAt = datetime.now()
         else:
             new_token = FcmToken(
                 username=req.username,
                 token=encrypt_token(req.token),
                 platform=req.platform,
-                updatedAt=datetime.now().isoformat(),
+                updatedAt=datetime.now(),
             )
             await self._fcm_repo.add(new_token)
 
