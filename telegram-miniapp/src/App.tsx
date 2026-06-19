@@ -1,27 +1,34 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import React, { useEffect, Suspense } from 'react'
 import { useAuthStore } from './stores/authStore'
 import { useTelegram } from './hooks/useTelegram'
 import { telegramAuth } from './services/auth'
-import HomePage from './pages/client/HomePage'
-import BookingPage from './pages/client/BookingPage'
-import PromosPage from './pages/client/PromosPage'
-import MyBookingsPage from './pages/client/MyBookingsPage'
-import ProfilePage from './pages/client/ProfilePage'
-import WasherHomePage from './pages/washer/WasherHomePage'
+import { api } from './services/api'
 import Layout from './components/Layout'
+
+const HomePage = React.lazy(() => import('./pages/client/HomePage'))
+const BookingPage = React.lazy(() => import('./pages/client/BookingPage'))
+const PromosPage = React.lazy(() => import('./pages/client/PromosPage'))
+const MyBookingsPage = React.lazy(() => import('./pages/client/MyBookingsPage'))
+const ProfilePage = React.lazy(() => import('./pages/client/ProfilePage'))
+const WasherHomePage = React.lazy(() => import('./pages/washer/WasherHomePage'))
 
 function App() {
   const { initData, ready, isInTelegram } = useTelegram()
   const { user, token, setAuth, setLoading } = useAuthStore()
 
   useEffect(() => {
-    if (!initData || !ready) return
+    if (!ready) return
     const auth = async () => {
       setLoading(true)
       try {
-        const res = await telegramAuth(initData)
-        setAuth(res.user, res.access_token)
+        if (initData) {
+          const res = await telegramAuth(initData)
+          setAuth(res.user, res.access_token)
+        } else if (isInTelegram) {
+          const res = await api.post('/auth/refresh', {}, { withCredentials: true })
+          setAuth(res.data.user, res.data.access_token)
+        }
       } catch (e) {
         console.error('Auth failed', e)
       } finally {
@@ -29,7 +36,7 @@ function App() {
       }
     }
     auth()
-  }, [initData, ready])
+  }, [initData, ready, isInTelegram])
 
   if (!ready) {
     return (
@@ -68,23 +75,25 @@ function App() {
   return (
     <BrowserRouter>
       <Layout>
-        <Routes>
-          {user?.role === 'washer' ? (
-            <>
-              <Route path="/" element={<WasherHomePage />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </>
-          ) : (
-            <>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/booking" element={<BookingPage />} />
-              <Route path="/promos" element={<PromosPage />} />
-              <Route path="/bookings" element={<MyBookingsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </>
-          )}
-        </Routes>
+        <Suspense fallback={<div style={{ textAlign: 'center', padding: 40 }}>Загрузка...</div>}>
+          <Routes>
+            {user?.role === 'washer' ? (
+              <>
+                <Route path="/" element={<WasherHomePage />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </>
+            ) : (
+              <>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/booking" element={<BookingPage />} />
+                <Route path="/promos" element={<PromosPage />} />
+                <Route path="/bookings" element={<MyBookingsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </>
+            )}
+          </Routes>
+        </Suspense>
       </Layout>
     </BrowserRouter>
   )

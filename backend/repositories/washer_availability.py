@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +12,7 @@ class WasherAvailabilityRepository(BaseRepository[WasherAvailability]):
         super().__init__(db, WasherAvailability)
 
     async def list_for_range(
-        self, user_id: int, start_date: str, end_date: str
+        self, user_id: int, start_date: date, end_date: date
     ) -> list[WasherAvailability]:
         result = await self._db.execute(
             select(WasherAvailability)
@@ -26,8 +28,8 @@ class WasherAvailabilityRepository(BaseRepository[WasherAvailability]):
         return list(result.scalars().all())
 
     async def list_for_dates(
-        self, user_id: int, dates: list[str]
-    ) -> dict[str, WasherAvailability]:
+        self, user_id: int, dates: list[date]
+    ) -> dict[date, WasherAvailability]:
         if not dates:
             return {}
         result = await self._db.execute(
@@ -41,7 +43,7 @@ class WasherAvailabilityRepository(BaseRepository[WasherAvailability]):
         return {row.date: row for row in result.scalars().all()}
 
     async def delete_for_range(
-        self, user_id: int, start_date: str, end_date: str
+        self, user_id: int, start_date: date, end_date: date
     ) -> int:
         result = await self._db.execute(
             delete(WasherAvailability).where(
@@ -55,7 +57,7 @@ class WasherAvailabilityRepository(BaseRepository[WasherAvailability]):
         return result.rowcount or 0
 
     async def list_for_range_all(
-        self, start_date: str, end_date: str
+        self, start_date: date, end_date: date
     ) -> list[WasherAvailability]:
         result = await self._db.execute(
             select(WasherAvailability).where(

@@ -18,6 +18,27 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
   Future<void> _onSearch() async {
     final code = _controller.text.trim();
     if (code.isEmpty || _isLoading) return;
+
+    if (code.length < 3 || code.length > 512) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID должен быть от 3 до 512 символов'),
+          backgroundColor: AppStyles.danger,
+        ),
+      );
+      return;
+    }
+
+    if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(code)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID содержит недопустимые символы'),
+          backgroundColor: AppStyles.danger,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {

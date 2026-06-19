@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -18,24 +18,10 @@ from services.shifts_service import (
 router = APIRouter(prefix="/api/shifts", tags=["shifts"])
 
 
-def _parse_date(date_str: str) -> bool:
-    try:
-        datetime.strptime(date_str, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
-
-def _parse_time(time_str: str) -> bool:
-    try:
-        datetime.strptime(time_str, "%H:%M")
-        return True
-    except ValueError:
-        return False
-
-
-def _time_to_minutes(time_str: str) -> int:
-    h, m = map(int, time_str.split(":"))
+def _time_to_minutes(t: time | str) -> int:
+    if isinstance(t, time):
+        return t.hour * 60 + t.minute
+    h, m = map(int, t.split(":"))
     return h * 60 + m
 
 
@@ -46,19 +32,12 @@ _MAX_SHIFT_RANGE_DAYS = 180
 @limiter.limit("60/minute")
 async def list_shifts(
     request: Request,
-    start_date: str,
-    end_date: str,
+    start_date: date,
+    end_date: date,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _parse_date(start_date) or not _parse_date(end_date):
-        raise HTTPException(
-            status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
-        )
-
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-    if (end_dt - start_dt).days > _MAX_SHIFT_RANGE_DAYS:
+    if (end_date - start_date).days > _MAX_SHIFT_RANGE_DAYS:
         raise HTTPException(
             status_code=400,
             detail=f"Диапазон не может превышать {_MAX_SHIFT_RANGE_DAYS} дней",
@@ -78,7 +57,7 @@ async def list_today_shifts(
     current_user: User = Depends(get_current_user),
 ):
     """List confirmed shifts for today."""
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = date.today()
     svc = ShiftsService(db)
     return await svc.list_today_shifts(
         today, current_user.id, current_user.role == "admin"
@@ -94,8 +73,8 @@ async def list_current_shifts(
 ):
     """List washers currently on shift (confirmed, today, within time range)."""
     now = datetime.now()
-    today = now.strftime("%Y-%m-%d")
-    current_minutes = _time_to_minutes(now.strftime("%H:%M"))
+    today = now.date()
+    current_minutes = _time_to_minutes(now.time())
 
     svc = ShiftsService(db)
     return await svc.list_current_shifts(
@@ -123,12 +102,6 @@ async def create_shift(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _parse_date(req.date):
-        raise HTTPException(status_code=400, detail="Неверный формат даты")
-    if not _parse_time(req.startTime) or not _parse_time(req.endTime):
-        raise HTTPException(
-            status_code=400, detail="Неверный формат времени. Ожидается HH:MM"
-        )
     if _time_to_minutes(req.startTime) >= _time_to_minutes(req.endTime):
         raise HTTPException(
             status_code=400,
@@ -236,9 +209,6 @@ async def move_shift(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not _parse_date(req.targetDate):
-        raise HTTPException(status_code=400, detail="Неверный формат даты")
-
     svc = ShiftsService(db)
     try:
         return await svc.move_shift(

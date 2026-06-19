@@ -15,7 +15,7 @@ class TestReferralRegistration:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Referrer",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="LANWASH1",
         )
         db_session.add(referrer)
@@ -73,7 +73,7 @@ class TestReferralRegistration:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Self Ref",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="SELFREF1",
         )
         db_session.add(referrer)
@@ -132,7 +132,7 @@ class TestReferralStats:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="List Referrer",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="LISTREF1",
         )
         db_session.add(referrer)
@@ -144,7 +144,7 @@ class TestReferralStats:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="List Referred",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="LISTREF2",
         )
         db_session.add(referred)
@@ -156,7 +156,7 @@ class TestReferralStats:
                 referrerId=referrer.id,
                 referredId=referred.id,
                 rewardClaimed=False,
-                createdAt=datetime.now().isoformat(),
+                createdAt=datetime.now(),
             )
         )
         await db_session.commit()
@@ -195,7 +195,7 @@ class TestClaimReward:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Claim Referrer",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="CLAIMREF",
         )
         db_session.add(referrer)
@@ -207,7 +207,7 @@ class TestClaimReward:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Referred 1",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="CLAIMR01",
         )
         referred2 = User(
@@ -215,7 +215,7 @@ class TestClaimReward:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Referred 2",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             referralCode="CLAIMR02",
         )
         db_session.add_all([referred1, referred2])
@@ -228,13 +228,13 @@ class TestClaimReward:
                     referrerId=referrer.id,
                     referredId=referred1.id,
                     rewardClaimed=False,
-                    createdAt=datetime.now().isoformat(),
+                    createdAt=datetime.now(),
                 ),
                 Referral(
                     referrerId=referrer.id,
                     referredId=referred2.id,
                     rewardClaimed=False,
-                    createdAt=datetime.now().isoformat(),
+                    createdAt=datetime.now(),
                 ),
             ]
         )

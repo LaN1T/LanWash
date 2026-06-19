@@ -1,7 +1,7 @@
 import json
 import json as _json
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,14 +35,13 @@ class AdminService:
 
         from_dt = datetime.strptime(from_date, "%Y-%m-%d")
         to_dt = datetime.strptime(to_date, "%Y-%m-%d")
-        to_dt_inclusive = to_dt + timedelta(days=1)
 
-        start_iso = from_dt.isoformat()
-        end_iso = to_dt_inclusive.isoformat()
+        start = datetime.combine(from_dt, time.min)
+        end = datetime.combine(to_dt + timedelta(days=1), time.min)
 
         # Total counts by status
         status_rows = await self._appointments.get_status_counts_in_period(
-            start_iso, end_iso
+            start, end
         )
         status_counts = dict(status_rows)
         total_appointments = sum(status_counts.values())
@@ -51,14 +50,14 @@ class AdminService:
 
         # Revenue & avg check
         revenue_sum, revenue_avg = await self._appointments.get_revenue_stats_in_period(
-            start_iso, end_iso
+            start, end
         )
         total_revenue = int(revenue_sum or 0)
         avg_check = round(float(revenue_avg or 0), 2)
 
         # Clients analysis
         appts = await self._appointments.list_completed_owners_datetimes_in_period(
-            start_iso, end_iso
+            start, end
         )
         first_visit_map = await self._appointments.get_first_visit_dates()
 
@@ -70,7 +69,7 @@ class AdminService:
         returning_clients = 0
         for owner, visits in client_visits_in_period.items():
             first_visit = first_visit_map.get(owner)
-            if first_visit and start_iso <= first_visit < end_iso:
+            if first_visit and start <= first_visit < end:
                 new_clients += 1
             elif visits >= 2:
                 returning_clients += 1
@@ -79,7 +78,7 @@ class AdminService:
 
         # Average rating
         avg_rating_value = await self._reviews.get_average_rating_published_in_period(
-            start_iso, end_iso
+            start, end
         )
         avg_rating = round(float(avg_rating_value or 0), 2)
 
@@ -88,12 +87,13 @@ class AdminService:
         daily_apps: dict[str, int] = defaultdict(int)
         daily_completed: dict[str, int] = defaultdict(int)
 
-        day_rows = await self._appointments.list_period_details(start_iso, end_iso)
+        day_rows = await self._appointments.list_period_details(start, end)
         for day, status, paid in day_rows:
-            daily_apps[day] += 1
+            day_str = day.isoformat()
+            daily_apps[day_str] += 1
             if status == "completed":
-                daily_completed[day] += 1
-                daily_revenue[day] += int(paid or 0)
+                daily_completed[day_str] += 1
+                daily_revenue[day_str] += int(paid or 0)
 
         all_days = []
         d = from_dt
@@ -111,21 +111,15 @@ class AdminService:
 
         # Top washers
         washer_rows = await self._appointments.list_completed_washer_paid_in_period(
-            start_iso, end_iso
+            start, end
         )
         washer_revenue: dict[str, int] = defaultdict(int)
         washer_count: dict[str, int] = defaultdict(int)
-        for assigned_json, paid in washer_rows:
-            try:
-                usernames = json.loads(assigned_json or "[]")
-            except Exception:
-                usernames = []
-            if not usernames:
+        for username, paid in washer_rows:
+            if not username:
                 continue
-            share = int(paid or 0) // len(usernames)
-            for u in usernames:
-                washer_revenue[u] += share
-                washer_count[u] += 1
+            washer_revenue[username] += int(paid or 0)
+            washer_count[username] += 1
 
         top_washers = [
             {"name": name, "revenue": rev, "appointments": washer_count[name]}
@@ -144,7 +138,7 @@ class AdminService:
 
         # Top clients
         client_rows = await self._appointments.list_completed_owner_stats_in_period(
-            start_iso, end_iso, limit=5
+            start, end, limit=5
         )
         top_clients = [
             {
@@ -248,7 +242,7 @@ class AdminService:
             errors.append(f"Не найдены записи: {', '.join(missing)}")
 
         processed = 0
-        now = datetime.now().isoformat()
+        now = datetime.now()
         for appt in appointments:
             if appt.status == "cancelled":
                 errors.append(f"{appt.id}: уже отменена")
@@ -276,7 +270,7 @@ class AdminService:
             errors.append(f"Не найдены записи: {', '.join(missing)}")
 
         processed = 0
-        now = datetime.now().isoformat()
+        now = datetime.now()
         for appt in appointments:
             if appt.status == status:
                 errors.append(f"{appt.id}: уже имеет статус {status}")
@@ -296,8 +290,8 @@ class AdminService:
         self,
         q: str | None,
         role: str | None,
-        from_date: str | None,
-        to_date: str | None,
+        from_date: date | None,
+        to_date: date | None,
         limit: int,
         offset: int,
     ) -> dict:

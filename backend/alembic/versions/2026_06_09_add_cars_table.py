@@ -44,42 +44,42 @@ def upgrade() -> None:
         # SQLite approach
         conn.execute(
             sa.text("""
-            INSERT INTO cars (userId, brand, model, number, isPrimary)
+            INSERT INTO cars ("userId", brand, model, number, "isPrimary")
             SELECT
                 id,
                 CASE
-                    WHEN instr(carModel, ' ') > 0 THEN substr(carModel, 1, instr(carModel, ' ') - 1)
-                    ELSE carModel
+                    WHEN instr("carModel", ' ') > 0 THEN substr("carModel", 1, instr("carModel", ' ') - 1)
+                    ELSE "carModel"
                 END,
                 CASE
-                    WHEN instr(carModel, ' ') > 0 THEN substr(carModel, instr(carModel, ' ') + 1)
+                    WHEN instr("carModel", ' ') > 0 THEN substr("carModel", instr("carModel", ' ') + 1)
                     ELSE ''
                 END,
-                carNumber,
+                "carNumber",
                 1
             FROM users
-            WHERE carModel != '' OR carNumber != ''
+            WHERE "carModel" != '' OR "carNumber" != ''
         """)
         )
     else:
         # PostgreSQL/MySQL approach
         conn.execute(
             sa.text("""
-            INSERT INTO cars (userId, brand, model, number, isPrimary)
+            INSERT INTO cars ("userId", brand, model, number, "isPrimary")
             SELECT
                 id,
                 CASE
-                    WHEN POSITION(' ' IN carModel) > 0 THEN SPLIT_PART(carModel, ' ', 1)
-                    ELSE carModel
+                    WHEN POSITION(' ' IN "carModel") > 0 THEN SPLIT_PART("carModel", ' ', 1)
+                    ELSE "carModel"
                 END,
                 CASE
-                    WHEN POSITION(' ' IN carModel) > 0 THEN SUBSTRING(carModel FROM POSITION(' ' IN carModel) + 1)
+                    WHEN POSITION(' ' IN "carModel") > 0 THEN SUBSTRING("carModel" FROM POSITION(' ' IN "carModel") + 1)
                     ELSE ''
                 END,
-                carNumber,
+                "carNumber",
                 TRUE
             FROM users
-            WHERE carModel != '' OR carNumber != ''
+            WHERE "carModel" != '' OR "carNumber" != ''
         """)
         )
 

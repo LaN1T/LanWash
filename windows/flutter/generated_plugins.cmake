@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  app_links
   connectivity_plus
   file_saver
   firebase_app_check
@@ -11,6 +12,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_secure_storage_windows
   printing
   share_plus
+  sqlcipher_flutter_libs
   sqlite3_flutter_libs
   url_launcher_windows
 )

@@ -6,7 +6,7 @@ import json
 import os
 import random
 import sys
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 # Ensure backend is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -57,10 +57,6 @@ def random_datetime(start, end):
     return start + timedelta(seconds=random_seconds)
 
 
-def format_dt(dt):
-    return dt.strftime("%Y-%m-%dT%H:%M:%S")
-
-
 async def create_users(session):
     """Create test users: clients, washers, admins."""
     users = []
@@ -76,7 +72,7 @@ async def create_users(session):
                 phone=fake.phone_number(),
                 carModel="",
                 carNumber="",
-                createdAt=format_dt(datetime.now()),
+                createdAt=datetime.now(),
             )
         )
 
@@ -91,7 +87,7 @@ async def create_users(session):
                 phone=fake.phone_number(),
                 carModel="",
                 carNumber="",
-                createdAt=format_dt(datetime.now()),
+                createdAt=datetime.now(),
             )
         )
 
@@ -118,7 +114,7 @@ async def create_users(session):
                 phone=fake.phone_number(),
                 carModel=random.choice(car_models),
                 carNumber=fake.license_plate(),
-                createdAt=format_dt(datetime.now()),
+                createdAt=datetime.now(),
             )
         )
 
@@ -168,7 +164,7 @@ async def create_appointments(session, users, wash_types, services):
                 clientName=client.displayName,
                 carModel=client.carModel,
                 carNumber=client.carNumber,
-                dateTime=format_dt(dt),
+                dateTime=dt,
                 washTypeId=wash_type.id,
                 additionalServices=json.dumps(extras),
                 status=status,
@@ -197,20 +193,20 @@ async def create_shifts(session, washers):
     now = datetime.now()
     shifts = []
     for day_offset in range(-14, 1):
-        date_str = (now + timedelta(days=day_offset)).strftime("%Y-%m-%d")
+        shift_date = (now + timedelta(days=day_offset)).date()
         for washer in random.sample(washers, k=random.randint(3, 6)):
             start_h = random.randint(8, 14)
             duration = random.choice([4, 6, 8, 10])
             shifts.append(
                 Shift(
                     userId=washer.id,
-                    date=date_str,
-                    startTime=f"{start_h:02d}:00",
-                    endTime=f"{(start_h + duration) % 24:02d}:00",
+                    date=shift_date,
+                    startTime=time(start_h, 0),
+                    endTime=time((start_h + duration) % 24, 0),
                     status="confirmed",
                     createdBy="test_admin_1",
-                    createdAt=format_dt(now),
-                    updatedAt=format_dt(now),
+                    createdAt=now,
+                    updatedAt=now,
                 )
             )
 
@@ -235,9 +231,7 @@ async def create_reviews(session, clients, appointments):
                 rating=random.choices([3, 4, 5], weights=[5, 20, 75])[0],
                 comment=fake.sentence(nb_words=10) if random.random() < 0.7 else "",
                 isPublished=1 if random.random() < 0.8 else 0,
-                createdAt=format_dt(
-                    datetime.now() - timedelta(days=random.randint(0, 30))
-                ),
+                createdAt=datetime.now() - timedelta(days=random.randint(0, 30)),
             )
         )
 
@@ -267,10 +261,8 @@ async def create_logs(session, users):
                 username=user.username,
                 action=action,
                 details=fake.sentence(nb_words=4),
-                timestamp=format_dt(
-                    datetime.now()
-                    - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
-                ),
+                timestamp=datetime.now()
+                - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23)),
             )
         )
 

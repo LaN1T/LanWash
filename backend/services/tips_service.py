@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
@@ -59,7 +59,7 @@ class TipsService:
             amount=data.amount,
             method=data.method,
             status="pending",
-            createdAt=datetime.now(timezone.utc).isoformat(),
+            createdAt=datetime.utcnow(),
         )
         await self._tips.add(tip)
         try:

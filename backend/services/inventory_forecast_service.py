@@ -26,8 +26,8 @@ async def generate_inventory_forecast(
     if reference_date is None:
         reference_date = datetime.now()
 
-    cutoff_iso = (reference_date - timedelta(days=30)).isoformat()
-    end_iso = (reference_date + timedelta(days=7)).isoformat()
+    cutoff = reference_date - timedelta(days=30)
+    end = reference_date + timedelta(days=7)
     ref_iso = reference_date.isoformat()
 
     consumables_repo = ConsumableRepository(db)
@@ -43,10 +43,10 @@ async def generate_inventory_forecast(
         return InventoryForecastResponse(items=[], generated_at=ref_iso)
 
     # Average daily usage per consumable over the last 30 days
-    usage_map = await usage_repo.sum_usage_grouped_since(cutoff_iso)
+    usage_map = await usage_repo.sum_usage_grouped_since(cutoff)
 
     # Upcoming scheduled appointments in the next 7 days
-    appointments = await appointment_repo.list_scheduled_in_period(ref_iso, end_iso)
+    appointments = await appointment_repo.list_scheduled_in_period(reference_date, end)
 
     wash_type_counts: Counter[str] = Counter()
     service_counts: Counter[str] = Counter()

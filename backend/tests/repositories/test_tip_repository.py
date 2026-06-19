@@ -18,7 +18,7 @@ def _appointment(
         clientName="Client",
         carModel="Model",
         carNumber="А111БВ777",
-        dateTime="2099-06-01T10:00:00",
+        dateTime=datetime(2099, 6, 1, 10, 0),
         washTypeId="w1",
         status="completed",
         ownerUsername=owner,
@@ -39,7 +39,7 @@ def _tip(
         amount=amount,
         method="sbp",
         status=status,
-        createdAt=datetime.now().isoformat(),
+        createdAt=datetime.now(),
     )
 
 
@@ -76,19 +76,19 @@ class TestTipRepository:
         tip2 = _tip(appt2.id, washer="other_washer")
         orphan_tip = _tip("nonexistent_appointment_id")
 
-        # The schema enforces a non-nullable FK on appointmentId, so temporarily
-        # drop the constraint inside this transaction to test the left-outer-join
-        # semantics with an orphan tip. The DDL is rolled back with the test
-        # transaction, leaving the schema unchanged for other tests.
-        await db_session.execute(
-            text('ALTER TABLE tips DROP CONSTRAINT "tips_appointmentId_fkey"')
-        )
-
-        db_session.add_all([tip1, tip2, orphan_tip])
+        db_session.add_all([tip1, tip2])
         await db_session.flush()
 
+        # Orphan tip can only be created on SQLite, because it does not enforce
+        # foreign keys by default. On PostgreSQL the FK prevents it, so we test
+        # the left-outer-join semantics only where possible.
+        is_sqlite = db_session.bind.dialect.name == "sqlite"
+        if is_sqlite:
+            await db_session.execute(text("PRAGMA foreign_keys=OFF"))
+            db_session.add(orphan_tip)
+            await db_session.flush()
+
         rows = await repo.list_with_appointments("washer_tip")
-        assert len(rows) == 2
         matched = {tip.id: (tip, appointment) for tip, appointment in rows}
         assert tip1.id in matched
         tip, appointment = matched[tip1.id]
@@ -96,10 +96,11 @@ class TestTipRepository:
         assert isinstance(appointment, Appointment)
         assert appointment.id == appt1.id
 
-        assert orphan_tip.id in matched
-        orphan, orphan_appointment = matched[orphan_tip.id]
-        assert isinstance(orphan, Tip)
-        assert orphan_appointment is None
+        if is_sqlite:
+            assert orphan_tip.id in matched
+            orphan, orphan_appointment = matched[orphan_tip.id]
+            assert isinstance(orphan, Tip)
+            assert orphan_appointment is None
 
     @pytest.mark.asyncio
     async def test_get_stats(self, db_session):

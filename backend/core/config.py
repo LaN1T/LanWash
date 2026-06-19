@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import List, Literal, Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,13 @@ class Settings(BaseSettings):
         extra="ignore",  # Allow extra env vars without error
     )
 
+    @field_validator("jwt_secret_key", mode="after")
+    @classmethod
+    def _validate_jwt_secret_key(cls, value: str) -> str:
+        if value and len(value) < 32:
+            raise ValueError("jwt_secret_key must be at least 32 characters long")
+        return value
+
     # Environment
     environment: Literal["development", "testing", "production"] = "development"
     debug: bool = False
@@ -22,6 +30,7 @@ class Settings(BaseSettings):
 
     # Security
     jwt_secret_key: str
+    jwt_refresh_token_expire_days: int = 7
     initial_admin_password: str
 
     # CORS
@@ -32,6 +41,7 @@ class Settings(BaseSettings):
 
     # App Check (optional)
     app_check_enforced: bool = False
+    firebase_app_id: str = ""
 
     # Error tracking (optional)
     sentry_dsn: str = ""

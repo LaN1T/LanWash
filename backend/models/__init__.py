@@ -1,6 +1,7 @@
 from models.models import (
     AdminAuditLog,
     Appointment,
+    AppointmentWasher,
     Base,
     Car,
     Consumable,
@@ -41,6 +42,7 @@ __all__ = [
     "WashTypeConsumable",
     "Subscription",
     "Appointment",
+    "AppointmentWasher",
     "Service",
     "Promo",
     "PromoIncludedExtra",

@@ -149,7 +149,7 @@ class SupportProvider extends ChangeNotifier {
   }
 
   void _log(String message) {
-    if (kDebugMode) _log(message);
+    if (kDebugMode) debugPrint(message);
   }
 
   void connectToChat(int chatId) {
@@ -164,7 +164,7 @@ class SupportProvider extends ChangeNotifier {
 
   void _startPolling(int chatId) {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (_activeChatId == chatId && !isConnected.value) {
         loadMessages(chatId, silent: true);
       }

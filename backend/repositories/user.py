@@ -1,3 +1,5 @@
+from datetime import date, datetime, time
+
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,8 +76,8 @@ class UserRepository(BaseRepository[User]):
         *,
         q: str | None,
         role: str | None,
-        from_date: str | None,
-        to_date: str | None,
+        from_date: date | None,
+        to_date: date | None,
         limit: int,
         offset: int,
     ) -> tuple[list[User], int]:
@@ -99,9 +101,9 @@ class UserRepository(BaseRepository[User]):
             filters.append(User.role == role)
 
         if from_date:
-            filters.append(User.createdAt >= from_date)
+            filters.append(User.createdAt >= datetime.combine(from_date, time.min))
         if to_date:
-            filters.append(User.createdAt < to_date + "T23:59:59")
+            filters.append(User.createdAt < datetime.combine(to_date, time.max))
 
         if filters:
             stmt = stmt.where(and_(*filters))

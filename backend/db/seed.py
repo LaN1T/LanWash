@@ -28,7 +28,7 @@ settings = get_settings()
 
 async def seed_data():
     async with db_session.AsyncSessionLocal() as session:
-        now = datetime.now().isoformat()
+        now = datetime.now()
 
         admin_pass = settings.initial_admin_password
 

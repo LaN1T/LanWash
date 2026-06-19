@@ -1,7 +1,26 @@
+import base64
+import json
+from datetime import date, datetime, time
+from decimal import Decimal
+from typing import Optional
+
 from fastapi import Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
+
+
+class _CursorJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        if isinstance(obj, time):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 
 class PaginationParams:
@@ -11,6 +30,31 @@ class PaginationParams:
         self.page = page
         self.per_page = per_page
         self.offset = (page - 1) * per_page
+
+
+class CursorParams:
+    def __init__(
+        self,
+        cursor: Optional[str] = Query(None),
+        limit: int = Query(50, ge=1, le=200),
+    ):
+        self.cursor = cursor
+        self.limit = limit
+
+
+def encode_cursor(value: dict) -> str:
+    return (
+        base64.urlsafe_b64encode(
+            json.dumps(value, separators=(",", ":"), cls=_CursorJsonEncoder).encode()
+        )
+        .decode()
+        .rstrip("=")
+    )
+
+
+def decode_cursor(cursor: str) -> dict:
+    padding = "=" * (-len(cursor) % 4)
+    return json.loads(base64.urlsafe_b64decode(cursor + padding).decode())
 
 
 async def paginate(query: Select, db: AsyncSession, pagination: PaginationParams):

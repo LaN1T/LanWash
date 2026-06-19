@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,20 +18,31 @@ class LogsService:
         self._db = db
         self._logs = LogEntryRepository(db)
 
-    async def get_all(self, limit: int, offset: int = 0) -> list[LogEntry]:
-        return await self._logs.list_all(limit=limit, offset=offset)
+    async def get_all(
+        self,
+        limit: int,
+        offset: int = 0,
+        cursor: Optional[dict] = None,
+    ) -> list[LogEntry]:
+        return await self._logs.list_all(limit=limit, offset=offset, cursor=cursor)
 
     async def get_by_user(
-        self, username: str, limit: int, offset: int = 0
+        self,
+        username: str,
+        limit: int,
+        offset: int = 0,
+        cursor: Optional[dict] = None,
     ) -> list[LogEntry]:
-        return await self._logs.list_by_user(username, limit=limit, offset=offset)
+        return await self._logs.list_by_user(
+            username, limit=limit, offset=offset, cursor=cursor
+        )
 
     async def create_log(self, username: str, action: str, details: str) -> LogEntry:
         new_log = LogEntry(
             username=username,
             action=action,
             details=details,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(),
         )
         await self._logs.add(new_log)
         await self._db.commit()
