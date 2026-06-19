@@ -183,6 +183,10 @@ class NotificationService {
     _lastKnownUsername = username;
   }
 
+  void emitAppointmentUpdated(String appointmentId) {
+    _updateController.add(appointmentId);
+  }
+
   Future<void> updateTokenOnServer(String username) async {
     _lastKnownUsername = username;
     final token = await getToken();
