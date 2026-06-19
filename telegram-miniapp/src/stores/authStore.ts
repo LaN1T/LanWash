@@ -22,15 +22,13 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('lanwash_token'),
+  token: null,
   isLoading: true,
   setAuth: (user, token) => {
-    localStorage.setItem('lanwash_token', token)
     set({ user, token, isLoading: false })
   },
   setLoading: (loading) => set({ isLoading: loading }),
   logout: () => {
-    localStorage.removeItem('lanwash_token')
     set({ user: null, token: null })
   },
 }))

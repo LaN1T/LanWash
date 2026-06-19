@@ -3,6 +3,7 @@ import React, { useEffect, Suspense } from 'react'
 import { useAuthStore } from './stores/authStore'
 import { useTelegram } from './hooks/useTelegram'
 import { telegramAuth } from './services/auth'
+import { api } from './services/api'
 import Layout from './components/Layout'
 
 const HomePage = React.lazy(() => import('./pages/client/HomePage'))
@@ -17,12 +18,17 @@ function App() {
   const { user, token, setAuth, setLoading } = useAuthStore()
 
   useEffect(() => {
-    if (!initData || !ready) return
+    if (!ready) return
     const auth = async () => {
       setLoading(true)
       try {
-        const res = await telegramAuth(initData)
-        setAuth(res.user, res.access_token)
+        if (initData) {
+          const res = await telegramAuth(initData)
+          setAuth(res.user, res.access_token)
+        } else if (isInTelegram) {
+          const res = await api.post('/auth/refresh', {}, { withCredentials: true })
+          setAuth(res.data.user, res.data.access_token)
+        }
       } catch (e) {
         console.error('Auth failed', e)
       } finally {
@@ -30,7 +36,7 @@ function App() {
       }
     }
     auth()
-  }, [initData, ready])
+  }, [initData, ready, isInTelegram])
 
   if (!ready) {
     return (
