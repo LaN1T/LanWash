@@ -170,8 +170,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   GestureDetector(
                     onTap: _pickAvatar,
                     child: Container(
-                      width: 96,
-                      height: 96,
+                      width: Theme.of(context).platform == TargetPlatform.macOS
+                          ? 140
+                          : 96,
+                      height: Theme.of(context).platform == TargetPlatform.macOS
+                          ? 140
+                          : 96,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: user?.avatarUrl.isNotEmpty == true
@@ -191,7 +195,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ? Icons.admin_panel_settings_rounded
                                   : Icons.person_rounded,
                               color: Colors.white,
-                              size: 44)
+                              size: Theme.of(context).platform ==
+                                      TargetPlatform.macOS
+                                  ? 64
+                                  : 44)
                           : null,
                     ),
                   ),

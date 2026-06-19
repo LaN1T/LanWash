@@ -35,26 +35,32 @@ void main() async {
   sl<OfflineProvider>(); // instantiate monitor + provider early
   await sl<CarCatalogService>().load();
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } on FirebaseException catch (e) {
-    if (e.code != 'duplicate-app') rethrow;
-  }
+  // Firebase настроен только если в firebase_options.dart заменены плейсхолдеры.
+  // При локальной разработке без Firebase-конфига пропускаем инициализацию.
+  final firebaseOptions = DefaultFirebaseOptions.currentPlatform;
+  final firebaseConfigured = !firebaseOptions.apiKey.startsWith('YOUR_');
 
-  // App Check: в режиме разработки — debug-провайдеры, в релизе — production
-  // Web не поддерживает App Check без reCAPTCHA, пропускаем
-  if (!kIsWeb) {
-    await FirebaseAppCheck.instance.activate(
-      // ignore: deprecated_member_use
-      androidProvider:
-          kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
-      // ignore: deprecated_member_use
-      appleProvider: kReleaseMode
-          ? AppleProvider.deviceCheck
-          : AppleProvider.appAttestWithDeviceCheckFallback,
-    );
+  if (firebaseConfigured) {
+    try {
+      await Firebase.initializeApp(options: firebaseOptions);
+    } on FirebaseException catch (e) {
+      if (e.code != 'duplicate-app') rethrow;
+    }
+
+    // App Check: в режиме разработки — debug-провайдеры, в релизе — production
+    // Web не поддерживает App Check без reCAPTCHA, пропускаем
+    if (!kIsWeb) {
+      await FirebaseAppCheck.instance.activate(
+        // ignore: deprecated_member_use
+        androidProvider: kReleaseMode
+            ? AndroidProvider.playIntegrity
+            : AndroidProvider.debug,
+        // ignore: deprecated_member_use
+        appleProvider: kReleaseMode
+            ? AppleProvider.deviceCheck
+            : AppleProvider.appAttestWithDeviceCheckFallback,
+      );
+    }
   }
 
   await initializeDateFormatting('ru', null);

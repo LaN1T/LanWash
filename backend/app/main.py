@@ -19,6 +19,7 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator.middleware import PrometheusInstrumentatorMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
@@ -113,6 +114,21 @@ def _verify_metrics_token(
     if not credentials or credentials.credentials != settings.prometheus_api_token:
         raise HTTPException(status_code=403, detail="Forbidden")
     return credentials.credentials
+
+
+# Patch: newer Starlette uses _IncludedRouter, which the instrumentator's
+# route-name resolver does not handle. Fall back to the raw path when it fails.
+_orig_get_handler = PrometheusInstrumentatorMiddleware._get_handler
+
+
+def _safe_get_handler(self, request: Request) -> tuple[str, bool]:
+    try:
+        return _orig_get_handler(self, request)
+    except AttributeError:
+        return request.url.path, False
+
+
+PrometheusInstrumentatorMiddleware._get_handler = _safe_get_handler
 
 
 Instrumentator().instrument(app).expose(
