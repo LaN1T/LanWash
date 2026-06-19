@@ -60,6 +60,7 @@ from core.config import get_settings
 from core.limiter import limiter
 from core.logging import configure_logging
 from models import SupportChat
+from services.appointment_ws_manager import appointment_ws_manager
 from services.websocket_manager import connect, disconnect
 
 configure_logging()
@@ -349,6 +350,81 @@ async def _websocket_heartbeat(websocket: WebSocket):
             await websocket.send_text(json.dumps({"type": "ping"}))
         except Exception:
             break
+
+
+# ─── Appointments WebSocket ─────────────────────────────────────────────────
+
+@app.websocket("/ws/appointments")
+async def appointments_websocket(websocket: WebSocket):
+    await websocket.accept()
+
+    token = None
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+        data = json.loads(raw)
+        if data.get("type") == "auth":
+            token = data.get("token")
+    except asyncio.TimeoutError:
+        await websocket.close(code=1008)
+        return
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    db_gen = None
+    try:
+        db_gen = get_db()
+        db = await anext(db_gen)
+    except Exception:
+        await websocket.close(code=1011)
+        return
+
+    try:
+        current_user = await get_current_user(token=token, db=db)
+    except Exception:
+        await websocket.close(code=1008)
+        if db_gen:
+            try:
+                await db_gen.aclose()
+            except Exception:
+                pass
+        return
+
+    await appointment_ws_manager.connect(
+        current_user.id, current_user.role, websocket
+    )
+    heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            if len(raw) > 4096:
+                await websocket.close(code=1009)
+                break
+            try:
+                data = json.loads(raw)
+            except Exception:
+                continue
+            if data.get("type") == "pong":
+                continue
+    except WebSocketDisconnect:
+        pass
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+        await appointment_ws_manager.disconnect(current_user.id, websocket)
+        if db_gen:
+            try:
+                await db_gen.aclose()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
