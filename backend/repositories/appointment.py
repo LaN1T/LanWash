@@ -1,7 +1,8 @@
 from collections.abc import AsyncGenerator
+from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import Time, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment, Shift, WashType
@@ -14,8 +15,8 @@ class AppointmentRepository(BaseRepository[Appointment]):
 
     async def list_for_day(
         self,
-        day_start: str,
-        day_end: str,
+        day_start: datetime,
+        day_end: datetime,
         exclude_appt_id: str | None = None,
     ) -> list[Appointment]:
         query = select(Appointment).where(
@@ -71,7 +72,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         result = await self._db.execute(
             select(Appointment).where(
                 Appointment.assignedWasher.like(
-                    f'%"{username_pattern}"%', escape=escape
+                    f'%{username_pattern}%', escape=escape
                 ),
                 Appointment.status == "completed",
             )
@@ -79,7 +80,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return list(result.scalars().all())
 
     async def list_completed_by_shift_for_user(self, user_id: int) -> list[Appointment]:
-        appt_time = func.substr(Appointment.dateTime, 12, 5)
+        appt_time = func.cast(Appointment.dateTime, Time)
         result = await self._db.execute(
             select(Appointment)
             .join(
@@ -96,39 +97,39 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return list(result.scalars().all())
 
     async def list_completed_datetimes_in_period(
-        self, start_iso: str, end_iso: str
-    ) -> list[tuple[str]]:
+        self, start: datetime, end: datetime
+    ) -> list[tuple[datetime]]:
         result = await self._db.execute(
             select(Appointment.dateTime).where(
                 Appointment.status == "completed",
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
             )
         )
         return list(result.all())
 
     async def get_status_counts_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> list[tuple[str, int]]:
         result = await self._db.execute(
             select(Appointment.status, func.count(Appointment.id))
             .where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
             )
             .group_by(Appointment.status)
         )
         return [(row[0], row[1]) for row in result.all()]
 
     async def get_revenue_stats_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> tuple[Decimal | None, Decimal | None]:
         result = await self._db.execute(
             select(
                 func.sum(Appointment.paidPrice), func.avg(Appointment.paidPrice)
             ).where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
                 Appointment.status == "completed",
             )
         )
@@ -136,20 +137,20 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return (row[0], row[1]) if row else (None, None)
 
     async def list_completed_owners_datetimes_in_period(
-        self, start_iso: str, end_iso: str
-    ) -> list[tuple[str | None, str]]:
+        self, start: datetime, end: datetime
+    ) -> list[tuple[str | None, datetime]]:
         result = await self._db.execute(
             select(Appointment.ownerUsername, Appointment.dateTime)
             .where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
                 Appointment.status == "completed",
             )
             .order_by(Appointment.dateTime.asc())
         )
         return list(result.all())
 
-    async def get_first_visit_dates(self) -> dict[str | None, str]:
+    async def get_first_visit_dates(self) -> dict[str | None, datetime]:
         result = await self._db.execute(
             select(Appointment.ownerUsername, func.min(Appointment.dateTime))
             .where(Appointment.status == "completed")
@@ -158,30 +159,30 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return {row[0]: row[1] for row in result.all()}
 
     async def list_period_details(
-        self, start_iso: str, end_iso: str
-    ) -> list[tuple[str, str, int | None]]:
+        self, start: datetime, end: datetime
+    ) -> list[tuple[date, str, int | None]]:
         result = await self._db.execute(
             select(Appointment.date, Appointment.status, Appointment.paidPrice).where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
             )
         )
         return list(result.all())
 
     async def list_completed_washer_paid_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> list[tuple[str | None, int | None]]:
         result = await self._db.execute(
             select(Appointment.assignedWasher, Appointment.paidPrice).where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
                 Appointment.status == "completed",
             )
         )
         return list(result.all())
 
     async def list_completed_owner_stats_in_period(
-        self, start_iso: str, end_iso: str, limit: int
+        self, start: datetime, end: datetime, limit: int
     ) -> list[tuple[str | None, int, Decimal | None]]:
         result = await self._db.execute(
             select(
@@ -190,8 +191,8 @@ class AppointmentRepository(BaseRepository[Appointment]):
                 func.sum(Appointment.paidPrice),
             )
             .where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
                 Appointment.status == "completed",
                 Appointment.ownerUsername.isnot(None),
             )
@@ -215,19 +216,19 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return list(result.scalars().all())
 
     async def list_scheduled_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> list[Appointment]:
         result = await self._db.execute(
             select(Appointment).where(
                 Appointment.status == "scheduled",
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
             )
         )
         return list(result.scalars().all())
 
     async def get_car_model_stats_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> list[tuple[str | None, Decimal | None, int]]:
         result = await self._db.execute(
             select(
@@ -238,8 +239,8 @@ class AppointmentRepository(BaseRepository[Appointment]):
             .where(
                 and_(
                     Appointment.status == "completed",
-                    Appointment.dateTime >= start_iso,
-                    Appointment.dateTime < end_iso,
+                    Appointment.dateTime >= start,
+                    Appointment.dateTime < end,
                 )
             )
             .group_by(Appointment.carModel)
@@ -247,7 +248,7 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return [(row[0], row[1] or Decimal(0), row[2] or 0) for row in result.all()]
 
     async def stream_popular_services_fields_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> AsyncGenerator[tuple[str | None, str | None, str | None], None]:
         query = select(
             Appointment.additionalServices,
@@ -256,25 +257,25 @@ class AppointmentRepository(BaseRepository[Appointment]):
         ).where(
             and_(
                 Appointment.status == "completed",
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
             )
         )
         result = await self._db.stream(query)
         async for row in result:
             yield row
 
-    async def count_in_period(self, start_iso: str, end_iso: str) -> int:
+    async def count_in_period(self, start: datetime, end: datetime) -> int:
         result = await self._db.execute(
             select(func.count(Appointment.id)).where(
-                Appointment.dateTime >= start_iso,
-                Appointment.dateTime < end_iso,
+                Appointment.dateTime >= start,
+                Appointment.dateTime < end,
             )
         )
         return result.scalar() or 0
 
     async def get_completed_stats_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> tuple[int, Decimal | None, Decimal | None]:
         result = await self._db.execute(
             select(
@@ -283,8 +284,8 @@ class AppointmentRepository(BaseRepository[Appointment]):
                 func.avg(Appointment.paidPrice),
             ).where(
                 and_(
-                    Appointment.dateTime >= start_iso,
-                    Appointment.dateTime < end_iso,
+                    Appointment.dateTime >= start,
+                    Appointment.dateTime < end,
                     Appointment.status == "completed",
                 )
             )
@@ -297,14 +298,14 @@ class AppointmentRepository(BaseRepository[Appointment]):
         )
 
     async def get_box_occupancy_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> list[tuple[int | None, int]]:
         result = await self._db.execute(
             select(Appointment.box_index, func.count(Appointment.id))
             .where(
                 and_(
-                    Appointment.dateTime >= start_iso,
-                    Appointment.dateTime < end_iso,
+                    Appointment.dateTime >= start,
+                    Appointment.dateTime < end,
                     Appointment.status == "completed",
                 )
             )
@@ -313,13 +314,13 @@ class AppointmentRepository(BaseRepository[Appointment]):
         return [(row[0], row[1] or 0) for row in result.all()]
 
     async def list_wash_type_and_additional_services_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> list[tuple[str | None, str | None]]:
         result = await self._db.execute(
             select(Appointment.washTypeId, Appointment.additionalServices).where(
                 and_(
-                    Appointment.dateTime >= start_iso,
-                    Appointment.dateTime < end_iso,
+                    Appointment.dateTime >= start,
+                    Appointment.dateTime < end,
                     Appointment.status == "completed",
                 )
             )

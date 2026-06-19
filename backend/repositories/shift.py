@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +12,7 @@ class ShiftRepository(BaseRepository[Shift]):
         super().__init__(db, Shift)
 
     async def list_for_range(
-        self, start_date: str, end_date: str, user_id: int | None = None
+        self, start_date: date, end_date: date, user_id: int | None = None
     ) -> list[Shift]:
         stmt = select(Shift).where(
             and_(Shift.date >= start_date, Shift.date <= end_date)
@@ -21,7 +23,7 @@ class ShiftRepository(BaseRepository[Shift]):
         return list(result.scalars().all())
 
     async def list_today(
-        self, today: str, status: str = "confirmed", user_id: int | None = None
+        self, today: date, status: str = "confirmed", user_id: int | None = None
     ) -> list[Shift]:
         stmt = (
             select(Shift)
@@ -34,7 +36,7 @@ class ShiftRepository(BaseRepository[Shift]):
         return list(result.scalars().all())
 
     async def list_current(
-        self, today: str, status: str = "confirmed", user_id: int | None = None
+        self, today: date, status: str = "confirmed", user_id: int | None = None
     ) -> list[tuple[Shift, User]]:
         stmt = (
             select(Shift, User)
@@ -56,13 +58,13 @@ class ShiftRepository(BaseRepository[Shift]):
         result = await self._db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_user_and_date(self, user_id: int, date: str) -> Shift | None:
+    async def get_by_user_and_date(self, user_id: int, date: date) -> Shift | None:
         result = await self._db.execute(
             select(Shift).where(and_(Shift.userId == user_id, Shift.date == date))
         )
         return result.scalar_one_or_none()
 
-    async def delete_for_user_and_date(self, user_id: int, date: str) -> int:
+    async def delete_for_user_and_date(self, user_id: int, date: date) -> int:
         result = await self._db.execute(
             delete(Shift).where(and_(Shift.userId == user_id, Shift.date == date))
         )

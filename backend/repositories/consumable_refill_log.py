@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +20,7 @@ class ConsumableRefillLogRepository(BaseRepository[ConsumableRefillLog]):
         return list(result.scalars().all())
 
     async def list_by_date_range(
-        self, date_from: str | None, date_to: str | None
+        self, date_from: datetime | None, date_to: datetime | None
     ) -> list[ConsumableRefillLog]:
         stmt = select(ConsumableRefillLog).order_by(
             ConsumableRefillLog.timestamp.desc()

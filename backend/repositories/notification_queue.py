@@ -20,7 +20,7 @@ class NotificationQueueRepository(BaseRepository[NotificationQueue]):
         notification = NotificationQueue(
             telegramId=telegram_id,
             message=message,
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
             sentAt=None,
         )
         return await self.add(notification)
@@ -42,5 +42,5 @@ class NotificationQueueRepository(BaseRepository[NotificationQueue]):
         await self._db.execute(
             update(self._model)
             .where(self._model.id.in_(notification_ids))
-            .values(sentAt=datetime.now().isoformat())
+            .values(sentAt=datetime.now())
         )
