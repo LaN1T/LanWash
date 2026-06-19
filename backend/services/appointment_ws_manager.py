@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.models import Appointment, User
+from schemas import AppointmentResponse
 
 logger = structlog.get_logger()
 
@@ -53,8 +54,6 @@ class AppointmentWebSocketManager:
     async def notify_appointment(
         self, db: AsyncSession, appointment: Appointment, event: str
     ) -> None:
-        from schemas import AppointmentResponse
-
         payload = {
             "type": "appointment_updated",
             "event": event,
@@ -82,25 +81,33 @@ class AppointmentWebSocketManager:
                             seen.add(id(ws))
                             targets.append((ws, user_id))
 
-        async def _send(ws: WebSocket, uid: int) -> None:
-            try:
-                await asyncio.wait_for(ws.send_text(message), timeout=5.0)
-            except (WebSocketDisconnect, RuntimeError):
-                await self.disconnect(uid, ws)
-            except asyncio.TimeoutError:
-                await self.disconnect(uid, ws)
-            except Exception as e:
-                logger.warning(
-                    "appointment_broadcast_failed",
-                    user_id=uid,
-                    event=event,
-                    appointment_id=appointment.id,
-                    error=str(e),
-                )
-
         if targets:
             await asyncio.gather(
-                *(_send(ws, uid) for ws, uid in targets), return_exceptions=True
+                *(self._send_to_socket(ws, uid, message, event, appointment.id) for ws, uid in targets),
+                return_exceptions=True,
+            )
+
+    async def _send_to_socket(
+        self,
+        ws: WebSocket,
+        uid: int,
+        message: str,
+        event: str,
+        appointment_id: int,
+    ) -> None:
+        try:
+            await asyncio.wait_for(ws.send_text(message), timeout=5.0)
+        except (WebSocketDisconnect, RuntimeError):
+            await self.disconnect(uid, ws)
+        except asyncio.TimeoutError:
+            await self.disconnect(uid, ws)
+        except Exception as e:
+            logger.warning(
+                "appointment_broadcast_failed",
+                user_id=uid,
+                event=event,
+                appointment_id=appointment_id,
+                error=repr(e),
             )
 
     async def _resolve_recipients(
@@ -123,7 +130,7 @@ class AppointmentWebSocketManager:
                 if appointment.assignedWasher
                 else []
             )
-        except Exception:
+        except json.JSONDecodeError:
             assigned = []
 
         if assigned:
