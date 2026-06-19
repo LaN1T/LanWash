@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(db, Subscription)
 
-    def _active_filters(self, user_id: int, today: str):
+    def _active_filters(self, user_id: int, today: date):
         return (
             Subscription.userId == user_id,
             Subscription.usedWashes < Subscription.totalWashes,
@@ -19,7 +19,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         )
 
     async def list_active_for_user(self, user_id: int) -> list[Subscription]:
-        today = datetime.now().isoformat()[:10]
+        today = date.today()
         result = await self._db.execute(
             select(Subscription)
             .where(*self._active_filters(user_id, today))
@@ -30,7 +30,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
     async def get_active_for_user_with_lock(
         self, subscription_id: int, user_id: int
     ) -> Subscription | None:
-        today = datetime.now().isoformat()[:10]
+        today = date.today()
         result = await self._db.execute(
             select(Subscription)
             .where(
@@ -42,7 +42,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         return result.scalar_one_or_none()
 
     async def count_active_for_user(self, user_id: int) -> int:
-        today = datetime.now().isoformat()[:10]
+        today = date.today()
         result = await self._db.execute(
             select(func.count(Subscription.id)).where(
                 *self._active_filters(user_id, today)

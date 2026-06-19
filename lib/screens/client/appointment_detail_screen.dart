@@ -961,7 +961,7 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
     }
   }
 
-  static const _allowedSbpSchemes = {'https', 'http', 'sbp'};
+  static const _allowedSbpSchemes = {'https', 'sbp'};
 
   Future<void> _openSbpUrl() async {
     if (_sbpUrl == null) return;

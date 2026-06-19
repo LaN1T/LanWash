@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 
@@ -143,23 +145,21 @@ class TestReviews:
 
     @pytest.mark.asyncio
     async def test_create_review_with_other_user_appointment(
-        self, async_client, client_token
+        self, async_client, client_token, db_session
     ):
-        from db.session import AsyncSessionLocal
         from models import User
         from services.auth_service import get_password_hash
 
-        async with AsyncSessionLocal() as session:
-            other_user = User(
-                username="other_client",
-                passwordHash=get_password_hash("TestPass123!"),
-                role="client",
-                displayName="Other Client",
-                createdAt="2099-01-01T00:00:00",
-            )
-            session.add(other_user)
-            await session.commit()
-            await session.refresh(other_user)
+        other_user = User(
+            username="other_client",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="Other Client",
+            createdAt=datetime(2099, 1, 1, 0, 0),
+        )
+        db_session.add(other_user)
+        await db_session.commit()
+        await db_session.refresh(other_user)
 
         login_resp = await async_client.post(
             "/api/auth/login",

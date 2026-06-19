@@ -45,7 +45,7 @@ class SubscriptionsService:
             totalWashes=req.totalWashes,
             usedWashes=0,
             validUntil=req.validUntil,
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         await self._subscriptions.add(sub)
         await self._db.commit()

@@ -1,8 +1,24 @@
 import json
 import re
-from typing import List, Literal, Optional
+from datetime import date as dt_date
+from datetime import datetime as dt_datetime
+from datetime import time as dt_time
+from typing import Annotated, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer, field_validator
+
+
+def _parse_time_hm(v):
+    if isinstance(v, str) and len(v) == 5 and v.count(":") == 1:
+        return dt_time.fromisoformat(f"{v}:00")
+    return v
+
+
+TimeHM = Annotated[
+    dt_time,
+    BeforeValidator(_parse_time_hm),
+    PlainSerializer(lambda v: v.strftime("%H:%M"), return_type=str),
+]
 
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
@@ -14,6 +30,7 @@ class Token(BaseModel):
 class LoginResponse(BaseModel):
     user: "UserResponse"
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -72,7 +89,7 @@ class UserResponse(BaseModel):
     carModel: str
     carNumber: str
     avatarUrl: str = ""
-    createdAt: str
+    createdAt: dt_datetime
     isFavoriteAdmin: bool
     passwordVersion: int = 1
     referralCode: Optional[str] = None
@@ -117,7 +134,7 @@ class ReferralResponse(BaseModel):
     referredId: int
     referredName: str
     rewardClaimed: bool
-    createdAt: str
+    createdAt: dt_datetime
 
 
 class ReferralStatsResponse(BaseModel):
@@ -165,7 +182,7 @@ class SubscriptionCreateRequest(BaseModel):
     type: Literal["package", "monthly"] = "package"
     washTypeId: str = Field(..., max_length=36)
     totalWashes: int = Field(..., ge=1)
-    validUntil: Optional[str] = Field(default=None, max_length=30)
+    validUntil: Optional[dt_date] = None
 
 
 class SubscriptionResponse(BaseModel):
@@ -178,8 +195,8 @@ class SubscriptionResponse(BaseModel):
     washTypeId: str
     totalWashes: int
     usedWashes: int
-    validUntil: Optional[str] = None
-    createdAt: str
+    validUntil: Optional[dt_date] = None
+    createdAt: dt_datetime
 
 
 class SubscriptionStatsResponse(BaseModel):
@@ -194,7 +211,7 @@ class AppointmentRequest(BaseModel):
     carModel: str = Field(..., max_length=50, description="Марка и модель авто")
     carNumber: str = Field(..., max_length=20, description="Госномер")
     carId: Optional[int] = Field(default=None, description="ID автомобиля из гаража")
-    dateTime: str = Field(..., max_length=30, description="Дата и время в ISO формате")
+    dateTime: dt_datetime = Field(..., description="Дата и время в ISO формате")
     washTypeId: str = Field(..., max_length=36, description="ID типа мойки")
     additionalServices: str = Field(
         default="[]", max_length=1000, description="JSON-массив ID доп. услуг"
@@ -239,7 +256,7 @@ class AppointmentResponse(BaseModel):
     clientName: str
     carModel: str
     carNumber: str
-    dateTime: str
+    dateTime: dt_datetime
     washTypeId: str
     additionalServices: str
     status: str
@@ -343,7 +360,7 @@ class LogResponse(BaseModel):
     username: str
     action: str
     details: str
-    timestamp: str
+    timestamp: dt_datetime
 
 
 # ─── Washer Notes ────────────────────────────────────────────────────────────
@@ -362,7 +379,7 @@ class NoteResponse(BaseModel):
     message: str
     category: str
     isRead: bool
-    createdAt: str
+    createdAt: dt_datetime
 
 
 # ─── Consumables ─────────────────────────────────────────────────────────────
@@ -402,9 +419,9 @@ class ServiceConsumableResponse(BaseModel):
 # ─── Shifts ──────────────────────────────────────────────────────────────────
 class ShiftRequest(BaseModel):
     userId: int = Field(..., ge=1)
-    date: str = Field(..., max_length=10, description="YYYY-MM-DD")
-    startTime: str = Field(..., max_length=5, description="HH:MM")
-    endTime: str = Field(..., max_length=5, description="HH:MM")
+    date: dt_date = Field(..., description="YYYY-MM-DD")
+    startTime: TimeHM = Field(..., description="HH:MM")
+    endTime: TimeHM = Field(..., description="HH:MM")
 
 
 class ShiftResponse(BaseModel):
@@ -412,25 +429,25 @@ class ShiftResponse(BaseModel):
 
     id: int
     userId: int
-    date: str
-    startTime: str
-    endTime: str
+    date: dt_date
+    startTime: TimeHM
+    endTime: TimeHM
     status: str
     createdBy: str
-    createdAt: str
-    updatedAt: str
+    createdAt: dt_datetime
+    updatedAt: dt_datetime
 
 
 class ShiftMoveRequest(BaseModel):
     targetUserId: int = Field(..., ge=1)
-    targetDate: str = Field(..., max_length=10, description="YYYY-MM-DD")
+    targetDate: dt_date = Field(..., description="YYYY-MM-DD")
 
 
 # ─── Shift Templates ─────────────────────────────────────────────────────────
 class ShiftTemplateSlot(BaseModel):
     weekday: int = Field(..., ge=1, le=7, description="1=Monday ... 7=Sunday")
-    startTime: str = Field(..., max_length=5, description="HH:MM")
-    endTime: str = Field(..., max_length=5, description="HH:MM")
+    startTime: TimeHM = Field(..., description="HH:MM")
+    endTime: TimeHM = Field(..., description="HH:MM")
 
 
 class ShiftTemplateCreateRequest(BaseModel):
@@ -462,7 +479,7 @@ class ShiftTemplateResponse(BaseModel):
 
 # ─── Washer Availability ─────────────────────────────────────────────────────
 class WasherAvailabilityEntry(BaseModel):
-    date: str = Field(..., max_length=10, description="YYYY-MM-DD")
+    date: dt_date = Field(..., description="YYYY-MM-DD")
     status: Literal["available", "unavailable"]
 
 
@@ -475,9 +492,9 @@ class WasherAvailabilityResponse(BaseModel):
 
     id: int
     userId: int
-    date: str
+    date: dt_date
     status: str
-    updatedAt: str
+    updatedAt: dt_datetime
 
 
 # ─── Shift Load Report ───────────────────────────────────────────────────────
@@ -538,7 +555,7 @@ class ReviewResponse(BaseModel):
     rating: int
     comment: str
     isPublished: bool
-    createdAt: str
+    createdAt: dt_datetime
     appointmentId: Optional[str] = None
 
 
@@ -573,6 +590,7 @@ class TelegramLinkRequest(BaseModel):
 class TelegramAuthResponse(BaseModel):
     user: UserResponse
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -613,7 +631,7 @@ class TipResponse(BaseModel):
     amount: int
     method: str
     status: str
-    createdAt: str
+    createdAt: dt_datetime
     sbpUrl: Optional[str] = None
 
 
@@ -632,7 +650,7 @@ class TipWithAppointmentResponse(BaseModel):
     amount: int
     method: str
     status: str
-    createdAt: str
+    createdAt: dt_datetime
     appointment: Optional[AppointmentResponse] = None
 
 
@@ -706,7 +724,7 @@ class UserListItem(BaseModel):
     carModel: str
     carNumber: str
     avatarUrl: str = ""
-    createdAt: str
+    createdAt: dt_datetime
     referralCode: Optional[str] = None
 
 
@@ -770,7 +788,7 @@ class SupportMessageResponse(BaseModel):
     senderName: Optional[str] = None
     content: str
     isAiDraft: bool
-    createdAt: str
+    createdAt: dt_datetime
 
     @field_validator("content", "senderName", mode="before")
     @classmethod
@@ -800,9 +818,9 @@ class SupportChatResponse(BaseModel):
     assignedAdminName: Optional[str] = None
     unreadByUser: int
     unreadByAdmin: int
-    lastMessageAt: Optional[str] = None
+    lastMessageAt: Optional[dt_datetime] = None
     lastMessagePreview: Optional[str] = None
-    createdAt: str
+    createdAt: dt_datetime
 
     @field_validator(
         "userName",

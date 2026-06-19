@@ -19,7 +19,7 @@ async def setup_client_with_history(db_session):
         phone="",
         carModel="",
         carNumber="",
-        createdAt=datetime.now().isoformat(),
+        createdAt=datetime.now(),
     )
     db_session.add(client)
     await db_session.commit()
@@ -33,7 +33,7 @@ async def setup_client_with_history(db_session):
             clientName=client.displayName,
             carModel="Test Car",
             carNumber="А123БВ777",
-            dateTime=(base_date + timedelta(days=i * 7)).isoformat(),
+            dateTime=base_date + timedelta(days=i * 7),
             washTypeId="w2",
             additionalServices="[]",
             status="completed",
@@ -61,7 +61,7 @@ class TestReminders:
             username=user.username,
             token="test_token_reminder_1",
             platform="android",
-            updatedAt=datetime.now().isoformat(),
+            updatedAt=datetime.now(),
         )
         db_session.add(token)
         await db_session.commit()
@@ -82,7 +82,7 @@ class TestReminders:
             phone="",
             carModel="",
             carNumber="",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(client_user)
         await db_session.commit()
@@ -97,7 +97,7 @@ class TestReminders:
                 clientName=client_user.displayName,
                 carModel="Test Car",
                 carNumber="А123БВ777",
-                dateTime=dt.isoformat(),
+                dateTime=dt,
                 washTypeId="w2",
                 additionalServices="[]",
                 status="completed",
@@ -124,7 +124,7 @@ class TestReminders:
             phone="",
             carModel="",
             carNumber="",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(client_user)
         await db_session.commit()
@@ -135,7 +135,7 @@ class TestReminders:
             clientName=client_user.displayName,
             carModel="Test Car",
             carNumber="А123БВ777",
-            dateTime=(datetime.now() - timedelta(days=30)).isoformat(),
+            dateTime=datetime.now() - timedelta(days=30),
             washTypeId="w2",
             additionalServices="[]",
             status="completed",

@@ -195,3 +195,101 @@ class TestProtectedEndpoints:
         )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
+
+class TestRefreshToken:
+    @pytest.mark.asyncio
+    async def test_login_returns_refresh_token_and_cookie(self, async_client):
+        await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "refreshuser",
+                "password": "TestPass123!",
+                "displayName": "Refresh Test",
+            },
+        )
+        response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "refreshuser",
+                "password": "TestPass123!",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "refresh_token" in data
+        assert data["token_type"] == "bearer"
+
+        set_cookie = response.headers.get("set-cookie")
+        assert set_cookie is not None
+        assert "refresh_token=" in set_cookie
+        assert "HttpOnly" in set_cookie
+        assert "refresh_token" in response.cookies
+
+    @pytest.mark.asyncio
+    async def test_refresh_endpoint_returns_new_tokens(self, async_client):
+        await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "refreshrotate",
+                "password": "TestPass123!",
+                "displayName": "Refresh Rotate",
+            },
+        )
+        login_response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "refreshrotate",
+                "password": "TestPass123!",
+            },
+        )
+        assert login_response.status_code == 200
+        old_refresh = login_response.json()["refresh_token"]
+
+        # /auth/refresh uses the httpOnly cookie automatically stored by the client
+        refresh_response = await async_client.post("/api/auth/refresh")
+        assert refresh_response.status_code == 200
+        data = refresh_response.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["refresh_token"] != old_refresh
+        assert data["token_type"] == "bearer"
+
+        # New access token works on a protected route
+        washers = await async_client.get(
+            "/api/auth/washers",
+            headers={"Authorization": f"Bearer {data['access_token']}"},
+        )
+        assert washers.status_code == 200
+        assert isinstance(washers.json(), list)
+
+    @pytest.mark.asyncio
+    async def test_refresh_with_blacklisted_token_returns_401(
+        self, async_client, monkeypatch
+    ):
+        await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "blacklistedrefresh",
+                "password": "TestPass123!",
+                "displayName": "Blacklisted Refresh",
+            },
+        )
+        login_response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "blacklistedrefresh",
+                "password": "TestPass123!",
+            },
+        )
+        assert login_response.status_code == 200
+
+        async def _always_blacklisted(jti):
+            return True
+
+        monkeypatch.setattr(
+            "services.auth_service.is_token_blacklisted", _always_blacklisted
+        )
+
+        refresh_response = await async_client.post("/api/auth/refresh")
+        assert refresh_response.status_code == 401

@@ -103,7 +103,7 @@ class ServicesService:
             category=req.category,
             isFavorite=int(req.isFavorite),
             isFromApi=int(req.isFromApi),
-            updatedAt=datetime.now().isoformat(),
+            updatedAt=datetime.now(),
         )
         await self._services.add(new_service)
         await self._db.commit()
@@ -123,7 +123,7 @@ class ServicesService:
         service.category = req.category
         service.isFavorite = int(req.isFavorite)
         service.isFromApi = int(req.isFromApi)
-        service.updatedAt = datetime.now().isoformat()
+        service.updatedAt = datetime.now()
 
         await self._db.commit()
         await self._db.refresh(service)

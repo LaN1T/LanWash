@@ -237,6 +237,14 @@ def upgrade() -> None:
     )
     # ### end Alembic commands ###
 
+    # Alembic's default alembic_version.version_num column is VARCHAR(32), but
+    # this project uses descriptive revision ids that can be longer. Widen the
+    # column early so that version updates on PostgreSQL do not truncate.
+    if op.get_context().dialect.name == "postgresql":
+        op.execute(
+            sa.text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255)")
+        )
+
 
 def downgrade() -> None:
     """Downgrade schema."""

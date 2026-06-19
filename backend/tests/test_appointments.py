@@ -1,3 +1,5 @@
+from datetime import datetime, time, timedelta
+
 import pytest
 
 
@@ -311,8 +313,6 @@ class TestAppointments:
         self, async_client, db_session, admin_token
     ):
         """When creating an appointment without washer, auto-assign from shift."""
-        from datetime import datetime
-
         from models import Shift, User
 
         # Create a washer with a confirmed shift for today
@@ -321,22 +321,22 @@ class TestAppointments:
             passwordHash="fakehash",
             role="washer",
             displayName="Auto Washer",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
         await db_session.refresh(washer)
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().date()
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="00:00",
-            endTime="23:59",
+            startTime=time(0, 0),
+            endTime=time(23, 59),
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -380,8 +380,6 @@ class TestAppointments:
         self, async_client, db_session, admin_token
     ):
         """Admin-specified washer is not overwritten by auto-assign."""
-        from datetime import datetime, timedelta
-
         from models import Shift, User
 
         washer = User(
@@ -389,22 +387,22 @@ class TestAppointments:
             passwordHash="fakehash",
             role="washer",
             displayName="Auto Washer 2",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
         await db_session.refresh(washer)
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().date()
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="00:00",
-            endTime="23:59",
+            startTime=time(0, 0),
+            endTime=time(23, 59),
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()

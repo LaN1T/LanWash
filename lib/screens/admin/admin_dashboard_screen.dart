@@ -563,68 +563,70 @@ class _RevenueChart extends StatelessWidget {
       icon: Icons.trending_up_rounded,
       child: SizedBox(
         height: 200,
-        child: LineChart(
-          LineChartData(
-            minY: 0,
-            maxY: maxY < 1 ? 5 : maxY * 1.2,
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
-                strokeWidth: 1,
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              leftTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  interval: data.length > 10 ? 5 : 1,
-                  getTitlesWidget: (value, meta) {
-                    final idx = value.toInt();
-                    if (idx < 0 || idx >= data.length)
-                      return const SizedBox.shrink();
-                    final d = data[idx];
-                    return Text(
-                      DateFormat('dd.MM').format(DateTime.parse(d.date)),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppStyles.adaptiveTextSecondary(context),
-                      ),
-                    );
-                  },
+        child: RepaintBoundary(
+          child: LineChart(
+            LineChartData(
+              minY: 0,
+              maxY: maxY < 1 ? 5 : maxY * 1.2,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
+                  strokeWidth: 1,
                 ),
               ),
-            ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: spots,
-                isCurved: true,
-                curveSmoothness: 0.3,
-                barWidth: 3,
-                color: AppStyles.primary,
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: AppStyles.primary.withValues(alpha: 0.1),
-                ),
-                dotData: FlDotData(
-                  show: data.length <= 14,
-                  getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
-                    radius: 3,
-                    color: AppStyles.primary,
-                    strokeWidth: 2,
-                    strokeColor: Colors.white,
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                leftTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: data.length > 10 ? 5 : 1,
+                    getTitlesWidget: (value, meta) {
+                      final idx = value.toInt();
+                      if (idx < 0 || idx >= data.length)
+                        return const SizedBox.shrink();
+                      final d = data[idx];
+                      return Text(
+                        DateFormat('dd.MM').format(DateTime.parse(d.date)),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppStyles.adaptiveTextSecondary(context),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
-            ],
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  curveSmoothness: 0.3,
+                  barWidth: 3,
+                  color: AppStyles.primary,
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: AppStyles.primary.withValues(alpha: 0.1),
+                  ),
+                  dotData: FlDotData(
+                    show: data.length <= 14,
+                    getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                      radius: 3,
+                      color: AppStyles.primary,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -838,74 +840,76 @@ class _ForecastChart extends StatelessWidget {
             1.2;
     final safeMaxY = maxY < 0.1 ? 1.0 : maxY;
 
-    return BarChart(
-      BarChartData(
-        maxY: safeMaxY,
-        barGroups: slots.asMap().entries.map((entry) {
-          final s = entry.value;
-          return BarChartGroupData(
-            x: entry.key,
-            barRods: [
-              BarChartRodData(
-                toY: s.predictedLoad,
-                color: _barColor(s.utilizationPct),
-                width: 6,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(4),
+    return RepaintBoundary(
+      child: BarChart(
+        BarChartData(
+          maxY: safeMaxY,
+          barGroups: slots.asMap().entries.map((entry) {
+            final s = entry.value;
+            return BarChartGroupData(
+              x: entry.key,
+              barRods: [
+                BarChartRodData(
+                  toY: s.predictedLoad,
+                  color: _barColor(s.utilizationPct),
+                  width: 6,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(4),
+                  ),
                 ),
+              ],
+            );
+          }).toList(),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= slots.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final s = slots[idx];
+                  if (s.hour != 12) return const SizedBox.shrink();
+                  return Text(
+                    s.date.substring(5),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppStyles.adaptiveTextSecondary(context),
+                    ),
+                  );
+                },
+                reservedSize: 24,
               ),
-            ],
-          );
-        }).toList(),
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                final idx = value.toInt();
-                if (idx < 0 || idx >= slots.length) {
-                  return const SizedBox.shrink();
-                }
-                final s = slots[idx];
-                if (s.hour != 12) return const SizedBox.shrink();
-                return Text(
-                  s.date.substring(5),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, meta) => Text(
+                  value.toStringAsFixed(0),
                   style: TextStyle(
                     fontSize: 10,
                     color: AppStyles.adaptiveTextSecondary(context),
                   ),
-                );
-              },
-              reservedSize: 24,
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 32,
-              getTitlesWidget: (value, meta) => Text(
-                value.toStringAsFixed(0),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppStyles.adaptiveTextSecondary(context),
                 ),
               ),
             ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) => FlLine(
-            color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
-            strokeWidth: 1,
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
+              strokeWidth: 1,
+            ),
           ),
         ),
       ),

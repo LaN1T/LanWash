@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from datetime import datetime
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
         super().__init__(db, ConsumableUsageLog)
 
     async def list_by_date_range(
-        self, date_from: str | None, date_to: str | None
+        self, date_from: datetime | None, date_to: datetime | None
     ) -> list[ConsumableUsageLog]:
         stmt = select(ConsumableUsageLog)
         if date_from:
@@ -23,7 +24,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
         result = await self._db.execute(stmt)
         return list(result.scalars().all())
 
-    async def sum_usage_since(self, consumable_id: str, since: str) -> float:
+    async def sum_usage_since(self, consumable_id: str, since: datetime) -> float:
         result = await self._db.execute(
             select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0)).where(
                 ConsumableUsageLog.consumableId == consumable_id,
@@ -32,7 +33,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
         )
         return result.scalar() or 0.0
 
-    async def sum_usage_grouped_since(self, since: str) -> dict[str, float]:
+    async def sum_usage_grouped_since(self, since: datetime) -> dict[str, float]:
         result = await self._db.execute(
             select(
                 ConsumableUsageLog.consumableId,
@@ -44,7 +45,7 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
         return {cid: float(total) for cid, total in result.all()}
 
     async def stream_usage_with_appointment_in_period(
-        self, start_iso: str, end_iso: str
+        self, start: datetime, end: datetime
     ) -> AsyncGenerator[tuple[str, str, str, float, str, str | None], None]:
         query = (
             select(
@@ -59,8 +60,8 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
             .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id)
             .where(
                 and_(
-                    Appointment.dateTime >= start_iso,
-                    Appointment.dateTime < end_iso,
+                    Appointment.dateTime >= start,
+                    Appointment.dateTime < end,
                     Appointment.status == "completed",
                 )
             )

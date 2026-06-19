@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import desc, func, select
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
+from core.pagination import CursorParams, decode_cursor, encode_cursor
 from db.session import get_db
 from models import SupportChat, SupportMessage, User
 from schemas import (
@@ -93,6 +94,52 @@ def _to_chat_response(
     )
 
 
+def _parse_cursor_timestamp(value):
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    return value
+
+
+def _chat_cursor_clause(cursor: dict):
+    t = _parse_cursor_timestamp(cursor["t"])
+    return or_(
+        SupportChat.lastMessageAt < t,
+        and_(
+            SupportChat.lastMessageAt == t,
+            SupportChat.id < cursor["id"],
+        ),
+    )
+
+
+def _message_cursor_clause(cursor: dict):
+    t = _parse_cursor_timestamp(cursor["t"])
+    return or_(
+        SupportMessage.createdAt > t,
+        and_(
+            SupportMessage.createdAt == t,
+            SupportMessage.id > cursor["id"],
+        ),
+    )
+
+
+def _maybe_set_next_cursor(
+    response: Response,
+    items: list,
+    limit: int,
+    timestamp_attr: str,
+) -> list:
+    if len(items) > limit:
+        next_item = items[-1]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            {
+                "t": getattr(next_item, timestamp_attr),
+                "id": next_item.id,
+            }
+        )
+        return items[:-1]
+    return items
+
+
 @router.post("/chats", response_model=SupportChatResponse)
 @limiter.limit("10/minute")
 async def create_chat(
@@ -101,7 +148,7 @@ async def create_chat(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    now = datetime.now().isoformat()
+    now = datetime.now()
     chat = SupportChat(
         userId=current_user.id,
         status="open",
@@ -133,7 +180,7 @@ async def create_chat(
                 chatId=chat.id,
                 senderRole="ai",
                 content=ai_text,
-                createdAt=datetime.now().isoformat(),
+                createdAt=datetime.now(),
             )
             db.add(ai_msg)
             chat.status = "ai_handled"
@@ -181,17 +228,22 @@ async def create_chat(
 @limiter.limit("60/minute")
 async def list_my_chats(
     request: Request,
-    limit: int = Query(50, ge=1, le=200),
+    response: Response,
+    params: CursorParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    res = await db.execute(
+    stmt = (
         select(SupportChat)
         .where(SupportChat.userId == current_user.id)
-        .order_by(desc(SupportChat.lastMessageAt))
-        .limit(limit)
+        .order_by(desc(SupportChat.lastMessageAt), desc(SupportChat.id))
     )
-    chats = res.scalars().all()
+    if params.cursor:
+        stmt = stmt.where(_chat_cursor_clause(decode_cursor(params.cursor)))
+    stmt = stmt.limit(params.limit + 1)
+    res = await db.execute(stmt)
+    chats = list(res.scalars().all())
+    chats = _maybe_set_next_cursor(response, chats, params.limit, "lastMessageAt")
     if not chats:
         return []
     user_ids = {c.userId for c in chats} | {
@@ -226,17 +278,21 @@ async def list_my_chats(
 @limiter.limit("60/minute")
 async def list_all_chats(
     request: Request,
+    response: Response,
     status: Optional[str] = None,
-    limit: int = Query(50, ge=1, le=200),
+    params: CursorParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(check_roles(["admin"])),
 ):
-    stmt = select(SupportChat).order_by(desc(SupportChat.lastMessageAt))
+    stmt = select(SupportChat).order_by(desc(SupportChat.lastMessageAt), desc(SupportChat.id))
     if status:
         stmt = stmt.where(SupportChat.status == status)
-    stmt = stmt.limit(limit)
+    if params.cursor:
+        stmt = stmt.where(_chat_cursor_clause(decode_cursor(params.cursor)))
+    stmt = stmt.limit(params.limit + 1)
     res = await db.execute(stmt)
-    chats = res.scalars().all()
+    chats = list(res.scalars().all())
+    chats = _maybe_set_next_cursor(response, chats, params.limit, "lastMessageAt")
     if not chats:
         return []
 
@@ -274,8 +330,9 @@ async def list_all_chats(
 @limiter.limit("60/minute")
 async def list_messages(
     request: Request,
+    response: Response,
     chat_id: int,
-    limit: int = Query(100, ge=1, le=500),
+    params: CursorParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -286,13 +343,17 @@ async def list_messages(
     if current_user.role != "admin" and chat.userId != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
 
-    res = await db.execute(
+    stmt = (
         select(SupportMessage)
         .where(SupportMessage.chatId == chat_id)
-        .order_by(SupportMessage.createdAt.asc())
-        .limit(limit)
+        .order_by(SupportMessage.createdAt.asc(), SupportMessage.id.asc())
     )
-    msgs = res.scalars().all()
+    if params.cursor:
+        stmt = stmt.where(_message_cursor_clause(decode_cursor(params.cursor)))
+    stmt = stmt.limit(params.limit + 1)
+    res = await db.execute(stmt)
+    msgs = list(res.scalars().all())
+    msgs = _maybe_set_next_cursor(response, msgs, params.limit, "createdAt")
     user_ids = {m.senderId for m in msgs if m.senderId}
     users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
     users = {u.id: u for u in users_res.scalars().all()}
@@ -317,7 +378,7 @@ async def send_message(
     if not is_admin and chat.userId != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
 
-    now = datetime.now().isoformat()
+    now = datetime.now()
     role = "admin" if is_admin else "client"
     msg = SupportMessage(
         chatId=chat_id,
@@ -412,7 +473,7 @@ async def send_message(
                     chatId=chat_id,
                     senderRole="ai",
                     content=ai_text,
-                    createdAt=datetime.now().isoformat(),
+                    createdAt=datetime.now(),
                 )
                 db.add(ai_msg)
                 chat.status = "ai_handled"
@@ -488,7 +549,7 @@ async def assign_chat(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chat not found")
     chat.assignedAdminId = current_user.id
     chat.status = "admin_assigned"
-    chat.updatedAt = datetime.now().isoformat()
+    chat.updatedAt = datetime.now()
     await db.commit()
     try:
         await broadcast(
@@ -537,7 +598,7 @@ async def close_chat(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chat not found")
     chat.status = "closed"
     chat.assignedAdminId = None
-    chat.updatedAt = datetime.now().isoformat()
+    chat.updatedAt = datetime.now()
     await db.commit()
     try:
         await broadcast(
@@ -568,6 +629,6 @@ async def mark_read(
     else:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
 
-    chat.updatedAt = datetime.now().isoformat()
+    chat.updatedAt = datetime.now()
     await db.commit()
     return {"ok": True}

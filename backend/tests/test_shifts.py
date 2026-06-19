@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 
@@ -15,7 +15,7 @@ class TestShifts:
             passwordHash="fakehash",
             role="washer",
             displayName="Shift Washer",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -48,7 +48,7 @@ class TestShifts:
             passwordHash="fakehash",
             role="washer",
             displayName="Shift Washer 2",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -75,22 +75,22 @@ class TestShifts:
             passwordHash="fakehash",
             role="washer",
             displayName="Shift Washer 3",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
         await db_session.refresh(washer)
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().date()
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="08:00",
-            endTime="20:00",
+            startTime=time(8, 0),
+            endTime=time(20, 0),
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -111,24 +111,24 @@ class TestShifts:
             passwordHash="fakehash",
             role="washer",
             displayName="Shift Washer 4",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
         await db_session.refresh(washer)
 
         now = datetime.now()
-        today = now.strftime("%Y-%m-%d")
+        today = now.date()
         # Create a shift that covers the entire day to avoid time-of-day flakiness
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="00:00",
-            endTime="23:59",
+            startTime=time(0, 0),
+            endTime=time(23, 59),
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -139,7 +139,7 @@ class TestShifts:
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
-        assert data[0]["name"] == "Shift Washer 4"
+        assert any(s["name"] == "Shift Washer 4" for s in data)
 
     @pytest.mark.asyncio
     async def test_current_shifts_excludes_outside_range(
@@ -151,17 +151,17 @@ class TestShifts:
             passwordHash="fakehash",
             role="washer",
             displayName="Shift Washer 5",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
         await db_session.refresh(washer)
 
         now = datetime.now()
-        today = now.strftime("%Y-%m-%d")
+        today = now.date()
         # Shift in the future (should not appear)
-        start = (now + timedelta(hours=1)).strftime("%H:%M")
-        end = (now + timedelta(hours=3)).strftime("%H:%M")
+        start = (now + timedelta(hours=1)).time()
+        end = (now + timedelta(hours=3)).time()
         shift = Shift(
             userId=washer.id,
             date=today,
@@ -169,8 +169,8 @@ class TestShifts:
             endTime=end,
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -192,22 +192,22 @@ class TestShifts:
             passwordHash="fakehash",
             role="washer",
             displayName="Shift Washer 6",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
         await db_session.refresh(washer)
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().date()
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="08:00",
-            endTime="20:00",
+            startTime=time(8, 0),
+            endTime=time(20, 0),
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()

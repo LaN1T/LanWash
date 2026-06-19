@@ -49,7 +49,7 @@ class TestInventoryForecastService:
         db_session.add(consumable)
 
         for day in range(30):
-            ts = (reference_date - timedelta(days=30 - day)).isoformat()
+            ts = reference_date - timedelta(days=30 - day)
             appt_id = f"appt_{day}"
             db_session.add(
                 Appointment(
@@ -58,7 +58,7 @@ class TestInventoryForecastService:
                     carModel="",
                     carNumber="",
                     dateTime=ts,
-                    date=ts[:10],
+                    date=ts.date(),
                     washTypeId="w1",
                 )
             )
@@ -103,7 +103,7 @@ class TestInventoryForecastTask:
 
         ref = datetime(2026, 6, 9, 12, 0, 0)
         for i in range(30):
-            ts = (ref - timedelta(days=i + 1)).isoformat()
+            ts = ref - timedelta(days=i + 1)
             appt_id = f"appt_{i}"
             db_session.add(
                 Appointment(
@@ -112,7 +112,7 @@ class TestInventoryForecastTask:
                     carModel="",
                     carNumber="",
                     dateTime=ts,
-                    date=ts[:10],
+                    date=ts.date(),
                     washTypeId="w1",
                 )
             )

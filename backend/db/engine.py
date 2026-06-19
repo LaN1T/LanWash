@@ -15,5 +15,8 @@ _engine_kwargs = {
 if not settings.database_url.startswith("sqlite"):
     _engine_kwargs["pool_size"] = 10
     _engine_kwargs["max_overflow"] = 20
+    _engine_kwargs["connect_args"] = {
+        "server_settings": {"statement_timeout": "30000"}
+    }
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)

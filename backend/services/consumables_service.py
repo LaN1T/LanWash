@@ -2,7 +2,7 @@ import asyncio
 import io
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -128,7 +128,7 @@ class ConsumablesService:
                 oldStock=old_stock,
                 newStock=consumable.currentStock,
                 refilledBy=refilled_by,
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(),
             )
         )
         await self._db.commit()
@@ -154,7 +154,7 @@ class ConsumablesService:
         if not consumable:
             return None
 
-        thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
+        thirty_days_ago = datetime.now() - timedelta(days=30)
         total_used_30d = await self._usage_logs.sum_usage_since(
             consumable_id, thirty_days_ago
         )
@@ -284,6 +284,9 @@ class ConsumablesService:
                 f"Export range must not exceed {self._MAX_EXPORT_DAYS} days"
             )
 
+        dt_start = datetime.combine(from_date, time.min)
+        dt_end = datetime.combine(to_date, time.max)
+
         wb = self._create_workbook()
         wb.remove(wb.active)
 
@@ -325,7 +328,7 @@ class ConsumablesService:
         for cell in ws_refill[1]:
             self._style_header(cell)
 
-        refill_logs = await self._refill_logs.list_by_date_range(date_from, date_to)
+        refill_logs = await self._refill_logs.list_by_date_range(dt_start, dt_end)
         refill_cids = {log.consumableId for log in refill_logs}
         cons_names: dict[str, str] = {}
         if refill_cids:
@@ -353,7 +356,7 @@ class ConsumablesService:
         for cell in ws_usage[1]:
             self._style_header(cell)
 
-        usage_logs = await self._usage_logs.list_by_date_range(date_from, date_to)
+        usage_logs = await self._usage_logs.list_by_date_range(dt_start, dt_end)
         usage_cids = {log.consumableId for log in usage_logs}
         consumables_map: dict[str, tuple[str, str]] = {}
         if usage_cids:
@@ -394,7 +397,7 @@ class ConsumablesService:
             self._style_header(cell)
 
         all_consumables = await self._consumables.list_all()
-        thirty_days_ago = (datetime.now() - timedelta(days=30)).isoformat()
+        thirty_days_ago = datetime.now() - timedelta(days=30)
         usage_sums_map = await self._usage_logs.sum_usage_grouped_since(thirty_days_ago)
 
         for c in all_consumables:
@@ -478,7 +481,9 @@ class ConsumablesService:
         consumables_by_name = {c.name.lower(): c for c in all_consumables}
 
         for row in ws.iter_rows(min_row=2, values_only=True):
-            name = str(row[name_idx]).strip() if row[name_idx] else ""
+            name = self._sanitize_excel(
+                str(row[name_idx]).strip() if row[name_idx] else ""
+            )
             amount_raw = row[amount_idx]
             if not name:
                 continue
@@ -513,7 +518,7 @@ class ConsumablesService:
                     oldStock=old_stock,
                     newStock=consumable.currentStock,
                     refilledBy=refilled_by,
-                    timestamp=datetime.now().isoformat(),
+                    timestamp=datetime.now(),
                 )
             )
             succeeded += 1

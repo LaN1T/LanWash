@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 
@@ -104,23 +106,21 @@ class TestTips:
 
     @pytest.mark.asyncio
     async def test_create_tip_for_other_user_appointment(
-        self, async_client, client_token, admin_token
+        self, async_client, client_token, admin_token, db_session
     ):
-        from db.session import AsyncSessionLocal
         from models import User
         from services.auth_service import get_password_hash
 
-        async with AsyncSessionLocal() as session:
-            other_user = User(
-                username="other_client_tip",
-                passwordHash=get_password_hash("TestPass123!"),
-                role="client",
-                displayName="Other Client",
-                createdAt="2099-01-01T00:00:00",
-            )
-            session.add(other_user)
-            await session.commit()
-            await session.refresh(other_user)
+        other_user = User(
+            username="other_client_tip",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="Other Client",
+            createdAt=datetime(2099, 1, 1, 0, 0),
+        )
+        db_session.add(other_user)
+        await db_session.commit()
+        await db_session.refresh(other_user)
 
         login_resp = await async_client.post(
             "/api/auth/login",
@@ -361,11 +361,10 @@ class TestTips:
 
     @pytest.mark.asyncio
     async def test_create_tip_concurrent_race(
-        self, async_client, client_token, admin_token
+        self, async_client, client_token, admin_token, db_session
     ):
         """Симулирует состояние гонки, когда IntegrityError возникает на commit."""
         from sqlalchemy.exc import IntegrityError
-        from sqlalchemy.ext.asyncio import AsyncSession
 
         appt_resp = await self._create_appointment_as_admin(
             async_client,
@@ -378,14 +377,14 @@ class TestTips:
         )
         assert appt_resp.status_code == 200
 
-        original_commit = AsyncSession.commit
+        original_commit = db_session.commit
 
-        async def fake_commit(self):
+        async def fake_commit():
             raise IntegrityError(
                 "insert", {}, Exception("UNIQUE constraint failed: tips.appointmentId")
             )
 
-        AsyncSession.commit = fake_commit
+        db_session.commit = fake_commit
         try:
             resp = await async_client.post(
                 "/api/tips/",
@@ -399,7 +398,7 @@ class TestTips:
             assert resp.status_code == 409
             assert "уже оставлены" in resp.json()["detail"]
         finally:
-            AsyncSession.commit = original_commit
+            db_session.commit = original_commit
 
     @pytest.mark.asyncio
     async def test_create_tip_amount_too_high(

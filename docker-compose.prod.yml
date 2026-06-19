@@ -1,14 +1,17 @@
-version: '3.8'
-
 # Production override — use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
+  db:
+    ports: !override []
+
   backend:
     environment:
       ENVIRONMENT: production
       DEBUG: "false"
     deploy:
-      replicas: 2
+      # Note: Docker Compose does not load-balance replicas across a single upstream.
+      # Use Docker Swarm/Kubernetes or a separate LB for replicas > 1.
+      replicas: 1
       resources:
         limits:
           cpus: '1'
@@ -30,5 +33,20 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./landing:/usr/share/nginx/landing:ro
       - ./build/web:/usr/share/nginx/app:ro
+    read_only: true
+    cap_drop: !override
+      - ALL
+    security_opt: !override
+      - no-new-privileges:true
+    tmpfs: !override
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+      - /var/log/nginx
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      grafana:
+        condition: service_started
+      prometheus:
+        condition: service_started

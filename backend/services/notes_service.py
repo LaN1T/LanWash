@@ -37,7 +37,7 @@ class NotesService:
             message=message,
             category=category,
             isRead=0,
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         await self._notes.add(new_note)
         await self._db.commit()

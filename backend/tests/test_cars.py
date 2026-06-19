@@ -202,7 +202,7 @@ class TestCars:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Other Client",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(other)
         await db_session.commit()
@@ -293,7 +293,7 @@ class TestCars:
             passwordHash=get_password_hash("TestPass123!"),
             role="client",
             displayName="Target Client",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(client_user)
         await db_session.commit()

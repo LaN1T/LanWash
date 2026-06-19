@@ -12,14 +12,6 @@ _OPERATING_START = 8
 _OPERATING_END = 20
 
 
-def _safe_parse_iso(dt_str: str) -> datetime:
-    try:
-        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-        return dt.replace(tzinfo=None)
-    except (ValueError, TypeError):
-        raise ValueError(f"Invalid ISO datetime: {dt_str}")
-
-
 async def generate_forecast(
     db: AsyncSession, reference_date=None, days: int = 7
 ) -> ForecastResponse:
@@ -33,19 +25,17 @@ async def generate_forecast(
         )
 
     history_start = reference_date - timedelta(weeks=_WEEKS_HISTORY)
-    history_start_str = history_start.isoformat()
-    history_end_str = reference_date.isoformat()
+    history_end = reference_date
 
     repo = AppointmentRepository(db)
     rows = await repo.list_completed_datetimes_in_period(
-        history_start_str, history_end_str
+        history_start, history_end
     )
 
     # Aggregate counts by (weekday, hour)
     counts: dict[tuple[int, int], int] = defaultdict(int)
     observed_weeks: set[int] = set()
-    for (dt_str,) in rows:
-        dt = _safe_parse_iso(dt_str)
+    for (dt,) in rows:
         counts[(dt.weekday(), dt.hour)] += 1
         # ISO calendar week number for denominator calculation
         observed_weeks.add(dt.isocalendar().week)

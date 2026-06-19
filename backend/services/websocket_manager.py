@@ -1,11 +1,26 @@
 import asyncio
 import json
+from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Dict, List, Set, Tuple
 
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
 logger = structlog.get_logger()
+
+
+class _WebSocketJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        if isinstance(obj, time):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 
 class _WebSocketManager:
@@ -27,7 +42,7 @@ class _WebSocketManager:
             self._connections.pop(chat_id, None)
 
     async def broadcast(self, chat_id: int, message: dict) -> None:
-        payload = json.dumps(message)
+        payload = json.dumps(message, cls=_WebSocketJsonEncoder)
         conns = list(self._connections.get(chat_id, []))
 
         async def _send(ws: WebSocket, user_id: int) -> None:
