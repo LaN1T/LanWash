@@ -1654,15 +1654,12 @@ async def stats(
             status.HTTP_403_FORBIDDEN, "Доступ к статистике только для администраторов."
         )
 
-    res_total = await db.execute(select(func.count(Appointment.id)))
-    res_sched = await db.execute(
-        select(func.count(Appointment.id)).where(Appointment.status == "scheduled")
+    result = await db.execute(
+        select(Appointment.status, func.count(Appointment.id)).group_by(Appointment.status)
     )
-    res_comp = await db.execute(
-        select(func.count(Appointment.id)).where(Appointment.status == "completed")
-    )
+    counts = {status: count for status, count in result.all()}
     return {
-        "total": res_total.scalar(),
-        "scheduled": res_sched.scalar(),
-        "completed": res_comp.scalar(),
+        "total": sum(counts.values()),
+        "scheduled": counts.get("scheduled", 0),
+        "completed": counts.get("completed", 0),
     }
