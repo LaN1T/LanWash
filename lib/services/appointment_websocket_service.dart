@@ -39,16 +39,35 @@ class AppointmentWebSocketService {
     _shouldReconnect = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _cleanupConnection();
+    _auth = null;
+    _provider = null;
+  }
+
+  void dispose() {
+    disconnect();
+    if (!_authFailureController.isClosed) {
+      _authFailureController.close();
+    }
+  }
+
+  void _cleanupConnection() {
     try {
       _subscription?.cancel();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AppointmentWS] subscription cancel error: $e');
+      }
+    }
     _subscription = null;
     try {
       _channel?.sink.close();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AppointmentWS] sink close error: $e');
+      }
+    }
     _channel = null;
-    _auth = null;
-    _provider = null;
   }
 
   Future<void> _connect() async {
@@ -56,7 +75,10 @@ class AppointmentWebSocketService {
     final provider = _provider;
     if (auth == null || provider == null) return;
 
+    _cleanupConnection();
+
     final token = await ApiClient.getToken();
+    if (!_shouldReconnect) return;
     if (token == null || token.isEmpty) {
       _scheduleReconnect();
       return;
@@ -76,32 +98,41 @@ class AppointmentWebSocketService {
       _reconnectAttempt = 0;
 
       _subscription = _channel!.stream.listen(
-        (event) => _handleEvent(event as String, provider, auth),
-        onError: (_) => _scheduleReconnect(),
+        (dynamic event) => _handleEvent(event, provider, auth),
+        onError: (dynamic e) {
+          if (kDebugMode) debugPrint('[AppointmentWS] stream error: $e');
+          _cleanupConnection();
+          _scheduleReconnect();
+        },
         onDone: () {
+          _cleanupConnection();
           if (_shouldReconnect) _scheduleReconnect();
         },
       );
     } catch (e) {
       if (kDebugMode) debugPrint('[AppointmentWS] connect error: $e');
+      _cleanupConnection();
       _scheduleReconnect();
     }
   }
 
   void _handleEvent(
-    String event,
+    dynamic event,
     AppointmentProvider provider,
     AuthProvider auth,
   ) {
+    if (event is! String) return;
     try {
-      final data = jsonDecode(event) as Map<String, dynamic>;
+      final data = jsonDecode(event) as Map<String, dynamic>?;
+      if (data == null) return;
       final type = data['type'] as String?;
 
       if (type == 'appointment_updated') {
-        final map = data['appointment'] as Map<String, dynamic>;
+        final appointment = data['appointment'];
+        if (appointment is! Map<String, dynamic>) return;
         final eventName = data['event']?.toString() ?? 'updated';
-        final id = map['id']?.toString() ?? '';
-        provider.applyWebSocketAppointment(map, eventName, auth);
+        final id = appointment['id']?.toString() ?? '';
+        provider.applyWebSocketAppointment(appointment, eventName, auth);
         NotificationService().emitAppointmentUpdated(id);
       } else if (type == 'auth_failed') {
         _authFailureController.add(null);
