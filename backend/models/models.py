@@ -1,12 +1,17 @@
+from datetime import datetime
+
 from sqlalchemy import (
     JSON,
     Boolean,
     Column,
+    Date,
+    DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
     String,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.orm import declared_attr, validates
@@ -30,7 +35,7 @@ class User(Base):
     carModel = Column(String, nullable=False, default="")
     carNumber = Column(String, nullable=False, default="")
     avatarUrl = Column(String, nullable=True, default="")
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
     isFavoriteAdmin = Column(Integer, nullable=False, default=0)
     passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
@@ -105,8 +110,8 @@ class Subscription(Base):
     washTypeId = Column(String, ForeignKey("wash_types.id"), nullable=False)
     totalWashes = Column(Integer, nullable=False)
     usedWashes = Column(Integer, nullable=False, default=0)
-    validUntil = Column(String, nullable=True)  # ISO date for monthly; NULL for package
-    createdAt = Column(String, nullable=False)
+    validUntil = Column(Date, nullable=True)  # ISO date for monthly; NULL for package
+    createdAt = Column(DateTime, nullable=False)
 
 
 class Appointment(Base):
@@ -129,8 +134,8 @@ class Appointment(Base):
     clientName = Column(String, nullable=False)
     carModel = Column(String, nullable=False)
     carNumber = Column(String, nullable=False)
-    dateTime = Column(String, nullable=False)
-    date = Column(String, nullable=False, index=True)
+    dateTime = Column(DateTime, nullable=False)
+    date = Column(Date, nullable=False, index=True)
     washTypeId = Column(String, ForeignKey("wash_types.id"), nullable=False)
     additionalServices = Column(String, nullable=False, default="[]")  # JSON-массив id
     status = Column(String, nullable=False, default="scheduled")
@@ -153,7 +158,15 @@ class Appointment(Base):
 
     @validates("dateTime")
     def _set_date(self, key, value):
-        self.date = value[:10] if value else ""
+        if isinstance(value, datetime):
+            self.date = value.date()
+        elif isinstance(value, str):
+            try:
+                self.date = datetime.fromisoformat(value).date()
+            except ValueError as exc:
+                raise ValueError(f"dateTime must be a valid ISO datetime: {value!r}") from exc
+        else:
+            raise ValueError(f"dateTime must be datetime or ISO string, got {type(value).__name__}")
         return value
 
 
@@ -168,7 +181,7 @@ class Service(Base):
     category = Column(String, nullable=False, default="")
     isFavorite = Column(Integer, nullable=False, default=0)
     isFromApi = Column(Integer, nullable=False, default=0)
-    updatedAt = Column(String, nullable=False)
+    updatedAt = Column(DateTime, nullable=False)
 
 
 class Promo(Base):
@@ -184,7 +197,7 @@ class Promo(Base):
     discountPercent = Column(Integer, nullable=False, default=0)
     duration = Column(Integer, nullable=False, default=30)
     weekendOnly = Column(Boolean, nullable=False, default=False)
-    fetchedAt = Column(String, nullable=False)
+    fetchedAt = Column(DateTime, nullable=False)
 
 
 class PromoIncludedExtra(Base):
@@ -207,7 +220,7 @@ class LogEntry(Base):
     username = Column(String, nullable=False)
     action = Column(String, nullable=False)
     details = Column(String, nullable=False, default="")
-    timestamp = Column(String, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
 
 
 class ServiceFavorite(Base):
@@ -231,7 +244,7 @@ class WasherNote(Base):
     message = Column(String, nullable=False, default="")
     category = Column(String, nullable=False, default="general")
     isRead = Column(Integer, nullable=False, default=0)
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
 
 
 class DeletedNotification(Base):
@@ -239,7 +252,7 @@ class DeletedNotification(Base):
     __table_args__ = (Index("ix_deleted_notifications_username", "username"),)
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, nullable=False)
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
 
 
 class FcmToken(Base):
@@ -247,7 +260,7 @@ class FcmToken(Base):
     username = Column(String, primary_key=True)
     token = Column(String, nullable=False)
     platform = Column(String, nullable=False)  # android, ios, web
-    updatedAt = Column(String, nullable=False)
+    updatedAt = Column(DateTime, nullable=False)
 
 
 class Consumable(Base):
@@ -277,7 +290,7 @@ class ConsumableUsageLog(Base):
     appointmentId = Column(String, ForeignKey("appointments.id"), nullable=False)
     consumableId = Column(String, ForeignKey("consumables.id"), nullable=False)
     quantityUsed = Column(Float, nullable=False)
-    timestamp = Column(String, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
 
 
 class ConsumableRefillLog(Base):
@@ -292,7 +305,7 @@ class ConsumableRefillLog(Base):
     oldStock = Column(Float, nullable=False)
     newStock = Column(Float, nullable=False)
     refilledBy = Column(String, nullable=False, default="")
-    timestamp = Column(String, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
 
 
 class Shift(Base):
@@ -303,13 +316,13 @@ class Shift(Base):
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey("users.id"), nullable=False)
-    date = Column(String, nullable=False)
-    startTime = Column(String, nullable=False)
-    endTime = Column(String, nullable=False)
+    date = Column(Date, nullable=False)
+    startTime = Column(Time, nullable=False)
+    endTime = Column(Time, nullable=False)
     status = Column(String, nullable=False, default="confirmed")
     createdBy = Column(String, nullable=False)
-    createdAt = Column(String, nullable=False)
-    updatedAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
+    updatedAt = Column(DateTime, nullable=False)
 
 
 class ShiftTemplate(Base):
@@ -331,9 +344,9 @@ class WasherAvailability(Base):
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    date = Column(String, nullable=False)
+    date = Column(Date, nullable=False)
     status = Column(String, nullable=False)
-    updatedAt = Column(String, nullable=False)
+    updatedAt = Column(DateTime, nullable=False)
 
 
 class NotificationQueue(Base):
@@ -343,15 +356,15 @@ class NotificationQueue(Base):
         Index(
             "ix_notification_queue_pending",
             "createdAt",
-            sqlite_where=(Column("sentAt", String).is_(None)),
-            postgresql_where=(Column("sentAt", String).is_(None)),
+            sqlite_where=(Column("sentAt", DateTime).is_(None)),
+            postgresql_where=(Column("sentAt", DateTime).is_(None)),
         ),
     )
     id = Column(Integer, primary_key=True, autoincrement=True)
     telegramId = Column(String, nullable=False)
     message = Column(String, nullable=False)
-    createdAt = Column(String, nullable=False)
-    sentAt = Column(String, nullable=True)
+    createdAt = Column(DateTime, nullable=False)
+    sentAt = Column(DateTime, nullable=True)
 
 
 class Review(Base):
@@ -368,7 +381,7 @@ class Review(Base):
     rating = Column(Integer, nullable=False, default=5)
     comment = Column(String, nullable=False, default="")
     isPublished = Column(Integer, nullable=False, default=0)
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
     appointmentId = Column(String, ForeignKey("appointments.id"), nullable=True)
 
 
@@ -385,7 +398,7 @@ class Referral(Base):
     referrerId = Column(Integer, ForeignKey("users.id"), nullable=False)
     referredId = Column(Integer, ForeignKey("users.id"), nullable=False)
     rewardClaimed = Column(Boolean, nullable=False, default=False)
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
 
 
 class Tip(Base):
@@ -403,7 +416,7 @@ class Tip(Base):
     amount = Column(Integer, nullable=False)
     method = Column(String, nullable=False, default="sbp")
     status = Column(String, nullable=False, default="pending")
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
 
 
 class SupportChat(Base):
@@ -420,9 +433,9 @@ class SupportChat(Base):
     assignedAdminId = Column(Integer, ForeignKey("users.id"), nullable=True)
     unreadByUser = Column(Integer, nullable=False, default=0)
     unreadByAdmin = Column(Integer, nullable=False, default=0)
-    lastMessageAt = Column(String, nullable=True)
-    createdAt = Column(String, nullable=False)
-    updatedAt = Column(String, nullable=False)
+    lastMessageAt = Column(DateTime, nullable=True)
+    createdAt = Column(DateTime, nullable=False)
+    updatedAt = Column(DateTime, nullable=False)
 
 
 class SupportMessage(Base):
@@ -440,7 +453,7 @@ class SupportMessage(Base):
     senderId = Column(Integer, ForeignKey("users.id"), nullable=True)
     content = Column(String, nullable=False)
     isAiDraft = Column(Integer, nullable=False, default=0)
-    createdAt = Column(String, nullable=False)
+    createdAt = Column(DateTime, nullable=False)
 
 
 class AdminAuditLog(Base):
@@ -460,4 +473,4 @@ class AdminAuditLog(Base):
     new_values = Column(String, nullable=True, default="{}")
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
-    created_at = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False)
