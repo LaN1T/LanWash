@@ -39,7 +39,11 @@ class AppointmentWebSocketManager:
         self, user_id: int, role: str, websocket: WebSocket
     ) -> None:
         async with self._lock:
-            self._connections.setdefault(user_id, []).append((websocket, role))
+            conns = self._connections.setdefault(user_id, [])
+            # Avoid duplicate registration of the same socket object under
+            # concurrent connects for the same user.
+            if not any(item[0] is websocket for item in conns):
+                conns.append((websocket, role))
 
     async def disconnect(self, user_id: int, websocket: WebSocket) -> None:
         async with self._lock:

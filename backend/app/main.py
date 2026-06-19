@@ -3,6 +3,7 @@ import json
 import os
 import re
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import structlog
@@ -230,7 +231,13 @@ else:
     logger.warning("miniapp_static_dir_not_found", path=miniapp_dir)
 
 
-# ─── Support Chat WebSocket ─────────────────────────────────────────────────
+# ─── Shared WebSocket helpers ───────────────────────────────────────────────
+WS_CLOSE_POLICY_VIOLATION = 1008
+WS_CLOSE_MESSAGE_TOO_BIG = 1009
+WS_CLOSE_INTERNAL_ERROR = 1011
+WS_MAX_APPOINTMENT_MESSAGE_BYTES = 4096
+WS_MAX_SUPPORT_MESSAGE_BYTES = 65536
+
 _ws_attempts: dict[str, list[float]] = {}
 
 
@@ -245,186 +252,188 @@ def _cleanup_ws_attempts() -> None:
         _ws_attempts.pop(ip, None)
 
 
-@app.websocket("/ws/support/chats/{chat_id}")
-async def support_chat_websocket(websocket: WebSocket, chat_id: int):
-    ip = websocket.client.host if websocket.client else None
-    if ip:
-        now = time.time()
-        attempts = [t for t in _ws_attempts.get(ip, []) if now - t < 60]
-        if len(attempts) >= 20:
-            await websocket.close(code=1008)
-            return
-        attempts.append(now)
-        if attempts:
-            _ws_attempts[ip] = attempts
-        else:
-            _ws_attempts.pop(ip, None)
-
+def _ws_rate_limit_check(host: str | None) -> bool:
+    """Return True if the connection is allowed, False if it should be rejected."""
+    if not host:
+        return True
+    now = time.time()
+    attempts = [t for t in _ws_attempts.get(host, []) if now - t < 60]
+    if len(attempts) >= 20:
+        return False
+    attempts.append(now)
+    if attempts:
+        _ws_attempts[host] = attempts
+    else:
+        _ws_attempts.pop(host, None)
     # Opportunistically clean stale entries every ~100 connections
     if len(_ws_attempts) > 10000:
         _cleanup_ws_attempts()
+    return True
 
-    await websocket.accept()
 
-    token = None
+async def _ws_auth_handshake(websocket: WebSocket) -> str | None:
+    """Read the initial auth message within 5 seconds and return the token."""
     try:
         raw = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
-        data = json.loads(raw)
-        if data.get("type") == "auth":
-            token = data.get("token")
     except asyncio.TimeoutError:
-        await websocket.close(code=1008)
-        return
-    except Exception:
-        await websocket.close(code=1008)
-        return
-
-    if not token:
-        await websocket.close(code=1008)
-        return
-
-    db_gen = None
+        return None
+    except WebSocketDisconnect:
+        return None
     try:
-        db_gen = get_db()
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if data.get("type") == "auth":
+        return data.get("token")
+    return None
+
+
+@asynccontextmanager
+async def _ws_db_session():
+    """Yield an async DB session and ensure the generator is closed."""
+    db_gen = get_db()
+    try:
         db = await anext(db_gen)
     except Exception:
-        await websocket.close(code=1011)
-        return
-
-    try:
-        current_user = await get_current_user(token=token, db=db)
-    except Exception:
-        await websocket.close(code=1008)
-        if db_gen:
-            try:
-                await db_gen.aclose()
-            except Exception:
-                pass
-        return
-
-    chat_res = await db.execute(select(SupportChat).where(SupportChat.id == chat_id))
-    chat = chat_res.scalar_one_or_none()
-    if not chat or (current_user.role != "admin" and chat.userId != current_user.id):
-        await websocket.close(code=1008)
+        logger.exception("ws_db_setup_failed")
         try:
             await db_gen.aclose()
         except Exception:
             pass
-        return
-
-    connect(chat_id, websocket, current_user.id)
-
-    heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
-
+        raise
     try:
-        while True:
-            raw = await websocket.receive_text()
-            if len(raw) > 65536:
-                await websocket.close(code=1009)
-                break
-            try:
-                data = json.loads(raw)
-            except Exception:
-                continue
-            if data.get("type") == "pong":
-                continue
-    except WebSocketDisconnect:
-        pass
+        yield db
     finally:
-        heartbeat_task.cancel()
-        try:
-            await heartbeat_task
-        except asyncio.CancelledError:
-            pass
-        disconnect(chat_id, websocket)
         try:
             await db_gen.aclose()
         except Exception:
-            pass
+            logger.exception("ws_db_close_failed")
 
 
-async def _websocket_heartbeat(websocket: WebSocket):
+async def _ws_message_loop(websocket: WebSocket, max_size: int) -> None:
+    """Read text messages, enforce size limit, parse JSON, and ignore pong."""
+    while True:
+        try:
+            raw = await websocket.receive_text()
+        except WebSocketDisconnect:
+            break
+        if len(raw) > max_size:
+            await websocket.close(code=WS_CLOSE_MESSAGE_TOO_BIG)
+            break
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if data.get("type") == "pong":
+            continue
+
+
+async def _websocket_heartbeat(websocket: WebSocket) -> None:
     while True:
         try:
             await asyncio.sleep(30)
             await websocket.send_text(json.dumps({"type": "ping"}))
-        except Exception:
+        except (WebSocketDisconnect, RuntimeError) as exc:
+            logger.debug("websocket_heartbeat_send_failed", error=repr(exc))
             break
+        except asyncio.TimeoutError as exc:
+            logger.warning("websocket_heartbeat_send_timeout", error=repr(exc))
+            break
+        except Exception as exc:
+            logger.warning("websocket_heartbeat_send_failed", error=repr(exc))
+            break
+
+
+# ─── Support Chat WebSocket ─────────────────────────────────────────────────
+
+@app.websocket("/ws/support/chats/{chat_id}")
+async def support_chat_websocket(websocket: WebSocket, chat_id: int) -> None:
+    ip = websocket.client.host if websocket.client else None
+    if not _ws_rate_limit_check(ip):
+        await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+
+    token = await _ws_auth_handshake(websocket)
+    if not token:
+        await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+        return
+
+    try:
+        async with _ws_db_session() as db:
+            try:
+                current_user = await get_current_user(token=token, db=db)
+            except HTTPException:
+                await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+                return
+
+            chat_res = await db.execute(
+                select(SupportChat).where(SupportChat.id == chat_id)
+            )
+            chat = chat_res.scalar_one_or_none()
+            if not chat or (
+                current_user.role != "admin" and chat.userId != current_user.id
+            ):
+                await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+                return
+
+            connect(chat_id, websocket, current_user.id)
+            heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
+            try:
+                await _ws_message_loop(websocket, WS_MAX_SUPPORT_MESSAGE_BYTES)
+            finally:
+                heartbeat_task.cancel()
+                try:
+                    await heartbeat_task
+                except asyncio.CancelledError:
+                    pass
+                disconnect(chat_id, websocket)
+    except Exception:
+        logger.exception("support_websocket_error")
+        await websocket.close(code=WS_CLOSE_INTERNAL_ERROR)
 
 
 # ─── Appointments WebSocket ─────────────────────────────────────────────────
 
 @app.websocket("/ws/appointments")
-async def appointments_websocket(websocket: WebSocket):
+async def appointments_websocket(websocket: WebSocket) -> None:
+    ip = websocket.client.host if websocket.client else None
+    if not _ws_rate_limit_check(ip):
+        await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+        return
+
     await websocket.accept()
 
-    token = None
-    try:
-        raw = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
-        data = json.loads(raw)
-        if data.get("type") == "auth":
-            token = data.get("token")
-    except asyncio.TimeoutError:
-        await websocket.close(code=1008)
-        return
-    except Exception:
-        await websocket.close(code=1008)
-        return
-
+    token = await _ws_auth_handshake(websocket)
     if not token:
-        await websocket.close(code=1008)
+        await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
 
-    db_gen = None
     try:
-        db_gen = get_db()
-        db = await anext(db_gen)
+        async with _ws_db_session() as db:
+            try:
+                current_user = await get_current_user(token=token, db=db)
+            except HTTPException:
+                await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+                return
+
+            await appointment_ws_manager.connect(
+                current_user.id, current_user.role, websocket
+            )
+            heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
+            try:
+                await _ws_message_loop(websocket, WS_MAX_APPOINTMENT_MESSAGE_BYTES)
+            finally:
+                heartbeat_task.cancel()
+                try:
+                    await heartbeat_task
+                except asyncio.CancelledError:
+                    pass
+                await appointment_ws_manager.disconnect(current_user.id, websocket)
     except Exception:
-        await websocket.close(code=1011)
-        return
-
-    try:
-        current_user = await get_current_user(token=token, db=db)
-    except Exception:
-        await websocket.close(code=1008)
-        if db_gen:
-            try:
-                await db_gen.aclose()
-            except Exception:
-                pass
-        return
-
-    await appointment_ws_manager.connect(
-        current_user.id, current_user.role, websocket
-    )
-    heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
-
-    try:
-        while True:
-            raw = await websocket.receive_text()
-            if len(raw) > 4096:
-                await websocket.close(code=1009)
-                break
-            try:
-                data = json.loads(raw)
-            except Exception:
-                continue
-            if data.get("type") == "pong":
-                continue
-    except WebSocketDisconnect:
-        pass
-    finally:
-        heartbeat_task.cancel()
-        try:
-            await heartbeat_task
-        except asyncio.CancelledError:
-            pass
-        await appointment_ws_manager.disconnect(current_user.id, websocket)
-        if db_gen:
-            try:
-                await db_gen.aclose()
-            except Exception:
-                pass
+        logger.exception("appointments_websocket_error")
+        await websocket.close(code=WS_CLOSE_INTERNAL_ERROR)
 
 
 if __name__ == "__main__":
