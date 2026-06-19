@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: 'YOUR_SENDER_ID',
     projectId: 'YOUR_PROJECT_ID',
     storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-    iosBundleId: 'com.example.lanwash',
+    iosBundleId: 'ru.lanwash.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -67,7 +67,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: 'YOUR_SENDER_ID',
     projectId: 'YOUR_PROJECT_ID',
     storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-    iosBundleId: 'com.example.lanwash',
+    iosBundleId: 'ru.lanwash.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
