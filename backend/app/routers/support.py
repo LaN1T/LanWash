@@ -140,7 +140,7 @@ async def create_chat(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    now = datetime.now().isoformat()
+    now = datetime.now()
     chat = SupportChat(
         userId=current_user.id,
         status="open",
@@ -172,7 +172,7 @@ async def create_chat(
                 chatId=chat.id,
                 senderRole="ai",
                 content=ai_text,
-                createdAt=datetime.now().isoformat(),
+                createdAt=datetime.now(),
             )
             db.add(ai_msg)
             chat.status = "ai_handled"
@@ -370,7 +370,7 @@ async def send_message(
     if not is_admin and chat.userId != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
 
-    now = datetime.now().isoformat()
+    now = datetime.now()
     role = "admin" if is_admin else "client"
     msg = SupportMessage(
         chatId=chat_id,
@@ -465,7 +465,7 @@ async def send_message(
                     chatId=chat_id,
                     senderRole="ai",
                     content=ai_text,
-                    createdAt=datetime.now().isoformat(),
+                    createdAt=datetime.now(),
                 )
                 db.add(ai_msg)
                 chat.status = "ai_handled"
@@ -541,7 +541,7 @@ async def assign_chat(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chat not found")
     chat.assignedAdminId = current_user.id
     chat.status = "admin_assigned"
-    chat.updatedAt = datetime.now().isoformat()
+    chat.updatedAt = datetime.now()
     await db.commit()
     try:
         await broadcast(
@@ -590,7 +590,7 @@ async def close_chat(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chat not found")
     chat.status = "closed"
     chat.assignedAdminId = None
-    chat.updatedAt = datetime.now().isoformat()
+    chat.updatedAt = datetime.now()
     await db.commit()
     try:
         await broadcast(
@@ -621,6 +621,6 @@ async def mark_read(
     else:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
 
-    chat.updatedAt = datetime.now().isoformat()
+    chat.updatedAt = datetime.now()
     await db.commit()
     return {"ok": True}

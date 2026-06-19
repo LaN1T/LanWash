@@ -39,7 +39,7 @@ def _tip(
         amount=amount,
         method="sbp",
         status=status,
-        createdAt=datetime.now().isoformat(),
+        createdAt=datetime.now(),
     )
 
 

@@ -7,11 +7,12 @@ from repositories.log_entry import LogEntryRepository
 
 
 def _log(username: str, action: str, timestamp: str | None = None) -> LogEntry:
+    ts = datetime.fromisoformat(timestamp) if timestamp else datetime.now()
     return LogEntry(
         username=username,
         action=action,
         details="",
-        timestamp=timestamp or datetime.now().isoformat(),
+        timestamp=ts,
     )
 
 

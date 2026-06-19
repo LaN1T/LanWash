@@ -1,7 +1,7 @@
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import structlog
 from sqlalchemy import text
@@ -146,17 +146,19 @@ class WorkloadService:
         return result
 
     @staticmethod
-    def _safe_parse_iso(dt_str: str) -> datetime:
+    def _ensure_datetime(value: datetime | str) -> datetime:
+        if isinstance(value, datetime):
+            return value.replace(tzinfo=None) if value.tzinfo else value
         try:
-            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return dt.replace(tzinfo=None)
-        except (ValueError, TypeError):
-            raise ValueError(f"Invalid ISO datetime: {dt_str}")
+        except (ValueError, TypeError) as exc:
+            raise ValueError(f"Invalid ISO datetime: {value}") from exc
 
     @staticmethod
     async def find_available_box(
         db: AsyncSession,
-        dt_str: str,
+        dt: datetime | str,
         duration_minutes: int,
         exclude_appt_id: str = None,
     ) -> int:
@@ -164,18 +166,16 @@ class WorkloadService:
         Finds the first available box index (0 to NUM_BOXES-1).
         Returns -1 if no box is available.
         """
-        start_dt = WorkloadService._safe_parse_iso(dt_str)
+        start_dt = WorkloadService._ensure_datetime(dt)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
         # Проверяем все записи, которые могут пересекаться.
         # Так как end_time не хранится, вычисляем его для каждой записи.
         # Для оптимизации загружаем все записи за этот день.
-        day_start = start_dt.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).isoformat()
-        day_end = start_dt.replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        ).isoformat()
+        day_start = datetime.combine(start_dt.date(), time.min)
+        day_end = datetime.combine(
+            start_dt.date(), time(23, 59, 59, 999999)
+        )
 
         # Advisory lock на уровне дня для предотвращения race condition при бронировании
         # Работает только на PostgreSQL; на SQLite пропускаем
@@ -269,7 +269,7 @@ class WorkloadService:
 
                 # Вычисляем длительность записи (локально, без N+1 запросов)
                 appt_duration = _compute_duration(appt)
-                appt_start = WorkloadService._safe_parse_iso(appt.dateTime)
+                appt_start = WorkloadService._ensure_datetime(appt.dateTime)
                 appt_end = appt_start + timedelta(minutes=appt_duration)
 
                 # Проверка пересечения
@@ -288,23 +288,25 @@ class WorkloadService:
                 logger.debug(
                     "box_found",
                     box=box_idx + 1,
-                    dt_str=dt_str,
+                    dt=start_dt.isoformat(),
                     duration=duration_minutes,
                 )
                 return box_idx
 
-        logger.debug("no_free_box", dt_str=dt_str, duration=duration_minutes)
+        logger.debug("no_free_box", dt=start_dt.isoformat(), duration=duration_minutes)
         return -1
 
     @staticmethod
-    async def get_busy_slots(db: AsyncSession, date_str: str) -> dict:
+    async def get_busy_slots(db: AsyncSession, target_date: date | str) -> dict:
         """
         Returns busy periods for each box for a given date.
         Optimized: loads all data in bulk to avoid N+1 queries.
-        date_str: 'YYYY-MM-DD'
+        target_date: date object or 'YYYY-MM-DD' string.
         """
-        day_start = f"{date_str}T00:00:00"
-        day_end = f"{date_str}T23:59:59"
+        if isinstance(target_date, str):
+            target_date = date.fromisoformat(target_date)
+        day_start = datetime.combine(target_date, time.min)
+        day_end = datetime.combine(target_date, time(23, 59, 59))
 
         appointments = AppointmentRepository(db)
         appts = await appointments.list_for_day(day_start, day_end)
@@ -380,7 +382,7 @@ class WorkloadService:
                 if eid not in included:
                     total_duration += svc_durations.get(eid, 0)
 
-            start = WorkloadService._safe_parse_iso(appt.dateTime)
+            start = WorkloadService._ensure_datetime(appt.dateTime)
             end = start + timedelta(minutes=total_duration)
 
             if 0 <= appt.box_index < NUM_BOXES:

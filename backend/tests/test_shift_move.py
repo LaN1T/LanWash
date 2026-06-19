@@ -15,7 +15,7 @@ class TestShiftMove:
             passwordHash="fakehash",
             role="washer",
             displayName="Move Washer 1",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -31,8 +31,8 @@ class TestShiftMove:
             endTime="18:00",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -60,14 +60,14 @@ class TestShiftMove:
             passwordHash="fakehash",
             role="washer",
             displayName="Washer A",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         washer_b = User(
             username="move_washer_b",
             passwordHash="fakehash",
             role="washer",
             displayName="Washer B",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add_all([washer_a, washer_b])
         await db_session.commit()
@@ -82,8 +82,8 @@ class TestShiftMove:
             endTime="19:00",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -108,7 +108,7 @@ class TestShiftMove:
             passwordHash="fakehash",
             role="washer",
             displayName="Washer C",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -123,8 +123,8 @@ class TestShiftMove:
             endTime="18:00",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -146,7 +146,7 @@ class TestShiftMove:
             passwordHash="fakehash",
             role="washer",
             displayName="Washer D",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -161,8 +161,8 @@ class TestShiftMove:
             endTime="18:00",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -184,7 +184,7 @@ class TestShiftMove:
             passwordHash="fakehash",
             role="washer",
             displayName="Washer E",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -200,8 +200,8 @@ class TestShiftMove:
             endTime="17:00",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         target_existing = Shift(
             userId=washer.id,
@@ -210,8 +210,8 @@ class TestShiftMove:
             endTime="20:00",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add_all([source, target_existing])
         await db_session.commit()

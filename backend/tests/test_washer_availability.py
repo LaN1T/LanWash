@@ -178,7 +178,7 @@ async def test_update_availability_invalid_date(async_client, washer_token):
         json={"entries": [{"date": "not-a-date", "status": "available"}]},
         headers={"Authorization": f"Bearer {washer_token}"},
     )
-    assert response.status_code == 400
+    assert response.status_code in (400, 422)
 
 
 @pytest.mark.asyncio

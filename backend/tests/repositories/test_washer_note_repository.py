@@ -12,7 +12,7 @@ def _note(username: str, title: str = "Title", is_read: int = 0) -> WasherNote:
         title=title,
         message="message",
         isRead=is_read,
-        createdAt=datetime.now().isoformat(),
+        createdAt=datetime.now(),
     )
 
 

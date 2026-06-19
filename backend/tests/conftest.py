@@ -205,6 +205,10 @@ async def db_session(test_engine) -> AsyncSession:
             join_transaction_mode="create_savepoint",
         )
         session = session_maker()
+        # Prevent endpoint code from committing the connection-level transaction;
+        # any commit() call only flushes pending changes. The outer transaction is
+        # rolled back at teardown, keeping the in-memory database isolated.
+        session.commit = session.flush  # type: ignore[method-assign]
         try:
             yield session
         finally:
@@ -250,22 +254,28 @@ async def admin_token(async_client):
 @pytest_asyncio.fixture
 async def washer_token(async_client, db_session):
     """Токен мойщика (создаётся напрямую в БД с role='washer')."""
+    from sqlalchemy import select
+
     from services.auth_service import get_password_hash
 
-    user = User(
-        username="washer_test",
-        passwordHash=get_password_hash("TestPass123!"),
-        role="washer",
-        displayName="Washer Test",
-        createdAt=datetime.now().isoformat(),
-    )
-    db_session.add(user)
-    await db_session.commit()
+    username = "washer_test"
+    result = await db_session.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(
+            username=username,
+            passwordHash=get_password_hash("TestPass123!"),
+            role="washer",
+            displayName="Washer Test",
+            createdAt=datetime.now(),
+        )
+        db_session.add(user)
+        await db_session.flush()
 
     response = await async_client.post(
         "/api/auth/login",
         json={
-            "username": "washer_test",
+            "username": username,
             "password": "TestPass123!",
         },
     )
@@ -298,22 +308,28 @@ async def client_token(async_client):
 @pytest_asyncio.fixture
 async def other_washer_token(async_client, db_session):
     """Токен другого мойщика (не назначенного на записи)."""
+    from sqlalchemy import select
+
     from services.auth_service import get_password_hash
 
-    user = User(
-        username="other_washer",
-        passwordHash=get_password_hash("TestPass123!"),
-        role="washer",
-        displayName="Other Washer",
-        createdAt=datetime.now().isoformat(),
-    )
-    db_session.add(user)
-    await db_session.commit()
+    username = "other_washer"
+    result = await db_session.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(
+            username=username,
+            passwordHash=get_password_hash("TestPass123!"),
+            role="washer",
+            displayName="Other Washer",
+            createdAt=datetime.now(),
+        )
+        db_session.add(user)
+        await db_session.flush()
 
     response = await async_client.post(
         "/api/auth/login",
         json={
-            "username": "other_washer",
+            "username": username,
             "password": "TestPass123!",
         },
     )

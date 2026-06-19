@@ -43,7 +43,7 @@ class TestForecastService:
                 clientName="Forecast Client",
                 carModel="Test",
                 carNumber="А123БВ777",
-                dateTime=appt_date.replace(hour=10, minute=0, second=0).isoformat(),
+                dateTime=appt_date.replace(hour=10, minute=0, second=0),
                 washTypeId="w2",
                 additionalServices="[]",
                 status="completed",

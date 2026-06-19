@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime, time
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -323,6 +324,40 @@ class Shift(Base):
     createdBy = Column(String, nullable=False)
     createdAt = Column(DateTime, nullable=False)
     updatedAt = Column(DateTime, nullable=False)
+
+    @staticmethod
+    def _parse_date(value: Any) -> date:
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError as exc:
+                raise ValueError(f"date must be a valid ISO date: {value!r}") from exc
+        raise ValueError(f"date must be date or ISO string, got {type(value).__name__}")
+
+    @staticmethod
+    def _parse_time(value: Any) -> time:
+        if isinstance(value, time):
+            return value
+        if isinstance(value, str):
+            try:
+                return time.fromisoformat(value)
+            except ValueError as exc:
+                raise ValueError(f"time must be a valid ISO time: {value!r}") from exc
+        raise ValueError(f"time must be time or ISO string, got {type(value).__name__}")
+
+    @validates("date")
+    def _set_date(self, key: str, value: Any) -> date:
+        return self._parse_date(value)
+
+    @validates("startTime")
+    def _set_start_time(self, key: str, value: Any) -> time:
+        return self._parse_time(value)
+
+    @validates("endTime")
+    def _set_end_time(self, key: str, value: Any) -> time:
+        return self._parse_time(value)
 
 
 class ShiftTemplate(Base):

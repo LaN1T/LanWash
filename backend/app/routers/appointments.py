@@ -1,11 +1,11 @@
 import json
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,14 +46,14 @@ from services.workload_service import workload_service
 logger = structlog.get_logger()
 
 
-async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]:
+async def _auto_assign_washer(db: AsyncSession, date_time: datetime) -> Optional[str]:
     """Find the washer on shift for the given date with the fewest assignments."""
-    date_str = date_time[:10] if len(date_time) >= 10 else date_time
+    target_date = date_time.date()
 
     # Find washers on confirmed shift for this date
     shift_result = await db.execute(
         select(Shift.userId).where(
-            and_(Shift.date == date_str, Shift.status == "confirmed")
+            and_(Shift.date == target_date, Shift.status == "confirmed")
         )
     )
     washer_ids = [row[0] for row in shift_result.all()]
@@ -70,7 +70,7 @@ async def _auto_assign_washer(db: AsyncSession, date_time: str) -> Optional[str]
     appt_result = await db.execute(
         select(Appointment.assignedWasher).where(
             and_(
-                Appointment.date == date_str,
+                Appointment.date == target_date,
                 Appointment.status != "cancelled",
             )
         )
@@ -156,13 +156,13 @@ async def get_all(
     request: Request,
     response: Response,
     page: int = 1,
-    date: Optional[str] = None,
+    date_str: Optional[str] = Query(None, alias="date"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     # Use the indexed `date` column (YYYY-MM-DD) instead of func.substr(dateTime).
     # Cap unique dates to the last 90 days to avoid unbounded headers/memory
-    cutoff_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+    cutoff_date = date.today() - timedelta(days=90)
 
     # 1. Get unique dates (days) in descending order
     if current_user.role == "admin":
@@ -170,7 +170,6 @@ async def get_all(
             select(Appointment.date)
             .where(
                 Appointment.date.isnot(None),
-                Appointment.date != "",
                 Appointment.date >= cutoff_date,
             )
             .distinct()
@@ -180,7 +179,6 @@ async def get_all(
         # P0: IDOR fix — clients only see their own appointments
         date_filters = [
             Appointment.date.isnot(None),
-            Appointment.date != "",
             Appointment.date >= cutoff_date,
             or_(
                 Appointment.isHiddenFromAdmin.is_(False),
@@ -206,13 +204,13 @@ async def get_all(
         total_dates=total_pages,
         unique_dates=unique_dates[:5],
         requested_page=page,
-        requested_date=date,
+        requested_date=date_str,
     )
 
     # 2. Determine target date
-    target_date: Optional[str] = None
-    if date:
-        clean_date = date[:10]
+    target_date: Optional[date] = None
+    if date_str:
+        clean_date = date.fromisoformat(date_str[:10])
         if clean_date in unique_dates:
             page = unique_dates.index(clean_date) + 1
             target_date = clean_date
@@ -226,8 +224,8 @@ async def get_all(
 
     response.headers["X-Total-Pages"] = str(total_pages)
     response.headers["X-Current-Page"] = str(page)
-    response.headers["X-Current-Date"] = target_date or ""
-    response.headers["X-Unique-Dates"] = json.dumps(unique_dates)
+    response.headers["X-Current-Date"] = target_date.isoformat() if target_date else ""
+    response.headers["X-Unique-Dates"] = json.dumps([d.isoformat() for d in unique_dates])
     logger.info(
         "appointments_pagination_headers",
         x_total_pages=total_pages,
@@ -324,7 +322,7 @@ async def get_by_washer(
         raise HTTPException(404, "Пользователь не найден")
 
     safe_username = username.lower().replace("%", r"\%").replace("_", r"\_")
-    appt_time = func.substr(Appointment.dateTime, 12, 5)
+    appt_time = func.cast(Appointment.dateTime, Time)
 
     assigned_query = select(Appointment).where(
         Appointment.assignedWasher.like(f'%"{safe_username}"%', escape="\\")
@@ -415,7 +413,7 @@ async def _track_consumables_usage(
             select(Consumable).where(Consumable.id.in_(cids)).with_for_update()
         )
         cons_map = {c.id: c for c in cons_res.scalars().all()}
-        now = datetime.now().isoformat()
+        now = datetime.now()
         logs = []
         for cid, qty in usage_map.items():
             consumable = cons_map.get(cid)
@@ -508,7 +506,7 @@ async def create(
             target_user_id = target_user.id
 
     # Check for active subscription
-    today = datetime.now().isoformat()[:10]
+    today = date.today()
     sub_res = await db.execute(
         select(Subscription)
         .where(
@@ -710,21 +708,18 @@ async def update_appt(
 
     # Мойщик может редактировать записи, которые попадают в его смену
     is_shift_washer = False
-    if is_washer and not is_assigned_washer:
-        appt_date = appt.dateTime[:10] if appt.dateTime else None
-        appt_time = (
-            appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
-        )
-        if appt_date and appt_time:
-            shift_res = await db.execute(
-                select(Shift).where(
-                    Shift.userId == current_user.id,
-                    Shift.date == appt_date,
-                    Shift.startTime <= appt_time,
-                    Shift.endTime >= appt_time,
-                )
+    if is_washer and not is_assigned_washer and appt.dateTime:
+        appt_date = appt.dateTime.date()
+        appt_time = appt.dateTime.time()
+        shift_res = await db.execute(
+            select(Shift).where(
+                Shift.userId == current_user.id,
+                Shift.date == appt_date,
+                Shift.startTime <= appt_time,
+                Shift.endTime >= appt_time,
             )
-            is_shift_washer = shift_res.scalar_one_or_none() is not None
+        )
+        is_shift_washer = shift_res.scalar_one_or_none() is not None
 
     if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
         raise HTTPException(
@@ -1055,7 +1050,7 @@ async def delete_appt(
     owner = appt_info.ownerUsername
     car_model = appt_info.carModel
     date_time = appt_info.dateTime
-    db.add(DeletedNotification(username=owner, createdAt=datetime.now().isoformat()))
+    db.add(DeletedNotification(username=owner, createdAt=datetime.now()))
 
     # Отправка уведомления клиенту об удалении записи
     tokens_res = await db.execute(
@@ -1168,7 +1163,7 @@ async def assign_washer(
             )
         )
         try:
-            appt_start = workload_service._safe_parse_iso(appt.dateTime)
+            appt_start = workload_service._ensure_datetime(appt.dateTime)
         except ValueError:
             raise HTTPException(400, "Некорректная дата записи")
         appt_duration = await workload_service.get_appointment_duration(
@@ -1181,7 +1176,7 @@ async def assign_washer(
         )
         for other in conflict_appts:
             try:
-                other_start = workload_service._safe_parse_iso(other.dateTime)
+                other_start = workload_service._ensure_datetime(other.dateTime)
             except ValueError:
                 continue
             other_duration = durations.get(other.id, 30)
@@ -1383,21 +1378,18 @@ async def get_appointment_qr(
 
     # Мойщик может видеть QR записей, которые попадают в его смену
     is_shift_washer = False
-    if is_washer and not is_assigned_washer:
-        appt_date = appt.dateTime[:10] if appt.dateTime else None
-        appt_time = (
-            appt.dateTime[11:16] if appt.dateTime and len(appt.dateTime) >= 16 else None
-        )
-        if appt_date and appt_time:
-            shift_res = await db.execute(
-                select(Shift).where(
-                    Shift.userId == current_user.id,
-                    Shift.date == appt_date,
-                    Shift.startTime <= appt_time,
-                    Shift.endTime >= appt_time,
-                )
+    if is_washer and not is_assigned_washer and appt.dateTime:
+        appt_date = appt.dateTime.date()
+        appt_time = appt.dateTime.time()
+        shift_res = await db.execute(
+            select(Shift).where(
+                Shift.userId == current_user.id,
+                Shift.date == appt_date,
+                Shift.startTime <= appt_time,
+                Shift.endTime >= appt_time,
             )
-            is_shift_washer = shift_res.scalar_one_or_none() is not None
+        )
+        is_shift_washer = shift_res.scalar_one_or_none() is not None
 
     if not (is_owner or is_admin or is_assigned_washer or is_shift_washer):
         raise HTTPException(
@@ -1455,7 +1447,7 @@ async def scan_appointment_qr(
             details=(
                 f"Сканирован QR-код записи {appt.id}, статус изменён на in_progress"
             ),
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(),
         )
     )
 
@@ -1527,7 +1519,7 @@ async def report_late(
             details=(
                 f"Клиент сообщил об опоздании на {req.minutes} мин для записи {appt.id}"
             ),
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(),
         )
     )
 
@@ -1594,7 +1586,7 @@ async def cancel_with_reason(
             username=current_user.username,
             action="cancel_with_reason",
             details=f"Запись {appt.id} отменена. Причина: {req.reason}",
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(),
         )
     )
 

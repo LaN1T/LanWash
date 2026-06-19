@@ -321,7 +321,7 @@ class TestAppointments:
             passwordHash="fakehash",
             role="washer",
             displayName="Auto Washer",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -335,8 +335,8 @@ class TestAppointments:
             endTime="23:59",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()
@@ -389,7 +389,7 @@ class TestAppointments:
             passwordHash="fakehash",
             role="washer",
             displayName="Auto Washer 2",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(washer)
         await db_session.commit()
@@ -403,8 +403,8 @@ class TestAppointments:
             endTime="23:59",
             status="confirmed",
             createdBy="admin",
-            createdAt=datetime.now().isoformat(),
-            updatedAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
+            updatedAt=datetime.now(),
         )
         db_session.add(shift)
         await db_session.commit()

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,9 +22,9 @@ from services.auth_service import check_roles
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-def _parse_iso_date(date_str: str) -> datetime:
+def _parse_iso_date(date_str: str) -> date:
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d")
+        return date.fromisoformat(date_str)
     except ValueError:
         raise HTTPException(
             status_code=400, detail="Неверный формат даты. Ожидается YYYY-MM-DD"
@@ -49,7 +49,7 @@ async def admin_dashboard(
         )
 
     svc = AdminService(db)
-    return await svc.get_dashboard(from_date, to_date)
+    return await svc.get_dashboard(from_dt.isoformat(), to_dt.isoformat())
 
 
 @router.get("/forecast", response_model=ForecastResponse)

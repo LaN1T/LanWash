@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,22 +41,20 @@ class ReportsService:
         self._wash_type_consumable_repo = WashTypeConsumableRepository(db)
 
     @staticmethod
-    def _month_bounds(date_str: str) -> tuple[str, str]:
-        dt = datetime.strptime(date_str, "%Y-%m")
-        start = dt.strftime("%Y-%m")
-        year, month = (dt.year, dt.month + 1) if dt.month < 12 else (dt.year + 1, 1)
-        end = f"{year}-{month:02d}"
+    def _month_bounds(d: date) -> tuple[datetime, datetime]:
+        start = datetime.combine(d.replace(day=1), time.min)
+        year, month = (d.year, d.month + 1) if d.month < 12 else (d.year + 1, 1)
+        end = datetime.combine(date(year, month, 1), time.min)
         return start, end
 
     @staticmethod
-    def _day_bounds(date_str: str) -> tuple[str, str]:
-        dt = datetime.strptime(date_str, "%Y-%m-%d")
-        start = dt.strftime("%Y-%m-%d")
-        end = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
+    def _day_bounds(d: date) -> tuple[datetime, datetime]:
+        start = datetime.combine(d, time.min)
+        end = datetime.combine(d + timedelta(days=1), time.min)
         return start, end
 
-    async def monthly_report(self, date: str) -> dict:
-        start, end = self._month_bounds(date)
+    async def monthly_report(self, d: date, payload_date: str) -> dict:
+        start, end = self._month_bounds(d)
         rows = await self._appointment_repo.get_car_model_stats_in_period(start, end)
         report = []
         for car_model, avg_check, visit_count in rows:
@@ -67,10 +65,10 @@ class ReportsService:
                     "visitCount": visit_count,
                 }
             )
-        return {"date": date, "data": report}
+        return {"date": payload_date, "data": report}
 
     async def popular_additional_services(
-        self, date: str, category: str | None
+        self, d: date, category: str | None, payload_date: str
     ) -> dict:
         service_map = await self._service_repo.list_all_id_name_category_map()
         id_to_name = {s_id: name for s_id, (name, _) in service_map.items()}
@@ -79,7 +77,7 @@ class ReportsService:
         wt_id_to_name = await self._wash_type_repo.list_all_id_name_map()
         promo_id_to_name = await self._promo_repo.list_all_id_name_map()
 
-        start, end = self._month_bounds(date)
+        start, end = self._month_bounds(d)
 
         service_counts: dict[str, int] = defaultdict(int)
 
@@ -131,9 +129,11 @@ class ReportsService:
                 service_counts.items(), key=lambda i: i[1], reverse=True
             )
         ]
-        return {"date": date, "data": report_data}
+        return {"date": payload_date, "data": report_data}
 
-    async def consumables_usage(self, date: str, category: str | None) -> dict:
+    async def consumables_usage(
+        self, d: date, category: str | None, payload_date: str
+    ) -> dict:
         service_map = await self._service_repo.list_all_id_name_category_map()
         id_to_cat = {s_id: cat for s_id, (_, cat) in service_map.items()}
 
@@ -152,7 +152,7 @@ class ReportsService:
         for c_id in wt_consumable_ids:
             cons_to_cats[c_id].add(WASH_CATEGORY)
 
-        start, end = self._month_bounds(date)
+        start, end = self._month_bounds(d)
 
         sums: dict[str, float] = defaultdict(float)
         units: dict[str, str] = {}
@@ -186,12 +186,12 @@ class ReportsService:
             for n, v in sums.items()
         ]
         return {
-            "date": date,
+            "date": payload_date,
             "data": sorted(data, key=lambda x: x["totalUsed"], reverse=True),
         }
 
-    async def daily_report(self, date: str) -> dict:
-        start, end = self._day_bounds(date)
+    async def daily_report(self, d: date, payload_date: str) -> dict:
+        start, end = self._day_bounds(d)
 
         appointments_count = await self._appointment_repo.count_in_period(start, end)
 
@@ -232,7 +232,7 @@ class ReportsService:
             )[:5]
         ]
 
-        shifts = await self._shift_repo.list_for_range(date, date)
+        shifts = await self._shift_repo.list_for_range(d, d)
         washer_ids = [s.userId for s in shifts if s.userId is not None]
         washers_map = await self._user_repo.get_display_names_by_ids(washer_ids)
 
@@ -256,7 +256,7 @@ class ReportsService:
         ]
 
         return {
-            "date": date,
+            "date": payload_date,
             "revenue": int(revenue),
             "appointmentsCount": appointments_count,
             "completedCount": completed_count,
@@ -267,7 +267,9 @@ class ReportsService:
             "consumablesAlert": consumables_alert,
         }
 
-    async def shift_load_report(self, start_date: str, end_date: str) -> dict:
+    async def shift_load_report(
+        self, start_date: date, end_date: date, start_date_payload: str, end_date_payload: str
+    ) -> dict:
         target_minutes = SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
         shifts = await self._shift_repo.list_for_range(start_date, end_date)
@@ -276,11 +278,9 @@ class ReportsService:
         )
         washers = {u.id: u.displayName for u in await self._user_repo.list_washers()}
 
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
-        days_count = (end_dt - start_dt).days + 1
+        days_count = (end_date - start_date).days + 1
 
-        daily_minutes: dict[str, dict[str, int]] = defaultdict(
+        daily_minutes: dict[date, dict[str, int]] = defaultdict(
             lambda: {"confirmedMinutes": 0, "pendingMinutes": 0}
         )
         washer_minutes: dict[int, dict[str, int]] = defaultdict(
@@ -303,13 +303,12 @@ class ReportsService:
                 status_counts["rejected"] += 1
 
         daily_hours = []
-        current = start_dt
-        while current <= end_dt:
-            d = current.strftime("%Y-%m-%d")
-            entry = daily_minutes.get(d, {"confirmedMinutes": 0, "pendingMinutes": 0})
+        current = start_date
+        while current <= end_date:
+            entry = daily_minutes.get(current, {"confirmedMinutes": 0, "pendingMinutes": 0})
             daily_hours.append(
                 {
-                    "date": d,
+                    "date": current.isoformat(),
                     "confirmedMinutes": entry["confirmedMinutes"],
                     "pendingMinutes": entry["pendingMinutes"],
                 }
@@ -349,8 +348,8 @@ class ReportsService:
         )
 
         return {
-            "startDate": start_date,
-            "endDate": end_date,
+            "startDate": start_date_payload,
+            "endDate": end_date_payload,
             "targetWeeklyMinutesPerWasher": target_minutes,
             "dailyHours": daily_hours,
             "washerStats": washer_stats,
@@ -364,19 +363,21 @@ class ReportsService:
         }
 
     @staticmethod
-    def _time_to_minutes(t: str) -> int:
+    def _time_to_minutes(t: time | str) -> int:
+        if isinstance(t, time):
+            return t.hour * 60 + t.minute
         h, m = map(int, t.split(":"))
         return h * 60 + m
 
     @classmethod
-    def _shift_minutes(cls, start_time: str, end_time: str) -> int:
+    def _shift_minutes(cls, start_time: time | str, end_time: time | str) -> int:
         start = cls._time_to_minutes(start_time)
         end = cls._time_to_minutes(end_time)
         return end - start
 
     @classmethod
     def _count_conflicts(cls, shifts: list[Shift]) -> int:
-        by_date: dict[str, list[Shift]] = defaultdict(list)
+        by_date: dict[date, list[Shift]] = defaultdict(list)
         for shift in shifts:
             if shift.status not in ("confirmed", "pending"):
                 continue

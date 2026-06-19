@@ -13,7 +13,7 @@ async def _create_user(db_session, username: str) -> User:
         passwordHash=get_password_hash("TestPass123!"),
         role="client",
         displayName=username,
-        createdAt=datetime.now().isoformat(),
+        createdAt=datetime.now(),
     )
     db_session.add(user)
     await db_session.flush()

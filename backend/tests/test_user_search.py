@@ -39,7 +39,7 @@ class TestUserSearch:
             role="client",
             displayName="Иван Поисков",
             phone="",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(user)
         await db_session.commit()
@@ -62,7 +62,7 @@ class TestUserSearch:
             role="client",
             displayName="Телефонный",
             phone="+79998887766",
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(),
         )
         db_session.add(user)
         await db_session.commit()

@@ -8,8 +8,10 @@ from services.reports_service import SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
 @pytest.mark.asyncio
 async def test_admin_gets_shift_load_report(async_client, admin_token):
-    today = date.today().isoformat()
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    today_date = date.today()
+    tomorrow_date = today_date + timedelta(days=1)
+    today = today_date.isoformat()
+    tomorrow = tomorrow_date.isoformat()
 
     response = await async_client.get(
         "/api/reports/shift-load/",
@@ -102,8 +104,8 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
     )
     washer = next(u for u in washers.json() if u["username"] == "washer_test")
 
-    today = date.today().isoformat()
-    now = datetime.now().isoformat()
+    today = date.today()
+    now = datetime.now()
     db_session.add_all(
         [
             Shift(
@@ -130,9 +132,10 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
     )
     await db_session.commit()
 
+    today_str = today.isoformat()
     response = await async_client.get(
         "/api/reports/shift-load/",
-        params={"start_date": today, "end_date": today},
+        params={"start_date": today_str, "end_date": today_str},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200
@@ -149,9 +152,9 @@ async def test_availability_coverage(
     )
     washer = next(u for u in washers.json() if u["username"] == "washer_test")
 
-    today = date.today().isoformat()
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
-    now = datetime.now().isoformat()
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    now = datetime.now()
     db_session.add_all(
         [
             WasherAvailability(
@@ -164,9 +167,11 @@ async def test_availability_coverage(
     )
     await db_session.commit()
 
+    today_str = today.isoformat()
+    tomorrow_str = tomorrow.isoformat()
     response = await async_client.get(
         "/api/reports/shift-load/",
-        params={"start_date": today, "end_date": tomorrow},
+        params={"start_date": today_str, "end_date": tomorrow_str},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200

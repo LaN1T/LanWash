@@ -63,7 +63,7 @@ class TestAdminDashboard:
             passwordHash="fakehash",
             role="client",
             displayName="Dash Client User",
-            createdAt=today.isoformat(),
+            createdAt=today,
         )
         db_session.add(test_client)
         await db_session.commit()
@@ -75,7 +75,7 @@ class TestAdminDashboard:
             clientName="Dash Client",
             carModel="Test",
             carNumber="А123БВ777",
-            dateTime=today.isoformat(),
+            dateTime=today,
             washTypeId="w2",
             additionalServices="[]",
             status="completed",
@@ -93,7 +93,7 @@ class TestAdminDashboard:
             rating=5,
             comment="Great",
             isPublished=True,
-            createdAt=today.isoformat(),
+            createdAt=today,
         )
         db_session.add(review)
         await db_session.commit()
@@ -124,7 +124,7 @@ class TestAdminDashboard:
             clientName="Dash Client",
             carModel="Test",
             carNumber="А123БВ777",
-            dateTime=today.isoformat(),
+            dateTime=today,
             washTypeId="w2",
             additionalServices="[]",
             status="completed",
