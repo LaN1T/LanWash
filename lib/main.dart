@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -6,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart';
+import 'package:app_links/app_links.dart';
 import 'firebase_options.dart';
 import 'app_styles.dart';
 import 'core/service_locator.dart';
@@ -25,6 +28,7 @@ import 'screens/shared/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/admin/home_shell.dart';
 import 'screens/client/client_shell.dart';
+import 'screens/client/booking_wizard_screen.dart';
 import 'screens/washer/washer_shell.dart';
 
 void main() async {
@@ -365,6 +369,9 @@ class _AppRouterState extends State<_AppRouter> {
   bool _loginCallbackPending = false;
   bool _logoutCallbackPending = false;
 
+  StreamSubscription<Uri>? _linkSub;
+  Uri? _pendingUri;
+
   @override
   void initState() {
     super.initState();
@@ -374,7 +381,33 @@ class _AppRouterState extends State<_AppRouter> {
         context.read<AppointmentProvider>().init(auth);
         context.read<CatalogProvider>().load();
       }
+      _initDeepLinks();
     });
+  }
+
+  Future<void> _initDeepLinks() async {
+    try {
+      final appLinks = AppLinks();
+      _linkSub = appLinks.uriLinkStream.listen((uri) {
+        debugPrint('Deep link received: $uri');
+        setState(() => _pendingUri = uri);
+        _processPendingLink();
+      });
+      final initialUri = await appLinks.getInitialLink();
+      if (initialUri != null) {
+        debugPrint('Initial deep link: $initialUri');
+        setState(() => _pendingUri = initialUri);
+        _processPendingLink();
+      }
+    } catch (e) {
+      debugPrint('Deep link initialization skipped: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -411,6 +444,10 @@ class _AppRouterState extends State<_AppRouter> {
 
     _wasLoggedIn = auth.isLoggedIn;
 
+    if (_pendingUri != null && auth.initialized) {
+      _processPendingLink();
+    }
+
     if (!auth.initialized) return const SplashScreen();
 
     // Экран логина: либо вообще не вошли, либо вошли но сессия не продолжена
@@ -425,5 +462,50 @@ class _AppRouterState extends State<_AppRouter> {
     if (auth.isClient) return ClientShell(key: ClientShell.shellKey);
     if (auth.isWasher) return const WasherShell();
     return const HomeShell();
+  }
+
+  void _processPendingLink() {
+    if (_pendingUri == null || !mounted) return;
+    final uri = _pendingUri!;
+    _pendingUri = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      if (!auth.initialized) return;
+      _handleDeepLink(uri, auth);
+    });
+  }
+
+  void _handleDeepLink(Uri uri, AuthProvider auth) {
+    debugPrint('Processing deep link: $uri');
+    final path = uri.path;
+    if (path.startsWith('/booking')) {
+      if (auth.isClient) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BookingWizardScreen()),
+        );
+      } else {
+        _navigateToRoleShell(auth);
+      }
+    } else {
+      _navigateToRoleShell(auth);
+    }
+  }
+
+  void _navigateToRoleShell(AuthProvider auth) {
+    final Widget shell;
+    if (!auth.isLoggedIn) {
+      shell = const LoginScreen();
+    } else if (auth.isClient) {
+      shell = ClientShell(key: ClientShell.shellKey);
+    } else if (auth.isWasher) {
+      shell = const WasherShell();
+    } else {
+      shell = const HomeShell();
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => shell),
+      (_) => false,
+    );
   }
 }

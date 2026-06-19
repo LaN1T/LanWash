@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appID": "REPLACE_TEAM_ID.ru.lanwash.app",
+        "paths": ["*"]
+      }
+    ]
+  }
+}

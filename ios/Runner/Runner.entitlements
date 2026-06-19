@@ -6,5 +6,9 @@
 	<array>
 		<string>$(AppIdentifierPrefix)ru.lanwash.app</string>
 	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.lanwash.ru</string>
+	</array>
 </dict>
 </plist>
