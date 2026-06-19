@@ -149,7 +149,7 @@ class SupportProvider extends ChangeNotifier {
   }
 
   void _log(String message) {
-    if (kDebugMode) _log(message);
+    if (kDebugMode) debugPrint(message);
   }
 
   void connectToChat(int chatId) {
