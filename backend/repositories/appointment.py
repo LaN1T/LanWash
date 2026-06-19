@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy import Time, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Appointment, Shift, WashType
+from models import Appointment, AppointmentWasher, Shift, WashType
 from repositories.base import BaseRepository
 
 
@@ -66,14 +66,14 @@ class AppointmentRepository(BaseRepository[Appointment]):
         row = result.first()
         return row[0] if row else None
 
-    async def list_completed_assigned_washer_like(
-        self, username_pattern: str, escape: str = "\\"
+    async def list_completed_assigned_to_washer(
+        self, username: str
     ) -> list[Appointment]:
         result = await self._db.execute(
-            select(Appointment).where(
-                Appointment.assignedWasher.like(
-                    f'%{username_pattern}%', escape=escape
-                ),
+            select(Appointment)
+            .join(AppointmentWasher)
+            .where(
+                AppointmentWasher.washerUsername == username,
                 Appointment.status == "completed",
             )
         )
@@ -173,7 +173,9 @@ class AppointmentRepository(BaseRepository[Appointment]):
         self, start: datetime, end: datetime
     ) -> list[tuple[str | None, int | None]]:
         result = await self._db.execute(
-            select(Appointment.assignedWasher, Appointment.paidPrice).where(
+            select(AppointmentWasher.washerUsername, Appointment.paidPrice)
+            .join(Appointment)
+            .where(
                 Appointment.dateTime >= start,
                 Appointment.dateTime < end,
                 Appointment.status == "completed",

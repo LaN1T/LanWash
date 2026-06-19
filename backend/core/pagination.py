@@ -1,11 +1,26 @@
 import base64
 import json
+from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
+
+
+class _CursorJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        if isinstance(obj, time):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 
 class PaginationParams:
@@ -28,7 +43,13 @@ class CursorParams:
 
 
 def encode_cursor(value: dict) -> str:
-    return base64.urlsafe_b64encode(json.dumps(value, separators=(",", ":")).encode()).decode().rstrip("=")
+    return (
+        base64.urlsafe_b64encode(
+            json.dumps(value, separators=(",", ":"), cls=_CursorJsonEncoder).encode()
+        )
+        .decode()
+        .rstrip("=")
+    )
 
 
 def decode_cursor(cursor: str) -> dict:

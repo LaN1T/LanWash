@@ -94,21 +94,29 @@ def _to_chat_response(
     )
 
 
+def _parse_cursor_timestamp(value):
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    return value
+
+
 def _chat_cursor_clause(cursor: dict):
+    t = _parse_cursor_timestamp(cursor["t"])
     return or_(
-        SupportChat.lastMessageAt < cursor["t"],
+        SupportChat.lastMessageAt < t,
         and_(
-            SupportChat.lastMessageAt == cursor["t"],
+            SupportChat.lastMessageAt == t,
             SupportChat.id < cursor["id"],
         ),
     )
 
 
 def _message_cursor_clause(cursor: dict):
+    t = _parse_cursor_timestamp(cursor["t"])
     return or_(
-        SupportMessage.createdAt > cursor["t"],
+        SupportMessage.createdAt > t,
         and_(
-            SupportMessage.createdAt == cursor["t"],
+            SupportMessage.createdAt == t,
             SupportMessage.id > cursor["id"],
         ),
     )

@@ -8,6 +8,7 @@ Create Date: 2026-06-19 16:19:04.046927
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql, sqlite
 
 from alembic import op
 
@@ -56,11 +57,30 @@ _TIME_COLUMNS = {
 }
 
 
+def _compile_type(new_type: sa.types.TypeEngine, dialect_name: str) -> str:
+    if dialect_name == "postgresql":
+        return new_type.compile(dialect=postgresql.dialect())
+    if dialect_name == "sqlite":
+        return new_type.compile(dialect=sqlite.dialect())
+    return str(new_type)
+
+
 def _alter(table: str, column: str, new_type: sa.types.TypeEngine) -> None:
-    using = f"{column}::{new_type}"
-    op.execute(
-        f'ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE {new_type} USING {using}'
-    )
+    dialect = op.get_context().dialect.name
+
+    if dialect == "postgresql":
+        pg_type = _compile_type(new_type, "postgresql")
+        op.alter_column(
+            table,
+            column,
+            type_=new_type,
+            postgresql_using=f'"{column}"::{pg_type}',
+        )
+    elif dialect == "sqlite":
+        with op.batch_alter_table(table, recreate="auto") as batch_op:
+            batch_op.alter_column(column, type_=new_type)
+    else:
+        op.alter_column(table, column, type_=new_type)
 
 
 def upgrade() -> None:

@@ -19,14 +19,21 @@ logger = structlog.get_logger()
 _BATCH_SIZE = 100
 
 
+def _ensure_datetime(value: datetime | str) -> datetime:
+    """Return a datetime, parsing ISO strings for backwards compatibility."""
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value)
+
+
 def _avg_interval_days(appointments: List[Appointment]) -> Optional[float]:
     """Calculate average positive interval in days between sorted appointments."""
     if len(appointments) < 2:
         return None
     intervals: List[float] = []
     for i in range(1, len(appointments)):
-        prev = datetime.fromisoformat(appointments[i - 1].dateTime)
-        curr = datetime.fromisoformat(appointments[i].dateTime)
+        prev = _ensure_datetime(appointments[i - 1].dateTime)
+        curr = _ensure_datetime(appointments[i].dateTime)
         interval = (curr - prev).total_seconds() / 86400
         if interval > 0:
             intervals.append(interval)
@@ -68,7 +75,7 @@ async def _process_batch(
 
             threshold_days = avg_interval + 2
             last_appointment = user_appts[-1]
-            last_date = datetime.fromisoformat(last_appointment.dateTime)
+            last_date = _ensure_datetime(last_appointment.dateTime)
             days_since = (now - last_date).total_seconds() / 86400
 
             if days_since <= threshold_days:

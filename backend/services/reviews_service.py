@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,7 +71,7 @@ class ReviewsService:
             rating=data.rating,
             comment=data.comment,
             isPublished=0,
-            createdAt=datetime.now(timezone.utc),
+            createdAt=datetime.utcnow(),
             appointmentId=data.appointmentId,
         )
         await self._reviews.add(review)

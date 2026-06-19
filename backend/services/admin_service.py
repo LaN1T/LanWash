@@ -115,17 +115,11 @@ class AdminService:
         )
         washer_revenue: dict[str, int] = defaultdict(int)
         washer_count: dict[str, int] = defaultdict(int)
-        for assigned_json, paid in washer_rows:
-            try:
-                usernames = json.loads(assigned_json or "[]")
-            except Exception:
-                usernames = []
-            if not usernames:
+        for username, paid in washer_rows:
+            if not username:
                 continue
-            share = int(paid or 0) // len(usernames)
-            for u in usernames:
-                washer_revenue[u] += share
-                washer_count[u] += 1
+            washer_revenue[username] += int(paid or 0)
+            washer_count[username] += 1
 
         top_washers = [
             {"name": name, "revenue": rev, "appointments": washer_count[name]}

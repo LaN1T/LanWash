@@ -16,6 +16,7 @@ from core.security import decrypt_token
 from db.session import get_db
 from models import (
     Appointment,
+    AppointmentWasher,
     Car,
     Consumable,
     ConsumableUsageLog,
@@ -68,7 +69,9 @@ async def _auto_assign_washer(db: AsyncSession, date_time: datetime) -> Optional
 
     # Count appointments per washer on this date
     appt_result = await db.execute(
-        select(Appointment.assignedWasher).where(
+        select(AppointmentWasher.washerUsername)
+        .join(Appointment)
+        .where(
             and_(
                 Appointment.date == target_date,
                 Appointment.status != "cancelled",
@@ -76,13 +79,9 @@ async def _auto_assign_washer(db: AsyncSession, date_time: datetime) -> Optional
         )
     )
     counts: dict[str, int] = defaultdict(int)
-    for (assigned_json,) in appt_result.all():
-        try:
-            usernames = json.loads(assigned_json or "[]")
-        except Exception:
-            usernames = []
-        for u in usernames:
-            counts[u] += 1
+    for (username,) in appt_result.all():
+        if username:
+            counts[username] += 1
 
     # Pick washer with fewest assignments
     best_washer = None
@@ -321,11 +320,13 @@ async def get_by_washer(
     if not user:
         raise HTTPException(404, "Пользователь не найден")
 
-    safe_username = username.lower().replace("%", r"\%").replace("_", r"\_")
+    username_lower = username.lower()
     appt_time = func.cast(Appointment.dateTime, Time)
 
-    assigned_query = select(Appointment).where(
-        Appointment.assignedWasher.like(f'%"{safe_username}"%', escape="\\")
+    assigned_query = (
+        select(Appointment)
+        .join(AppointmentWasher)
+        .where(AppointmentWasher.washerUsername == username_lower)
     )
 
     shift_query = select(Appointment).join(
@@ -1119,6 +1120,7 @@ async def toggle_favorite(
 
 @router.post(
     "/{appt_id}/assign-washer",
+    response_model=AppointmentResponse,
     summary="Назначение мойщика",
 )
 @limiter.limit("10/minute")
@@ -1154,10 +1156,11 @@ async def assign_washer(
             raise HTTPException(400, "Максимум 3 мойщика")
 
         # Проверка на пересечение времени с другими назначенными записями
-        safe_username = username.replace("%", r"\%").replace("_", r"\_")
         conflict_res = await db.execute(
-            select(Appointment).where(
-                Appointment.assignedWasher.like(f"%{safe_username}%", escape="\\"),
+            select(Appointment)
+            .join(AppointmentWasher)
+            .where(
+                AppointmentWasher.washerUsername == username,
                 Appointment.status != "cancelled",
                 Appointment.id != appt_id,
             )

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import and_, delete, or_, select
@@ -14,10 +15,13 @@ class LogEntryRepository(BaseRepository[LogEntry]):
         super().__init__(db, LogEntry)
 
     def _cursor_clause(self, cursor: dict):
+        t = cursor["t"]
+        if isinstance(t, str):
+            t = datetime.fromisoformat(t)
         return or_(
-            LogEntry.timestamp < cursor["t"],
+            LogEntry.timestamp < t,
             and_(
-                LogEntry.timestamp == cursor["t"],
+                LogEntry.timestamp == t,
                 LogEntry.id < cursor["id"],
             ),
         )

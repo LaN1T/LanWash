@@ -604,7 +604,7 @@ class AuthService:
 
         if target_user.role == "washer":
             safe_username = username.lower().replace("%", r"\%").replace("_", r"\_")
-            explicit = await self._appointment_repo.list_completed_assigned_washer_like(
+            explicit = await self._appointment_repo.list_completed_assigned_to_washer(
                 safe_username
             )
             explicit_ids = {a.id for a in explicit}

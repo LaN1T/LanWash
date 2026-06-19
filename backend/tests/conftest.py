@@ -3,8 +3,8 @@ import sys
 from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
+import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock
 
 # Load the project-root .env (PostgreSQL credentials) before importing app settings.
 # This overrides a possible backend/.env that still points to SQLite.
@@ -43,6 +43,7 @@ os.environ.setdefault(
 # Добавляем backend в PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -54,34 +55,26 @@ settings = get_settings()
 def _get_test_database_url() -> str:
     parsed = urlparse(settings.database_url)
     if parsed.scheme.startswith("sqlite"):
-        # Use SQLite as-is (in-memory or file). No per-test DB rewrite needed.
-        return settings.database_url
+        # Use a temporary file database with NullPool. The file keeps the seeded
+        # schema visible across fresh per-test connections, while NullPool avoids
+        # stale connections left behind by transaction errors.
+        return "sqlite+aiosqlite:///./lanwash_test.db"
     return urlunparse(parsed._replace(path="/lanwash_test"))
 
 
 # Create the test engine at module import time and patch the database module
 # *before* the FastAPI app is imported. This makes app startup (lifespan/init_db)
 # and all database sessions point to the disposable test database.
-from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
+from sqlalchemy.pool import NullPool
 
-# In-memory SQLite loses its data when the connection is closed. NullPool
-# opens a brand-new connection for every request, so the schema created by
-# create_all and the seed data inserted afterwards end up in different empty
-# databases. Pin the pool size to a single connection for in-memory SQLite;
-# for PostgreSQL keep NullPool to avoid stale connections.
 _db_url = _get_test_database_url()
-_is_sqlite_memory = _db_url.startswith("sqlite+aiosqlite:///:memory:")
-_poolclass = AsyncAdaptedQueuePool if _is_sqlite_memory else NullPool
+_poolclass = NullPool
 
 _create_engine_kwargs = {
     "echo": False,
     "future": True,
     "poolclass": _poolclass,
 }
-if _is_sqlite_memory:
-    _create_engine_kwargs["pool_size"] = 1
-    _create_engine_kwargs["max_overflow"] = 0
-    _create_engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 _test_engine = create_async_engine(_db_url, **_create_engine_kwargs)
 
@@ -132,14 +125,6 @@ _transaction_module.atomic = _test_atomic
 
 from main import app
 
-limiter.enabled = False
-
-# Disable brute-force lockouts during tests so that repeated register/login
-# requests from the shared test client IP do not spill over between tests.
-import app.routers.auth as _auth_router_module  # noqa: E402
-
-_auth_router_module.is_locked_out = AsyncMock(return_value=False)
-
 # Disable Prometheus instrumentation during tests: some versions of
 # prometheus-fastapi-instrumentator trip over Starlette's IncludedRouter
 # (AttributeError: '_IncludedRouter' object has no attribute 'path').
@@ -163,6 +148,11 @@ async def _create_test_database():
     """Ensure the disposable test database exists (PostgreSQL only)."""
     test_url = _get_test_database_url()
     if urlparse(test_url).scheme.startswith("sqlite"):
+        parsed = urlparse(test_url)
+        # SQLite path is the part after the third slash.
+        db_path = parsed.path
+        if db_path and os.path.exists(db_path):
+            os.remove(db_path)
         return
     # Connect to the maintenance 'postgres' DB using the same encoded credentials.
     admin_dsn = test_url.replace("postgresql+asyncpg://", "postgresql://").replace(
@@ -205,10 +195,16 @@ async def db_session(test_engine) -> AsyncSession:
             join_transaction_mode="create_savepoint",
         )
         session = session_maker()
-        # Prevent endpoint code from committing the connection-level transaction;
-        # any commit() call only flushes pending changes. The outer transaction is
-        # rolled back at teardown, keeping the in-memory database isolated.
-        session.commit = session.flush  # type: ignore[method-assign]
+
+        # Prevent test code and endpoint code from committing the connection-level
+        # transaction. This keeps each test isolated even when fixtures/tests call
+        # ``await db_session.commit()``. Only flush to the savepoint; the outer
+        # transaction is rolled back after the test.
+        async def _test_commit():
+            await session.flush()
+
+        session.commit = _test_commit
+
         try:
             yield session
         finally:
@@ -254,28 +250,22 @@ async def admin_token(async_client):
 @pytest_asyncio.fixture
 async def washer_token(async_client, db_session):
     """Токен мойщика (создаётся напрямую в БД с role='washer')."""
-    from sqlalchemy import select
-
     from services.auth_service import get_password_hash
 
-    username = "washer_test"
-    result = await db_session.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(
-            username=username,
-            passwordHash=get_password_hash("TestPass123!"),
-            role="washer",
-            displayName="Washer Test",
-            createdAt=datetime.now(),
-        )
-        db_session.add(user)
-        await db_session.flush()
+    user = User(
+        username="washer_test",
+        passwordHash=get_password_hash("TestPass123!"),
+        role="washer",
+        displayName="Washer Test",
+        createdAt=datetime.now(),
+    )
+    db_session.add(user)
+    await db_session.commit()
 
     response = await async_client.post(
         "/api/auth/login",
         json={
-            "username": username,
+            "username": "washer_test",
             "password": "TestPass123!",
         },
     )
@@ -308,30 +298,35 @@ async def client_token(async_client):
 @pytest_asyncio.fixture
 async def other_washer_token(async_client, db_session):
     """Токен другого мойщика (не назначенного на записи)."""
-    from sqlalchemy import select
-
     from services.auth_service import get_password_hash
 
-    username = "other_washer"
-    result = await db_session.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(
-            username=username,
-            passwordHash=get_password_hash("TestPass123!"),
-            role="washer",
-            displayName="Other Washer",
-            createdAt=datetime.now(),
-        )
-        db_session.add(user)
-        await db_session.flush()
+    user = User(
+        username="other_washer",
+        passwordHash=get_password_hash("TestPass123!"),
+        role="washer",
+        displayName="Other Washer",
+        createdAt=datetime.now(),
+    )
+    db_session.add(user)
+    await db_session.commit()
 
     response = await async_client.post(
         "/api/auth/login",
         json={
-            "username": username,
+            "username": "other_washer",
             "password": "TestPass123!",
         },
     )
     assert response.status_code == 200
     return response.json()["access_token"]
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit_state():
+    """Clear in-memory rate-limit and brute-force state between tests."""
+    from core.brute_force import _IN_MEMORY
+
+    _IN_MEMORY.clear()
+    if hasattr(limiter, "_storage") and hasattr(limiter._storage, "reset"):
+        limiter._storage.reset()
+    yield

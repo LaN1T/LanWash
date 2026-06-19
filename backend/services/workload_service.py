@@ -188,7 +188,7 @@ class WorkloadService:
                 dialect_name = getattr(sync_bind, "dialect", None)
             is_postgres = getattr(dialect_name, "name", "") == "postgresql"
             if is_postgres:
-                lock_input = day_start.encode()
+                lock_input = day_start.isoformat().encode()
                 lock_id = int.from_bytes(
                     hashlib.md5(lock_input, usedforsecurity=False).digest()[:4],
                     "little",

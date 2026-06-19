@@ -26,7 +26,7 @@ def upgrade() -> None:
 
     # Populate date from existing dateTime values (YYYY-MM-DDTHH:mm:ss)
     op.execute(
-        "UPDATE appointments SET date = substr(dateTime, 1, 10) WHERE date IS NULL"
+        'UPDATE appointments SET date = substr("dateTime", 1, 10) WHERE date IS NULL'
     )
 
     with op.batch_alter_table("appointments", schema=None) as batch_op:

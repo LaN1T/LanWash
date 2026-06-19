@@ -1,7 +1,21 @@
 import json
-from datetime import datetime
+from datetime import date, datetime, time
+from decimal import Decimal
 
 from models import AdminAuditLog
+
+
+class _AuditJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        if isinstance(obj, time):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 
 async def log_admin_action(
@@ -20,8 +34,8 @@ async def log_admin_action(
         action=action,
         entity_type=entity_type,
         entity_id=str(entity_id),
-        old_values=json.dumps(old_values or {}),
-        new_values=json.dumps(new_values or {}),
+        old_values=json.dumps(old_values or {}, cls=_AuditJsonEncoder),
+        new_values=json.dumps(new_values or {}, cls=_AuditJsonEncoder),
         ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None,
         created_at=datetime.now(),

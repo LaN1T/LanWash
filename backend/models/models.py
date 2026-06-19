@@ -1,5 +1,6 @@
-from datetime import date, datetime, time
-from typing import Any
+import json
+from datetime import date, datetime
+from typing import List, Optional, Union
 
 from sqlalchemy import (
     JSON,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declared_attr, validates
+from sqlalchemy.orm import declared_attr, foreign, relationship, validates
 
 from db.base import Base
 
@@ -41,6 +42,13 @@ class User(Base):
     passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
     referralCode = Column(String, nullable=True, unique=True, index=True)
+
+    appointment_assignments = relationship(
+        "AppointmentWasher",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        primaryjoin="User.username == foreign(AppointmentWasher.washerUsername)",
+    )
 
 
 class Car(Base):
@@ -127,7 +135,6 @@ class Appointment(Base):
         Index("ix_appointments_promo", "promoId"),
         Index("ix_appointments_subscription", "subscriptionId"),
         Index("ix_appointments_box", "box_index"),
-        Index("ix_appointments_assigned_washer", "assignedWasher"),
         Index("ix_appointments_hidden_admin", "isHiddenFromAdmin"),
     )
     id = Column(String, primary_key=True)
@@ -150,12 +157,33 @@ class Appointment(Base):
     isModifiedByWasher = Column(Integer, nullable=False, default=0)
     isSeenByClient = Column(Integer, nullable=False, default=1)
     originalPrice = Column(Integer, nullable=False, default=0)
-    assignedWasher = Column(String, nullable=False, default="[]")
     promoId = Column(String, ForeignKey("promos.id"), nullable=True)
     subscriptionId = Column(Integer, ForeignKey("subscriptions.id"), nullable=True)
     box_index = Column(Integer, nullable=False, default=0)
     late_minutes = Column(Integer, nullable=False, default=0)
     cancel_reason = Column(String, nullable=False, default="")
+
+    assigned_washers = relationship(
+        "AppointmentWasher",
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+        order_by="AppointmentWasher.washerUsername",
+        lazy="selectin",
+    )
+
+    @property
+    def assignedWasher(self) -> str:
+        usernames = [aw.washerUsername for aw in self.assigned_washers]
+        return json.dumps(usernames, ensure_ascii=False)
+
+    @assignedWasher.setter
+    def assignedWasher(self, value: Optional[Union[str, List[str]]]) -> None:
+        if isinstance(value, str):
+            value = json.loads(value) if value and value != "[]" else []
+        value = value or []
+        self.assigned_washers = [
+            AppointmentWasher(washerUsername=u) for u in value
+        ]
 
     @validates("dateTime")
     def _set_date(self, key, value):
@@ -169,6 +197,30 @@ class Appointment(Base):
         else:
             raise ValueError(f"dateTime must be datetime or ISO string, got {type(value).__name__}")
         return value
+
+
+class AppointmentWasher(Base):
+    __tablename__ = "appointment_washers"
+    __table_args__ = (
+        Index("ix_appointment_washers_washer", "washerUsername"),
+    )
+
+    appointmentId = Column(
+        String,
+        ForeignKey("appointments.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    washerUsername = Column(
+        String,
+        primary_key=True,
+    )
+
+    appointment = relationship("Appointment", back_populates="assigned_washers")
+    user = relationship(
+        "User",
+        back_populates="appointment_assignments",
+        primaryjoin="foreign(AppointmentWasher.washerUsername) == User.username",
+    )
 
 
 class Service(Base):
@@ -324,40 +376,6 @@ class Shift(Base):
     createdBy = Column(String, nullable=False)
     createdAt = Column(DateTime, nullable=False)
     updatedAt = Column(DateTime, nullable=False)
-
-    @staticmethod
-    def _parse_date(value: Any) -> date:
-        if isinstance(value, date):
-            return value
-        if isinstance(value, str):
-            try:
-                return date.fromisoformat(value)
-            except ValueError as exc:
-                raise ValueError(f"date must be a valid ISO date: {value!r}") from exc
-        raise ValueError(f"date must be date or ISO string, got {type(value).__name__}")
-
-    @staticmethod
-    def _parse_time(value: Any) -> time:
-        if isinstance(value, time):
-            return value
-        if isinstance(value, str):
-            try:
-                return time.fromisoformat(value)
-            except ValueError as exc:
-                raise ValueError(f"time must be a valid ISO time: {value!r}") from exc
-        raise ValueError(f"time must be time or ISO string, got {type(value).__name__}")
-
-    @validates("date")
-    def _set_date(self, key: str, value: Any) -> date:
-        return self._parse_date(value)
-
-    @validates("startTime")
-    def _set_start_time(self, key: str, value: Any) -> time:
-        return self._parse_time(value)
-
-    @validates("endTime")
-    def _set_end_time(self, key: str, value: Any) -> time:
-        return self._parse_time(value)
 
 
 class ShiftTemplate(Base):

@@ -27,14 +27,14 @@ def upgrade() -> None:
         conn.execute(
             sa.text("""
             UPDATE cars
-            SET isPrimary = 0
+            SET "isPrimary" = 0
             WHERE id NOT IN (
                 SELECT MIN(id)
                 FROM cars
-                WHERE isPrimary = 1
-                GROUP BY userId
+                WHERE "isPrimary" = 1
+                GROUP BY "userId"
             )
-            AND isPrimary = 1
+            AND "isPrimary" = 1
         """)
         )
         op.create_index(
@@ -48,14 +48,14 @@ def upgrade() -> None:
         conn.execute(
             sa.text("""
             UPDATE cars
-            SET isPrimary = FALSE
+            SET "isPrimary" = FALSE
             WHERE id NOT IN (
                 SELECT MIN(id)
                 FROM cars
-                WHERE isPrimary = TRUE
-                GROUP BY userId
+                WHERE "isPrimary" = TRUE
+                GROUP BY "userId"
             )
-            AND isPrimary = TRUE
+            AND "isPrimary" = TRUE
         """)
         )
         op.create_index(

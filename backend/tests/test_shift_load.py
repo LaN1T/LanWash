@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 
@@ -111,8 +111,8 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
             Shift(
                 userId=washer["id"],
                 date=today,
-                startTime="10:00",
-                endTime="14:00",
+                startTime=time(10, 0),
+                endTime=time(14, 0),
                 status="confirmed",
                 createdBy="admin",
                 createdAt=now,
@@ -121,8 +121,8 @@ async def test_conflict_count(async_client, admin_token, washer_token, db_sessio
             Shift(
                 userId=washer["id"],
                 date=today,
-                startTime="12:00",
-                endTime="16:00",
+                startTime=time(12, 0),
+                endTime=time(16, 0),
                 status="confirmed",
                 createdBy="admin",
                 createdAt=now,

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 
@@ -81,12 +81,12 @@ class TestShifts:
         await db_session.commit()
         await db_session.refresh(washer)
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().date()
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="08:00",
-            endTime="20:00",
+            startTime=time(8, 0),
+            endTime=time(20, 0),
             status="confirmed",
             createdBy="admin",
             createdAt=datetime.now(),
@@ -118,13 +118,13 @@ class TestShifts:
         await db_session.refresh(washer)
 
         now = datetime.now()
-        today = now.strftime("%Y-%m-%d")
+        today = now.date()
         # Create a shift that covers the entire day to avoid time-of-day flakiness
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="00:00",
-            endTime="23:59",
+            startTime=time(0, 0),
+            endTime=time(23, 59),
             status="confirmed",
             createdBy="admin",
             createdAt=datetime.now(),
@@ -158,10 +158,10 @@ class TestShifts:
         await db_session.refresh(washer)
 
         now = datetime.now()
-        today = now.strftime("%Y-%m-%d")
+        today = now.date()
         # Shift in the future (should not appear)
-        start = (now + timedelta(hours=1)).strftime("%H:%M")
-        end = (now + timedelta(hours=3)).strftime("%H:%M")
+        start = (now + timedelta(hours=1)).time()
+        end = (now + timedelta(hours=3)).time()
         shift = Shift(
             userId=washer.id,
             date=today,
@@ -198,12 +198,12 @@ class TestShifts:
         await db_session.commit()
         await db_session.refresh(washer)
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now().date()
         shift = Shift(
             userId=washer.id,
             date=today,
-            startTime="08:00",
-            endTime="20:00",
+            startTime=time(8, 0),
+            endTime=time(20, 0),
             status="confirmed",
             createdBy="admin",
             createdAt=datetime.now(),
