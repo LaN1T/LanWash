@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
@@ -24,15 +25,27 @@ class _WasherTipsScreenState extends State<WasherTipsScreen> {
 
   Future<void> _loadTips() async {
     setState(() => _tipsLoading = true);
-    final api = context.read<ApiService>();
-    final tips = await api.getMyTips();
-    final stats = await api.getTipStats();
-    if (mounted) {
-      setState(() {
-        _tips = tips;
-        _tipStats = stats;
-        _tipsLoading = false;
-      });
+    try {
+      final api = context.read<ApiService>();
+      final tips = await api.getMyTips();
+      final stats = await api.getTipStats();
+      if (mounted) {
+        setState(() {
+          _tips = tips;
+          _tipStats = stats;
+        });
+      }
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('WasherTipsScreen._loadTips error: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось загрузить чаевые')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _tipsLoading = false);
+      }
     }
   }
 
