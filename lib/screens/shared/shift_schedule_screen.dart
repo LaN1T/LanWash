@@ -18,10 +18,11 @@ import '../../models/washer_availability.dart';
 import '../../models/shift_load_report.dart';
 import '../../widgets/shift_schedule/shift_analytics_view.dart';
 
-enum _ScheduleMode { shifts, availability, analytics }
+enum ShiftScheduleMode { shifts, availability, analytics }
 
 class ShiftScheduleScreen extends StatefulWidget {
-  const ShiftScheduleScreen({super.key});
+  final ShiftScheduleMode initialMode;
+  const ShiftScheduleScreen({super.key, this.initialMode = ShiftScheduleMode.shifts});
 
   @override
   State<ShiftScheduleScreen> createState() => _ShiftScheduleScreenState();
@@ -406,7 +407,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   DateTime? _copiedDayDate;
   ShiftFilter _filter = ShiftFilter.all;
   List<ShiftTemplate> _templates = [];
-  _ScheduleMode _mode = _ScheduleMode.shifts;
+  late ShiftScheduleMode _mode;
   List<WasherAvailability> _availability = [];
   bool _availabilityLoading = false;
   ShiftLoadReport? _shiftLoadReport;
@@ -418,6 +419,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   @override
   void initState() {
     super.initState();
+    _mode = widget.initialMode;
     _weekStart = _mondayOf(DateTime.now());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isWasher) {
@@ -477,7 +479,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       List<Shift> shifts = [];
       List<Map<String, dynamic>> current = [];
 
-      if (_mode == _ScheduleMode.shifts) {
+      if (_mode == ShiftScheduleMode.shifts) {
         final results = await Future.wait([
           api.getShifts(_dateFmt.format(_weekStart), _dateFmt.format(end)),
           api.getCurrentShifts(),
@@ -486,11 +488,11 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         current = results[1] as List<Map<String, dynamic>>;
       }
 
-      if (_mode != _ScheduleMode.analytics) {
+      if (_mode != ShiftScheduleMode.analytics) {
         await _loadAvailability(washers);
       }
 
-      if (_mode == _ScheduleMode.analytics) {
+      if (_mode == ShiftScheduleMode.analytics) {
         await _loadShiftLoadReport();
       }
 
@@ -503,7 +505,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         });
       }
 
-      if (_mode == _ScheduleMode.shifts) {
+      if (_mode == ShiftScheduleMode.shifts) {
         _loadTemplates();
       }
     } catch (e, st) {
@@ -534,7 +536,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final end = _weekStart.add(const Duration(days: 6));
 
     final userIds = <int>[];
-    if (_mode == _ScheduleMode.availability) {
+    if (_mode == ShiftScheduleMode.availability) {
       userIds.addAll(washers.map((w) => w.id!).whereType<int>());
     } else if (_isAdmin) {
       userIds.addAll(washers.map((w) => w.id!).whereType<int>());
@@ -1585,8 +1587,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _buildModeToggle() {
     final modes = _isAdmin
-        ? _ScheduleMode.values
-        : [_ScheduleMode.shifts, _ScheduleMode.availability];
+        ? ShiftScheduleMode.values
+        : [ShiftScheduleMode.shifts, ShiftScheduleMode.availability];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Center(
@@ -1605,9 +1607,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
           color: AppStyles.adaptiveTextPrimary(context),
           children: modes.map((m) {
             final label = switch (m) {
-              _ScheduleMode.shifts => 'Смены',
-              _ScheduleMode.availability => 'Доступность',
-              _ScheduleMode.analytics => 'Аналитика',
+              ShiftScheduleMode.shifts => 'Смены',
+              ShiftScheduleMode.availability => 'Доступность',
+              ShiftScheduleMode.analytics => 'Аналитика',
             };
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1620,8 +1622,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
   }
 
   Widget _buildShiftsViewOrAvailability() {
-    if (_mode == _ScheduleMode.shifts) return _buildShiftsView();
-    if (_mode == _ScheduleMode.availability) return _buildAvailabilityView();
+    if (_mode == ShiftScheduleMode.shifts) return _buildShiftsView();
+    if (_mode == ShiftScheduleMode.availability) return _buildAvailabilityView();
     return _buildAnalyticsView();
   }
 
