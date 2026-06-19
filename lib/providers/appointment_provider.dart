@@ -168,7 +168,7 @@ class AppointmentProvider extends ChangeNotifier {
       _totalPages = _cacheTotalPages[page]!;
       notifyListeners();
 
-      _prefetchAdjacent(auth);
+      unawaited(_prefetchAdjacent(auth));
 
       try {
         final freshList = await _fetchAppointments(auth);
@@ -182,7 +182,7 @@ class AppointmentProvider extends ChangeNotifier {
       try {
         _appointmentList = await _fetchAppointments(auth);
         notifyListeners();
-        _prefetchAdjacent(auth);
+        unawaited(_prefetchAdjacent(auth));
       } catch (e) {
         _errorMessage = 'Ошибка загрузки записей';
         notifyListeners();
@@ -195,7 +195,7 @@ class AppointmentProvider extends ChangeNotifier {
     clearCache();
     _appointmentList = await _fetchAppointments(auth, targetDate: date);
     notifyListeners();
-    _prefetchAdjacent(auth);
+    unawaited(_prefetchAdjacent(auth));
   }
 
   Future<void> init(AuthProvider auth) async {
@@ -368,7 +368,9 @@ class AppointmentProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('toggleAppointmentFavorite error: $e');
+    }
   }
 
   Future<void> fetchBusySlots(String date) async {
@@ -405,7 +407,9 @@ class AppointmentProvider extends ChangeNotifier {
       await _api.clearDeletedNotification(_currentUser);
       _hasDeletedByAdmin = false;
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('clearDeletedByAdminFlag error: $e');
+    }
   }
 
   Future<void> clearModifiedFlag(String id) async {
@@ -419,7 +423,9 @@ class AppointmentProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('clearModifiedFlag error: $e');
+    }
   }
 
   Future<void> markAsSeen(String id) async {
@@ -432,7 +438,9 @@ class AppointmentProvider extends ChangeNotifier {
               _appointmentList[i].copyWith(isSeenByClient: true);
           notifyListeners();
         }
-      } catch (e) {}
+      } catch (e) {
+        if (kDebugMode) debugPrint('markAsSeen error: $e');
+      }
     }
   }
 }
