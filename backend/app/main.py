@@ -239,35 +239,38 @@ WS_MAX_APPOINTMENT_MESSAGE_BYTES = 4096
 WS_MAX_SUPPORT_MESSAGE_BYTES = 65536
 
 _ws_attempts: dict[str, list[float]] = {}
+_ws_attempts_lock = asyncio.Lock()
 
 
-def _cleanup_ws_attempts() -> None:
+async def _cleanup_ws_attempts() -> None:
     now = time.time()
-    stale = [
-        ip
-        for ip, attempts in _ws_attempts.items()
-        if not any(now - t < 60 for t in attempts)
-    ]
-    for ip in stale:
-        _ws_attempts.pop(ip, None)
+    async with _ws_attempts_lock:
+        stale = [
+            ip
+            for ip, attempts in _ws_attempts.items()
+            if not any(now - t < 60 for t in attempts)
+        ]
+        for ip in stale:
+            _ws_attempts.pop(ip, None)
 
 
-def _ws_rate_limit_check(host: str | None) -> bool:
+async def _ws_rate_limit_check(host: str | None) -> bool:
     """Return True if the connection is allowed, False if it should be rejected."""
     if not host:
         return True
     now = time.time()
-    attempts = [t for t in _ws_attempts.get(host, []) if now - t < 60]
-    if len(attempts) >= 20:
-        return False
-    attempts.append(now)
-    if attempts:
-        _ws_attempts[host] = attempts
-    else:
-        _ws_attempts.pop(host, None)
-    # Opportunistically clean stale entries every ~100 connections
-    if len(_ws_attempts) > 10000:
-        _cleanup_ws_attempts()
+    async with _ws_attempts_lock:
+        attempts = [t for t in _ws_attempts.get(host, []) if now - t < 60]
+        if len(attempts) >= 20:
+            return False
+        attempts.append(now)
+        if attempts:
+            _ws_attempts[host] = attempts
+        else:
+            _ws_attempts.pop(host, None)
+        # Opportunistically clean stale entries every ~100 connections
+        if len(_ws_attempts) > 10000:
+            await _cleanup_ws_attempts()
     return True
 
 
@@ -278,6 +281,15 @@ async def _ws_auth_handshake(websocket: WebSocket) -> str | None:
     except asyncio.TimeoutError:
         return None
     except WebSocketDisconnect:
+        return None
+    except RuntimeError:
+        return None
+    except Exception:
+        logger.exception("ws_auth_handshake_unexpected_error")
+        try:
+            await websocket.close(code=WS_CLOSE_INTERNAL_ERROR)
+        except Exception:
+            pass
         return None
     try:
         data = json.loads(raw)
@@ -317,6 +329,15 @@ async def _ws_message_loop(websocket: WebSocket, max_size: int) -> None:
             raw = await websocket.receive_text()
         except WebSocketDisconnect:
             break
+        except RuntimeError:
+            break
+        except Exception:
+            logger.exception("ws_message_loop_unexpected_error")
+            try:
+                await websocket.close(code=WS_CLOSE_INTERNAL_ERROR)
+            except Exception:
+                pass
+            break
         if len(raw) > max_size:
             await websocket.close(code=WS_CLOSE_MESSAGE_TOO_BIG)
             break
@@ -349,7 +370,7 @@ async def _websocket_heartbeat(websocket: WebSocket) -> None:
 @app.websocket("/ws/support/chats/{chat_id}")
 async def support_chat_websocket(websocket: WebSocket, chat_id: int) -> None:
     ip = websocket.client.host if websocket.client else None
-    if not _ws_rate_limit_check(ip):
+    if not await _ws_rate_limit_check(ip):
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
 
@@ -378,7 +399,7 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int) -> None:
                 await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
                 return
 
-            connect(chat_id, websocket, current_user.id)
+            await connect(chat_id, websocket, current_user.id)
             heartbeat_task = asyncio.create_task(_websocket_heartbeat(websocket))
             try:
                 await _ws_message_loop(websocket, WS_MAX_SUPPORT_MESSAGE_BYTES)
@@ -388,7 +409,7 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int) -> None:
                     await heartbeat_task
                 except asyncio.CancelledError:
                     pass
-                disconnect(chat_id, websocket)
+                await disconnect(chat_id, websocket)
     except Exception:
         logger.exception("support_websocket_error")
         await websocket.close(code=WS_CLOSE_INTERNAL_ERROR)
@@ -399,7 +420,7 @@ async def support_chat_websocket(websocket: WebSocket, chat_id: int) -> None:
 @app.websocket("/ws/appointments")
 async def appointments_websocket(websocket: WebSocket) -> None:
     ip = websocket.client.host if websocket.client else None
-    if not _ws_rate_limit_check(ip):
+    if not await _ws_rate_limit_check(ip):
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
 

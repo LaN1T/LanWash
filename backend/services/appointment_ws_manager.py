@@ -1,7 +1,5 @@
 import asyncio
 import json
-from datetime import date, datetime, time
-from decimal import Decimal
 from typing import Dict, List, Optional, Set, Tuple
 
 import structlog
@@ -11,21 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.models import Appointment, User
 from schemas import AppointmentResponse
+from services.ws_json import WebSocketJsonEncoder
 
 logger = structlog.get_logger()
-
-
-class _WebSocketJsonEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        if isinstance(obj, date):
-            return obj.isoformat()
-        if isinstance(obj, time):
-            return obj.isoformat()
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return super().default(obj)
 
 
 class AppointmentWebSocketManager:
@@ -63,7 +49,7 @@ class AppointmentWebSocketManager:
             "event": event,
             "appointment": AppointmentResponse.model_validate(appointment).model_dump(),
         }
-        message = json.dumps(payload, cls=_WebSocketJsonEncoder)
+        message = json.dumps(payload, cls=WebSocketJsonEncoder)
 
         recipients = await self._resolve_recipients(db, appointment)
         if not recipients:
