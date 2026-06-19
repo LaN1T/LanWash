@@ -16,7 +16,7 @@ API keys видны в клиентском коде (`android/app/google-servic
 
 #### Android key
 - **Application restrictions** → `Android apps`
-- Добавь package name: `ru.lanwash.app`
+- Добавь package name: `com.example.lanwash`
 - Добавь SHA-1 (debug и release):
   ```bash
   # Debug SHA-1
@@ -28,7 +28,7 @@ API keys видны в клиентском коде (`android/app/google-servic
 
 #### iOS key
 - **Application restrictions** → `iOS apps`
-- Добавь bundle ID: `ru.lanwash.app`
+- Добавь bundle ID: `com.example.lanwash`
 - **API restrictions** → `Restrict key` → выбери только:
   - Firebase Cloud Messaging API
   - Firebase Installations API

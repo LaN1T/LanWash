@@ -1,4 +1,4 @@
-package ru.lanwash.app
+package com.example.lanwash
 
 import io.flutter.embedding.android.FlutterActivity
 
