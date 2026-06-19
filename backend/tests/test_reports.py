@@ -55,8 +55,8 @@ class TestReports:
         row = data["data"][0]
         assert "carModel" in row
         assert "avgCheck" in row
-        assert "avgCarPrice" in row
         assert "visitCount" in row
+        assert "avgCarPrice" not in row
 
     @pytest.mark.asyncio
     async def test_popular_services_report(

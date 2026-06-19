@@ -1,5 +1,4 @@
 import json
-import random
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -22,28 +21,6 @@ from repositories import (
 
 WASH_CATEGORY = "Мойка кузова"
 SHIFT_LOAD_TARGET_WEEKLY_MINUTES = 40 * 60
-
-
-class CarPriceService:
-    @staticmethod
-    async def get_average_price(car_model: str) -> int:
-        base_prices = {
-            "toyota camry": 2500000,
-            "bmw x5": 6000000,
-            "mercedes-benz e-class": 4500000,
-            "hyundai solaris": 1200000,
-            "kia rio": 1100000,
-            "lada vesta": 1000000,
-            "volkswagen tiguan": 3000000,
-            "skoda octavia": 2000000,
-        }
-        model_lower = car_model.lower()
-        for key, price in base_prices.items():
-            if key in model_lower:
-                # Demo pricing only; no cryptographic use.
-                return price + random.randint(-100000, 100000)  # nosec: B311
-        # Demo pricing only; no cryptographic use.
-        return random.randint(1500000, 3500000)  # nosec: B311
 
 
 class ReportsService:
@@ -83,16 +60,11 @@ class ReportsService:
         rows = await self._appointment_repo.get_car_model_stats_in_period(start, end)
         report = []
         for car_model, avg_check, visit_count in rows:
-            avg_car_price = await CarPriceService.get_average_price(car_model or "")
             report.append(
                 {
                     "carModel": car_model,
                     "avgCheck": round(float(avg_check), 2),
-                    "avgCarPrice": avg_car_price,
                     "visitCount": visit_count,
-                    "ratio": round(
-                        (avg_check / avg_car_price * 100) if avg_car_price > 0 else 0, 4
-                    ),
                 }
             )
         return {"date": date, "data": report}

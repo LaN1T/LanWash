@@ -15,25 +15,19 @@ class MonthlyReport {
 class ReportEntry {
   final String carModel;
   final double avgCheck;
-  final int avgCarPrice;
   final int visitCount;
-  final double ratio;
 
   ReportEntry({
     required this.carModel,
     required this.avgCheck,
-    required this.avgCarPrice,
     required this.visitCount,
-    required this.ratio,
   });
 
   factory ReportEntry.fromJson(Map<String, dynamic> json) {
     return ReportEntry(
       carModel: json['carModel'],
       avgCheck: (json['avgCheck'] as num).toDouble(),
-      avgCarPrice: json['avgCarPrice'] as int,
       visitCount: json['visitCount'] as int,
-      ratio: (json['ratio'] as num).toDouble(),
     );
   }
 }
