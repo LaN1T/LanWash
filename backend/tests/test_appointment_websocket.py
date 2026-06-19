@@ -1,6 +1,5 @@
 # backend/tests/test_appointment_websocket.py
 import uuid
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from starlette.testclient import TestClient
