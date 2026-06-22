@@ -15,7 +15,7 @@ import '../client/settings_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 import '../admin/notes_screen.dart';
-import '../shared/splash_screen.dart';
+import '../shared/splash_screen.dart' show LanWashLogo;
 import 'qr_scanner_screen.dart';
 import 'washer_history_screen.dart';
 import 'washer_tips_screen.dart';
@@ -408,7 +408,8 @@ class _WasherAppointmentsTabState extends State<_WasherAppointmentsTab> {
                 // Неделя перелистнута, но выбранный день НЕ меняется автоматически
               },
               itemBuilder: (ctx, pageIndex) {
-                final today = DateTime.now();
+                final now = DateTime.now();
+                final today = now;
                 final currentWeekStart =
                     today.subtract(Duration(days: today.weekday - 1));
                 final startOfWeek = currentWeekStart
@@ -425,9 +426,9 @@ class _WasherAppointmentsTabState extends State<_WasherAppointmentsTab> {
                     final isSelected = d.day == _selectedDay.day &&
                         d.month == _selectedDay.month &&
                         d.year == _selectedDay.year;
-                    final isToday = d.day == DateTime.now().day &&
-                        d.month == DateTime.now().month &&
-                        d.year == _selectedDay.year;
+                    final isToday = d.day == now.day &&
+                        d.month == now.month &&
+                        d.year == now.year;
                     return Expanded(
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedDay = d),
