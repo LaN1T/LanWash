@@ -12,10 +12,16 @@ class AppointmentDetailWidget extends StatelessWidget {
   final Appointment appointment;
   final bool isClient;
 
+  /// If true, status-changing actions are hidden even when the current user
+  /// is a washer. Used for the client-style "My bookings" view on a washer
+  /// account.
+  final bool readOnly;
+
   const AppointmentDetailWidget({
     super.key,
     required this.appointment,
     this.isClient = true,
+    this.readOnly = false,
   });
 
   @override
@@ -60,6 +66,7 @@ class AppointmentDetailWidget extends StatelessWidget {
           _StatusBanner(status: a.status),
           const SizedBox(height: 16),
           if (isWasher &&
+              !readOnly &&
               a.status != 'cancelled' &&
               a.status != 'completed') ...[
             Text('Изменить статус',
@@ -117,7 +124,7 @@ class AppointmentDetailWidget extends StatelessWidget {
             final endTime = a.dateTime.add(Duration(minutes: duration.toInt()));
             final cutoff = DateTime(
                 a.dateTime.year, a.dateTime.month, a.dateTime.day, 22, 0);
-            String timeStr = endTime.isAfter(cutoff)
+            final timeStr = endTime.isAfter(cutoff)
                 ? '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, ⚠ Завтра до ${((8 * 60 + (endTime.difference(cutoff).inMinutes)) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + (endTime.difference(cutoff).inMinutes)) % 60).toString().padLeft(2, '0')}'
                 : '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm').format(endTime)}';
             return _Row(Icons.access_time, 'Время', timeStr);

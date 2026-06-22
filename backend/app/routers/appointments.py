@@ -1,12 +1,12 @@
 import json
 import uuid
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import Time, and_, delete, func, or_, select, update
+from sqlalchemy import String, and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
@@ -97,6 +97,47 @@ async def _auto_assign_washer(db: AsyncSession, date_time: datetime) -> Optional
             best_washer = username
 
     return best_washer
+
+
+def _parse_time(value) -> Optional[time]:
+    """Parse a time value from a Python object or string.
+
+    Handles DB schema mismatches where shift / appointment columns may be
+    stored as VARCHAR instead of native TIME/DATETIME types.
+    """
+    if value is None:
+        return None
+    if isinstance(value, time):
+        return value
+    if isinstance(value, datetime):
+        return value.time()
+    if isinstance(value, str):
+        value = value.strip()
+        if "T" in value:
+            try:
+                return datetime.fromisoformat(value).time()
+            except ValueError:
+                return None
+        for fmt in ("%H:%M:%S", "%H:%M"):
+            try:
+                return datetime.strptime(value, fmt).time()
+            except ValueError:
+                continue
+    return None
+
+
+def _parse_date(value) -> Optional[date]:
+    """Parse a date value from a Python object or string."""
+    if value is None:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
 
 
 async def _notify_fcm(
@@ -322,26 +363,55 @@ async def get_by_washer(
         raise HTTPException(404, "Пользователь не найден")
 
     username_lower = username.lower()
-    appt_time = func.cast(Appointment.dateTime, Time)
 
-    assigned_query = (
-        select(Appointment)
+    # 1. Appointments explicitly assigned to this washer.
+    assigned_result = await db.execute(
+        select(Appointment.id)
         .join(AppointmentWasher)
         .where(AppointmentWasher.washerUsername == username_lower)
     )
+    appt_ids = {row[0] for row in assigned_result.all()}
 
-    shift_query = select(Appointment).join(
-        Shift,
-        and_(
-            Shift.userId == user.id,
-            Shift.date == Appointment.date,
-            appt_time >= Shift.startTime,
-            appt_time <= Shift.endTime,
-        ),
+    # 2. Appointments that fall inside one of the washer's confirmed shifts.
+    #    We match dates/times in Python so the code is robust against schema
+    #    mismatches (e.g. TIME/DATE columns stored as VARCHAR).
+    shift_result = await db.execute(
+        select(Shift).where(Shift.userId == user.id, Shift.status == "confirmed")
     )
+    shifts = shift_result.scalars().all()
+    if shifts:
+        intervals: dict[date, list[tuple[time, time]]] = defaultdict(list)
+        for s in shifts:
+            shift_date = _parse_date(s.date)
+            start = _parse_time(s.startTime)
+            end = _parse_time(s.endTime)
+            if shift_date is not None and start is not None and end is not None:
+                intervals[shift_date].append((start, end))
 
-    union_query = assigned_query.union(shift_query).order_by(Appointment.dateTime.asc())
-    _, items = await paginate(union_query, db, pagination)
+        if intervals:
+            date_strings = [d.isoformat() for d in intervals.keys()]
+            appt_result = await db.execute(
+                select(Appointment.id, Appointment.date, Appointment.dateTime).where(
+                    func.cast(Appointment.date, String).in_(date_strings)
+                )
+            )
+            for appt_id, appt_date, appt_dt in appt_result.all():
+                parsed_date = _parse_date(appt_date)
+                parsed_time = _parse_time(appt_dt)
+                if parsed_date is None or parsed_time is None:
+                    continue
+                for start, end in intervals.get(parsed_date, []):
+                    if start <= parsed_time <= end:
+                        appt_ids.add(appt_id)
+                        break
+
+    if not appt_ids:
+        return []
+
+    query = select(Appointment).where(Appointment.id.in_(appt_ids)).order_by(
+        Appointment.dateTime.asc()
+    )
+    _, items = await paginate(query, db, pagination)
     return items
 
 

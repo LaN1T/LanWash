@@ -85,9 +85,8 @@ class AppointmentWebSocketService {
     }
 
     final base = AppConfig.baseUrl;
-    final host = base.endsWith('/api')
-        ? base.substring(0, base.length - 4)
-        : base;
+    final host =
+        base.endsWith('/api') ? base.substring(0, base.length - 4) : base;
     final wsUrl = '${host.replaceFirst('http', 'ws')}/ws/appointments';
 
     if (kDebugMode) debugPrint('[AppointmentWS] connecting to $wsUrl');
@@ -135,7 +134,9 @@ class AppointmentWebSocketService {
         provider.applyWebSocketAppointment(appointment, eventName, auth);
         NotificationService().emitAppointmentUpdated(id);
       } else if (type == 'auth_failed') {
-        _authFailureController.add(null);
+        if (!_authFailureController.isClosed) {
+          _authFailureController.add(null);
+        }
         disconnect();
       }
     } catch (e, st) {

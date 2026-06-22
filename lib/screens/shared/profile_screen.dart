@@ -158,6 +158,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: const Text('Профиль',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Настройки',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -296,41 +306,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
             const SizedBox(height: 24),
           ],
-
-          // ─── Настройки профиля ───────────────────────────────────────────
-          _sectionLabel('Настройки профиля'),
-          const SizedBox(height: 10),
-          Container(
-            decoration: AppStyles.cardDecorationFor(context),
-            child: ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppStyles.adaptivePrimaryBg(context),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.settings_outlined,
-                    color: AppStyles.primary, size: 20),
-              ),
-              title: Text('Настройки',
-                  style: TextStyle(
-                      color: AppStyles.adaptiveTextPrimary(context),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
-              subtitle: Text('Пароль, тема и выход из аккаунта',
-                  style: TextStyle(
-                      color: AppStyles.adaptiveTextSecondary(context),
-                      fontSize: 12)),
-              trailing: Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: AppStyles.adaptiveTextMuted(context)),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
         ],
       ),
     );
@@ -501,7 +476,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                Text('${a.paidPrice} ₽',
+                Text(
+                    a.paidPrice > 0
+                        ? '${a.paidPrice} ₽'
+                        : a.originalPrice > 0
+                            ? '${a.originalPrice} ₽'
+                            : '',
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

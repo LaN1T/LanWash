@@ -77,11 +77,9 @@ class _WasherTipsScreenState extends State<WasherTipsScreen> {
                         children: [
                           _StatItem('Всего', _tipStats!.totalTips.toString()),
                           const VerticalDivider(),
-                          _StatItem(
-                              'Получено', '${_tipStats!.totalAmount} ₽'),
+                          _StatItem('Получено', '${_tipStats!.totalAmount} ₽'),
                           const VerticalDivider(),
-                          _StatItem('Ожидает',
-                              '${_tipStats!.pendingAmount} ₽'),
+                          _StatItem('Ожидает', '${_tipStats!.pendingAmount} ₽'),
                         ],
                       ),
                     ),
@@ -165,8 +163,7 @@ class _TipCard extends StatelessWidget {
           children: [
             Row(children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                     color: isPending
                         ? AppStyles.warning.withValues(alpha: 0.1)

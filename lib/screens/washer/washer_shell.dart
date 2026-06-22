@@ -1,22 +1,22 @@
-import 'dart:async'; // Add this
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../../app_styles.dart';
-import '../../models/tip.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/note_provider.dart';
-import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/offline_status_indicator.dart';
-import '../../widgets/washer/washer_appointment_card.dart';
+import '../client/booking_wizard_screen.dart';
+import '../client/support_chats_screen.dart';
 import '../shared/profile_screen.dart';
-import '../shared/splash_screen.dart';
 import '../shared/shift_schedule_screen.dart';
-import '../shared/statistics_screen.dart';
 import '../admin/notes_screen.dart';
+import '../shared/splash_screen.dart' show LanWashLogo;
 import 'qr_scanner_screen.dart';
+import 'washer_appointments_screen.dart';
+import 'washer_dashboard_screen.dart';
+import 'washer_tips_screen.dart';
 
 class WasherShell extends StatefulWidget {
   const WasherShell({super.key});
@@ -46,16 +46,13 @@ class _WasherShellState extends State<WasherShell> {
 
   @override
   void dispose() {
-    _appointmentSub?.cancel(); // Cancel subscription
+    _appointmentSub?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
         title: Row(children: [
@@ -68,11 +65,7 @@ class _WasherShellState extends State<WasherShell> {
           ),
           const SizedBox(width: 10),
           Text(
-            _tabIndex == 0
-                ? 'Мои записи'
-                : _tabIndex == 1
-                    ? 'Мои заметки'
-                    : 'Чаевые',
+            _tabIndex == 0 ? 'Мои записи' : 'Мои заметки',
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
         ]),
@@ -94,9 +87,8 @@ class _WasherShellState extends State<WasherShell> {
       body: IndexedStack(
         index: _tabIndex,
         children: const [
-          _WasherAppointmentsTab(),
+          WasherAppointmentsScreen(),
           NotesScreen(isEmbedded: true),
-          _WasherTipsTab(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -108,8 +100,6 @@ class _WasherShellState extends State<WasherShell> {
           NavigationDestination(
               icon: Icon(Icons.calendar_today), label: 'Записи'),
           NavigationDestination(icon: Icon(Icons.note_alt), label: 'Заметки'),
-          NavigationDestination(
-              icon: Icon(Icons.volunteer_activism), label: 'Чаевые'),
         ],
       ),
     );
@@ -118,6 +108,55 @@ class _WasherShellState extends State<WasherShell> {
   Widget _buildDrawer(BuildContext ctx) {
     final username = ctx.select<AuthProvider, String>((a) => a.username);
     final dark = AppStyles.isDark(ctx);
+
+    Widget section(String title) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+          child: Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              color: AppStyles.adaptiveTextMuted(ctx),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+        );
+
+    Widget tile({
+      required IconData icon,
+      required String title,
+      bool selected = false,
+      VoidCallback? onTap,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: ListTile(
+          minLeadingWidth: 24,
+          leading: Icon(
+            icon,
+            color: selected
+                ? AppStyles.primary
+                : AppStyles.adaptiveTextSecondary(ctx),
+            size: 22,
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: selected
+                  ? AppStyles.primary
+                  : AppStyles.adaptiveTextPrimary(ctx),
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          selected: selected,
+          selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          onTap: onTap,
+        ),
+      );
+    }
+
     return Drawer(
       backgroundColor: AppStyles.adaptiveCard(ctx),
       child: SafeArea(
@@ -166,601 +205,106 @@ class _WasherShellState extends State<WasherShell> {
             ]),
           ),
           Divider(color: AppStyles.adaptiveBorder(ctx), height: 1),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(
-                  _tabIndex == 0
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                section('Записи'),
+                tile(
+                  icon: _tabIndex == 0
                       ? Icons.calendar_today
                       : Icons.calendar_today_outlined,
-                  color: _tabIndex == 0
-                      ? AppStyles.primary
-                      : AppStyles.adaptiveTextSecondary(ctx),
-                  size: 22),
-              title: Text('Мои записи',
-                  style: TextStyle(
-                      color: _tabIndex == 0
-                          ? AppStyles.primary
-                          : AppStyles.adaptiveTextPrimary(ctx),
-                      fontWeight: _tabIndex == 0
-                          ? FontWeight.w600
-                          : FontWeight.normal)),
-              selected: _tabIndex == 0,
-              selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              onTap: () {
-                setState(() => _tabIndex = 0);
-                Navigator.pop(ctx);
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(
-                  _tabIndex == 1
-                      ? Icons.note_alt_rounded
-                      : Icons.note_alt_outlined,
-                  color: _tabIndex == 1
-                      ? AppStyles.primary
-                      : AppStyles.adaptiveTextSecondary(ctx),
-                  size: 22),
-              title: Text('Мои заметки',
-                  style: TextStyle(
-                      color: _tabIndex == 1
-                          ? AppStyles.primary
-                          : AppStyles.adaptiveTextPrimary(ctx),
-                      fontWeight: _tabIndex == 1
-                          ? FontWeight.w600
-                          : FontWeight.normal)),
-              selected: _tabIndex == 1,
-              selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              onTap: () {
-                setState(() => _tabIndex = 1);
-                Navigator.pop(ctx);
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(
-                  _tabIndex == 2
-                      ? Icons.volunteer_activism
-                      : Icons.volunteer_activism_outlined,
-                  color: _tabIndex == 2
-                      ? AppStyles.primary
-                      : AppStyles.adaptiveTextSecondary(ctx),
-                  size: 22),
-              title: Text('Чаевые',
-                  style: TextStyle(
-                      color: _tabIndex == 2
-                          ? AppStyles.primary
-                          : AppStyles.adaptiveTextPrimary(ctx),
-                      fontWeight: _tabIndex == 2
-                          ? FontWeight.w600
-                          : FontWeight.normal)),
-              selected: _tabIndex == 2,
-              selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              onTap: () {
-                setState(() => _tabIndex = 2);
-                Navigator.pop(ctx);
-              },
-            ),
-          ),
-          Divider(
-              color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(Icons.schedule_outlined,
-                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              title: Text('Расписание',
-                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                    ctx,
-                    MaterialPageRoute(
-                        builder: (_) => const ShiftScheduleScreen()));
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(Icons.bar_chart_rounded,
-                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              title: Text('Статистика',
-                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                    ctx,
-                    MaterialPageRoute(
-                        builder: (_) => const StatisticsScreen()));
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(Icons.person_outline_rounded,
-                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              title: Text('Профиль',
-                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(ctx,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()));
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(Icons.logout_outlined,
-                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              title: Text('Выйти',
-                  style:
-                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmLogout(ctx);
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  title: 'Мои записи',
+                  selected: _tabIndex == 0,
+                  onTap: () {
+                    setState(() => _tabIndex = 0);
+                    Navigator.pop(ctx);
+                  },
+                ),
+                tile(
+                  icon: Icons.add_circle_outline_rounded,
+                  title: 'Записаться на мойку',
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const BookingWizardScreen()),
+                    );
+                    if (mounted) {
+                      final auth = context.read<AuthProvider>();
+                      await context
+                          .read<AppointmentProvider>()
+                          .reloadAppointments(auth);
+                    }
+                  },
+                ),
+                section('Работа'),
+                tile(
+                  icon: Icons.schedule_outlined,
+                  title: 'Расписание',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const ShiftScheduleScreen()),
+                    );
+                  },
+                ),
+                tile(
+                  icon: Icons.work_outline_rounded,
+                  title: 'Мой день',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const WasherDashboardScreen()),
+                    );
+                  },
+                ),
+                tile(
+                  icon: Icons.volunteer_activism_outlined,
+                  title: 'Чаевые',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const WasherTipsScreen()),
+                    );
+                  },
+                ),
+                section('Поддержка'),
+                tile(
+                  icon: Icons.support_agent_outlined,
+                  title: 'Написать в поддержку',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const SupportChatsScreen()),
+                    );
+                  },
+                ),
+                section('Аккаунт'),
+                tile(
+                  icon: Icons.person_outline_rounded,
+                  title: 'Профиль',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ]),
-      ),
-    );
-  }
-
-  void _confirmLogout(BuildContext ctx) {
-    showDialog(
-      context: ctx,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Выйти из аккаунта?',
-            style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-        content: Text('Вы вернётесь на экран входа.',
-            style: TextStyle(color: AppStyles.adaptiveTextSecondary(ctx))),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Отмена',
-                  style:
-                      TextStyle(color: AppStyles.adaptiveTextSecondary(ctx)))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8))),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ctx.read<AuthProvider>().logout();
-            },
-            child: const Text('Выйти'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatItem(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppStyles.primary)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: AppStyles.adaptiveTextSecondary(context))),
-        ],
-      ),
-    );
-  }
-}
-
-class _TipCard extends StatelessWidget {
-  final Tip tip;
-  final VoidCallback onRefresh;
-  const _TipCard({required this.tip, required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) {
-    final isPending = tip.status == 'pending';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      color: AppStyles.adaptiveCard(context),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: AppStyles.adaptiveBorder(context))),
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                    color: isPending
-                        ? AppStyles.warning.withValues(alpha: 0.1)
-                        : AppStyles.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6)),
-                child: Text(tip.statusLabel,
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            isPending ? AppStyles.warning : AppStyles.success)),
-              ),
-              const Spacer(),
-              Text('${tip.amount} ₽',
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppStyles.primary)),
-            ]),
-            const SizedBox(height: 10),
-            Text('Способ: ${tip.methodLabel}',
-                style: TextStyle(
-                    fontSize: 13,
-                    color: AppStyles.adaptiveTextSecondary(context))),
-            const SizedBox(height: 4),
-            Text('Запись: ${tip.appointmentId}',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: AppStyles.adaptiveTextSecondary(context))),
-            if (isPending && tip.method != 'sbp') ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final scaffold = ScaffoldMessenger.of(context);
-                    final ok =
-                        await context.read<ApiService>().markTipPaid(tip.id);
-                    if (ok) {
-                      onRefresh();
-                    } else {
-                      scaffold.showSnackBar(
-                        const SnackBar(
-                            content: Text('Не удалось отметить'),
-                            backgroundColor: AppStyles.danger),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text('Отметить получено'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppStyles.success,
-                    side: const BorderSide(color: AppStyles.success),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WasherAppointmentsTab extends StatefulWidget {
-  const _WasherAppointmentsTab();
-
-  @override
-  State<_WasherAppointmentsTab> createState() => _WasherAppointmentsTabState();
-}
-
-class _WasherAppointmentsTabState extends State<_WasherAppointmentsTab> {
-  DateTime _selectedDay = DateTime.now();
-  late final PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController(initialPage: 500000);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      context.read<AppointmentProvider>().reloadAppointments(auth);
-    });
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppointmentProvider>();
-    final auth = context.read<AuthProvider>();
-    final appts = provider.appointments;
-
-    if (provider.loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppStyles.primary));
-    }
-
-    final filteredAppts = appts
-        .where((a) =>
-            a.dateTime.year == _selectedDay.year &&
-            a.dateTime.month == _selectedDay.month &&
-            a.dateTime.day == _selectedDay.day)
-        .toList();
-
-    return RefreshIndicator(
-      color: AppStyles.primary,
-      onRefresh: () => provider.reloadAppointments(auth),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          Container(
-            height: 80,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: 1000000,
-              onPageChanged: (pageIndex) {
-                // Неделя перелистнута, но выбранный день НЕ меняется автоматически
-              },
-              itemBuilder: (ctx, pageIndex) {
-                final today = DateTime.now();
-                final currentWeekStart =
-                    today.subtract(Duration(days: today.weekday - 1));
-                final startOfWeek = currentWeekStart
-                    .add(Duration(days: (pageIndex - 500000) * 7));
-                return Row(
-                  children: List.generate(7, (i) {
-                    final d = startOfWeek.add(Duration(days: i));
-                    final count = appts
-                        .where((a) =>
-                            a.dateTime.year == d.year &&
-                            a.dateTime.month == d.month &&
-                            a.dateTime.day == d.day)
-                        .length;
-                    final isSelected = d.day == _selectedDay.day &&
-                        d.month == _selectedDay.month &&
-                        d.year == _selectedDay.year;
-                    final isToday = d.day == DateTime.now().day &&
-                        d.month == DateTime.now().month &&
-                        d.year == _selectedDay.year;
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedDay = d),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 2, vertical: 8),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppStyles.primary
-                                  : AppStyles.adaptiveCard(context),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: isSelected
-                                      ? AppStyles.primary
-                                      : (isToday
-                                          ? AppStyles.primary
-                                          : AppStyles.adaptiveBorder(context)),
-                                  width: isToday ? 2 : 1),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                    DateFormat('E', 'ru')
-                                        .format(d)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppStyles.adaptiveTextSecondary(
-                                                context),
-                                        fontSize: 9)),
-                                Text('${d.day}',
-                                    style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppStyles.adaptiveTextPrimary(
-                                                context),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold)),
-                                if (count > 0)
-                                  Container(
-                                    width: 14,
-                                    height: 14,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppStyles.primary,
-                                        shape: BoxShape.circle),
-                                    child: Text('$count',
-                                        style: TextStyle(
-                                            color: isSelected
-                                                ? AppStyles.primary
-                                                : Colors.white,
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold)),
-                                  )
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-          SizedBox(
-            height: MediaQuery.of(context).size.height - 250,
-            child: filteredAppts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.event_note_outlined,
-                            size: 64,
-                            color: AppStyles.adaptiveTextSecondary(context)
-                                .withValues(alpha: 0.4)),
-                        const SizedBox(height: 12),
-                        Text('На выбранный день записей нет',
-                            style: AppStyles.headingMedium.copyWith(
-                                color:
-                                    AppStyles.adaptiveTextSecondary(context))),
-                        const SizedBox(height: 6),
-                        Text('Выберите другой день или проверьте фильтры',
-                            style: AppStyles.bodyMedium.copyWith(
-                                color:
-                                    AppStyles.adaptiveTextSecondary(context))),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredAppts.length,
-                    itemBuilder: (context, index) {
-                      return WasherAppointmentCard(
-                          appointment: filteredAppts[index]);
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WasherTipsTab extends StatefulWidget {
-  const _WasherTipsTab();
-
-  @override
-  State<_WasherTipsTab> createState() => _WasherTipsTabState();
-}
-
-class _WasherTipsTabState extends State<_WasherTipsTab> {
-  List<dynamic> _tips = [];
-  bool _tipsLoading = false;
-  dynamic _tipStats;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTips();
-  }
-
-  Future<void> _loadTips() async {
-    setState(() => _tipsLoading = true);
-    final api = context.read<ApiService>();
-    final tips = await api.getMyTips();
-    final stats = await api.getTipStats();
-    if (mounted) {
-      setState(() {
-        _tips = tips;
-        _tipStats = stats;
-        _tipsLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_tipsLoading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppStyles.primary));
-    }
-    final stats = _tipStats as TipStats?;
-    return RefreshIndicator(
-      color: AppStyles.primary,
-      onRefresh: _loadTips,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (stats != null) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppStyles.adaptiveCard(context),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppStyles.adaptiveBorder(context)),
-              ),
-              child: Row(
-                children: [
-                  _StatItem('Всего', stats.totalTips.toString()),
-                  const VerticalDivider(),
-                  _StatItem('Получено', '${stats.totalAmount} ₽'),
-                  const VerticalDivider(),
-                  _StatItem('Ожидает', '${stats.pendingAmount} ₽'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (_tips.isEmpty)
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 40),
-                  Icon(Icons.volunteer_activism,
-                      size: 56,
-                      color: AppStyles.adaptiveTextSecondary(context)
-                          .withValues(alpha: 0.4)),
-                  const SizedBox(height: 12),
-                  Text('Пока нет чаевых',
-                      style: AppStyles.headingMedium.copyWith(
-                          color: AppStyles.adaptiveTextSecondary(context))),
-                ],
-              ),
-            )
-          else
-            ..._tips.map((t) => _TipCard(tip: t as Tip, onRefresh: _loadTips)),
-        ],
       ),
     );
   }

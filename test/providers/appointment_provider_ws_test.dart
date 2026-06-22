@@ -47,7 +47,8 @@ void main() {
       provider.appointments.add(_dummyAppointment('a1'));
 
       await provider.applyWebSocketAppointment(
-        _appointmentMap(id: 'a1', status: 'in_progress', clientName: 'New Name'),
+        _appointmentMap(
+            id: 'a1', status: 'in_progress', clientName: 'New Name'),
         'updated',
         auth,
       );

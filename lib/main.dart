@@ -497,33 +497,12 @@ class _AppRouterState extends State<_AppRouter> {
   void _handleDeepLink(Uri uri, AuthProvider auth) {
     debugPrint('Processing deep link: $uri');
     final path = uri.path;
-    if (path.startsWith('/booking')) {
-      if (auth.isClient) {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const BookingWizardScreen()),
-        );
-      } else {
-        _navigateToRoleShell(auth);
-      }
-    } else {
-      _navigateToRoleShell(auth);
+    // Only handle specific deep-link paths. Avoid navigating away from the
+    // root _AppRouter, otherwise login-state listeners are lost.
+    if (path.startsWith('/booking') && auth.isClient) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const BookingWizardScreen()),
+      );
     }
-  }
-
-  void _navigateToRoleShell(AuthProvider auth) {
-    final Widget shell;
-    if (!auth.isLoggedIn) {
-      shell = const LoginScreen();
-    } else if (auth.isClient) {
-      shell = ClientShell(key: ClientShell.shellKey);
-    } else if (auth.isWasher) {
-      shell = const WasherShell();
-    } else {
-      shell = const HomeShell();
-    }
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => shell),
-      (_) => false,
-    );
   }
 }
