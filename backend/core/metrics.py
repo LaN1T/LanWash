@@ -1,7 +1,7 @@
 """Business metrics exposed to Prometheus."""
 
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from prometheus_client import Counter, Gauge
 from sqlalchemy import and_, func, select
@@ -59,9 +59,9 @@ shift_hours = Gauge(
 
 def _today_range():
     now = datetime.now()
-    today = now.strftime("%Y-%m-%d")
-    tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
-    return f"{today}T00:00:00", f"{tomorrow}T00:00:00"
+    today = now.date()
+    tomorrow = today + timedelta(days=1)
+    return datetime.combine(today, time.min), datetime.combine(tomorrow, time.min)
 
 
 async def update_business_metrics():
@@ -73,8 +73,10 @@ async def update_business_metrics():
     async with AsyncSessionLocal() as session:
         now = datetime.now()
         today_start, today_end = _today_range()
-        week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
-        month_start = now.replace(day=1).strftime("%Y-%m-%d")
+        week_start = datetime.combine(
+            now.date() - timedelta(days=now.weekday()), time.min
+        )
+        month_start = datetime.combine(now.date().replace(day=1), time.min)
 
         # Daily revenue
         daily = await session.scalar(
@@ -93,7 +95,7 @@ async def update_business_metrics():
             select(func.coalesce(func.sum(Appointment.paidPrice), 0)).where(
                 and_(
                     Appointment.status == "completed",
-                    Appointment.dateTime >= f"{week_start}T00:00:00",
+                    Appointment.dateTime >= week_start,
                 )
             )
         )
@@ -104,7 +106,7 @@ async def update_business_metrics():
             select(func.coalesce(func.sum(Appointment.paidPrice), 0)).where(
                 and_(
                     Appointment.status == "completed",
-                    Appointment.dateTime >= f"{month_start}T00:00:00",
+                    Appointment.dateTime >= month_start,
                 )
             )
         )
@@ -136,15 +138,21 @@ async def update_business_metrics():
             box_appointments.labels(box=str(box + 1)).set(count or 0)
 
         # Shift hours today
-        today_str = now.strftime("%Y-%m-%d")
+        today = now.date()
         res = await session.execute(
             select(Shift, User.displayName)
             .join(User, Shift.userId == User.id)
-            .where(Shift.date == today_str, Shift.status == "confirmed")
+            .where(Shift.date == today, Shift.status == "confirmed")
         )
         for shift, name in res.all():
-            start_h, start_m = map(int, shift.startTime.split(":"))
-            end_h, end_m = map(int, shift.endTime.split(":"))
+            start = shift.startTime
+            end = shift.endTime
+            if isinstance(start, str):
+                start_h, start_m = map(int, start.split(":"))
+                end_h, end_m = map(int, end.split(":"))
+            else:
+                start_h, start_m = start.hour, start.minute
+                end_h, end_m = end.hour, end.minute
             minutes = (end_h * 60 + end_m) - (start_h * 60 + start_m)
             if minutes < 0:
                 minutes += 24 * 60
