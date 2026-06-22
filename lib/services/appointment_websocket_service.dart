@@ -135,7 +135,9 @@ class AppointmentWebSocketService {
         provider.applyWebSocketAppointment(appointment, eventName, auth);
         NotificationService().emitAppointmentUpdated(id);
       } else if (type == 'auth_failed') {
-        _authFailureController.add(null);
+        if (!_authFailureController.isClosed) {
+          _authFailureController.add(null);
+        }
         disconnect();
       }
     } catch (e, st) {
