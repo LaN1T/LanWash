@@ -20,4 +20,4 @@ sentry-sdk[fastapi]>=2.63.0
 openpyxl
 Pillow
 arq>=0.25.0
-google-genai>=1.0
+google-genai>=2.9.0
