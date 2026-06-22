@@ -158,6 +158,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: const Text('Профиль',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Настройки',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
