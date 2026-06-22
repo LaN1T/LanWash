@@ -19,5 +19,5 @@ prometheus-fastapi-instrumentator>=6.1.0,<7.0.0
 sentry-sdk[fastapi]>=2.63.0
 openpyxl
 Pillow
-arq>=0.25.0
+arq>=0.28.0
 google-genai>=1.0
