@@ -117,8 +117,9 @@ void main() {
       expect(drawerText('История'), findsOneWidget);
       expect(drawerText('Записаться на мойку'), findsOneWidget);
       expect(drawerText('Расписание'), findsOneWidget);
-      expect(drawerText('Доступность'), findsOneWidget);
-      expect(drawerText('Статистика'), findsOneWidget);
+      expect(drawerText('Мой день'), findsOneWidget);
+      expect(drawerText('Доступность'), findsNothing);
+      expect(drawerText('Статистика'), findsNothing);
 
       await tester.drag(drawerFinder, const Offset(0, -500));
       await tester.pumpAndSettle();
