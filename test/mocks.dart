@@ -3,6 +3,7 @@ import 'package:lanwash/providers/auth_provider.dart';
 import 'package:lanwash/providers/appointment_provider.dart';
 import 'package:lanwash/providers/catalog_provider.dart';
 import 'package:lanwash/providers/note_provider.dart';
+import 'package:lanwash/providers/offline_provider.dart';
 import 'package:lanwash/providers/favorite_provider.dart';
 import 'package:lanwash/services/api_service.dart';
 import 'package:lanwash/services/notification_service.dart';
@@ -18,6 +19,8 @@ class MockAppointmentProvider extends Mock implements AppointmentProvider {}
 class MockCatalogProvider extends Mock implements CatalogProvider {}
 
 class MockNoteProvider extends Mock implements NoteProvider {}
+
+class MockOfflineProvider extends Mock implements OfflineProvider {}
 
 class MockFavoriteProvider extends Mock implements FavoriteProvider {}
 
