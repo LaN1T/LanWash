@@ -315,17 +315,6 @@ class _WasherShellState extends State<WasherShell> {
                     );
                   },
                 ),
-                tile(
-                  icon: Icons.settings_outlined,
-                  title: 'Настройки',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(
-                      ctx,
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    );
-                  },
-                ),
               ],
             ),
           ),

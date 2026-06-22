@@ -38,6 +38,14 @@ class WasherDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Мой день',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
       body: RefreshIndicator(
         color: AppStyles.primary,
         onRefresh: () => appointmentProvider.reloadAppointments(auth),

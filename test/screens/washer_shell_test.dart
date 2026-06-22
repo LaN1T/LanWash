@@ -127,7 +127,7 @@ void main() {
       expect(drawerText('Чаевые'), findsOneWidget);
       expect(drawerText('Написать в поддержку'), findsOneWidget);
       expect(drawerText('Профиль'), findsOneWidget);
-      expect(drawerText('Настройки'), findsOneWidget);
+      expect(drawerText('Настройки'), findsNothing);
       expect(drawerText('Выйти'), findsNothing);
     });
   });

@@ -35,9 +35,12 @@ class _State extends State<WasherAppointmentsScreen>
     AuthProvider auth,
   ) {
     final login = auth.userLogin.toLowerCase();
-    return provider.appointments
-        .where((a) => a.assignedWashers.any((w) => w.toLowerCase() == login))
-        .toList();
+    return provider.appointments.where((a) {
+      final isAssigned =
+          a.assignedWashers.any((w) => w.toLowerCase() == login);
+      final isOwner = a.ownerUsername.toLowerCase() == login;
+      return isAssigned || isOwner;
+    }).toList();
   }
 
   @override
