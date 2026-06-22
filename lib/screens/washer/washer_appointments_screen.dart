@@ -34,12 +34,9 @@ class _State extends State<WasherAppointmentsScreen>
     AppointmentProvider provider,
     AuthProvider auth,
   ) {
-    final login = auth.userLogin.toLowerCase();
-    return provider.appointments.where((a) {
-      final isAssigned = a.assignedWashers.any((w) => w.toLowerCase() == login);
-      final isOwner = a.ownerUsername.toLowerCase() == login;
-      return isAssigned || isOwner;
-    }).toList();
+    // The provider already loads only this washer's appointments (assigned or
+    // via shift match), so no additional client-side filtering is needed.
+    return provider.appointments.toList();
   }
 
   @override

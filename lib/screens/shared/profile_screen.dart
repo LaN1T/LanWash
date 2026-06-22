@@ -476,7 +476,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                Text('${a.paidPrice} ₽',
+                Text(
+                    a.paidPrice > 0
+                        ? '${a.paidPrice} ₽'
+                        : a.originalPrice > 0
+                            ? '${a.originalPrice} ₽'
+                            : '',
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

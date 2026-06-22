@@ -10,14 +10,12 @@ import '../../widgets/offline_status_indicator.dart';
 import '../client/booking_wizard_screen.dart';
 import '../client/support_chats_screen.dart';
 import '../shared/profile_screen.dart';
-import '../client/settings_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../admin/notes_screen.dart';
 import '../shared/splash_screen.dart' show LanWashLogo;
 import 'qr_scanner_screen.dart';
 import 'washer_appointments_screen.dart';
 import 'washer_dashboard_screen.dart';
-import 'washer_history_screen.dart';
 import 'washer_tips_screen.dart';
 
 class WasherShell extends StatefulWidget {
@@ -221,18 +219,6 @@ class _WasherShellState extends State<WasherShell> {
                   onTap: () {
                     setState(() => _tabIndex = 0);
                     Navigator.pop(ctx);
-                  },
-                ),
-                tile(
-                  icon: Icons.history_rounded,
-                  title: 'История',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const WasherHistoryScreen()),
-                    );
                   },
                 ),
                 tile(

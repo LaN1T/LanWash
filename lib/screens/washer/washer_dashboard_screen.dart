@@ -41,10 +41,9 @@ class _WasherDashboardScreenState extends State<WasherDashboardScreen> {
     AppointmentProvider provider,
     AuthProvider auth,
   ) {
-    final login = auth.userLogin.toLowerCase();
-    return provider.appointments
-        .where((a) => a.assignedWashers.any((w) => w.toLowerCase() == login))
-        .toList();
+    // Backend already returns only appointments assigned to or falling inside
+    // this washer's shifts, so we can trust the provider list as-is.
+    return provider.appointments.toList();
   }
 
   @override
