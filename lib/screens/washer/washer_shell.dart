@@ -137,7 +137,9 @@ class _WasherShellState extends State<WasherShell> {
           minLeadingWidth: 24,
           leading: Icon(
             icon,
-            color: selected ? AppStyles.primary : AppStyles.adaptiveTextSecondary(ctx),
+            color: selected
+                ? AppStyles.primary
+                : AppStyles.adaptiveTextSecondary(ctx),
             size: 22,
           ),
           title: Text(
@@ -151,7 +153,8 @@ class _WasherShellState extends State<WasherShell> {
           ),
           selected: selected,
           selectedTileColor: AppStyles.primary.withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           onTap: onTap,
         ),
       );
@@ -245,7 +248,9 @@ class _WasherShellState extends State<WasherShell> {
                     );
                     if (mounted) {
                       final auth = context.read<AuthProvider>();
-                      await context.read<AppointmentProvider>().reloadAppointments(auth);
+                      await context
+                          .read<AppointmentProvider>()
+                          .reloadAppointments(auth);
                     }
                   },
                 ),
@@ -321,8 +326,7 @@ class _WasherShellState extends State<WasherShell> {
                     Navigator.pop(ctx);
                     Navigator.push(
                       ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const ProfileScreen()),
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
                     );
                   },
                 ),
@@ -333,8 +337,7 @@ class _WasherShellState extends State<WasherShell> {
                     Navigator.pop(ctx);
                     Navigator.push(
                       ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const SettingsScreen()),
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
                     );
                   },
                 ),

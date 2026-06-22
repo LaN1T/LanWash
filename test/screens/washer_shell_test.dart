@@ -50,7 +50,8 @@ void main() {
 
     when(() => mockAppointment.loading).thenReturn(false);
     when(() => mockAppointment.appointments).thenReturn([]);
-    when(() => mockAppointment.reloadAppointments(any())).thenAnswer((_) async {});
+    when(() => mockAppointment.reloadAppointments(any()))
+        .thenAnswer((_) async {});
 
     when(() => mockNote.notes).thenReturn([]);
     when(() => mockNote.loadNotes(username: any(named: 'username')))
@@ -67,7 +68,8 @@ void main() {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: mockAuth),
-        ChangeNotifierProvider<AppointmentProvider>.value(value: mockAppointment),
+        ChangeNotifierProvider<AppointmentProvider>.value(
+            value: mockAppointment),
         ChangeNotifierProvider<NoteProvider>.value(value: mockNote),
         ChangeNotifierProvider<CatalogProvider>.value(value: mockCatalog),
         ChangeNotifierProvider<OfflineProvider>.value(value: mockOffline),
@@ -89,7 +91,8 @@ void main() {
       expect(find.byType(NavigationDestination), findsNWidgets(2));
       expect(find.text('Записи'), findsOneWidget);
       expect(find.text('Заметки'), findsOneWidget);
-      expect(find.widgetWithText(NavigationDestination, 'Чаевые'), findsNothing);
+      expect(
+          find.widgetWithText(NavigationDestination, 'Чаевые'), findsNothing);
     });
 
     testWidgets('drawer contains new menu structure', (tester) async {

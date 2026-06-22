@@ -85,9 +85,8 @@ class AppointmentWebSocketService {
     }
 
     final base = AppConfig.baseUrl;
-    final host = base.endsWith('/api')
-        ? base.substring(0, base.length - 4)
-        : base;
+    final host =
+        base.endsWith('/api') ? base.substring(0, base.length - 4) : base;
     final wsUrl = '${host.replaceFirst('http', 'ws')}/ws/appointments';
 
     if (kDebugMode) debugPrint('[AppointmentWS] connecting to $wsUrl');

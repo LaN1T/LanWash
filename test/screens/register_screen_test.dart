@@ -125,13 +125,14 @@ void main() {
     testWidgets('successful registration reloads data and pops',
         (tester) async {
       when(() => mockAuth.register(
-            username: any(named: 'username'),
-            password: any(named: 'password'),
-            displayName: any(named: 'displayName'),
-            email: any(named: 'email'),
-            phone: any(named: 'phone'),
-          )).thenAnswer((_) => Future.delayed(
-              const Duration(milliseconds: 100), () => null));
+                username: any(named: 'username'),
+                password: any(named: 'password'),
+                displayName: any(named: 'displayName'),
+                email: any(named: 'email'),
+                phone: any(named: 'phone'),
+              ))
+          .thenAnswer((_) =>
+              Future.delayed(const Duration(milliseconds: 100), () => null));
       when(() => mockAuth.userLogin).thenReturn('ivan123');
       when(() => mockAppointment.reloadForUser(any(), any()))
           .thenAnswer((_) => Future.value());

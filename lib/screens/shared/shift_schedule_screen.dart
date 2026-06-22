@@ -22,7 +22,8 @@ enum ShiftScheduleMode { shifts, availability, analytics }
 
 class ShiftScheduleScreen extends StatefulWidget {
   final ShiftScheduleMode initialMode;
-  const ShiftScheduleScreen({super.key, this.initialMode = ShiftScheduleMode.shifts});
+  const ShiftScheduleScreen(
+      {super.key, this.initialMode = ShiftScheduleMode.shifts});
 
   @override
   State<ShiftScheduleScreen> createState() => _ShiftScheduleScreenState();
@@ -1623,7 +1624,8 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _buildShiftsViewOrAvailability() {
     if (_mode == ShiftScheduleMode.shifts) return _buildShiftsView();
-    if (_mode == ShiftScheduleMode.availability) return _buildAvailabilityView();
+    if (_mode == ShiftScheduleMode.availability)
+      return _buildAvailabilityView();
     return _buildAnalyticsView();
   }
 

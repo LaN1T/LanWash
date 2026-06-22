@@ -572,7 +572,8 @@ class _RevenueChart extends StatelessWidget {
                 show: true,
                 drawVerticalLine: false,
                 getDrawingHorizontalLine: (_) => FlLine(
-                  color: AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
+                  color:
+                      AppStyles.adaptiveBorder(context).withValues(alpha: 0.3),
                   strokeWidth: 1,
                 ),
               ),

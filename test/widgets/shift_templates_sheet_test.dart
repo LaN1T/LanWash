@@ -9,7 +9,8 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     await initializeDateFormatting('ru_RU');
   });
-  testWidgets('ShiftTemplatesSheet renders templates and apply button', (tester) async {
+  testWidgets('ShiftTemplatesSheet renders templates and apply button',
+      (tester) async {
     final templates = [
       ShiftTemplate(
         id: 1,
