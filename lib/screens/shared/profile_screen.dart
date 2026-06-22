@@ -307,40 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
           ],
 
-          // ─── Настройки профиля ───────────────────────────────────────────
-          _sectionLabel('Настройки профиля'),
-          const SizedBox(height: 10),
-          Container(
-            decoration: AppStyles.cardDecorationFor(context),
-            child: ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppStyles.adaptivePrimaryBg(context),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.settings_outlined,
-                    color: AppStyles.primary, size: 20),
-              ),
-              title: Text('Настройки',
-                  style: TextStyle(
-                      color: AppStyles.adaptiveTextPrimary(context),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
-              subtitle: Text('Пароль, тема и выход из аккаунта',
-                  style: TextStyle(
-                      color: AppStyles.adaptiveTextSecondary(context),
-                      fontSize: 12)),
-              trailing: Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: AppStyles.adaptiveTextMuted(context)),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
+
         ],
       ),
     );
