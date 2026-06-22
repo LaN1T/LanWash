@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../../app_styles.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -13,13 +12,13 @@ import '../client/support_chats_screen.dart';
 import '../shared/profile_screen.dart';
 import '../client/settings_screen.dart';
 import '../shared/shift_schedule_screen.dart';
-import '../shared/statistics_screen.dart';
 import '../admin/notes_screen.dart';
 import '../shared/splash_screen.dart' show LanWashLogo;
 import 'qr_scanner_screen.dart';
+import 'washer_appointments_screen.dart';
+import 'washer_dashboard_screen.dart';
 import 'washer_history_screen.dart';
 import 'washer_tips_screen.dart';
-import '../../widgets/washer/washer_appointment_card.dart';
 
 class WasherShell extends StatefulWidget {
   const WasherShell({super.key});
@@ -90,7 +89,7 @@ class _WasherShellState extends State<WasherShell> {
       body: IndexedStack(
         index: _tabIndex,
         children: const [
-          _WasherAppointmentsTab(),
+          WasherAppointmentsScreen(),
           NotesScreen(isEmbedded: true),
         ],
       ),
@@ -268,28 +267,14 @@ class _WasherShellState extends State<WasherShell> {
                   },
                 ),
                 tile(
-                  icon: Icons.event_available_outlined,
-                  title: 'Доступность',
+                  icon: Icons.work_outline_rounded,
+                  title: 'Мой день',
                   onTap: () {
                     Navigator.pop(ctx);
                     Navigator.push(
                       ctx,
                       MaterialPageRoute(
-                        builder: (_) => const ShiftScheduleScreen(
-                            initialMode: ShiftScheduleMode.availability),
-                      ),
-                    );
-                  },
-                ),
-                tile(
-                  icon: Icons.bar_chart_rounded,
-                  title: 'Статистика',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const StatisticsScreen()),
+                          builder: (_) => const WasherDashboardScreen()),
                     );
                   },
                 ),
@@ -350,195 +335,4 @@ class _WasherShellState extends State<WasherShell> {
   }
 }
 
-class _WasherAppointmentsTab extends StatefulWidget {
-  const _WasherAppointmentsTab();
 
-  @override
-  State<_WasherAppointmentsTab> createState() => _WasherAppointmentsTabState();
-}
-
-class _WasherAppointmentsTabState extends State<_WasherAppointmentsTab> {
-  DateTime _selectedDay = DateTime.now();
-  late final PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController(initialPage: 500000);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      context.read<AppointmentProvider>().reloadAppointments(auth);
-    });
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<AppointmentProvider>();
-    final auth = context.read<AuthProvider>();
-    final appts = provider.appointments;
-
-    if (provider.loading) {
-      return const Center(
-          child: CircularProgressIndicator(color: AppStyles.primary));
-    }
-
-    final filteredAppts = appts
-        .where((a) =>
-            a.dateTime.year == _selectedDay.year &&
-            a.dateTime.month == _selectedDay.month &&
-            a.dateTime.day == _selectedDay.day)
-        .toList();
-
-    return RefreshIndicator(
-      color: AppStyles.primary,
-      onRefresh: () => provider.reloadAppointments(auth),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          Container(
-            height: 80,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: 1000000,
-              onPageChanged: (pageIndex) {
-                // Неделя перелистнута, но выбранный день НЕ меняется автоматически
-              },
-              itemBuilder: (ctx, pageIndex) {
-                final now = DateTime.now();
-                final today = now;
-                final currentWeekStart =
-                    today.subtract(Duration(days: today.weekday - 1));
-                final startOfWeek = currentWeekStart
-                    .add(Duration(days: (pageIndex - 500000) * 7));
-                return Row(
-                  children: List.generate(7, (i) {
-                    final d = startOfWeek.add(Duration(days: i));
-                    final count = appts
-                        .where((a) =>
-                            a.dateTime.year == d.year &&
-                            a.dateTime.month == d.month &&
-                            a.dateTime.day == d.day)
-                        .length;
-                    final isSelected = d.day == _selectedDay.day &&
-                        d.month == _selectedDay.month &&
-                        d.year == _selectedDay.year;
-                    final isToday = d.day == now.day &&
-                        d.month == now.month &&
-                        d.year == now.year;
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedDay = d),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 2, vertical: 8),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppStyles.primary
-                                  : AppStyles.adaptiveCard(context),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: isSelected
-                                      ? AppStyles.primary
-                                      : (isToday
-                                          ? AppStyles.primary
-                                          : AppStyles.adaptiveBorder(context)),
-                                  width: isToday ? 2 : 1),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                    DateFormat('E', 'ru')
-                                        .format(d)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppStyles.adaptiveTextSecondary(
-                                                context),
-                                        fontSize: 9)),
-                                Text('${d.day}',
-                                    style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppStyles.adaptiveTextPrimary(
-                                                context),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold)),
-                                if (count > 0)
-                                  Container(
-                                    width: 14,
-                                    height: 14,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppStyles.primary,
-                                        shape: BoxShape.circle),
-                                    child: Text('$count',
-                                        style: TextStyle(
-                                            color: isSelected
-                                                ? AppStyles.primary
-                                                : Colors.white,
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold)),
-                                  )
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-          SizedBox(
-            height: MediaQuery.of(context).size.height - 250,
-            child: filteredAppts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.event_note_outlined,
-                            size: 64,
-                            color: AppStyles.adaptiveTextSecondary(context)
-                                .withValues(alpha: 0.4)),
-                        const SizedBox(height: 12),
-                        Text('На выбранный день записей нет',
-                            style: AppStyles.headingMedium.copyWith(
-                                color:
-                                    AppStyles.adaptiveTextSecondary(context))),
-                        const SizedBox(height: 6),
-                        Text('Выберите другой день или проверьте фильтры',
-                            style: AppStyles.bodyMedium.copyWith(
-                                color:
-                                    AppStyles.adaptiveTextSecondary(context))),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredAppts.length,
-                    itemBuilder: (context, index) {
-                      return WasherAppointmentCard(
-                          appointment: filteredAppts[index]);
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
