@@ -325,12 +325,12 @@ async def get_by_washer(
     appt_time = func.cast(Appointment.dateTime, Time)
 
     assigned_query = (
-        select(Appointment)
+        select(Appointment.id)
         .join(AppointmentWasher)
         .where(AppointmentWasher.washerUsername == username_lower)
     )
 
-    shift_query = select(Appointment).join(
+    shift_query = select(Appointment.id).join(
         Shift,
         and_(
             Shift.userId == user.id,
@@ -340,8 +340,17 @@ async def get_by_washer(
         ),
     )
 
-    union_query = assigned_query.union(shift_query).order_by(Appointment.dateTime.asc())
-    _, items = await paginate(union_query, db, pagination)
+    union_query = assigned_query.union(shift_query)
+    result = await db.execute(union_query)
+    appt_ids = {row[0] for row in result.all()}
+
+    if not appt_ids:
+        return []
+
+    query = select(Appointment).where(Appointment.id.in_(appt_ids)).order_by(
+        Appointment.dateTime.asc()
+    )
+    _, items = await paginate(query, db, pagination)
     return items
 
 
