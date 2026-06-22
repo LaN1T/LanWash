@@ -9,7 +9,13 @@ import '../../screens/shared/appointment_detail_widget.dart';
 
 class WasherAppointmentCard extends StatelessWidget {
   final Appointment appointment;
-  const WasherAppointmentCard({super.key, required this.appointment});
+  final bool readOnly;
+
+  const WasherAppointmentCard({
+    super.key,
+    required this.appointment,
+    this.readOnly = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -59,8 +65,11 @@ class WasherAppointmentCard extends StatelessWidget {
         onTap: () => showModalBottomSheet(
           context: context,
           isScrollControlled: true,
-          builder: (_) =>
-              AppointmentDetailWidget(appointment: a, isClient: false),
+          builder: (_) => AppointmentDetailWidget(
+            appointment: a,
+            isClient: false,
+            readOnly: readOnly,
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),

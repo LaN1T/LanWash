@@ -323,5 +323,3 @@ class _WasherShellState extends State<WasherShell> {
     );
   }
 }
-
-

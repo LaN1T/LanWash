@@ -36,8 +36,7 @@ class _State extends State<WasherAppointmentsScreen>
   ) {
     final login = auth.userLogin.toLowerCase();
     return provider.appointments.where((a) {
-      final isAssigned =
-          a.assignedWashers.any((w) => w.toLowerCase() == login);
+      final isAssigned = a.assignedWashers.any((w) => w.toLowerCase() == login);
       final isOwner = a.ownerUsername.toLowerCase() == login;
       return isAssigned || isOwner;
     }).toList();
@@ -122,7 +121,8 @@ class _AppointmentsList extends StatelessWidget {
       child: ListView.builder(
         padding: AppStyles.pagePadding,
         itemCount: items.length,
-        itemBuilder: (_, i) => WasherAppointmentCard(appointment: items[i]),
+        itemBuilder: (_, i) =>
+            WasherAppointmentCard(appointment: items[i], readOnly: true),
       ),
     );
   }

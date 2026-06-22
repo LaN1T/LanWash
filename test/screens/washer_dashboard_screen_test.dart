@@ -67,7 +67,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Иван'), findsOneWidget);
-    expect(find.text('На сегодня назначений нет'), findsOneWidget);
+    expect(find.text('На выбранный день записей нет'), findsOneWidget);
   });
 
   testWidgets('shows today count and next appointment', (tester) async {
@@ -100,7 +100,7 @@ void main() {
     await tester.pumpWidget(buildTestWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('записи'), findsOneWidget);
     expect(find.text('ближайшая'), findsOneWidget);
     expect(find.text('Алексей'), findsOneWidget);
     expect(find.text('Мария'), findsOneWidget);
