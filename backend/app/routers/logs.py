@@ -19,7 +19,9 @@ def _wants_cursor(request: Request) -> bool:
     return "cursor" in request.query_params or "limit" in request.query_params
 
 
-def _set_next_cursor(response: Response, items: list[LogEntry], limit: int) -> list[LogEntry]:
+def _set_next_cursor(
+    response: Response, items: list[LogEntry], limit: int
+) -> list[LogEntry]:
     if len(items) > limit:
         next_item = items[-1]
         response.headers["X-Next-Cursor"] = encode_cursor(
@@ -70,7 +72,9 @@ async def get_by_user(
     username = username.lower()
     if _wants_cursor(request):
         cursor = decode_cursor(cursor_params.cursor) if cursor_params.cursor else None
-        items = await svc.get_by_user(username, limit=cursor_params.limit, cursor=cursor)
+        items = await svc.get_by_user(
+            username, limit=cursor_params.limit, cursor=cursor
+        )
         return _set_next_cursor(response, items, cursor_params.limit)
     return await svc.get_by_user(
         username, limit=pagination.per_page, offset=pagination.offset

@@ -5,7 +5,14 @@ from datetime import datetime as dt_datetime
 from datetime import time as dt_time
 from typing import Annotated, List, Literal, Optional
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer, field_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    field_validator,
+)
 
 
 def _parse_time_hm(v):

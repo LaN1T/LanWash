@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from datetime import date, datetime, time
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import Time, and_, func, select

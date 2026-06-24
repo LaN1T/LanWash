@@ -20,7 +20,9 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_fastapi_instrumentator.middleware import PrometheusInstrumentatorMiddleware
+from prometheus_fastapi_instrumentator.middleware import (
+    PrometheusInstrumentatorMiddleware,
+)
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select

@@ -12,6 +12,8 @@ import '../../core/service_locator.dart';
 import '../../services/car_catalog_service.dart';
 import '../../utils/plate_formatter.dart';
 import '../../widgets/car_autocomplete_field.dart';
+import '../../widgets/admin/admin_card.dart';
+import '../../widgets/admin/admin_section_title.dart';
 
 const List<String> statusOptions = [
   'scheduled',
@@ -157,6 +159,7 @@ class _State extends State<AddEditAppointmentScreen> {
 
   @override
   void dispose() {
+    _scrollCtrl.dispose();
     _nameCtrl.dispose();
     _brandCtrl.dispose();
     _modelCtrl.dispose();
@@ -188,20 +191,21 @@ class _State extends State<AddEditAppointmentScreen> {
     if (washType != null) lockedExtras.addAll(washType.includedExtraIds);
     if (promo != null) lockedExtras.addAll(promo.includedExtraIds);
 
-    for (final id in lockedExtras) {
-      _selectedAddServices.add(id);
-    }
-
     return Scaffold(
-      backgroundColor: AppStyles.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppStyles.primary,
-        foregroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           _isEditing ? 'Редактировать запись' : 'Новая запись',
-          style: const TextStyle(
-              color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: AppStyles.adaptiveBorder(context),
+          ),
         ),
       ),
       body: Form(
@@ -210,104 +214,126 @@ class _State extends State<AddEditAppointmentScreen> {
           controller: _scrollCtrl,
           padding: AppStyles.pagePadding,
           children: [
-            _sectionLabel('Клиент и автомобиль'),
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: AppStyles.inputDecorationFor(context, 'Имя клиента',
-                  icon: Icons.person),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
-              textCapitalization: TextCapitalization.words,
-              onChanged: (v) => _applyTranslitRu(_nameCtrl, v),
-            ),
-            const SizedBox(height: 12),
-            CarAutocompleteField(
-              label: 'Марка авто',
-              icon: Icons.directions_car,
-              controller: _brandCtrl,
-              optionsBuilder: (q) => sl<CarCatalogService>().searchBrands(q),
-              onSelected: (brand) {
-                setState(() => _selectedBrand = brand);
-                _modelCtrl.clear();
-              },
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Введите марку' : null,
-            ),
-            const SizedBox(height: 12),
-            CarAutocompleteField(
-              label: 'Модель авто',
-              hint: _selectedBrand == null ? 'Сначала выберите марку' : null,
-              icon: Icons.settings_outlined,
-              controller: _modelCtrl,
-              enabled: _selectedBrand != null,
-              optionsBuilder: (q) {
-                if (_selectedBrand == null) return [];
-                return sl<CarCatalogService>().searchModels(_selectedBrand!, q);
-              },
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Введите модель' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _numberCtrl,
-              style: TextStyle(
-                  color: AppStyles.adaptiveTextPrimary(context),
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w600),
-              decoration: _plateDecoration().copyWith(errorText: _plateError),
-              inputFormatters: [PlateInputFormatter()],
-              validator: validatePlate,
-              onChanged: (v) {
-                if (_plateError != null) setState(() => _plateError = null);
-              },
-            ),
-            const SizedBox(height: 20),
-            _sectionLabel('Дата и время визита'),
-            _DateTimeRow(
-              dateTime: _dateTime,
-              onChanged: (dt) => setState(() => _dateTime = dt),
-            ),
-            const SizedBox(height: 20),
-            _sectionLabel('Тип мойки'),
-            Container(
-              decoration: AppStyles.cardDecoration,
+            const AdminSectionTitle(title: 'Клиент и автомобиль'),
+            AdminCard(
               child: Column(
-                children: washTypes
-                    .map((wt) => RadioListTile<String>(
-                          value: wt.id,
-                          groupValue: _washTypeId,
-                          onChanged: promo != null
-                              ? null
-                              : (v) => setState(() {
-                                    final oldWt = catalogProvider
-                                        .washTypeById(_washTypeId);
-                                    if (oldWt != null) {
-                                      _selectedAddServices
-                                          .removeAll(oldWt.includedExtraIds);
-                                    }
-                                    _washTypeId = v!;
-                                    final newWt =
-                                        catalogProvider.washTypeById(v);
-                                    if (newWt != null) {
-                                      _selectedAddServices
-                                          .addAll(newWt.includedExtraIds);
-                                    }
-                                  }),
-                          title: Text(wt.name, style: AppStyles.bodyLarge),
-                          subtitle: Text('от ${wt.basePrice} ₽',
-                              style: AppStyles.bodyMedium),
-                          activeColor: AppStyles.primary,
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                        ))
-                    .toList(),
+                children: [
+                  TextFormField(
+                    controller: _nameCtrl,
+                    decoration: AppStyles.inputDecorationFor(
+                        context, 'Имя клиента',
+                        icon: Icons.person),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Введите имя' : null,
+                    textCapitalization: TextCapitalization.words,
+                    onChanged: (v) => _applyTranslitRu(_nameCtrl, v),
+                  ),
+                  const SizedBox(height: 12),
+                  CarAutocompleteField(
+                    label: 'Марка авто',
+                    icon: Icons.directions_car,
+                    controller: _brandCtrl,
+                    optionsBuilder: (q) =>
+                        sl<CarCatalogService>().searchBrands(q),
+                    onSelected: (brand) {
+                      setState(() => _selectedBrand = brand);
+                      _modelCtrl.clear();
+                    },
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Введите марку'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  CarAutocompleteField(
+                    label: 'Модель авто',
+                    hint: _selectedBrand == null
+                        ? 'Сначала выберите марку'
+                        : null,
+                    icon: Icons.settings_outlined,
+                    controller: _modelCtrl,
+                    enabled: _selectedBrand != null,
+                    optionsBuilder: (q) {
+                      if (_selectedBrand == null) return [];
+                      return sl<CarCatalogService>()
+                          .searchModels(_selectedBrand!, q);
+                    },
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Введите модель'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _numberCtrl,
+                    style: TextStyle(
+                        color: AppStyles.adaptiveTextPrimary(context),
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w600),
+                    decoration: _plateDecoration(context)
+                        .copyWith(errorText: _plateError),
+                    inputFormatters: [PlateInputFormatter()],
+                    validator: _validatePlate,
+                    onChanged: (v) {
+                      if (_plateError != null) {
+                        setState(() => _plateError = null);
+                      }
+                    },
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
-            _sectionLabel('Акция (необязательно)'),
-            Container(
-              decoration: AppStyles.cardDecoration,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            const AdminSectionTitle(title: 'Дата и время визита'),
+            AdminCard(
+              child: _DateTimeRow(
+                dateTime: _dateTime,
+                onChanged: (dt) => setState(() => _dateTime = dt),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const AdminSectionTitle(title: 'Тип мойки'),
+            AdminCard(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: RadioGroup<String>(
+                groupValue: _washTypeId,
+                onChanged: promo != null
+                    ? (_) {}
+                    : (v) {
+                        if (v == null) return;
+                        setState(() {
+                          final oldWt =
+                              catalogProvider.washTypeById(_washTypeId);
+                          if (oldWt != null) {
+                            _selectedAddServices
+                                .removeAll(oldWt.includedExtraIds);
+                          }
+                          _washTypeId = v;
+                          final newWt = catalogProvider.washTypeById(v);
+                          if (newWt != null) {
+                            _selectedAddServices.addAll(newWt.includedExtraIds);
+                          }
+                        });
+                      },
+                child: Column(
+                  children: washTypes
+                      .map((wt) => RadioListTile<String>(
+                            value: wt.id,
+                            enabled: promo == null,
+                            title: Text(wt.name,
+                                style: AppStyles.adaptiveBodyLarge(context)),
+                            subtitle: Text('от ${wt.basePrice} ₽',
+                                style: AppStyles.adaptiveBodyMedium(context)),
+                            activeColor: AppStyles.primary,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                          ))
+                      .toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const AdminSectionTitle(title: 'Акция (необязательно)'),
+            AdminCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: DropdownButtonFormField<String?>(
                 initialValue: _selectedPromoId,
                 isExpanded: true,
@@ -342,9 +368,9 @@ class _State extends State<AddEditAppointmentScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            _sectionLabel('Дополнительные услуги'),
-            Container(
-              decoration: AppStyles.cardDecoration,
+            const AdminSectionTitle(title: 'Дополнительные услуги'),
+            AdminCard(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
                 children: extraServices.map((s) {
                   final isLocked = lockedExtras.contains(s.id);
@@ -357,56 +383,76 @@ class _State extends State<AddEditAppointmentScreen> {
                                   ? _selectedAddServices.add(s.id)
                                   : _selectedAddServices.remove(s.id);
                             }),
-                    title: Text(s.name, style: AppStyles.bodyLarge),
+                    title: Text(s.name,
+                        style: AppStyles.adaptiveBodyLarge(context)),
                     subtitle: Text(isLocked ? 'Включено' : '+${s.price} ₽',
-                        style: AppStyles.bodyMedium),
+                        style: AppStyles.adaptiveBodyMedium(context)),
                     secondary: isLocked
                         ? const Icon(Icons.lock_rounded,
                             color: AppStyles.primary, size: 18)
                         : null,
                     activeColor: AppStyles.primary,
                     controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     dense: true,
                   );
                 }).toList(),
               ),
             ),
             const SizedBox(height: 20),
-            _sectionLabel('Статус записи'),
-            Container(
-              decoration: AppStyles.cardDecoration,
-              child: Column(
-                children: statusOptions
-                    .map((s) => RadioListTile<String>(
-                          value: s,
-                          groupValue: _status,
-                          onChanged: (v) => setState(() => _status = v!),
-                          title: Text(AppStyles.statusLabel(s),
-                              style: AppStyles.bodyLarge),
-                          activeColor: AppStyles.statusColor(s),
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                        ))
-                    .toList(),
+            const AdminSectionTitle(title: 'Статус записи'),
+            AdminCard(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: RadioGroup<String>(
+                groupValue: _status,
+                onChanged: (v) {
+                  if (v != null) setState(() => _status = v);
+                },
+                child: Column(
+                  children: statusOptions
+                      .map((s) => RadioListTile<String>(
+                            value: s,
+                            title: Text(AppStyles.statusLabel(s),
+                                style: AppStyles.adaptiveBodyLarge(context)),
+                            activeColor: AppStyles.statusColor(s),
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                          ))
+                      .toList(),
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            _sectionLabel('Заметки (необязательно)'),
-            TextFormField(
-              controller: _notesCtrl,
-              decoration: AppStyles.inputDecorationFor(
-                  context, 'Примечания для мойщика',
-                  icon: Icons.notes),
-              maxLines: 3,
+            const AdminSectionTitle(title: 'Заметки (необязательно)'),
+            AdminCard(
+              child: TextFormField(
+                controller: _notesCtrl,
+                decoration: AppStyles.inputDecorationFor(
+                    context, 'Примечания для мойщика',
+                    icon: Icons.notes),
+                maxLines: 3,
+              ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save),
-              label:
-                  Text(_isEditing ? 'Сохранить изменения' : 'Создать запись'),
-              style: AppStyles.primaryButton,
-              onPressed: _save,
+            AdminCard(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(_isEditing
+                      ? (_isSaving ? 'Сохранение...' : 'Сохранить изменения')
+                      : (_isSaving ? 'Создание...' : 'Создать запись')),
+                  style: AppStyles.primaryButton,
+                  onPressed: _isSaving ? null : _save,
+                ),
+              ),
             ),
             const SizedBox(height: 16),
           ],
@@ -415,22 +461,26 @@ class _State extends State<AddEditAppointmentScreen> {
     );
   }
 
-  Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8, left: 2),
-        child: Text(text,
-            style: AppStyles.label
-                .copyWith(fontSize: 13, color: AppStyles.primary)),
-      );
-
-  static InputDecoration _plateDecoration() {
-    final base = AppStyles.inputDecoration('Гос. номер',
+  InputDecoration _plateDecoration(BuildContext context) {
+    final base = AppStyles.inputDecorationFor(context, 'Гос. номер',
         hint: 'А000АА777', icon: Icons.pin);
     return base.copyWith(
       floatingLabelBehavior: FloatingLabelBehavior.always,
       helperText: 'Формат: А000АА777 · EN→RU авто',
-      helperStyle:
-          const TextStyle(color: AppStyles.textSecondary, fontSize: 11),
+      helperStyle: TextStyle(
+          color: AppStyles.adaptiveTextSecondary(context), fontSize: 11),
     );
+  }
+
+  String? _validatePlate(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Введите гос. номер';
+    final upper = v.trim().toUpperCase();
+    if (upper.length < 8 ||
+        !RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$')
+            .hasMatch(upper)) {
+      return 'Неверный формат (напр. А000АА77)';
+    }
+    return null;
   }
 
   int _calcPrice(CatalogProvider catalogProvider) {
@@ -474,17 +524,6 @@ class _State extends State<AddEditAppointmentScreen> {
   }
 
   Future<void> _save() async {
-    final v = _numberCtrl.text.toUpperCase();
-    if (v.length < 8 ||
-        !RegExp(r'^[АВЕКМНОРСТУХ]{1}\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$')
-            .hasMatch(v)) {
-      setState(() => _plateError = 'Неверный формат (напр. А000АА77)');
-      _scrollCtrl.animateTo(120,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
-      return;
-    }
-    setState(() => _plateError = null);
-
     if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
       return;
     }
@@ -524,7 +563,7 @@ class _State extends State<AddEditAppointmentScreen> {
           _numberCtrl.text.trim().toUpperCase() != oldAppt.carNumber ||
           !_dateTime.isAtSameMomentAs(oldAppt.dateTime) ||
           _washTypeId != oldAppt.washTypeId ||
-          finalServices.toString() != oldAppt.additionalServices.toString() ||
+          finalServices != oldAppt.additionalServices.toSet() ||
           _status != oldAppt.status ||
           newPrice != oldAppt.paidPrice ||
           _selectedPromoId != oldAppt.promoId;
@@ -645,16 +684,16 @@ class _Picker extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppStyles.divider),
+            color: AppStyles.adaptiveCard(context),
+            borderRadius: BorderRadius.circular(AppStyles.radiusSm),
+            border: Border.all(color: AppStyles.adaptiveBorder(context)),
           ),
           child: Row(children: [
             Icon(icon, size: 18, color: AppStyles.primary),
             const SizedBox(width: 8),
             Expanded(
                 child: Text(label,
-                    style: AppStyles.bodyLarge,
+                    style: AppStyles.adaptiveBodyLarge(context),
                     overflow: TextOverflow.ellipsis)),
           ]),
         ),

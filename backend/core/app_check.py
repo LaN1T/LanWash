@@ -67,7 +67,10 @@ async def verify_app_check_token(request: Request) -> None:
     if settings.firebase_app_id:
         token_app_id = decoded.get("app_id") if isinstance(decoded, dict) else None
         token_aud = decoded.get("aud") if isinstance(decoded, dict) else None
-        if token_app_id != settings.firebase_app_id and token_aud != settings.firebase_app_id:
+        if (
+            token_app_id != settings.firebase_app_id
+            and token_aud != settings.firebase_app_id
+        ):
             logger.warning(
                 "app_check_app_id_mismatch",
                 expected=settings.firebase_app_id,

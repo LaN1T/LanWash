@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/consumable.dart';
 import '../../services/api_service.dart';
+import '../../widgets/admin/admin_card.dart';
+import '../../widgets/admin/progress_card.dart';
 
 class ConsumablesStockScreen extends StatefulWidget {
   const ConsumablesStockScreen({super.key});
@@ -26,53 +28,37 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final api = context.read<ApiService>();
-    final list = await api.getConsumables();
-    if (mounted) {
-      setState(() {
-        _consumables = list;
-        _loading = false;
-      });
+    try {
+      final api = context.read<ApiService>();
+      final list = await api.getConsumables();
+      if (mounted) {
+        setState(() {
+          _consumables = list;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Ошибка загрузки: $e', color: AppStyles.danger);
+        setState(() => _loading = false);
+      }
     }
   }
 
   Future<void> _refill(Consumable c) async {
-    final ctrl = TextEditingController();
     final api = context.read<ApiService>();
     final amount = await showDialog<double>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Пополнить ${c.name}'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            labelText: 'Количество (${c.unit})',
-            border: const OutlineInputBorder(),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final val = double.tryParse(ctrl.text.replaceAll(',', '.'));
-              Navigator.pop(context, val);
-            },
-            child: const Text('Пополнить'),
-          ),
-        ],
-      ),
+      builder: (_) => _RefillDialog(consumable: c),
     );
+    if (!mounted) return;
     if (amount == null || amount <= 0) return;
 
     final updated = await api.refillConsumable(c.id, amount);
-    if (updated != null && mounted) {
+    if (!mounted) return;
+    if (updated != null) {
       _showSnack('${updated.name} пополнено на $amount ${updated.unit}');
-      _load();
+      await _load();
     }
   }
 
@@ -93,6 +79,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
   Future<void> _downloadReport() async {
     final api = context.read<ApiService>();
     final bytes = await api.downloadConsumablesReport();
+    if (!mounted) return;
     if (bytes == null) {
       _showSnack('Не удалось скачать отчёт', color: AppStyles.danger);
       return;
@@ -104,12 +91,14 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
       bytes: bytes,
       mimeType: MimeType.microsoftExcel,
     );
+    if (!mounted) return;
     _showSnack('Отчёт сохранён');
   }
 
   Future<void> _downloadTemplate() async {
     final api = context.read<ApiService>();
     final bytes = await api.downloadImportTemplate();
+    if (!mounted) return;
     if (bytes == null) {
       _showSnack('Не удалось скачать шаблон', color: AppStyles.danger);
       return;
@@ -119,6 +108,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
       bytes: bytes,
       mimeType: MimeType.microsoftExcel,
     );
+    if (!mounted) return;
     _showSnack('Шаблон сохранён');
   }
 
@@ -175,7 +165,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
       _showSnack('Успешно: $succeeded, ошибок: $failed',
           color: AppStyles.warning);
       if (errors.isNotEmpty && mounted) {
-        showDialog(
+        await showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Ошибки импорта'),
@@ -200,7 +190,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
         );
       }
     }
-    _load();
+    await _load();
   }
 
   @override
@@ -221,16 +211,16 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
+            onSelected: (value) async {
               switch (value) {
                 case 'export':
-                  _downloadReport();
+                  await _downloadReport();
                   break;
                 case 'import':
-                  _uploadRefills();
+                  await _uploadRefills();
                   break;
                 case 'template':
-                  _downloadTemplate();
+                  await _downloadTemplate();
                   break;
               }
             },
@@ -246,46 +236,68 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.all(16),
                 children: [
                   if (alerts.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppStyles.danger.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppStyles.danger.withValues(alpha: 0.2)),
-                      ),
+                    AdminCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.warning_amber_rounded,
-                                  color: AppStyles.danger, size: 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Требуется пополнение (${alerts.length})',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: AppStyles.dangerBg,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.warning_amber_rounded,
                                   color: AppStyles.danger,
-                                  fontSize: 14,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Требуется пополнение',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${alerts.length} позиций ниже нормы',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppStyles.adaptiveTextSecondary(
+                                            context),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 10),
                           Wrap(
                             spacing: 8,
+                            runSpacing: 8,
                             children: alerts
                                 .map((c) => Chip(
-                                      label: Text(c.name,
-                                          style: const TextStyle(fontSize: 12)),
+                                      label: Text(
+                                        c.name,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
                                       backgroundColor: AppStyles.danger
                                           .withValues(alpha: 0.1),
                                       side: BorderSide.none,
@@ -295,123 +307,74 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                   ],
-                  ..._consumables.map((c) => _buildCard(c)),
+                  ..._consumables.map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: ProgressCard(
+                        consumable: c,
+                        onRefill: () => _refill(c),
+                        onTap: () => _openDetail(c),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
     );
   }
+}
 
-  Widget _buildCard(Consumable c) {
-    final isLow = c.isLowStock;
-    final progress = c.minStock > 0
-        ? (c.currentStock / (c.minStock * 3)).clamp(0.0, 1.0)
-        : 1.0;
+class _RefillDialog extends StatefulWidget {
+  final Consumable consumable;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      color: AppStyles.adaptiveCard(context),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isLow
-              ? AppStyles.danger.withValues(alpha: 0.3)
-              : AppStyles.adaptiveBorder(context),
-        ),
+  const _RefillDialog({required this.consumable});
+
+  @override
+  State<_RefillDialog> createState() => _RefillDialogState();
+}
+
+class _RefillDialogState extends State<_RefillDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.consumable;
+    return AlertDialog(
+      title: Text('Пополнить ${c.name}'),
+      content: TextField(
+        controller: _controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration:
+            AppStyles.inputDecorationFor(context, 'Количество (${c.unit})'),
+        autofocus: true,
       ),
-      child: InkWell(
-        onTap: () => _openDetail(c),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      c.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  if (isLow)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppStyles.danger.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'Низкий запас',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppStyles.danger,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: progress,
-                backgroundColor: AppStyles.adaptiveBorder(context),
-                valueColor: AlwaysStoppedAnimation(
-                  isLow ? AppStyles.danger : AppStyles.primary,
-                ),
-                borderRadius: BorderRadius.circular(4),
-                minHeight: 6,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(
-                    '${c.currentStock.toStringAsFixed(c.currentStock % 1 == 0 ? 0 : 1)} ${c.unit}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isLow
-                          ? AppStyles.danger
-                          : AppStyles.adaptiveTextPrimary(context),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'мин. ${c.minStock.toStringAsFixed(c.minStock % 1 == 0 ? 0 : 1)} ${c.unit}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppStyles.adaptiveTextSecondary(context),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => _refill(c),
-                    icon: const Icon(Icons.add, size: 16),
-                    label:
-                        const Text('Пополнить', style: TextStyle(fontSize: 12)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppStyles.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
         ),
-      ),
+        ElevatedButton(
+          onPressed: () {
+            final val = double.tryParse(_controller.text.replaceAll(',', '.'));
+            Navigator.pop(context, val);
+          },
+          child: const Text('Пополнить'),
+        ),
+      ],
     );
   }
 }
@@ -447,16 +410,32 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
   }
 
   Future<void> _loadData() async {
-    final api = context.read<ApiService>();
-    final history = await api.getRefillHistory(widget.consumable.id);
-    final forecast = await api.getConsumableForecast(widget.consumable.id);
-    if (mounted) {
-      setState(() {
-        _history = history;
-        _forecast = forecast;
-        _loadingHistory = false;
-        _loadingForecast = false;
-      });
+    try {
+      final api = context.read<ApiService>();
+      final results = await Future.wait([
+        api.getRefillHistory(widget.consumable.id),
+        api.getConsumableForecast(widget.consumable.id),
+      ]);
+      if (mounted) {
+        setState(() {
+          _history = results[0] as List<ConsumableRefillLog>;
+          _forecast = results[1] as ConsumableForecast?;
+          _loadingHistory = false;
+          _loadingForecast = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Ошибка загрузки: $e'),
+              backgroundColor: AppStyles.danger),
+        );
+        setState(() {
+          _loadingHistory = false;
+          _loadingForecast = false;
+        });
+      }
     }
   }
 
@@ -469,73 +448,69 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
       initialChildSize: 0.6,
       minChildSize: 0.4,
       maxChildSize: 0.9,
-      builder: (_, scrollController) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: BoxDecoration(
-              color: AppStyles.adaptiveCard(context),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppStyles.adaptiveBorder(context),
-                    borderRadius: BorderRadius.circular(2),
+      builder: (_, controller) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppStyles.adaptiveCard(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppStyles.adaptiveBorder(context),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Text(
+                  c.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Text(
-                    c.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                TabBar(
+              ),
+              TabBar(
+                controller: _tabController,
+                labelColor: AppStyles.primary,
+                unselectedLabelColor: AppStyles.adaptiveTextSecondary(context),
+                indicatorColor: AppStyles.primary,
+                tabs: const [
+                  Tab(text: 'Обзор'),
+                  Tab(text: 'История'),
+                  Tab(text: 'Прогноз'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
                   controller: _tabController,
-                  labelColor: AppStyles.primary,
-                  unselectedLabelColor:
-                      AppStyles.adaptiveTextSecondary(context),
-                  indicatorColor: AppStyles.primary,
-                  tabs: const [
-                    Tab(text: 'Обзор'),
-                    Tab(text: 'История'),
-                    Tab(text: 'Прогноз'),
+                  children: [
+                    _buildOverviewTab(c, scrollController: controller),
+                    _buildHistoryTab(scrollController: controller),
+                    _buildForecastTab(scrollController: controller),
                   ],
                 ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOverviewTab(c),
-                      _buildHistoryTab(),
-                      _buildForecastTab(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildOverviewTab(Consumable c) {
+  Widget _buildOverviewTab(Consumable c, {ScrollController? scrollController}) {
     final isLow = c.isLowStock;
     final progress = c.minStock > 0
         ? (c.currentStock / (c.minStock * 3)).clamp(0.0, 1.0)
         : 1.0;
 
     return SingleChildScrollView(
+      controller: scrollController,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,19 +571,23 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
     );
   }
 
-  Widget _buildHistoryTab() {
+  Widget _buildHistoryTab({ScrollController? scrollController}) {
     if (_loadingHistory) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+          child: CircularProgressIndicator(color: AppStyles.primary));
     }
     if (_history.isEmpty) {
       return const Center(child: Text('История пополнений пуста'));
     }
     final fmt = DateFormat('dd.MM.yyyy HH:mm');
     return ListView.builder(
+      controller: scrollController,
       padding: const EdgeInsets.all(12),
       itemCount: _history.length,
       itemBuilder: (_, i) {
         final log = _history[i];
+        final ts = DateTime.tryParse(log.timestamp);
+        final tsText = ts != null ? fmt.format(ts) : 'н/д';
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: AppStyles.primary.withValues(alpha: 0.1),
@@ -616,8 +595,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
           ),
           title: Text(
               '+${log.amount.toStringAsFixed(log.amount % 1 == 0 ? 0 : 1)} ${widget.consumable.unit}'),
-          subtitle: Text(
-              '${log.refilledBy}  •  ${fmt.format(DateTime.parse(log.timestamp))}'),
+          subtitle: Text('${log.refilledBy}  •  $tsText'),
           trailing: Text(
             '${log.oldStock.toStringAsFixed(1)} → ${log.newStock.toStringAsFixed(1)}',
             style: TextStyle(
@@ -628,9 +606,10 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
     );
   }
 
-  Widget _buildForecastTab() {
+  Widget _buildForecastTab({ScrollController? scrollController}) {
     if (_loadingForecast) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+          child: CircularProgressIndicator(color: AppStyles.primary));
     }
     final f = _forecast;
     if (f == null) {
@@ -638,6 +617,7 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
     }
 
     return SingleChildScrollView(
+      controller: scrollController,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

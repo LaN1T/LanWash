@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import datetime
 from typing import List, Optional, Union
 
 from sqlalchemy import (
@@ -16,7 +16,7 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declared_attr, foreign, relationship, validates
+from sqlalchemy.orm import declared_attr, relationship, validates
 
 from db.base import Base
 
@@ -172,12 +172,14 @@ class Appointment(Base):
     )
 
     @property
-    def assignedWasher(self) -> str:
+    def assignedWasher(self) -> str:  # noqa: N802
         usernames = [aw.washerUsername for aw in self.assigned_washers]
         return json.dumps(usernames, ensure_ascii=False)
 
     @assignedWasher.setter
-    def assignedWasher(self, value: Optional[Union[str, List[str]]]) -> None:
+    def assignedWasher(  # noqa: N802
+        self, value: Optional[Union[str, List[str]]]
+    ) -> None:
         if isinstance(value, str):
             value = json.loads(value) if value and value != "[]" else []
         value = value or []
@@ -193,9 +195,14 @@ class Appointment(Base):
             try:
                 self.date = datetime.fromisoformat(value).date()
             except ValueError as exc:
-                raise ValueError(f"dateTime must be a valid ISO datetime: {value!r}") from exc
+                raise ValueError(
+                    f"dateTime must be a valid ISO datetime: {value!r}"
+                ) from exc
         else:
-            raise ValueError(f"dateTime must be datetime or ISO string, got {type(value).__name__}")
+            raise ValueError(
+                "dateTime must be datetime or ISO string, "
+                f"got {type(value).__name__}"
+            )
         return value
 
 

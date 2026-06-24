@@ -6,7 +6,7 @@ import json
 import os
 import random
 import sys
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 
 # Ensure backend is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

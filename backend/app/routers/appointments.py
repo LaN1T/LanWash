@@ -38,11 +38,11 @@ from schemas import (
     LateReportRequest,
     QrScanRequest,
 )
+from services.appointment_ws_manager import appointment_ws_manager
 from services.audit_service import log_admin_action
 from services.auth_service import check_roles, get_current_user
 from services.fcm_service import fcm_service
 from services.notification_service import add_notification
-from services.appointment_ws_manager import appointment_ws_manager
 from services.workload_service import workload_service
 
 logger = structlog.get_logger()
@@ -266,7 +266,9 @@ async def get_all(
     response.headers["X-Total-Pages"] = str(total_pages)
     response.headers["X-Current-Page"] = str(page)
     response.headers["X-Current-Date"] = target_date.isoformat() if target_date else ""
-    response.headers["X-Unique-Dates"] = json.dumps([d.isoformat() for d in unique_dates])
+    response.headers["X-Unique-Dates"] = json.dumps(
+        [d.isoformat() for d in unique_dates]
+    )
     logger.info(
         "appointments_pagination_headers",
         x_total_pages=total_pages,
@@ -404,6 +406,13 @@ async def get_by_washer(
                     if start <= parsed_time <= end:
                         appt_ids.add(appt_id)
                         break
+
+    # 3. Appointments created by the washer themselves.
+    if user.role == "washer":
+        own_result = await db.execute(
+            select(Appointment.id).where(Appointment.ownerUsername == username_lower)
+        )
+        appt_ids.update(row[0] for row in own_result.all())
 
     if not appt_ids:
         return []
@@ -1294,7 +1303,9 @@ async def assign_washer(
     try:
         await appointment_ws_manager.notify_appointment(db, appt, "assigned")
     except Exception as e:
-        logger.warning("appointment_ws_broadcast_failed", event="assigned", error=str(e))
+        logger.warning(
+            "appointment_ws_broadcast_failed", event="assigned", error=str(e)
+        )
 
     # Уведомление мойщику при назначении или снятии
     tokens_res = await db.execute(
@@ -1571,7 +1582,9 @@ async def scan_appointment_qr(
     try:
         await appointment_ws_manager.notify_appointment(db, appt, "qr_scanned")
     except Exception as e:
-        logger.warning("appointment_ws_broadcast_failed", event="qr_scanned", error=str(e))
+        logger.warning(
+            "appointment_ws_broadcast_failed", event="qr_scanned", error=str(e)
+        )
 
     return appt
 
@@ -1695,7 +1708,9 @@ async def cancel_with_reason(
     try:
         await appointment_ws_manager.notify_appointment(db, appt, "cancelled")
     except Exception as e:
-        logger.warning("appointment_ws_broadcast_failed", event="cancelled", error=str(e))
+        logger.warning(
+            "appointment_ws_broadcast_failed", event="cancelled", error=str(e)
+        )
 
     appointments_total.labels(status="cancelled").inc()
 
@@ -1752,7 +1767,9 @@ async def stats(
         )
 
     result = await db.execute(
-        select(Appointment.status, func.count(Appointment.id)).group_by(Appointment.status)
+        select(Appointment.status, func.count(Appointment.id)).group_by(
+            Appointment.status
+        )
     )
     counts = {status: count for status, count in result.all()}
     return {

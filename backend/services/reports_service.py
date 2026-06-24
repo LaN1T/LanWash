@@ -268,7 +268,11 @@ class ReportsService:
         }
 
     async def shift_load_report(
-        self, start_date: date, end_date: date, start_date_payload: str, end_date_payload: str
+        self,
+        start_date: date,
+        end_date: date,
+        start_date_payload: str,
+        end_date_payload: str,
     ) -> dict:
         target_minutes = SHIFT_LOAD_TARGET_WEEKLY_MINUTES
 
@@ -305,7 +309,9 @@ class ReportsService:
         daily_hours = []
         current = start_date
         while current <= end_date:
-            entry = daily_minutes.get(current, {"confirmedMinutes": 0, "pendingMinutes": 0})
+            entry = daily_minutes.get(
+                current, {"confirmedMinutes": 0, "pendingMinutes": 0}
+            )
             daily_hours.append(
                 {
                     "date": current.isoformat(),

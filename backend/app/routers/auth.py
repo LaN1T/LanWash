@@ -4,7 +4,16 @@ import re
 from io import BytesIO
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
