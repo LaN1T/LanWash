@@ -11,7 +11,14 @@ import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 
 class WasherDashboardScreen extends StatefulWidget {
-  const WasherDashboardScreen({super.key});
+  final bool showAppBar;
+  final bool wrapWithScaffold;
+
+  const WasherDashboardScreen({
+    super.key,
+    this.showAppBar = true,
+    this.wrapWithScaffold = true,
+  });
 
   @override
   State<WasherDashboardScreen> createState() => _WasherDashboardScreenState();
@@ -61,40 +68,46 @@ class _WasherDashboardScreenState extends State<WasherDashboardScreen> {
         all.where((a) => _isSameDay(a.dateTime, _selectedDay)).toList();
     final next = todayAppointments.isNotEmpty ? todayAppointments.first : null;
 
+    final body = RefreshIndicator(
+      color: AppStyles.primary,
+      onRefresh: () => appointmentProvider.reloadAppointments(auth),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+        children: [
+          Text(
+            'Добрый день, ${auth.username}',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppStyles.adaptiveTextPrimary(context),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildSummaryCard(context, todayAppointments, next),
+          const SizedBox(height: 16),
+          _buildWeekCalendar(context, all),
+          const SizedBox(height: 16),
+          _buildDayList(context, selectedDayAppointments),
+        ],
+      ),
+    );
+
+    if (!widget.wrapWithScaffold) return body;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Мой день',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: RefreshIndicator(
-        color: AppStyles.primary,
-        onRefresh: () => appointmentProvider.reloadAppointments(auth),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-          children: [
-            Text(
-              'Добрый день, ${auth.username}',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppStyles.adaptiveTextPrimary(context),
+      appBar: widget.showAppBar
+          ? AppBar(
+              elevation: 0,
+              surfaceTintColor: Colors.transparent,
+              title: const Text(
+                'Мой день',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
-            ),
-            const SizedBox(height: 16),
-            _buildSummaryCard(context, todayAppointments, next),
-            const SizedBox(height: 16),
-            _buildWeekCalendar(context, all),
-            const SizedBox(height: 16),
-            _buildDayList(context, selectedDayAppointments),
-          ],
-        ),
-      ),
+            )
+          : null,
+      body: body,
     );
   }
 
