@@ -289,7 +289,9 @@ async def list_all_chats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(check_roles(["admin"])),
 ):
-    stmt = select(SupportChat).order_by(desc(SupportChat.lastMessageAt), desc(SupportChat.id))
+    stmt = select(SupportChat).order_by(
+        desc(SupportChat.lastMessageAt), desc(SupportChat.id)
+    )
     if status:
         stmt = stmt.where(SupportChat.status == status)
     if params.cursor:

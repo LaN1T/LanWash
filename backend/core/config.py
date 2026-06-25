@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     prometheus_api_token: str = ""
     disable_rate_limit: bool = False
 
+    # Reports
+    washer_weekly_target_minutes: int = 40 * 60
+
     @property
     def cors_origins(self) -> List[str]:
         raw = self.allowed_origins

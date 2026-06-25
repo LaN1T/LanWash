@@ -2,9 +2,9 @@ import os
 import tempfile
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
 
+from alembic import command
 from core.config import get_settings
 
 

@@ -59,6 +59,12 @@ class ServiceConsumableRepository(BaseRepository[ServiceConsumable]):
         )
         return list(result.scalars().all())
 
+    async def list_all(self) -> list[ServiceConsumable]:
+        result = await self._db.execute(
+            select(ServiceConsumable).order_by(ServiceConsumable.serviceId.asc())
+        )
+        return list(result.scalars().all())
+
     async def list_all_service_consumable_pairs(self) -> list[tuple[str, str]]:
         result = await self._db.execute(
             select(ServiceConsumable.serviceId, ServiceConsumable.consumableId)

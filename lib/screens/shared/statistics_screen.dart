@@ -61,7 +61,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         _error = 'Не удалось загрузить данные';
       }
     });
-    _animController.forward(from: 0);
+    await _animController.forward(from: 0);
   }
 
   Future<void> _pickDate() async {
@@ -96,6 +96,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final auth = context.watch<AuthProvider>();
     final isAdmin = auth.user?.role == UserRole.admin;
     final dark = AppStyles.isDark(context);
+
+    if (!isAdmin) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Статистика')),
+        body: const Center(child: Text('Нет доступа')),
+      );
+    }
 
     return Scaffold(
       backgroundColor: dark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFF),
@@ -379,8 +386,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= report.topServices.length)
+                        if (idx < 0 || idx >= report.topServices.length) {
                           return const SizedBox.shrink();
+                        }
                         final name = report.topServices[idx].name;
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),

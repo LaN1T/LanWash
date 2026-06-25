@@ -1,11 +1,19 @@
 import json
 import re
+from datetime import date
 from datetime import date as dt_date
 from datetime import datetime as dt_datetime
 from datetime import time as dt_time
 from typing import Annotated, List, Literal, Optional
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer, field_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    field_validator,
+)
 
 
 def _parse_time_hm(v):
@@ -412,6 +420,20 @@ class ServiceConsumableResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     serviceId: str
+    consumableId: str
+    quantity_per_service: float
+
+
+class WashTypeConsumableRequest(BaseModel):
+    washTypeId: str = Field(..., max_length=36)
+    consumableId: str = Field(..., max_length=36)
+    quantity_per_service: float = Field(..., ge=0)
+
+
+class WashTypeConsumableResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    washTypeId: str
     consumableId: str
     quantity_per_service: float
 
@@ -840,3 +862,110 @@ class SupportChatResponse(BaseModel):
 
 class AiDraftResponse(BaseModel):
     draft: Optional[str] = None
+
+
+# ─── Reports ─────────────────────────────────────────────────────────────────
+class MonthlyReportEntry(BaseModel):
+    car_model: str
+    avg_check: float
+    visit_count: int
+
+
+class MonthlyCheckVsPriceResponse(BaseModel):
+    month: str
+    items: list[MonthlyReportEntry]
+
+
+class PopularServiceEntry(BaseModel):
+    name: str
+    count: int
+    category: str | None = None
+
+
+class PopularServicesResponse(BaseModel):
+    month: str
+    category: str | None
+    items: list[PopularServiceEntry]
+
+
+class ConsumableUsageEntry(BaseModel):
+    consumable_name: str
+    unit: str
+    total_used: float
+
+
+class ConsumablesUsageResponse(BaseModel):
+    month: str
+    category: str | None
+    items: list[ConsumableUsageEntry]
+
+
+class TopService(BaseModel):
+    name: str
+    count: int
+    revenue: float
+
+
+class DailyReportResponse(BaseModel):
+    report_date: date
+    revenue: float
+    appointments_count: int
+    completed_count: int
+    average_check: float
+    box_occupancy: dict[str, float]
+    top_services: list[TopService]
+    washers_on_shift: int
+    consumables_alert: list[str]
+
+
+class FinancialReportEntry(BaseModel):
+    period: str
+    appointments_count: int
+    services_total: float
+    discounts_total: float
+    revenue: float
+
+
+class FinancialReportResponse(BaseModel):
+    summary: dict[str, float | int]
+    items: list[FinancialReportEntry]
+
+
+class WasherPayrollEntry(BaseModel):
+    washer_username: str
+    washer_name: str
+    appointments_count: int
+    services_total: float
+    tips_total: float
+    total: float
+
+
+class WasherPayrollResponse(BaseModel):
+    items: list[WasherPayrollEntry]
+
+
+class CancellationReportEntry(BaseModel):
+    appointment_id: str
+    date: date
+    client_name: str
+    car_model: str
+    reason: str | None
+    cancelled_by: str
+    lost_revenue: float
+
+
+class CancellationsReportResponse(BaseModel):
+    summary: dict[str, float]
+    items: list[CancellationReportEntry]
+
+
+class PromoEffectivenessEntry(BaseModel):
+    promo_id: str | None
+    promo_name: str
+    uses_count: int
+    revenue: float
+    discount_total: float
+
+
+class PromoEffectivenessResponse(BaseModel):
+    items: list[PromoEffectivenessEntry]

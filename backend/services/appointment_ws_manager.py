@@ -73,7 +73,10 @@ class AppointmentWebSocketManager:
 
         if targets:
             await asyncio.gather(
-                *(self._send_to_socket(ws, uid, message, event, appointment.id) for ws, uid in targets),
+                *(
+                    self._send_to_socket(ws, uid, message, event, appointment.id)
+                    for ws, uid in targets
+                ),
                 return_exceptions=True,
             )
 

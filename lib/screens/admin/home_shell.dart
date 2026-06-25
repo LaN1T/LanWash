@@ -20,6 +20,7 @@ import 'wash_type_settings_screen.dart';
 import '../shared/shift_schedule_screen.dart';
 import '../shared/statistics_screen.dart';
 import 'consumables_stock_screen.dart';
+import 'consumable_links_screen.dart';
 import 'reviews_moderation_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'client_search_screen.dart';
@@ -440,6 +441,28 @@ class _HomeShellState extends State<HomeShell> {
                       ctx,
                       MaterialPageRoute(
                           builder: (_) => const ConsumablesStockScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          // Нормы расхода
+          if (isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: Icon(Icons.link_outlined,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Нормы расхода',
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const ConsumableLinksScreen()));
                 },
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),

@@ -12,6 +12,7 @@ import 'package:lanwash/providers/note_provider.dart';
 import 'package:lanwash/providers/offline_provider.dart';
 import 'package:lanwash/providers/theme_provider.dart';
 import 'package:lanwash/providers/language_provider.dart';
+import 'package:lanwash/screens/washer/washer_dashboard_screen.dart';
 import 'package:lanwash/screens/washer/washer_shell.dart';
 import 'package:lanwash/services/api_service.dart';
 import '../mocks.dart';
@@ -84,18 +85,16 @@ void main() {
   }
 
   group('WasherShell', () {
-    testWidgets('has two bottom nav tabs and no tips tab', (tester) async {
+    testWidgets('has no bottom navigation and shows dashboard', (tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationDestination), findsNWidgets(2));
-      expect(find.text('Записи'), findsOneWidget);
-      expect(find.text('Заметки'), findsOneWidget);
-      expect(
-          find.widgetWithText(NavigationDestination, 'Чаевые'), findsNothing);
+      expect(find.byType(NavigationDestination), findsNothing);
+      expect(find.text('Мой день'), findsOneWidget);
+      expect(find.byType(WasherDashboardScreen), findsOneWidget);
     });
 
-    testWidgets('drawer contains new menu structure', (tester) async {
+    testWidgets('drawer contains current menu structure', (tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
@@ -114,21 +113,22 @@ void main() {
           );
 
       expect(drawerText('Мои записи'), findsOneWidget);
-      expect(drawerText('История'), findsOneWidget);
       expect(drawerText('Записаться на мойку'), findsOneWidget);
       expect(drawerText('Расписание'), findsOneWidget);
-      expect(drawerText('Мой день'), findsOneWidget);
+      expect(drawerText('Чаевые'), findsOneWidget);
+
+      expect(drawerText('История'), findsNothing);
       expect(drawerText('Доступность'), findsNothing);
       expect(drawerText('Статистика'), findsNothing);
+      expect(drawerText('Настройки'), findsNothing);
+      expect(drawerText('Выйти'), findsNothing);
 
       await tester.drag(drawerFinder, const Offset(0, -500));
       await tester.pumpAndSettle();
 
-      expect(drawerText('Чаевые'), findsOneWidget);
+      expect(drawerText('Заметки'), findsOneWidget);
       expect(drawerText('Написать в поддержку'), findsOneWidget);
       expect(drawerText('Профиль'), findsOneWidget);
-      expect(drawerText('Настройки'), findsNothing);
-      expect(drawerText('Выйти'), findsNothing);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../core/api_client.dart';
 import '../core/api_result.dart';
 import '../core/config.dart';
@@ -13,6 +14,10 @@ import '../models/user.dart';
 import '../models/report_entry.dart';
 import '../models/promo.dart';
 import '../models/wash_type.dart';
+import '../models/financial_report.dart';
+import '../models/washer_payroll_report.dart';
+import '../models/cancellations_report.dart';
+import '../models/promo_effectiveness_report.dart';
 import '../models/shift.dart';
 import '../models/shift_template.dart';
 import '../models/washer_availability.dart';
@@ -285,7 +290,7 @@ class ApiService {
           );
           return true;
         }
-        return false;
+        throw Exception(err.message);
       },
     );
   }
@@ -765,33 +770,30 @@ class ApiService {
   }
 
   // ─── Reports ───────────────────────────────────────────────────────────────
-  Future<MonthlyReport?> getAverageCheckReport(String? date) async {
+  Future<MonthlyReport> getAverageCheckReport(String? date) async {
     final path = date != null
         ? '/reports/monthly-check-vs-price/?date=$date'
         : '/reports/monthly-check-vs-price/';
     final result = await ApiClient.get(path);
     return result.when(
       success: (data) => MonthlyReport.fromJson(data),
-      failure: (err) {
-        return null;
-      },
+      failure: (err) => throw Exception(err),
     );
   }
 
-  Future<PopularServicesReport?> getPopularAdditionalServices(String? date,
+  Future<PopularServicesReport> getPopularAdditionalServices(String? date,
       {String? category}) async {
-    var path = date != null
-        ? '/reports/popular-additional-services/?date=$date'
-        : '/reports/popular-additional-services/';
+    final params = <String>[];
+    if (date != null) params.add('date=$date');
     if (category != null && category != 'Все') {
-      path += '&category=$category';
+      params.add('category=$category');
     }
+    var path = '/reports/popular-additional-services/';
+    if (params.isNotEmpty) path += '?${params.join('&')}';
     final result = await ApiClient.get(path);
     return result.when(
       success: (data) => PopularServicesReport.fromJson(data),
-      failure: (err) {
-        return null;
-      },
+      failure: (err) => throw Exception(err),
     );
   }
 
@@ -847,7 +849,7 @@ class ApiService {
     );
   }
 
-  Future<ConsumablesUsageReport?> getConsumablesUsageReport(String? date,
+  Future<ConsumablesUsageReport> getConsumablesUsageReport(String? date,
       {String? category}) async {
     var path = '/reports/consumables-usage/';
     final params = <String>[];
@@ -859,11 +861,183 @@ class ApiService {
     final result = await ApiClient.get(path);
     return result.when(
       success: (data) => ConsumablesUsageReport.fromJson(data),
-      failure: (err) {
-        return null;
-      },
+      failure: (err) => throw Exception(err),
     );
   }
+
+  Future<List<Map<String, dynamic>>> getServiceConsumableLinks() async {
+    final result = await ApiClient.getList('/consumables/service-link');
+    return result.when(
+      success: (list) => list.cast<Map<String, dynamic>>(),
+      failure: (err) => throw Exception(err),
+    );
+  }
+
+  Future<void> linkConsumableToService(
+    String serviceId,
+    String consumableId,
+    double quantity,
+  ) async {
+    final result = await ApiClient.post('/consumables/service-link', body: {
+      'serviceId': serviceId,
+      'consumableId': consumableId,
+      'quantity_per_service': quantity,
+    });
+    return result.when(
+      success: (_) {},
+      failure: (err) => throw Exception(err),
+    );
+  }
+
+  Future<void> unlinkConsumableFromService(
+    String serviceId,
+    String consumableId,
+  ) async {
+    final result = await ApiClient.delete(
+      '/consumables/service-link/$serviceId/$consumableId',
+    );
+    return result.when(
+      success: (_) {},
+      failure: (err) => throw Exception(err),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getWashTypeConsumableLinks() async {
+    final result = await ApiClient.getList('/consumables/wash-type-link');
+    return result.when(
+      success: (list) => list.cast<Map<String, dynamic>>(),
+      failure: (err) => throw Exception(err),
+    );
+  }
+
+  Future<void> linkConsumableToWashType(
+    String washTypeId,
+    String consumableId,
+    double quantity,
+  ) async {
+    final result = await ApiClient.post('/consumables/wash-type-link', body: {
+      'washTypeId': washTypeId,
+      'consumableId': consumableId,
+      'quantity_per_service': quantity,
+    });
+    return result.when(
+      success: (_) {},
+      failure: (err) => throw Exception(err),
+    );
+  }
+
+  Future<void> unlinkConsumableFromWashType(
+    String washTypeId,
+    String consumableId,
+  ) async {
+    final result = await ApiClient.delete(
+      '/consumables/wash-type-link/$washTypeId/$consumableId',
+    );
+    return result.when(
+      success: (_) {},
+      failure: (err) => throw Exception(err),
+    );
+  }
+
+  Future<FinancialReport> getFinancialReport({
+    required DateTime startDate,
+    required DateTime endDate,
+    String groupBy = 'day',
+    String? washerUsername,
+    String? washTypeId,
+    String? promoId,
+  }) async {
+    final params = <String>[
+      'start_date=${_date(startDate)}',
+      'end_date=${_date(endDate)}',
+      'group_by=$groupBy',
+      if (washerUsername != null) 'washer_username=$washerUsername',
+      if (washTypeId != null) 'wash_type_id=$washTypeId',
+      if (promoId != null) 'promo_id=$promoId',
+    ];
+    final path = '/reports/financial/?${params.join('&')}';
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => FinancialReport.fromJson(data),
+      failure: (err) => throw Exception(err.message),
+    );
+  }
+
+  Future<WasherPayrollReport> getWasherPayrollReport({
+    required DateTime startDate,
+    required DateTime endDate,
+    String? washerUsername,
+  }) async {
+    final params = <String>[
+      'start_date=${_date(startDate)}',
+      'end_date=${_date(endDate)}',
+      if (washerUsername != null) 'washer_username=$washerUsername',
+    ];
+    final path = '/reports/washer-payroll/?${params.join('&')}';
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => WasherPayrollReport.fromJson(data),
+      failure: (err) => throw Exception(err.message),
+    );
+  }
+
+  Future<CancellationsReport> getCancellationsReport({
+    required DateTime startDate,
+    required DateTime endDate,
+    String? reason,
+    String? washerUsername,
+    String? washTypeId,
+  }) async {
+    final params = <String>[
+      'start_date=${_date(startDate)}',
+      'end_date=${_date(endDate)}',
+      if (reason != null && reason.isNotEmpty) 'reason=$reason',
+      if (washerUsername != null) 'washer_username=$washerUsername',
+      if (washTypeId != null) 'wash_type_id=$washTypeId',
+    ];
+    final path = '/reports/cancellations/?${params.join('&')}';
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => CancellationsReport.fromJson(data),
+      failure: (err) => throw Exception(err.message),
+    );
+  }
+
+  Future<PromoEffectivenessReport> getPromoEffectivenessReport({
+    required DateTime startDate,
+    required DateTime endDate,
+    String? promoId,
+  }) async {
+    final params = <String>[
+      'start_date=${_date(startDate)}',
+      'end_date=${_date(endDate)}',
+      if (promoId != null) 'promo_id=$promoId',
+    ];
+    final path = '/reports/promo-effectiveness/?${params.join('&')}';
+    final result = await ApiClient.get(path);
+    return result.when(
+      success: (data) => PromoEffectivenessReport.fromJson(data),
+      failure: (err) => throw Exception(err.message),
+    );
+  }
+
+  Future<Uint8List?> downloadReportExcel(
+      String endpoint, Map<String, dynamic> params) async {
+    final query = params.entries
+        .where((e) => e.value != null)
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}')
+        .join('&');
+    final separator = endpoint.contains('?') ? '&' : '?';
+    final path =
+        '$endpoint$separator${query.isNotEmpty ? '$query&' : ''}format=xlsx';
+    final result = await ApiClient.rawGet(path);
+    return result.when(
+      success: (resp) => resp.bodyBytes,
+      failure: (_) => null,
+    );
+  }
+
+  String _date(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
   Future<Uint8List?> downloadConsumablesReport(
       {DateTime? dateFrom, DateTime? dateTo}) async {

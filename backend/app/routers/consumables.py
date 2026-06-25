@@ -15,6 +15,8 @@ from schemas import (
     RefillRequest,
     ServiceConsumableRequest,
     ServiceConsumableResponse,
+    WashTypeConsumableRequest,
+    WashTypeConsumableResponse,
 )
 from services.auth_service import check_roles
 from services.consumables_service import ConsumableNotFoundError, ConsumablesService
@@ -160,6 +162,105 @@ async def import_refills(
         raise HTTPException(500, "Internal server error")
 
 
+@router.post("/service-link", response_model=ServiceConsumableResponse)
+@limiter.limit("10/minute")
+async def link_consumable_to_service(
+    request: Request,
+    req: ServiceConsumableRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    svc = ConsumablesService(db)
+    try:
+        return await svc.link_consumable_to_service(req)
+    except ConsumableNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.get("/service-link", response_model=list[ServiceConsumableResponse])
+@limiter.limit("60/minute")
+async def get_all_service_consumable_links(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin", "washer"])),
+):
+    svc = ConsumablesService(db)
+    return await svc.get_all_service_consumable_links()
+
+
+@router.delete("/service-link/{service_id}/{consumable_id}")
+@limiter.limit("10/minute")
+async def unlink_consumable_from_service(
+    request: Request,
+    service_id: str,
+    consumable_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    svc = ConsumablesService(db)
+    unlinked = await svc.unlink_consumable_from_service(service_id, consumable_id)
+    if not unlinked:
+        raise HTTPException(404, "Связь расходника и услуги не найдена")
+    return {"ok": True}
+
+
+@router.get("/wash-type-link", response_model=list[WashTypeConsumableResponse])
+@limiter.limit("60/minute")
+async def get_all_wash_type_consumable_links(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin", "washer"])),
+):
+    svc = ConsumablesService(db)
+    return await svc.get_all_wash_type_consumable_links()
+
+
+@router.get(
+    "/wash-type-link/{wash_type_id}",
+    response_model=list[WashTypeConsumableResponse],
+)
+@limiter.limit("60/minute")
+async def get_consumables_by_wash_type(
+    request: Request,
+    wash_type_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin", "washer"])),
+):
+    svc = ConsumablesService(db)
+    return await svc.get_consumables_by_wash_type(wash_type_id)
+
+
+@router.post("/wash-type-link", response_model=WashTypeConsumableResponse)
+@limiter.limit("10/minute")
+async def link_consumable_to_wash_type(
+    request: Request,
+    req: WashTypeConsumableRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    svc = ConsumablesService(db)
+    try:
+        return await svc.link_consumable_to_wash_type(req)
+    except ConsumableNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.delete("/wash-type-link/{wash_type_id}/{consumable_id}")
+@limiter.limit("10/minute")
+async def unlink_consumable_from_wash_type(
+    request: Request,
+    wash_type_id: str,
+    consumable_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    svc = ConsumablesService(db)
+    unlinked = await svc.unlink_consumable_from_wash_type(wash_type_id, consumable_id)
+    if not unlinked:
+        raise HTTPException(404, "Связь расходника и типа мойки не найдена")
+    return {"ok": True}
+
+
 # ========== Динамические пути ==========
 
 
@@ -252,32 +353,4 @@ async def get_consumable_forecast(
     return result
 
 
-@router.post("/service-link", response_model=ServiceConsumableResponse)
-@limiter.limit("10/minute")
-async def link_consumable_to_service(
-    request: Request,
-    req: ServiceConsumableRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_roles(["admin"])),
-):
-    svc = ConsumablesService(db)
-    try:
-        return await svc.link_consumable_to_service(req)
-    except ConsumableNotFoundError as e:
-        raise HTTPException(404, str(e))
 
-
-@router.delete("/service-link/{service_id}/{consumable_id}")
-@limiter.limit("10/minute")
-async def unlink_consumable_from_service(
-    request: Request,
-    service_id: str,
-    consumable_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(check_roles(["admin"])),
-):
-    svc = ConsumablesService(db)
-    unlinked = await svc.unlink_consumable_from_service(service_id, consumable_id)
-    if not unlinked:
-        raise HTTPException(404, "Связь расходника и услуги не найдена")
-    return {"ok": True}

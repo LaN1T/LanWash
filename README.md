@@ -1,8 +1,8 @@
 # LanWash — система управления автомойкой
 
-LanWash — клиент-серверное приложение для автоматизации записи на автомойку. Клиенты выбирают услуги и время через мобильное приложение, администратор управляет записями и каталогом, мойщики получают назначенные задачи в реальном времени.
+LanWash — клиент-серверная система для автоматизации записи на автомойку. Клиенты выбирают услуги и время через мобильное приложение или Telegram Mini App. Администратор управляет записями, каталогом и аналитикой, а мойщики получают назначенные задачи в реальном времени.
 
-Платформы: iOS, Android, macOS, Windows, Linux, Web.
+Поддерживаемые платформы: iOS, Android, macOS, Windows, Linux, Web.
 
 ---
 
@@ -10,32 +10,54 @@ LanWash — клиент-серверное приложение для авто
 
 ### Клиент
 
-- Регистрация и вход в аккаунт
-- Запись на мойку через трёхшаговый визард: дата и время, выбор услуг, подтверждение
-- Запись по акции напрямую из раздела акций или избранного
-- Просмотр своих записей с актуальной ценой. Если администратор изменил состав услуг, отображается новая цена и зачёркнутая старая
-- Редактирование профиля: имя, телефон, марка и номер автомобиля, пароль
-- Добавление услуг и акций в избранное
-- Просмотр уведомлений и заметок от администратора
-- Push-уведомления о назначении мойщика, изменении статуса записи и заметках
+- Регистрация и вход в аккаунт.
+- Запись на мойку через трёхшаговый визард: услуги и данные автомобиля, дата и время, подтверждение.
+- Запись по акции напрямую из раздела акций или избранного.
+- Просмотр своих записей с актуальной ценой. Если администратор изменил состав услуг, отображается новая цена и зачёркнутая старая.
+- Редактирование профиля: имя, телефон, марка и номер автомобиля, пароль.
+- Добавление услуг и акций в избранное.
+- Просмотр уведомлений и заметок от администратора.
+- Push-уведомления о назначении мойщика, изменении статуса записи и заметках.
+- Реферальная программа: ввод реферального кода при регистрации.
+- Подписки: использование пакетов и периодических подписок на мойку, назначенных администратором.
+- Оплата чаевых мойщикам.
+- Оставление отзывов с возможностью модерации администратором.
 
 ### Мойщик
 
-- Просмотр назначенных записей с детальной информацией: клиент, автомобиль, тип мойки, дополнительные услуги, цена, заметки
-- Просмотр заметок от администратора
-- Обновление статуса записи
-- Pull-to-refresh для обновления списка
-- Push-уведомления о новых назначениях
+- Главный экран «Мой день» с суммарной информацией, календарем недели и списком записей выбранного дня.
+- Просмотр назначенных записей с детальной информацией: клиент, автомобиль, тип мойки, дополнительные услуги, цена, заметки.
+- Просмотр и создание заметок.
+- Обновление статуса записи.
+- Сканирование QR-кода для быстрого перехода к записи.
+- Просмотр расписания смен и заявок.
+- Просмотр статистики по чаевым.
+- Pull-to-refresh для обновления данных.
+- Push-уведомления о новых назначениях.
 
 ### Администратор
 
-- Просмотр всех записей всех клиентов
-- Создание, редактирование и удаление записей
-- Назначение мойщиков на записи, до трёх мойщиков на одну запись
-- Управление каталогом услуг, типов мойки, акций и расходников
-- Просмотр и очистка журнала действий с фильтрацией по пользователю
-- Отправка заметок клиентам и мойщикам
-- Просмотр аналитических отчётов: средний чек по моделям автомобилей, популярные дополнительные услуги, расход расходников
+- Просмотр всех записей всех клиентов.
+- Создание, редактирование и удаление записей.
+- Назначение мойщиков на записи, до трёх мойщиков на одну запись.
+- Управление каталогом услуг, типов мойки, акций и расходников.
+- Управление сменами мойщиков, шаблонами смен и их доступностью.
+- Просмотр и очистка журнала действий с фильтрацией по пользователю.
+- Отправка заметок клиентам и мойщикам.
+- Просмотр аналитических отчётов: средний чек по моделям автомобилей, популярные дополнительные услуги, расход расходников.
+- Модерация отзывов клиентов.
+
+### Системные возможности
+
+- REST API на FastAPI с автоматической документацией Swagger UI.
+- WebSocket для обновлений записей и чата поддержки в реальном времени.
+- Офлайн-режим Flutter-приложения с локальной базой Drift и синхронизацией при появлении сети.
+- Push-уведомления через Firebase Cloud Messaging.
+- Ролевая модель доступа: client, washer, admin.
+- Журнал действий администратора и мойщиков.
+- Мониторинг и метрики через Prometheus и Grafana.
+- Telegram-бот и Mini App для записи и уведомлений.
+- AI-черновики ответов в чате поддержки через Groq или Gemini.
 
 ---
 
@@ -86,14 +108,43 @@ LanWash — клиент-серверное приложение для авто
 
 Расчёт цены при записи по акции:
 
-- База равна акционной цене. Для процентных акций: basePrice * (100 - скидка%) / 100
-- К базе прибавляются только дополнительные услуги, выбранные сверх акции
-- Услуги, входящие в акцию, не прибавляются к цене и отображаются как «Задано акцией»
+- База равна акционной цене. Для процентных акций: `basePrice * (100 - скидка_процентов) / 100`.
+- К базе прибавляются только дополнительные услуги, выбранные сверх акции.
+- Услуги, входящие в акцию, не прибавляются к цене и отображаются как «Задано акцией».
 
 Расчёт времени:
 
-- Берётся базовое время типа мойки
-- К нему прибавляется время только тех дополнительных услуг, которые не входят в тип мойки автоматически
+- Берётся базовое время типа мойки.
+- К нему прибавляется время только тех дополнительных услуг, которые не входят в тип мойки автоматически.
+
+---
+
+## Подписки
+
+Система поддерживает подписки двух видов:
+
+- **Пакетные** — фиксированное количество моек по фиксированной цене.
+- **Периодические** — безлимитный или лимитированный доступ на месяц.
+
+Клиент может приобрести подписку и использовать её при создании записи. Администратор управляет каталогом подписок.
+
+---
+
+## Чаевые
+
+Клиенты могут оставлять чаевые мойщикам. Мойщик видит список чаевых со статусом и статистику по общей сумме, полученным и ожидающим выплатам.
+
+---
+
+## Реферальная программа
+
+При регистрации клиент может указать реферальный код другого пользователя. Система фиксирует связь и позволяет строить реферальную аналитику.
+
+---
+
+## Отзывы
+
+Клиенты оставляют отзывы после завершения записи. Администратор просматривает и модерирует отзывы: одобряет, отклоняет или удаляет.
 
 ---
 
@@ -103,22 +154,24 @@ LanWash — клиент-серверное приложение для авто
 
 **Шаг 1 — Услуги и данные автомобиля:**
 
-- Выбор типа мойки
-- Выбор дополнительных услуг, отсортированных от дешёвых к дорогим
-- Услуги, входящие в тип мойки, отмечены как «Включено» и недоступны для снятия
-- Услуги, заданные акцией, отмечены как «Задано акцией» и также заблокированы
-- Поля клиента и автомобиля предзаполняются из профиля
-- Поддержка избранных дополнительных услуг
+- Выбор типа мойки.
+- Выбор дополнительных услуг, отсортированных от дешёвых к дорогим.
+- Услуги, входящие в тип мойки, отмечены как «Включено» и недоступны для снятия.
+- Услуги, заданные акцией, отмечены как «Задано акцией» и также заблокированы.
+- Поля клиента и автомобиля предзаполняются из профиля.
+- Поддержка избранных дополнительных услуг.
 
 **Шаг 2 — Дата и время.** Выбор даты с календарным ограничением и временного слота с 09:00 до 22:00. Для акций с ограничением по дням недели доступны только соответствующие даты.
 
-**Логика переноса.** Если суммарное время выбранных услуг выходит за 22:00, система отображает слот с предупреждением: запись продолжится на следующий день и закончится к указанному времени. Такой слот можно выбрать, если перенос не превышает восьми часов. При выборе администратор видит итоговое время с пометкой о переносе.
+### Логика переноса
+
+Если суммарное время выбранных услуг выходит за 22:00, система отображает слот с предупреждением: запись продолжится на следующий день и закончится к указанному времени. Такой слот можно выбрать, если перенос не превышает восьми часов. При выборе администратор видит итоговое время с пометкой о переносе.
 
 **Шаг 3 — Подтверждение:**
 
-- Итоговая цена с перечёркнутой ценой без акции и суммой экономии
-- Суммарное время с учётом всех услуг
-- Кнопка подтверждения записи
+- Итоговая цена с перечёркнутой ценой без акции и суммой экономии.
+- Суммарное время с учётом всех услуг.
+- Кнопка подтверждения записи.
 
 ---
 
@@ -134,9 +187,35 @@ LanWash — клиент-серверное приложение для авто
 
 ---
 
+## Смены и доступность
+
+- **Смены** — администратор создаёт смены для мойщиков, мойщик видит свои смены и может подавать заявки.
+- **Шаблоны смен** — повторяющиеся шаблоны для быстрого планирования.
+- **Доступность мойщиков** — мойщик указывает, в какие дни и часы доступен для работы.
+
+---
+
 ## Уведомления и заметки
 
-Администратор может отправлять текстовые заметки клиентам и мойщикам. Заметки отображаются в приложении и дублируются push-уведомлениями через Firebase Cloud Messaging. Клиенты видят заметки в разделе уведомлений, мойщики — в деталях назначенных записей.
+Администратор может отправлять текстовые заметки клиентам и мойщикам. Заметки отображаются в приложении и дублируются push-уведомлениями через Firebase Cloud Messaging. Клиенты видят заметки в разделе уведомлений, мойщики — в разделе заметок.
+
+---
+
+## Поддержка и AI
+
+Клиенты и мойщики могут обращаться в поддержку через чат. Администратор видит тикеты и переписку. Для ускорения ответов реализована генерация AI-черновиков через Groq или Gemini по запросу администратора.
+
+---
+
+## Telegram Mini App и бот
+
+- **Telegram-бот** — приветствует пользователя, авторизует через Telegram initData и предоставляет кнопку для открытия Mini App.
+- **Telegram Mini App** — React-приложение на Vite, позволяющее записываться на мойку и получать уведомления без установки основного приложения.
+- **Очередь уведомлений** — статусные уведомления ставятся в очередь и отправляются ботом независимо от FCM.
+
+> Для запуска Telegram-бота требуется `aiogram`. Убедитесь, что он установлен в окружении бэкенда.
+
+> Некоторые optional-функции (Telegram-бот, AI-черновики) могут требовать дополнительных зависимостей, не включённых в `requirements.txt`. Устанавливайте их вручную при необходимости.
 
 ---
 
@@ -144,14 +223,14 @@ LanWash — клиент-серверное приложение для авто
 
 Все ключевые события фиксируются в журнале:
 
-- Вход и выход из системы, неудачные попытки входа
-- Регистрация пользователей
-- Создание, редактирование, удаление записей
-- Назначение и снятие мойщиков
-- Изменение статуса записи
-- Добавление и удаление из избранного
-- Обновление профиля
-- Действия с услугами, типами мойки, акциями и расходниками
+- Вход и выход из системы, неудачные попытки входа.
+- Регистрация пользователей.
+- Создание, редактирование, удаление записей.
+- Назначение и снятие мойщиков.
+- Изменение статуса записи.
+- Добавление и удаление из избранного.
+- Обновление профиля.
+- Действия с услугами, типами мойки, акциями, расходниками, подписками, сменами и отзывами.
 
 Администратор просматривает журнал с фильтрацией по пользователю и может выполнить полную очистку.
 
@@ -161,22 +240,23 @@ LanWash — клиент-серверное приложение для авто
 
 Администраторский раздел аналитики включает:
 
-- Средний чек по моделям автомобилей
-- Самые популярные дополнительные услуги
-- Расход расходников за период
+- Средний чек по моделям автомобилей.
+- Самые популярные дополнительные услуги.
+- Расход расходников за период.
 
 ---
 
 ## Архитектура
 
-Приложение построено по клиент-серверной схеме. Бэкенд предоставляет REST API, фронтенд на Flutter взаимодействует с ним по HTTP. Данные хранятся в PostgreSQL, аутентификация реализована через JWT.
+Приложение построено по клиент-серверной схеме. Бэкенд предоставляет REST API и WebSocket, фронтенд на Flutter взаимодействует с ним по HTTP. Данные хранятся в PostgreSQL, аутентификация реализована через JWT, фоновые задачи и кэширование — через Redis.
 
 ```
-Flutter Client  <--HTTP-->  FastAPI Backend  <--SQLAlchemy-->  PostgreSQL
-      |                           |
-      |                    Firebase FCM
-      |                           |
-Push-уведомления  <--------  Push-токены
+Flutter Client  <--HTTP/WS-->  FastAPI Backend  <--SQLAlchemy-->  PostgreSQL
+                                     |                              |
+                                     |                        Firebase FCM
+                                     |                              |
+                                     v                              v
+                            Push-уведомления                 Push-токены / очередь
 ```
 
 ---
@@ -188,54 +268,59 @@ Push-уведомления  <--------  Push-токены
 | Клиент | Flutter 3.x, Material 3 |
 | Язык клиента | Dart |
 | Управление состоянием | Provider |
-| Бэкенд | Python 3.11+, FastAPI |
+| Локальная БД и офлайн | Drift, SQLCipher |
+| HTTP-клиент | http |
+| WebSocket | web_socket_channel |
+| Локализация | intl (ru) |
+| Бэкенд | Python 3.13, FastAPI, Pydantic v2 |
 | ORM | SQLAlchemy 2.0 (async) |
-| База данных | PostgreSQL 15+ |
+| База данных | PostgreSQL 16 |
 | Миграции | Alembic |
 | Аутентификация | JWT + Argon2 |
+| Rate limiting | slowapi |
+| Фоновые задачи | ARQ + Redis |
 | Push-уведомления | Firebase Cloud Messaging |
-| HTTP-клиент | http (Dart) |
-| Локализация | intl (ru) |
-| Контейнеризация | Docker multi-stage, Docker Compose |
+| Telegram-бот | aiogram |
+| Telegram Mini App | React + Vite |
 | Логирование | structlog (JSON в production) |
 | Конфигурация | pydantic-settings |
-| Метрики | Prometheus (FastAPI instrumentator) |
+| Метрики | Prometheus |
 | Мониторинг | Grafana + Prometheus |
+| Error tracking | Sentry |
 | Нагрузочное тестирование | Locust |
 | Reverse proxy | Nginx |
-| Error tracking | Sentry |
-| Landing page | Vite |
+| Контейнеризация | Docker multi-stage, Docker Compose |
 
 ---
 
 ## Запуск
 
-### Бэкенд
-
-**Локально:**
+### Бэкенд локально
 
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
-# Создай .env по образцу .env.example
+# Создай backend/.env по образцу backend/.env.example
 
 # Development — автоматическое создание таблиц
-ENVIRONMENT=development uvicorn main:app --reload --host 0.0.0.0 --port 8000
+ENVIRONMENT=development uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Production — сначала миграции, потом запуск
 ENVIRONMENT=production alembic upgrade head
-ENVIRONMENT=production uvicorn main:app --host 0.0.0.0 --port 8000
+ENVIRONMENT=production uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-**Через Docker:**
+### Бэкенд через Docker Compose
 
 ```bash
-docker-compose up --build
+cp .env.example .env
+# Отредактируй корневой .env
+docker compose up --build
 ```
 
-### Клиент
+### Клиент Flutter
 
 ```bash
 flutter pub get
@@ -244,51 +329,103 @@ flutter run
 
 Для Android-эмулятора бэкенд доступен по адресу `http://10.0.2.2:8000`. Для iOS-симулятора и десктопа — `http://localhost:8000`.
 
-### Flutter Web (production build)
+### Flutter Web
 
 ```bash
 flutter build web --release
-cd build/web
-python3 -m http.server 56031
 ```
 
-Открывай в браузере: `http://localhost:56031`
+Собранные файлы находятся в `build/web/` и могут быть развёрнуты через Nginx или любой статический сервер.
 
 ### Landing page
 
+`landing/` содержит статические файлы лендинга. Для локального просмотра:
+
 ```bash
 cd landing
-# Статические файлы уже собраны в landing/assets/
-# Для разработки:
-npm install
-npm run dev
+python3 -m http.server 8080
 ```
+
+### Telegram Mini App
+
+```bash
+cd telegram-miniapp
+npm install
+npm run build
+```
+
+Собранные файлы находятся в `telegram-miniapp/dist/`.
 
 ---
 
 ## Переменные окружения
 
+### Корневой `.env`
+
+Создай файл `.env` в корне проекта по образцу `.env.example`:
+
+```env
+POSTGRES_USER=lanwash_user
+POSTGRES_PASSWORD=
+POSTGRES_DB=lanwash_db
+DATABASE_URL=postgresql+asyncpg://lanwash_user:YOUR_PASSWORD@db:5432/lanwash_db
+JWT_SECRET_KEY=your-super-secret-key-min-32-chars
+INITIAL_ADMIN_PASSWORD=change_me_to_something_secure
+ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
+GEMINI_API_KEY=
+GROQ_API_KEY=
+AI_PROVIDER=groq
+REDIS_PASSWORD=change_me_to_something_secure
+PROMETHEUS_USER=lanwash
+PROMETHEUS_PASSWORD=change_me_to_something_secure
+PROMETHEUS_API_TOKEN=change_me_to_something_secure
+GRAFANA_USER=lanwash_admin
+GRAFANA_PASSWORD=change_me_to_something_secure
+```
+
+> Для production-запуска бэкенд дополнительно требует `REDIS_URL`, `PROMETHEUS_API_TOKEN`, `APP_CHECK_ENFORCED`, `FIREBASE_APP_ID`, ключи Firebase Admin SDK, `TELEGRAM_BOT_TOKEN`, AI-ключи и `SENTRY_DSN`. В `docker-compose.yml` в backend-контейнер пробрасывается только базовый набор переменных; полную production-конфигурацию нужно настроить отдельно.
+
+> `/metrics` защищён через `HTTPBearer` и ожидает заголовок `Authorization: Bearer <PROMETHEUS_API_TOKEN>`. Конфигурация Prometheus (`prometheus.yml`) должна быть синхронизирована с этим механизмом; текущий пример в репозитории использует `basic_auth`, поэтому перед production-деплоем необходимо привести аутентификацию к одному виду.
+
+### `backend/.env`
+
 Создай файл `backend/.env` по образцу `backend/.env.example`:
 
-```
+```env
 ENVIRONMENT=development
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/lanwash
-JWT_SECRET_KEY=your-secret-key-min-32-characters-long
+DATABASE_URL=sqlite+aiosqlite:///./lanwash.db
+JWT_SECRET_KEY=change_me_min_32_chars_use_secrets_token_urlsafe
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-INITIAL_ADMIN_PASSWORD=your-secure-admin-password
+INITIAL_ADMIN_PASSWORD=change_me_to_something_secure
+REDIS_PASSWORD=change_me_to_something_secure
 ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
 DEBUG=false
+GRAFANA_USER=lanwash_admin
+GRAFANA_PASSWORD=change_me_to_something_secure
 
-# Firebase (опционально)
-FIREBASE_PROJECT_ID=your-firebase-project-id
-FIREBASE_CLIENT_EMAIL=your-service-account-email
-FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=
+FIREBASE_PRIVATE_KEY_ID=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_CLIENT_ID=
+FIREBASE_AUTH_URI=https://accounts.google.com/o/oauth2/auth
+FIREBASE_TOKEN_URI=https://oauth2.googleapis.com/token
+FIREBASE_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
+FIREBASE_CLIENT_X509_CERT_URL=
 
-# FCM шифрование (опционально, если не задано — derived from JWT_SECRET_KEY)
-# FCM_ENCRYPTION_KEY=your-32-byte-base64-key
+# Optional
+# FCM_ENCRYPTION_KEY=
+APP_CHECK_ENFORCED=false
+# SENTRY_DSN=
+
+# AI providers
+AI_PROVIDER=groq
+GROQ_API_KEY=
+GEMINI_API_KEY=
 ```
 
-**Важно:** никогда не коммить `.env` и `firebase.json` в репозиторий.
+**Важно:** никогда не коммить `.env`, `firebase.json` и файлы ключей Firebase в репозиторий.
 
 ---
 
@@ -296,158 +433,51 @@ FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 
 Приложение использует ролевую модель с тремя уровнями доступа:
 
-- **client** — создание и просмотр собственных записей, редактирование профиля
-- **washer** — просмотр назначенных записей, обновление статуса
-- **admin** — полный доступ к записям, каталогу, журналу, отчётам и управлению пользователями
+- **client** — создание и просмотр собственных записей, редактирование профиля.
+- **washer** — просмотр назначенных записей, обновление статуса, работа с заметками и расписанием.
+- **admin** — полный доступ к записям, каталогу, журналу, отчётам и управлению пользователями.
 
-Пароли хешируются алгоритмом Argon2. JWT-токены выдаются на час с возможностью настройки через переменную окружения. При первом запуске бэкенда создаётся администраторский аккаунт, если задан пароль в `INITIAL_ADMIN_PASSWORD`.
+Пароли хешируются алгоритмом Argon2. JWT access-токены выдаются на час, refresh-токены передаются в httpOnly cookie. При первом запуске бэкенда создаётся администраторский аккаунт, если задан пароль в `INITIAL_ADMIN_PASSWORD`.
 
 ---
 
 ## API Endpoints
 
-Бэкенд предоставляет REST API с автоматической документацией Swagger UI: `http://localhost:8000/docs` (при запущенном сервере).
+Бэкенд предоставляет REST API с автоматической документацией Swagger UI: `http://localhost:8000/docs` (при запущенном сервере в development-режиме).
 
-### Основные группы endpoint'ов
+### Основные группы эндпоинтов
 
 | Префикс | Описание | Доступ |
-|---------|----------|--------|
-| `/api/auth` | Регистрация, логин, профиль, FCM-токены | Все |
-| `/api/appointments` | CRUD записей, назначение мойщиков, статистика | Авторизованные |
-| `/api/services` | Услуги, категории, акции, избранное | Авторизованные |
-| `/api/wash-types` | Типы мойки | Авторизованные |
+|---|---|---|
+| `/api/auth` | Регистрация, логин, профиль, FCM-токены, Telegram | public |
+| `/api/appointments` | CRUD записей, назначение мойщиков, статистика | authenticated |
+| `/api/services` | Услуги, категории, акции, избранное | authenticated |
+| `/api/wash-types` | Типы мойки | authenticated |
 | `/api/consumables` | Расходники и связи с услугами | admin/washer |
-| `/api/notes` | Заметки мойщикам | admin/washer |
-| `/api/logs` | Журнал действий | admin (чтение/очистка), публичное создание |
+| `/api/notes` | Заметки клиентам и мойщикам | authenticated |
+| `/api/shifts` | Управление сменами мойщиков | authenticated |
+| `/api/shift-templates` | Шаблоны смен | admin/washer |
+| `/api/washers` | Доступность мойщиков | admin/washer |
+| `/api/subscriptions` | Подписки | authenticated |
+| `/api/tips` | Чаевые | authenticated |
+| `/api/referrals` | Реферальные коды | authenticated |
+| `/api/reviews` | Отзывы | authenticated |
+| `/api/support` | Чат поддержки и AI-черновики | authenticated |
+| `/api/admin` | Административные операции и напоминания | admin |
+| `/api/cars` | Справочник автомобилей | authenticated |
+| `/api/logs` | Журнал действий | admin (POST public) |
 | `/api/reports` | Аналитические отчёты | admin |
-| `/api/shifts` | Управление сменами мойщиков | admin |
-| `/health` | Health check (uptime, версия, статус) | Публично |
-| `/metrics` | Prometheus метрики | Публично |
+| `/health` | Health check | public |
+| `/metrics` | Prometheus метрики | system / Prometheus token |
 
 ### Пагинация записей
 
 `GET /api/appointments/?page=1` возвращает записи постранично по дням. Заголовки ответа:
-- `X-Total-Pages` — общее количество страниц (дней)
-- `X-Current-Page` — текущая страница
-- `X-Current-Date` — дата текущей страницы
-- `X-Unique-Dates` — JSON-массив всех дат
 
----
-
-## Тестирование
-
-### Backend (pytest)
-
-```bash
-cd backend
-python -m pytest tests/ -v
-```
-
-Покрытие: 78 тестов, SQLite in-memory, async HTTP-клиент (httpx + ASGI).
-
-### Flutter
-
-```bash
-flutter test
-```
-
-Покрытие: 47 unit-тестов (ApiResult, ApiClient, модели, ApiService).
-
-### Нагрузочное тестирование (Locust)
-
-```bash
-# 1. Запусти тестовое окружение
-make test-full
-
-# 2. В отдельном терминале — бэкенд
-make test-backend
-
-# 3. В отдельном терминале — Locust
-make test-run
-```
-
-Открой `http://localhost:8089`, задай количество пользователей и hatch rate, запусти нагрузку.
-
-**Что тестирует Locust:**
-- Создание записей клиентами
-- Просмотр записей мойщиками
-- Управление записями администратором
-- Работу с услугами, акциями, расходниками
-- Пагинацию и фильтрацию
-
-**Тестовые данные:**
-- `test_admin_1` / `testpass123`
-- `test_client_1`..`50` / `testpass123`
-- `test_washer_1`..`10` / `testpass123`
-
-### Makefile команды
-
-| Команда | Описание |
-|---------|----------|
-| `make test-up` | Запуск Prometheus + Grafana (Docker) |
-| `make test-down` | Остановка Prometheus + Grafana |
-| `make test-clean` | DROP + CREATE пустой `lanwash_test` |
-| `make test-seed` | Заполнение `lanwash_test` тестовыми данными |
-| `make test-backend` | Запуск бэкенда на тестовой БД |
-| `make test-run` | Запуск Locust UI |
-| `make test-full` | Полный цикл: clean → seed → Prometheus/Grafana |
-
----
-
-## CI/CD
-
-GitHub Actions автоматически запускаются при push/PR:
-
-| Workflow | Что проверяет |
-|----------|---------------|
-| **Backend Tests** | pytest на Python 3.13 |
-| **Flutter CI** | analyze + format + test + build APK + build Web |
-
-Flutter CI собирает release APK и web-версию как артефакты для каждого PR.
-
----
-
-## Структура проекта
-
-```
-LanWash/
-├── backend/                 # FastAPI + SQLAlchemy
-│   ├── alembic/             # Миграции БД
-│   ├── core/                # Config, logging, limiter, security, redis
-│   ├── routers/             # API endpoint'ы
-│   ├── services/            # Бизнес-логика (auth, FCM, workload)
-│   ├── scripts/             # seed.py, clean.py для тестовых данных
-│   ├── models.py            # Pydantic схемы
-│   ├── db_models.py         # SQLAlchemy модели
-│   ├── tests/               # pytest
-│   ├── locustfile.py        # Нагрузочное тестирование
-│   ├── requirements.txt
-│   └── requirements-test.txt
-├── lib/                     # Flutter приложение
-│   ├── core/                # ApiClient, ApiResult, DI, Config
-│   ├── models/              # Dart модели
-│   ├── providers/           # AuthProvider, AppProvider
-│   ├── screens/             # Экраны (client/admin/washer)
-│   ├── services/            # ApiService, PDF export
-│   └── main.dart
-├── test/                    # Flutter тесты
-├── landing/                 # Landing page (Vite)
-├── nginx/                   # Nginx конфигурация
-├── grafana/                 # Grafana dashboards и provisioning
-│   ├── dashboards/
-│   └── provisioning/
-│       ├── datasources/
-│       └── dashboards/
-├── grafana/provisioning-test/  # Тестовое provisioning
-├── prometheus.yml           # Prometheus конфигурация
-├── prometheus.test.yml      # Тестовая Prometheus конфигурация
-├── docker-compose.yml       # Основной compose
-├── docker-compose.test.yml  # Тестовый compose (Prometheus + Grafana)
-├── docker-compose.prod.yml  # Production overrides
-├── Makefile                 # Команды для тестирования
-├── .github/workflows/       # GitHub Actions
-└── README.md
-```
+- `X-Total-Pages` — общее количество страниц (дней).
+- `X-Current-Page` — текущая страница.
+- `X-Current-Date` — дата текущей страницы.
+- `X-Unique-Dates` — JSON-массив всех дат.
 
 ---
 
@@ -457,32 +487,25 @@ LanWash/
 
 Система собирает метрики бэкенда через Prometheus и визуализирует их в Grafana.
 
-**Основной стек:**
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
 
-**Тестовый стек:**
-- Prometheus: `http://localhost:9091`
-- Grafana: `http://localhost:3001` (admin/admin)
+Запуск:
 
-**Запуск:**
 ```bash
-# Основной
-make test-up  # или docker-compose up -d prometheus grafana
-
-# Тестовый
-docker-compose -f docker-compose.test.yml up -d
+docker compose up -d prometheus grafana
 ```
 
 **Метрики:**
-- RPS (requests per second)
-- Latency (p50, p95, p99)
-- HTTP status codes
-- Business metrics (количество записей, пользователей)
+
+- RPS — количество запросов в секунду.
+- Latency — p50, p95, p99.
+- HTTP-коды ответов.
+- Бизнес-метрики: количество записей, пользователей.
 
 ### Health check
 
-`GET /health` — uptime, версия, environment:
+`GET /health` возвращает uptime, версию и окружение:
 
 ```json
 {
@@ -496,29 +519,24 @@ docker-compose -f docker-compose.test.yml up -d
 
 ### Sentry
 
-Для включения error tracking задай `SENTRY_DSN` в `.env`:
-
-```
-SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
-```
-
-Sentry автоматически инициализируется в production-окружении с интеграциями FastAPI и Starlette.
+Для включения error tracking задай `SENTRY_DSN` в `backend/.env`. Sentry инициализируется при наличии `SENTRY_DSN` в любом окружении.
 
 ---
 
 ## Безопасность
 
 Применённые меры:
-- JWT с минимальной длиной ключа 32 символа
-- Пароли хешируются Argon2
-- Rate limiting (slowapi) на все endpoint'ы
-- CORS из переменной окружения `ALLOWED_ORIGINS`
-- Security headers middleware
-- Pydantic валидация входных данных
-- Debug endpoint'ы скрыты за флагом `DEBUG=true`
-- Конфигурация валидируется pydantic-settings при старте
-- Структурированное логирование (structlog)
-- Firebase App Check + API Key Restrictions ([инструкция](docs/firebase-hardening.md))
+
+- JWT с минимальной длиной ключа 32 символа.
+- Пароли хешируются Argon2.
+- Rate limiting (slowapi) на эндпоинты.
+- CORS настраивается из переменной окружения `ALLOWED_ORIGINS`.
+- Security headers middleware.
+- Pydantic-валидация входных данных.
+- Debug-эндпоинты доступны только при `DEBUG=true`.
+- Конфигурация валидируется pydantic-settings при старте.
+- Структурированное логирование (structlog).
+- Firebase App Check ([инструкция](docs/firebase-hardening.md)).
 
 ---
 
@@ -529,7 +547,7 @@ Sentry автоматически инициализируется в production
 ```bash
 cd backend
 
-# Создать новую миграцию (после изменения db_models.py)
+# Создать новую миграцию
 alembic revision --autogenerate -m "описание изменений"
 
 # Применить все миграции
@@ -546,29 +564,144 @@ alembic current
 
 ---
 
-## Docker
+## Тестирование
 
-### Локальный запуск (development)
-
-```bash
-docker-compose up --build
-```
-
-### Production
+### Backend
 
 ```bash
-# 1. Скопируй .env и настрой переменные
-cp backend/.env.example backend/.env
-
-# 2. Запуск с production-настройками
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-# 3. Примени миграции
-docker-compose exec backend alembic upgrade head
+cd backend
+python -m pytest tests/ -v
 ```
 
-### Multi-stage build
+Тесты запускаются на SQLite in-memory с async HTTP-клиентом (httpx + ASGI).
 
-Backend Dockerfile использует multi-stage build:
-- **Stage 1** (`builder`): установка зависимостей с компиляцией
-- **Stage 2** (`production`): только runtime-зависимости, non-root пользователь, health-check
+### Flutter
+
+```bash
+flutter test
+```
+
+### Нагрузочное тестирование (Locust)
+
+Для запуска Locust установи зависимости из `backend/requirements-test.txt`:
+
+```bash
+cd backend
+pip install -r requirements-test.txt
+```
+
+Все команды `make` выполняются из корня проекта.
+
+```bash
+# 1. Запустить тестовое окружение
+make test-full
+
+# 2. В отдельном терминале — бэкенд
+make test-backend
+
+# 3. В отдельном терминале — Locust
+make test-run
+```
+
+Открой `http://localhost:8089`, задай количество пользователей и hatch rate, запусти нагрузку.
+
+**Что тестирует Locust:**
+
+- Создание записей клиентами.
+- Просмотр записей мойщиками.
+- Управление записями администратором.
+- Работу с услугами, акциями, расходниками.
+- Пагинацию и фильтрацию.
+
+**Тестовые данные:**
+
+- `test_admin_1` / `testpass123`
+- `test_client_1`..`test_client_50` / `testpass123`
+- `test_washer_1`..`test_washer_10` / `testpass123`
+
+### Makefile команды
+
+| Команда | Описание |
+|---|---|
+| `make test-up` | Запуск Prometheus + Grafana (Docker) |
+| `make test-down` | Остановка Prometheus + Grafana |
+| `make test-clean` | DROP + CREATE пустой `lanwash_test` |
+| `make test-seed` | Заполнение `lanwash_test` тестовыми данными |
+| `make test-backend` | Запуск бэкенда на тестовой БД |
+| `make test-run` | Запуск Locust UI |
+| `make test-full` | Clean + Seed + Prometheus/Grafana |
+
+---
+
+## CI/CD
+
+GitHub Actions автоматически запускаются при push/PR в ветки `main` или `master`:
+
+| Workflow | Что проверяет |
+|---|---|
+| **Backend Tests** | pytest на Python 3.13, ruff, bandit, pip-audit, verify migrations |
+| **Flutter CI** | analyze, format, test, build APK, build Web |
+
+Flutter CI собирает release APK и web-версию как артефакты для каждого PR.
+
+---
+
+## Структура проекта
+
+```
+LanWash/
+├── backend/                 # FastAPI + SQLAlchemy
+│   ├── alembic/             # Миграции БД
+│   ├── app/                 # FastAPI app, routers, middleware, deps
+│   ├── bot/                 # Telegram бот (aiogram)
+│   ├── core/                # Config, logging, limiter, security, redis, background
+│   ├── db/                  # Engine, session, base, init, seed
+│   │   └── base.py          # SQLAlchemy Base
+│   ├── models/              # SQLAlchemy ORM-модели
+│   │   └── models.py        # ORM-модели
+│   ├── repositories/        # Repository layer
+│   ├── schemas/             # Pydantic схемы
+│   │   └── schemas.py       # Pydantic схемы
+│   ├── services/            # Бизнес-логика
+│   ├── tasks/               # ARQ background tasks
+│   ├── tests/               # pytest
+│   ├── locustfile.py        # Нагрузочное тестирование
+│   ├── main.py              # compat-шим, реэкспортирует app из app/main.py
+│   ├── requirements.txt
+│   └── requirements-dev.txt
+├── lib/                     # Flutter приложение
+│   ├── core/                # ApiClient, ApiResult, DI, Config, offline DB
+│   ├── models/              # Dart модели
+│   ├── providers/           # AuthProvider, AppointmentProvider и др.
+│   ├── screens/             # Экраны приложения
+│   │   ├── auth/            # Экраны аутентификации
+│   │   ├── client/          # Экраны клиента
+│   │   ├── admin/           # Экраны администратора
+│   │   ├── washer/          # Экраны мойщика
+│   │   └── shared/          # Общие экраны
+│   ├── services/            # ApiService, NotificationService, WebSocket
+│   ├── usecases/            # Бизнес-сценарии
+│   ├── utils/               # Утилиты и вспомогательные функции
+│   ├── widgets/             # Переиспользуемые виджеты
+│   ├── app_styles.dart      # Общие стили приложения
+│   ├── firebase_options.dart # Конфигурация Firebase
+│   └── main.dart
+├── telegram-miniapp/        # React + Vite Telegram Mini App
+├── landing/                 # Статический landing page
+├── docs/                    # Документация проекта
+├── nginx/                   # Nginx конфигурация
+├── grafana/                 # Grafana dashboards и provisioning
+├── prometheus.yml           # Prometheus конфигурация
+├── docker-compose.yml       # Основной compose
+├── docker-compose.prod.yml  # Production overrides
+├── docker-compose.test.yml  # Тестовый compose (Prometheus + Grafana)
+├── Makefile                 # Команды для тестирования
+├── .github/workflows/       # GitHub Actions
+└── README.md
+```
+
+---
+
+## Лицензия
+
+Лицензия проекта не указана.

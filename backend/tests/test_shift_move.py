@@ -232,7 +232,10 @@ class TestShiftMove:
         # Only one shift should remain at the target date.
         list_response = await async_client.get(
             "/api/shifts/",
-            params={"start_date": tomorrow.isoformat(), "end_date": tomorrow.isoformat()},
+            params={
+                "start_date": tomorrow.isoformat(),
+                "end_date": tomorrow.isoformat(),
+            },
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert list_response.status_code == 200

@@ -43,13 +43,16 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      ENVIRONMENT: production
+      ENVIRONMENT: development
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      FCM_ENCRYPTION_KEY: ${FCM_ENCRYPTION_KEY}
       DEBUG: "false"
+    ports:
+      - "127.0.0.1:8000:8000"
     read_only: true
     cap_drop:
       - ALL
@@ -57,6 +60,7 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp
+      - /app/uploads
     depends_on:
       db:
         condition: service_healthy

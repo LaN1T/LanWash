@@ -11,16 +11,20 @@ from models import (
     Consumable,
     ConsumableRefillLog,
     ServiceConsumable,
+    WashTypeConsumable,
 )
 from repositories.consumable import ConsumableRepository
 from repositories.consumable_refill_log import ConsumableRefillLogRepository
 from repositories.consumable_usage_log import ConsumableUsageLogRepository
 from repositories.service import ServiceRepository
 from repositories.service_consumable import ServiceConsumableRepository
+from repositories.wash_type import WashTypeRepository
+from repositories.wash_type_consumable import WashTypeConsumableRepository
 from schemas import (
     ConsumableRequest,
     RefillRequest,
     ServiceConsumableRequest,
+    WashTypeConsumableRequest,
 )
 from services.inventory_forecast_service import generate_inventory_forecast
 
@@ -45,6 +49,8 @@ class ConsumablesService:
         self._consumables = ConsumableRepository(db)
         self._services = ServiceRepository(db)
         self._service_consumables = ServiceConsumableRepository(db)
+        self._wash_types = WashTypeRepository(db)
+        self._wash_type_consumables = WashTypeConsumableRepository(db)
         self._refill_logs = ConsumableRefillLogRepository(db)
         self._usage_logs = ConsumableUsageLogRepository(db)
 
@@ -55,6 +61,9 @@ class ConsumablesService:
         self, service_id: str
     ) -> list[ServiceConsumable]:
         return await self._service_consumables.list_by_service(service_id)
+
+    async def get_all_service_consumable_links(self) -> list[ServiceConsumable]:
+        return await self._service_consumables.list_all()
 
     async def create_consumable(self, req: ConsumableRequest) -> Consumable:
         new_consumable = Consumable(id=str(uuid.uuid4()), name=req.name, unit=req.unit)
@@ -214,6 +223,59 @@ class ConsumablesService:
     ) -> bool:
         deleted = await self._service_consumables.delete_by_service_and_consumable(
             service_id, consumable_id
+        )
+        await self._db.commit()
+        return deleted
+
+    async def get_consumables_by_wash_type(
+        self, wash_type_id: str
+    ) -> list[WashTypeConsumable]:
+        return await self._wash_type_consumables.list_by_wash_type(wash_type_id)
+
+    async def get_all_wash_type_consumable_links(self) -> list[WashTypeConsumable]:
+        return await self._wash_type_consumables.list_all()
+
+    async def link_consumable_to_wash_type(
+        self, req: WashTypeConsumableRequest
+    ) -> dict:
+        wash_type = await self._wash_types.get_by_id(req.washTypeId)
+        if not wash_type:
+            raise ConsumableNotFoundError(
+                f"Тип мойки с id={req.washTypeId} не найден"
+            )
+
+        consumable = await self._consumables.get_by_id(req.consumableId)
+        if not consumable:
+            raise ConsumableNotFoundError(
+                f"Расходник с id={req.consumableId} не найден"
+            )
+
+        link = await self._wash_type_consumables.get_by_wash_type_and_consumable(
+            req.washTypeId, req.consumableId
+        )
+        if link:
+            link.quantity_per_service = req.quantity_per_service
+        else:
+            await self._wash_type_consumables.add(
+                WashTypeConsumable(
+                    washTypeId=req.washTypeId,
+                    consumableId=req.consumableId,
+                    quantity_per_service=req.quantity_per_service,
+                )
+            )
+
+        await self._db.commit()
+        return {
+            "washTypeId": req.washTypeId,
+            "consumableId": req.consumableId,
+            "quantity_per_service": req.quantity_per_service,
+        }
+
+    async def unlink_consumable_from_wash_type(
+        self, wash_type_id: str, consumable_id: str
+    ) -> bool:
+        deleted = await self._wash_type_consumables.delete_by_wash_type_and_consumable(
+            wash_type_id, consumable_id
         )
         await self._db.commit()
         return deleted

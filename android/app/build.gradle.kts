@@ -71,6 +71,13 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
+// drift_flutter подтягивает sqlite3_flutter_libs, который конфликтует
+// с sqlcipher_flutter_libs на Android: оба плагина содержат одинаковые классы.
+// На нативных платформах используем SQLCipher, поэтому исключаем sqlite3_flutter_libs.
+configurations.all {
+    exclude(group = "eu.simonbinder.sqlite3_flutter_libs", module = "sqlite3_flutter_libs")
+}
+
 flutter {
     source = "../.."
 }

@@ -50,13 +50,22 @@ class TestAppointmentRepository:
         db_session.add_all(
             [
                 _appointment(
-                    "a1", user.username, datetime(2026, 6, 10, 10, 0), status="completed"
+                    "a1",
+                    user.username,
+                    datetime(2026, 6, 10, 10, 0),
+                    status="completed",
                 ),
                 _appointment(
-                    "a2", user.username, datetime(2026, 6, 11, 10, 0), status="completed"
+                    "a2",
+                    user.username,
+                    datetime(2026, 6, 11, 10, 0),
+                    status="completed",
                 ),
                 _appointment(
-                    "a3", user.username, datetime(2026, 6, 12, 10, 0), status="cancelled"
+                    "a3",
+                    user.username,
+                    datetime(2026, 6, 12, 10, 0),
+                    status="cancelled",
                 ),
             ]
         )
@@ -114,13 +123,22 @@ class TestAppointmentRepository:
         db_session.add_all(
             [
                 _appointment(
-                    "a7", user.username, datetime(2026, 6, 10, 10, 0), status="completed"
+                    "a7",
+                    user.username,
+                    datetime(2026, 6, 10, 10, 0),
+                    status="completed",
                 ),
                 _appointment(
-                    "a8", user.username, datetime(2026, 6, 11, 10, 0), status="completed"
+                    "a8",
+                    user.username,
+                    datetime(2026, 6, 11, 10, 0),
+                    status="completed",
                 ),
                 _appointment(
-                    "a9", user.username, datetime(2026, 6, 12, 10, 0), status="scheduled"
+                    "a9",
+                    user.username,
+                    datetime(2026, 6, 12, 10, 0),
+                    status="scheduled",
                 ),
             ]
         )

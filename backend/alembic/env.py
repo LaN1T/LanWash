@@ -28,7 +28,8 @@ target_metadata = Base.metadata
 # Get DATABASE_URL from application settings (PostgreSQL only)
 settings = get_settings()
 DATABASE_URL = settings.database_url
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# Escape percent signs for ConfigParser interpolation; the actual URL stays unchanged.
+config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:

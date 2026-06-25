@@ -6,8 +6,6 @@ class TestByWasher:
     async def test_get_appointments_by_washer(
         self, async_client, admin_token, client_token, washer_token
     ):
-        from datetime import datetime
-
         # Client creates an appointment
         resp = await async_client.post(
             "/api/appointments/",
@@ -60,8 +58,6 @@ class TestByWasher:
     async def test_get_appointments_by_washer_via_shift(
         self, async_client, admin_token, client_token, washer_token
     ):
-        from datetime import date, time
-
         # Find the test washer id
         washers_resp = await async_client.get(
             "/api/auth/washers",
@@ -126,3 +122,45 @@ class TestByWasher:
         assert resp.status_code == 200
         data = resp.json()
         assert any(a["id"] == "appt_by_shift_1" for a in data)
+
+    @pytest.mark.asyncio
+    async def test_get_appointments_by_washer_includes_own_bookings(
+        self, async_client, washer_token
+    ):
+        # Washer creates an appointment themselves
+        resp = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {washer_token}"},
+            json={
+                "id": "appt_washer_own_1",
+                "clientName": "Самозапись",
+                "carModel": "Kia Rio",
+                "carNumber": "О777ОО77",
+                "dateTime": "2099-07-01T12:00:00",
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "status": "scheduled",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "washer_test",
+                "promoPrice": 0,
+                "paidPrice": 1500,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 1500,
+                "assignedWasher": "[]",
+                "promoId": None,
+                "box_index": 0,
+            },
+        )
+        assert resp.status_code == 200
+
+        # Washer fetches by-washer endpoint
+        resp = await async_client.get(
+            "/api/appointments/by-washer/washer_test",
+            headers={"Authorization": f"Bearer {washer_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert any(a["id"] == "appt_washer_own_1" for a in data)

@@ -25,13 +25,13 @@ class WasherShell extends StatefulWidget {
 }
 
 class _WasherShellState extends State<WasherShell> {
-  int _tabIndex = 0;
   StreamSubscription? _appointmentSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final auth = context.read<AuthProvider>();
       context.read<NoteProvider>().loadNotes(username: auth.userLogin);
       context.read<AppointmentProvider>().reloadAppointments(auth);
@@ -55,20 +55,10 @@ class _WasherShellState extends State<WasherShell> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: Row(children: [
-          const LanWashLogo(
-            circleSize: 34,
-            showTitle: false,
-            showSubtitle: false,
-            showLoader: false,
-            shadowBlur: null,
-          ),
-          const SizedBox(width: 10),
-          Text(
-            _tabIndex == 0 ? 'Мои записи' : 'Мои заметки',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-          ),
-        ]),
+        title: const Text(
+          'Мой день',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
         actions: [
           const OfflineStatusIndicator(),
           IconButton(
@@ -84,24 +74,8 @@ class _WasherShellState extends State<WasherShell> {
         ],
       ),
       drawer: _buildDrawer(context),
-      body: IndexedStack(
-        index: _tabIndex,
-        children: const [
-          WasherAppointmentsScreen(),
-          NotesScreen(isEmbedded: true),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: (i) {
-          setState(() => _tabIndex = i);
-        },
-        destinations: const [
-          NavigationDestination(
-              icon: Icon(Icons.calendar_today), label: 'Записи'),
-          NavigationDestination(icon: Icon(Icons.note_alt), label: 'Заметки'),
-        ],
-      ),
+      body: const WasherDashboardScreen(
+          showAppBar: false, wrapWithScaffold: false),
     );
   }
 
@@ -211,14 +185,15 @@ class _WasherShellState extends State<WasherShell> {
               children: [
                 section('Записи'),
                 tile(
-                  icon: _tabIndex == 0
-                      ? Icons.calendar_today
-                      : Icons.calendar_today_outlined,
+                  icon: Icons.calendar_today_outlined,
                   title: 'Мои записи',
-                  selected: _tabIndex == 0,
                   onTap: () {
-                    setState(() => _tabIndex = 0);
                     Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const WasherAppointmentsScreen()),
+                    );
                   },
                 ),
                 tile(
@@ -231,9 +206,9 @@ class _WasherShellState extends State<WasherShell> {
                       MaterialPageRoute(
                           builder: (_) => const BookingWizardScreen()),
                     );
-                    if (mounted) {
-                      final auth = context.read<AuthProvider>();
-                      await context
+                    if (ctx.mounted) {
+                      final auth = ctx.read<AuthProvider>();
+                      await ctx
                           .read<AppointmentProvider>()
                           .reloadAppointments(auth);
                     }
@@ -253,18 +228,6 @@ class _WasherShellState extends State<WasherShell> {
                   },
                 ),
                 tile(
-                  icon: Icons.work_outline_rounded,
-                  title: 'Мой день',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const WasherDashboardScreen()),
-                    );
-                  },
-                ),
-                tile(
                   icon: Icons.volunteer_activism_outlined,
                   title: 'Чаевые',
                   onTap: () {
@@ -277,6 +240,17 @@ class _WasherShellState extends State<WasherShell> {
                   },
                 ),
                 section('Поддержка'),
+                tile(
+                  icon: Icons.note_alt_outlined,
+                  title: 'Заметки',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(builder: (_) => const NotesScreen()),
+                    );
+                  },
+                ),
                 tile(
                   icon: Icons.support_agent_outlined,
                   title: 'Написать в поддержку',

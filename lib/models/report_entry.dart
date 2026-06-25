@@ -6,8 +6,11 @@ class MonthlyReport {
 
   factory MonthlyReport.fromJson(Map<String, dynamic> json) {
     return MonthlyReport(
-      date: json['date'] ?? '',
-      data: (json['data'] as List).map((e) => ReportEntry.fromJson(e)).toList(),
+      date: json['month'] as String? ?? '',
+      data: (json['items'] as List<dynamic>?)
+              ?.map((e) => ReportEntry.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }
@@ -25,9 +28,9 @@ class ReportEntry {
 
   factory ReportEntry.fromJson(Map<String, dynamic> json) {
     return ReportEntry(
-      carModel: json['carModel'],
-      avgCheck: (json['avgCheck'] as num).toDouble(),
-      visitCount: json['visitCount'] as int,
+      carModel: json['car_model'] as String? ?? '',
+      avgCheck: (json['avg_check'] as num).toDouble(),
+      visitCount: (json['visit_count'] as num).toInt(),
     );
   }
 }
@@ -40,10 +43,12 @@ class PopularServicesReport {
 
   factory PopularServicesReport.fromJson(Map<String, dynamic> json) {
     return PopularServicesReport(
-      date: json['date'] ?? '',
-      data: (json['data'] as List)
-          .map((e) => PopularServiceEntry.fromJson(e))
-          .toList(),
+      date: json['month'] as String? ?? '',
+      data: (json['items'] as List<dynamic>?)
+              ?.map((e) =>
+                  PopularServiceEntry.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }
@@ -56,8 +61,8 @@ class PopularServiceEntry {
 
   factory PopularServiceEntry.fromJson(Map<String, dynamic> json) {
     return PopularServiceEntry(
-      serviceName: json['serviceName'],
-      count: json['count'],
+      serviceName: json['name'] as String? ?? '',
+      count: (json['count'] as num).toInt(),
     );
   }
 }
@@ -70,10 +75,12 @@ class ConsumablesUsageReport {
 
   factory ConsumablesUsageReport.fromJson(Map<String, dynamic> json) {
     return ConsumablesUsageReport(
-      date: json['date'] ?? '',
-      data: (json['data'] as List)
-          .map((e) => ConsumableUsageEntry.fromJson(e))
-          .toList(),
+      date: json['month'] as String? ?? '',
+      data: (json['items'] as List<dynamic>?)
+              ?.map((e) =>
+                  ConsumableUsageEntry.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }
@@ -91,9 +98,9 @@ class ConsumableUsageEntry {
 
   factory ConsumableUsageEntry.fromJson(Map<String, dynamic> json) {
     return ConsumableUsageEntry(
-      consumableName: json['consumableName'],
-      unit: json['unit'],
-      totalUsed: (json['totalUsed'] as num).toDouble(),
+      consumableName: json['consumable_name'] as String? ?? '',
+      unit: json['unit'] as String? ?? '',
+      totalUsed: (json['total_used'] as num).toDouble(),
     );
   }
 }

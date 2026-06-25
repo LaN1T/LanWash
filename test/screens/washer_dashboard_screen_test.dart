@@ -72,13 +72,15 @@ void main() {
 
   testWidgets('shows today count and next appointment', (tester) async {
     final now = DateTime.now();
+    final today10 = DateTime(now.year, now.month, now.day, 10, 0);
+    final today12 = DateTime(now.year, now.month, now.day, 12, 0);
     when(() => mockAppointment.appointments).thenReturn([
       Appointment(
         id: '1',
         clientName: 'Алексей',
         carModel: 'Kia',
         carNumber: 'A123',
-        dateTime: now.add(const Duration(hours: 2)),
+        dateTime: today10,
         washTypeId: 'basic',
         additionalServices: const [],
         status: 'scheduled',
@@ -89,7 +91,7 @@ void main() {
         clientName: 'Мария',
         carModel: 'BMW',
         carNumber: 'B456',
-        dateTime: now.add(const Duration(hours: 4)),
+        dateTime: today12,
         washTypeId: 'basic',
         additionalServices: const [],
         status: 'scheduled',

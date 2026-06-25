@@ -55,28 +55,37 @@ class _State extends State<WasherAppointmentsScreen>
         .toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
-    return Column(
-      children: [
-        Container(
-          color: AppStyles.adaptiveCard(context),
-          child: TabBar(
-            controller: _tab,
-            labelColor: AppStyles.primary,
-            unselectedLabelColor: AppStyles.adaptiveTextSecondary(context),
-            indicatorColor: AppStyles.primary,
-            tabs: const [Tab(text: 'Активные'), Tab(text: 'История')],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        title: const Text(
+          'Мои записи',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
-        Expanded(
-          child: TabBarView(
-            controller: _tab,
-            children: [
-              _AppointmentsList(items: upcoming),
-              _AppointmentsList(items: history),
-            ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: AppStyles.adaptiveCard(context),
+            child: TabBar(
+              controller: _tab,
+              labelColor: AppStyles.primary,
+              unselectedLabelColor: AppStyles.adaptiveTextSecondary(context),
+              indicatorColor: AppStyles.primary,
+              tabs: const [Tab(text: 'Активные'), Tab(text: 'История')],
+            ),
           ),
-        ),
-      ],
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                _AppointmentsList(items: upcoming),
+                _AppointmentsList(items: history),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
