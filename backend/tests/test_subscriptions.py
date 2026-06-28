@@ -408,3 +408,13 @@ class TestSubscriptions:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert delete_resp.status_code == 204
+
+        list_resp = await async_client.get(
+            "/api/subscriptions/admin/plans",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert list_resp.status_code == 200
+        plans = list_resp.json()
+        deleted_plan = next((p for p in plans if p["id"] == plan_id), None)
+        assert deleted_plan is not None
+        assert deleted_plan["isActive"] is False
