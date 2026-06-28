@@ -134,3 +134,4 @@ Plan.md
 macos/Runner/GoogleService-Info.plist
 macos/GoogleService-Info.plist
 .superpowers/
+/.worktrees/
