@@ -1,10 +1,14 @@
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import SubscriptionPlan
 from repositories.base import BaseRepository
 
 
 class SubscriptionPlanRepository(BaseRepository[SubscriptionPlan]):
+    def __init__(self, db: AsyncSession) -> None:
+        super().__init__(db, SubscriptionPlan)
+
     async def list_active(self) -> list[SubscriptionPlan]:
         result = await self._db.execute(
             select(SubscriptionPlan)
