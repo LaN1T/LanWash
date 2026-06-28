@@ -15,6 +15,7 @@ import 'client_home_screen.dart';
 import 'my_bookings_screen.dart';
 import 'client_favorites_screen.dart';
 import 'support_chats_screen.dart';
+import 'subscription_hub_screen.dart';
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
@@ -234,6 +235,26 @@ class _ClientShellState extends State<ClientShell> {
                     ctx,
                     MaterialPageRoute(
                         builder: (_) => const SupportChatsScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          // Абонементы
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.card_membership_outlined,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Абонементы',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const SubscriptionHubScreen()));
               },
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
