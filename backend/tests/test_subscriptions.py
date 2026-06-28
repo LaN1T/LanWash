@@ -469,3 +469,48 @@ class TestSubscriptions:
         deleted_plan = next((p for p in plans if p["id"] == plan_id), None)
         assert deleted_plan is not None
         assert deleted_plan["isActive"] is False
+
+    @pytest.mark.asyncio
+    async def test_purchased_subscription_used_in_appointment(
+        self, async_client, client_token, admin_token, db_session
+    ):
+        from models import SubscriptionPlan
+        plan_res = await db_session.execute(
+            select(SubscriptionPlan).where(SubscriptionPlan.code == "chistulya")
+        )
+        plan = plan_res.scalar_one()
+
+        buy_resp = await async_client.post(
+            "/api/subscriptions/buy",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "kind": "ready",
+                "ready": {"planId": plan.id, "washTypeId": "w3"},
+            },
+        )
+        assert buy_resp.status_code == 201
+
+        appt_resp = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "id": "appt_sub_buy_1",
+                "clientName": "Test",
+                "carModel": "Car",
+                "carNumber": "A123",
+                "dateTime": "2099-06-15T10:00:00",
+                "washTypeId": "w3",
+                "additionalServices": "[]",
+                "status": "scheduled",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 0,
+                "originalPrice": 0,
+                "assignedWasher": "[]",
+            },
+        )
+        assert appt_resp.status_code == 200
+        assert appt_resp.json()["paidPrice"] == 0
+        assert appt_resp.json()["subscriptionId"] is not None
