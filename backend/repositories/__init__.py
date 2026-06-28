@@ -20,6 +20,7 @@ from repositories.service_favorite import ServiceFavoriteRepository
 from repositories.shift import ShiftRepository
 from repositories.shift_template import ShiftTemplateRepository
 from repositories.subscription import SubscriptionRepository
+from repositories.subscription_plan import SubscriptionPlanRepository
 from repositories.support_chat import SupportChatRepository
 from repositories.support_message import SupportMessageRepository
 from repositories.tip import TipRepository
@@ -54,6 +55,7 @@ __all__ = [
     "ConsumableRefillLogRepository",
     "ShiftRepository",
     "ShiftTemplateRepository",
+    "SubscriptionPlanRepository",
     "WasherAvailabilityRepository",
     "NotificationQueueRepository",
     "ReviewRepository",
