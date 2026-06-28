@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from models import Subscription, User
+from models import Subscription, SubscriptionPlan, User
 
 
 class TestSubscriptions:
@@ -290,3 +290,121 @@ class TestSubscriptions:
         assert "activeCount" in data
         assert "totalSaved" in data
         assert data["activeCount"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_client_can_list_subscription_plans(
+        self, async_client, client_token
+    ):
+        resp = await async_client.get(
+            "/api/subscriptions/plans",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+
+    @pytest.mark.asyncio
+    async def test_client_buys_ready_subscription(
+        self, async_client, client_token, db_session
+    ):
+        plan_res = await db_session.execute(
+            select(SubscriptionPlan).where(SubscriptionPlan.code == "chistulya")
+        )
+        plan = plan_res.scalar_one()
+
+        resp = await async_client.post(
+            "/api/subscriptions/buy",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "kind": "ready",
+                "ready": {"planId": plan.id, "washTypeId": "w3"},
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["washTypeId"] == "w3"
+        assert data["totalWashes"] == 5
+        assert data["price"] == 6750
+        assert data["originalPrice"] == 7500
+        assert data["paymentStatus"] == "demo_purchased"
+
+    @pytest.mark.asyncio
+    async def test_client_buys_personal_subscription(
+        self, async_client, client_token
+    ):
+        resp = await async_client.post(
+            "/api/subscriptions/buy",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "kind": "personal",
+                "personal": {
+                    "washTypeId": "w2",
+                    "selectedExtras": ["s4"],
+                    "washCount": 10,
+                },
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["washTypeId"] == "w2"
+        assert data["totalWashes"] == 10
+        # (800 + 600) * 10 * 0.90 = 12600
+        assert data["price"] == 12600
+        assert data["originalPrice"] == 14000
+
+    @pytest.mark.asyncio
+    async def test_client_buys_unlimited_subscription(
+        self, async_client, client_token, db_session
+    ):
+        plan_res = await db_session.execute(
+            select(SubscriptionPlan).where(SubscriptionPlan.code == "bezlimitka")
+        )
+        plan = plan_res.scalar_one()
+
+        resp = await async_client.post(
+            "/api/subscriptions/buy",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "kind": "ready",
+                "ready": {"planId": plan.id, "washTypeId": "w1"},
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["price"] == 8000
+        assert data["type"] == "monthly"
+        assert data["validUntil"] is not None
+
+    @pytest.mark.asyncio
+    async def test_admin_crud_subscription_plan(
+        self, async_client, admin_token
+    ):
+        create_resp = await async_client.post(
+            "/api/subscriptions/admin/plans",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "code": "test-plan",
+                "name": "Test Plan",
+                "type": "package",
+                "washCount": 3,
+                "discountPercent": 5,
+                "sortOrder": 99,
+            },
+        )
+        assert create_resp.status_code == 201
+        plan_id = create_resp.json()["id"]
+
+        update_resp = await async_client.put(
+            f"/api/subscriptions/admin/plans/{plan_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"name": "Updated Plan"},
+        )
+        assert update_resp.status_code == 200
+        assert update_resp.json()["name"] == "Updated Plan"
+
+        delete_resp = await async_client.delete(
+            f"/api/subscriptions/admin/plans/{plan_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert delete_resp.status_code == 204
