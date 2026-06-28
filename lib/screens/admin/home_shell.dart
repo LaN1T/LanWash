@@ -36,17 +36,14 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
-  static const _titles = ['Записи на мойку', 'Услуги', 'Избранное'];
+  static const _titles = ['Записи на мойку', 'Услуги'];
 
   @override
   Widget build(BuildContext context) {
     final appointmentProvider = context.watch<AppointmentProvider>();
-    final appointmentBadges = (
-      loading: appointmentProvider.loading,
-      favCount: appointmentProvider.favoriteAppointments.length,
-    );
+    final loading = appointmentProvider.loading;
     final theme = Theme.of(context);
-    if (appointmentBadges.loading) {
+    if (loading) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: Center(
@@ -69,9 +66,6 @@ class _HomeShellState extends State<HomeShell> {
         ])),
       );
     }
-
-    // У админа считаем только избранные ЗАПИСИ (не услуги клиента)
-    final favCount = appointmentBadges.favCount;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -96,18 +90,17 @@ class _HomeShellState extends State<HomeShell> {
         // Кнопка выхода убрана из appBar — только в drawer
         actions: [
           const OfflineStatusIndicator(),
-          if (_index != 2)
-            IconButton(
-              icon: const Icon(Icons.add, color: AppStyles.primary),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => _index == 0
-                      ? const AddEditAppointmentScreen()
-                      : const AddEditServiceScreen(),
-                ),
+          IconButton(
+            icon: const Icon(Icons.add, color: AppStyles.primary),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => _index == 0
+                    ? const AddEditAppointmentScreen()
+                    : const AddEditServiceScreen(),
               ),
             ),
+          ),
         ],
       ),
       drawer: _buildDrawer(context),
@@ -116,7 +109,6 @@ class _HomeShellState extends State<HomeShell> {
         children: const [
           AppointmentsScreen(),
           ServicesScreen(),
-          FavoritesScreen(),
         ],
       ),
       floatingActionButton: null,
@@ -146,17 +138,6 @@ class _HomeShellState extends State<HomeShell> {
               selectedIcon:
                   const Icon(Icons.local_car_wash, color: AppStyles.primary),
               label: 'Услуги',
-            ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: favCount > 0,
-                label: Text('$favCount'),
-                backgroundColor: AppStyles.primary,
-                child: Icon(Icons.star_outline,
-                    color: AppStyles.adaptiveTextSecondary(context)),
-              ),
-              selectedIcon: const Icon(Icons.star, color: AppStyles.primary),
-              label: 'Избранное',
             ),
           ],
         ),
@@ -214,8 +195,39 @@ class _HomeShellState extends State<HomeShell> {
               Icons.calendar_today, 'Записи на мойку', null),
           _drawerItem(ctx, 1, Icons.local_car_wash, Icons.local_car_wash,
               'Каталог услуг', null),
-          _drawerItem(ctx, 2, Icons.star_outline, Icons.star, 'Избранное',
-              favCount > 0 ? '$favCount' : null),
+          // Избранное
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.star_outline,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Избранное',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              trailing: favCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('$favCount',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    )
+                  : null,
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) => const FavoritesScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
           // Сменное расписание

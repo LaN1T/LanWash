@@ -144,6 +144,7 @@ class ApiService {
     int userId, {
     String? displayName,
     String? phone,
+    String? email,
     String? carModel,
     String? carNumber,
     String? newPassword,
@@ -151,6 +152,7 @@ class ApiService {
     final body = <String, dynamic>{};
     if (displayName != null) body['displayName'] = displayName;
     if (phone != null) body['phone'] = phone;
+    if (email != null) body['email'] = email;
     if (carModel != null) body['carModel'] = carModel;
     if (carNumber != null) body['carNumber'] = carNumber;
     if (newPassword != null) body['newPassword'] = newPassword;

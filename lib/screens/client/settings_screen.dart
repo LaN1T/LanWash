@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
+import '../../core/utils/phone_input_formatter.dart';
 import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -20,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
+  late TextEditingController _emailCtrl;
   late TextEditingController _usernameCtrl;
 
   late TextEditingController _passCtrl;
@@ -35,7 +37,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final user = context.read<AuthProvider>().user;
     _nameCtrl = TextEditingController(text: user?.displayName ?? '');
-    _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _phoneCtrl = TextEditingController(text: user?.phone ?? '+7');
+    _emailCtrl = TextEditingController(text: user?.email ?? '');
     _usernameCtrl = TextEditingController(text: user?.username ?? '');
     _passCtrl = TextEditingController();
     _passConfirmCtrl = TextEditingController();
@@ -61,6 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final error = await context.read<AuthProvider>().updateProfile(
           displayName: _nameCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
           newPassword:
               _changePass && _passCtrl.text.isNotEmpty ? _passCtrl.text : null,
         );
@@ -91,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (final c in [
       _nameCtrl,
       _phoneCtrl,
+      _emailCtrl,
       _usernameCtrl,
       _passCtrl,
       _passConfirmCtrl,
@@ -185,8 +190,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
               decoration: AppStyles.inputDecorationFor(
                   context, 'Номер телефона',
-                  hint: '+7 999 000-00-00', icon: Icons.phone_outlined),
+                  hint: '+7 (999) 000-00-00', icon: Icons.phone_outlined),
               keyboardType: TextInputType.phone,
+              inputFormatters: [PhoneInputFormatter()],
+              validator: (v) {
+                if (v == null || v.trim().length <= 2) {
+                  return 'Введите номер телефона';
+                }
+                final digits = v.replaceAll(RegExp(r'\D'), '');
+                if (digits.length < 11) {
+                  return 'Введите полный номер телефона';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _emailCtrl,
+              style: TextStyle(color: AppStyles.adaptiveTextPrimary(context)),
+              decoration: AppStyles.inputDecorationFor(context, 'Email',
+                  icon: Icons.email_outlined),
+              keyboardType: TextInputType.emailAddress,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                return AppValidators.validateEmail(v.trim());
+              },
             ),
             const SizedBox(height: 24),
 

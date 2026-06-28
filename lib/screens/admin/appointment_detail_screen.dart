@@ -130,20 +130,30 @@ class AppointmentDetailScreen extends StatelessWidget {
           AdminCard(
             child: Column(
               children: [
-                AdminListTile(
-                    icon: Icons.person_outline,
-                    title: a.clientName,
-                    subtitle: 'Клиент'),
-                const Divider(height: 1, indent: 48),
-                AdminListTile(
-                    icon: Icons.directions_car_outlined,
-                    title: a.carModel,
-                    subtitle: 'Автомобиль'),
-                const Divider(height: 1, indent: 48),
-                AdminListTile(
-                    icon: Icons.pin_outlined,
-                    title: a.carNumber,
-                    subtitle: 'Номер'),
+                _zebraItem(
+                  context,
+                  AdminListTile(
+                      icon: Icons.person_outline,
+                      title: a.clientName,
+                      subtitle: 'Клиент'),
+                  0,
+                ),
+                _zebraItem(
+                  context,
+                  AdminListTile(
+                      icon: Icons.directions_car_outlined,
+                      title: a.carModel,
+                      subtitle: 'Автомобиль'),
+                  1,
+                ),
+                _zebraItem(
+                  context,
+                  AdminListTile(
+                      icon: Icons.pin_outlined,
+                      title: a.carNumber,
+                      subtitle: 'Номер'),
+                  2,
+                ),
               ],
             ),
           ),
@@ -152,16 +162,23 @@ class AppointmentDetailScreen extends StatelessWidget {
           AdminCard(
             child: Column(
               children: [
-                AdminListTile(
-                  icon: Icons.calendar_today_outlined,
-                  title: DateFormat('d MMMM yyyy', 'ru').format(a.dateTime),
-                  subtitle: 'Дата',
+                _zebraItem(
+                  context,
+                  AdminListTile(
+                    icon: Icons.calendar_today_outlined,
+                    title: DateFormat('d MMMM yyyy', 'ru').format(a.dateTime),
+                    subtitle: 'Дата',
+                  ),
+                  0,
                 ),
-                const Divider(height: 1, indent: 48),
-                AdminListTile(
-                  icon: Icons.access_time_outlined,
-                  title: _formatTimeRange(context, a),
-                  subtitle: 'Время',
+                _zebraItem(
+                  context,
+                  AdminListTile(
+                    icon: Icons.access_time_outlined,
+                    title: _formatTimeRange(context, a),
+                    subtitle: 'Время',
+                  ),
+                  1,
                 ),
               ],
             ),
@@ -171,35 +188,50 @@ class AppointmentDetailScreen extends StatelessWidget {
           AdminCard(
             child: Column(
               children: [
-                ServiceListItem(
-                  name: catalogProvider.washTypeName(a.washTypeId),
-                  subtitle: 'Тип мойки',
-                  priceText:
-                      '${a.calculateTotalPrice(catalogProvider.services, catalogProvider.washTypeById(a.washTypeId))} ₽',
+                _zebraItem(
+                  context,
+                  ServiceListItem(
+                    name: catalogProvider.washTypeName(a.washTypeId),
+                    subtitle: 'Тип мойки',
+                    priceText:
+                        '${a.calculateTotalPrice(catalogProvider.services, catalogProvider.washTypeById(a.washTypeId))} ₽',
+                  ),
+                  0,
                 ),
-                if (a.additionalServices.isNotEmpty) ...[
-                  const Divider(height: 1),
-                  ...a.additionalServices.map((id) {
+                if (a.additionalServices.isNotEmpty)
+                  ...a.additionalServices.asMap().entries.map((entry) {
+                    final index = entry.key + 1;
+                    final id = entry.value;
                     final service = catalogProvider.services.firstWhere(
                       (s) => s.id == id,
                       orElse: () => _fallbackService(id),
                     );
-                    return ServiceListItem(
-                      name: service.name,
-                      priceText: '+${service.price} ₽',
+                    return _zebraItem(
+                      context,
+                      ServiceListItem(
+                        name: service.name,
+                        priceText: '+${service.price} ₽',
+                      ),
+                      index,
                     );
                   }),
-                ],
-                const Divider(height: 1),
-                ServiceListItem(
-                  name: 'Итого',
-                  priceText: '${a.paidPrice} ₽',
-                  isTotal: true,
+                _zebraItem(
+                  context,
+                  ServiceListItem(
+                    name: 'Итого',
+                    priceText: '${a.paidPrice} ₽',
+                    isTotal: true,
+                  ),
+                  a.additionalServices.length + 1,
                 ),
                 if (a.priceChanged)
-                  ServiceListItem(
-                    name: 'Было',
-                    priceText: '${a.originalPrice} ₽',
+                  _zebraItem(
+                    context,
+                    ServiceListItem(
+                      name: 'Было',
+                      priceText: '${a.originalPrice} ₽',
+                    ),
+                    a.additionalServices.length + 2,
                   ),
               ],
             ),
@@ -333,6 +365,19 @@ class AppointmentDetailScreen extends StatelessWidget {
       return '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — 22:00, Завтра до ${((8 * 60 + overflow) ~/ 60).toString().padLeft(2, '0')}:${((8 * 60 + overflow) % 60).toString().padLeft(2, '0')}';
     }
     return '${DateFormat('HH:mm', 'ru').format(a.dateTime)} — ${DateFormat('HH:mm', 'ru').format(endTime)}';
+  }
+
+  Widget _zebraItem(BuildContext context, Widget child, int index) {
+    final isEven = index % 2 == 1;
+    return Container(
+      decoration: BoxDecoration(
+        color: isEven
+            ? AppStyles.adaptiveBgMuted(context).withValues(alpha: 0.5)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: child,
+    );
   }
 }
 

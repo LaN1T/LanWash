@@ -2,8 +2,11 @@ from datetime import date, datetime, time, timedelta
 
 import pytest
 
+from core.config import get_settings
 from models import Shift, WasherAvailability
-from services.reports_service import SHIFT_LOAD_TARGET_WEEKLY_MINUTES
+
+settings = get_settings()
+SHIFT_LOAD_TARGET_WEEKLY_MINUTES = settings.washer_weekly_target_minutes
 
 
 @pytest.mark.asyncio

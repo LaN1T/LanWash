@@ -149,6 +149,7 @@ class AuthProvider extends ChangeNotifier {
   Future<String?> updateProfile({
     String? displayName,
     String? phone,
+    String? email,
     String? carModel,
     String? carNumber,
     String? newPassword,
@@ -161,6 +162,7 @@ class AuthProvider extends ChangeNotifier {
         _user!.id!,
         displayName: displayName,
         phone: phone,
+        email: email,
         carModel: carModel,
         carNumber: carNumber,
         newPassword: newPassword,

@@ -50,7 +50,7 @@ class _ClientShellState extends State<ClientShell> {
     super.dispose();
   }
 
-  static const _titles = ['Главная', 'Мои записи', 'Избранное'];
+  static const _titles = ['Главная', 'Мои записи'];
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +85,6 @@ class _ClientShellState extends State<ClientShell> {
       body: IndexedStack(index: _index, children: const [
         ClientHomeScreen(),
         MyBookingsScreen(),
-        ClientFavoritesScreen(),
       ]),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -124,11 +123,6 @@ class _ClientShellState extends State<ClientShell> {
               icon: _AppointmentsBadge(),
               selectedIcon: _AppointmentsBadge(selected: true),
               label: 'Записи',
-            ),
-            NavigationDestination(
-              icon: _FavoritesBadge(),
-              selectedIcon: _FavoritesBadge(selected: true),
-              label: 'Избранное',
             ),
           ],
         ),
@@ -188,8 +182,41 @@ class _ClientShellState extends State<ClientShell> {
               ctx, 0, Icons.home_outlined, Icons.home_rounded, 'Главная', null),
           _drawerItem(ctx, 1, Icons.calendar_today_outlined,
               Icons.calendar_today_rounded, 'Мои записи', null),
-          _drawerItem(ctx, 2, Icons.star_outline, Icons.star_rounded,
-              'Избранное', favCount > 0 ? '$favCount' : null),
+          // Избранное
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: ListTile(
+              minLeadingWidth: 24,
+              leading: Icon(Icons.star_outline,
+                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+              title: Text('Избранное',
+                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+              trailing: favCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppStyles.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('$favCount',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    )
+                  : null,
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                        builder: (_) => const ClientFavoritesScreen()));
+              },
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
 
           Divider(
               color: AppStyles.adaptiveBorder(ctx), indent: 16, endIndent: 16),
@@ -297,29 +324,6 @@ class _AppointmentsBadge extends StatelessWidget {
       child: Icon(
         selected ? Icons.calendar_today_rounded : Icons.calendar_today_outlined,
         color: selected ? AppStyles.primary : null,
-      ),
-    );
-  }
-}
-
-class _FavoritesBadge extends StatelessWidget {
-  final bool selected;
-  const _FavoritesBadge({this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Selector2<CatalogProvider, FavoriteProvider, int>(
-      selector: (_, catalog, favorite) => catalog.services
-          .where((s) => favorite.serviceFavorites.contains(s.id))
-          .length,
-      builder: (_, favCount, __) => Badge(
-        isLabelVisible: favCount > 0,
-        label: Text('$favCount'),
-        backgroundColor: AppStyles.primary,
-        child: Icon(
-          selected ? Icons.star_rounded : Icons.star_outline,
-          color: selected ? AppStyles.primary : null,
-        ),
       ),
     );
   }
