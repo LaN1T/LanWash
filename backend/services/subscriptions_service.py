@@ -96,8 +96,10 @@ class SubscriptionsService:
 
         if plan.type == "package":
             plan.unlimitedDays = None
+            plan.washTypePrices = None
         elif plan.type == "unlimited":
             plan.washCount = None
+            plan.discountPercent = 0
 
         await self._db.commit()
         await self._db.refresh(plan)
