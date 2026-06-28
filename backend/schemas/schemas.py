@@ -205,12 +205,74 @@ class SubscriptionResponse(BaseModel):
     totalWashes: int
     usedWashes: int
     validUntil: Optional[dt_date] = None
+    planId: Optional[int] = None
+    price: int = 0
+    originalPrice: int = 0
+    selectedExtras: Optional[str] = None
+    paymentStatus: str = "demo_purchased"
     createdAt: dt_datetime
 
 
 class SubscriptionStatsResponse(BaseModel):
     activeCount: int
     totalSaved: int
+
+
+class SubscriptionPlanResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    code: str
+    name: str
+    description: Optional[str] = None
+    type: Literal["package", "unlimited"]
+    washCount: Optional[int] = None
+    unlimitedDays: Optional[int] = None
+    discountPercent: int
+    washTypePrices: Optional[dict[str, int]] = None
+    sortOrder: int
+    isActive: bool
+
+
+class SubscriptionPlanCreateRequest(BaseModel):
+    code: str = Field(..., max_length=50)
+    name: str = Field(..., max_length=200)
+    description: Optional[str] = Field(default=None, max_length=500)
+    type: Literal["package", "unlimited"] = "package"
+    washCount: Optional[int] = Field(default=None, ge=1)
+    unlimitedDays: Optional[int] = Field(default=None, ge=1)
+    discountPercent: int = Field(default=0, ge=0, le=100)
+    washTypePrices: Optional[dict[str, int]] = None
+    sortOrder: int = Field(default=0)
+    isActive: bool = Field(default=True)
+
+
+class SubscriptionPlanUpdateRequest(BaseModel):
+    name: Optional[str] = Field(default=None, max_length=200)
+    description: Optional[str] = Field(default=None, max_length=500)
+    washCount: Optional[int] = Field(default=None, ge=1)
+    unlimitedDays: Optional[int] = Field(default=None, ge=1)
+    discountPercent: Optional[int] = Field(default=None, ge=0, le=100)
+    washTypePrices: Optional[dict[str, int]] = None
+    sortOrder: Optional[int] = None
+    isActive: Optional[bool] = None
+
+
+class BuyReadySubscriptionRequest(BaseModel):
+    planId: int = Field(..., ge=1)
+    washTypeId: str = Field(..., max_length=36)
+
+
+class BuyPersonalSubscriptionRequest(BaseModel):
+    washTypeId: str = Field(..., max_length=36)
+    selectedExtras: list[str] = Field(default_factory=list)
+    washCount: int = Field(..., ge=1)
+
+
+class BuySubscriptionRequest(BaseModel):
+    kind: Literal["ready", "personal"]
+    ready: Optional[BuyReadySubscriptionRequest] = None
+    personal: Optional[BuyPersonalSubscriptionRequest] = None
 
 
 # ─── Appointments ────────────────────────────────────────────────────────────
