@@ -8,7 +8,7 @@ class SubscriptionPlanRepository(BaseRepository[SubscriptionPlan]):
     async def list_active(self) -> list[SubscriptionPlan]:
         result = await self._db.execute(
             select(SubscriptionPlan)
-            .where(SubscriptionPlan.isActive == True)
+            .where(SubscriptionPlan.isActive)
             .order_by(SubscriptionPlan.sortOrder.asc())
         )
         return list(result.scalars().all())

@@ -282,8 +282,16 @@ class SubscriptionPlanUpdateRequest(BaseModel):
     unlimitedDays: Optional[int] = Field(default=None, ge=1)
     discountPercent: Optional[int] = Field(default=None, ge=0, le=100)
     washTypePrices: Optional[dict[str, int]] = None
-    sortOrder: Optional[int] = None
+    sortOrder: Optional[int] = Field(default=None, ge=0)
     isActive: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def validate_plan_fields(self):
+        wash_count = self.washCount
+        unlimited_days = self.unlimitedDays
+        if wash_count is not None and unlimited_days is not None:
+            raise ValueError("washCount and unlimitedDays are mutually exclusive")
+        return self
 
 
 class BuyReadySubscriptionRequest(BaseModel):
@@ -298,11 +306,13 @@ class BuyPersonalSubscriptionRequest(BaseModel):
     )
     washCount: int = Field(..., ge=1)
 
-    @field_validator("selectedExtras")
+    @field_validator("selectedExtras", mode="before")
     @classmethod
     def validate_selected_extras(cls, v):
         if v is None or v == "":
             return "[]"
+        if isinstance(v, list):
+            return json.dumps(v, ensure_ascii=False)
         try:
             json.loads(v)
         except Exception:
