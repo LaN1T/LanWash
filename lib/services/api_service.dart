@@ -28,6 +28,7 @@ import '../models/car.dart';
 import '../models/referral.dart';
 import '../models/tip.dart';
 import '../models/subscription.dart';
+import '../models/subscription_plan.dart';
 import '../models/admin_dashboard.dart';
 import '../models/consumable_forecast.dart';
 import '../models/shift_load_report.dart';
@@ -1682,6 +1683,33 @@ class ApiService {
     final result = await ApiClient.get('/subscriptions/stats');
     return result.when(
       success: (data) => data,
+      failure: (_) => null,
+    );
+  }
+
+  Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
+    final result = await ApiClient.getList('/subscriptions/plans');
+    return result.when(
+      success: (list) => list
+          .map((m) => SubscriptionPlan.fromMap(m as Map<String, dynamic>))
+          .toList(),
+      failure: (_) => <SubscriptionPlan>[],
+    );
+  }
+
+  Future<Subscription?> buySubscription({
+    required String kind,
+    Map<String, dynamic>? ready,
+    Map<String, dynamic>? personal,
+  }) async {
+    final body = <String, dynamic>{
+      'kind': kind,
+      if (ready != null) 'ready': ready,
+      if (personal != null) 'personal': personal,
+    };
+    final result = await ApiClient.post('/subscriptions/buy', body: body);
+    return result.when(
+      success: (data) => Subscription.fromMap(data),
       failure: (_) => null,
     );
   }
