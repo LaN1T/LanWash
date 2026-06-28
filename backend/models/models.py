@@ -141,7 +141,7 @@ class Subscription(Base):
     price = Column(Integer, nullable=False, default=0)
     originalPrice = Column(Integer, nullable=False, default=0)
     selectedExtras = Column(String, nullable=True)  # JSON array string
-    paymentStatus = Column(String, nullable=False, default="demo_purchased")
+    paymentStatus = Column(String, nullable=False, default="pending")
     createdAt = Column(DateTime, nullable=False)
 
 

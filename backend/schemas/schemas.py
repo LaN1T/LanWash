@@ -13,6 +13,7 @@ from pydantic import (
     Field,
     PlainSerializer,
     field_validator,
+    model_validator,
 )
 
 
@@ -208,9 +209,22 @@ class SubscriptionResponse(BaseModel):
     planId: Optional[int] = None
     price: int = 0
     originalPrice: int = 0
-    selectedExtras: Optional[str] = None
-    paymentStatus: str = "demo_purchased"
+    selectedExtras: str = "[]"
+    paymentStatus: str = "pending"
     createdAt: dt_datetime
+
+    @field_validator("selectedExtras", mode="before")
+    @classmethod
+    def validate_selected_extras(cls, v):
+        if v is None or v == "":
+            return "[]"
+        if isinstance(v, list):
+            return json.dumps(v, ensure_ascii=False)
+        try:
+            json.loads(v)
+        except Exception:
+            raise ValueError("selectedExtras must be valid JSON")
+        return v
 
 
 class SubscriptionStatsResponse(BaseModel):
@@ -246,6 +260,17 @@ class SubscriptionPlanCreateRequest(BaseModel):
     sortOrder: int = Field(default=0)
     isActive: bool = Field(default=True)
 
+    @model_validator(mode="after")
+    def validate_plan_fields(self):
+        if self.type == "package" and self.washCount is None:
+            raise ValueError("washCount is required for package plans")
+        if self.type == "unlimited":
+            if self.unlimitedDays is None:
+                raise ValueError("unlimitedDays is required for unlimited plans")
+            if self.washCount is not None:
+                raise ValueError("washCount must not be set for unlimited plans")
+        return self
+
 
 class SubscriptionPlanUpdateRequest(BaseModel):
     name: Optional[str] = Field(default=None, max_length=200)
@@ -265,14 +290,35 @@ class BuyReadySubscriptionRequest(BaseModel):
 
 class BuyPersonalSubscriptionRequest(BaseModel):
     washTypeId: str = Field(..., max_length=36)
-    selectedExtras: list[str] = Field(default_factory=list)
+    selectedExtras: str = Field(
+        default="[]", max_length=1000, description="JSON-массив ID доп. услуг"
+    )
     washCount: int = Field(..., ge=1)
+
+    @field_validator("selectedExtras")
+    @classmethod
+    def validate_selected_extras(cls, v):
+        if v is None or v == "":
+            return "[]"
+        try:
+            json.loads(v)
+        except Exception:
+            raise ValueError("selectedExtras must be valid JSON")
+        return v
 
 
 class BuySubscriptionRequest(BaseModel):
     kind: Literal["ready", "personal"]
     ready: Optional[BuyReadySubscriptionRequest] = None
     personal: Optional[BuyPersonalSubscriptionRequest] = None
+
+    @model_validator(mode="after")
+    def validate_kind_fields(self):
+        if self.kind == "ready" and self.ready is None:
+            raise ValueError("ready is required when kind is 'ready'")
+        if self.kind == "personal" and self.personal is None:
+            raise ValueError("personal is required when kind is 'personal'")
+        return self
 
 
 # ─── Appointments ────────────────────────────────────────────────────────────

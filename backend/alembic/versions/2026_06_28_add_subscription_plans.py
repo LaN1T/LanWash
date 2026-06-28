@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '233a498b70b6'
@@ -29,7 +28,7 @@ def upgrade() -> None:
         sa.Column('washCount', sa.Integer(), nullable=True),
         sa.Column('unlimitedDays', sa.Integer(), nullable=True),
         sa.Column('discountPercent', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('washTypePrices', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column('washTypePrices', sa.JSON(), nullable=True),
         sa.Column('sortOrder', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('isActive', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('createdAt', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
@@ -41,7 +40,7 @@ def upgrade() -> None:
     op.add_column('subscriptions', sa.Column('price', sa.Integer(), nullable=False, server_default='0'))
     op.add_column('subscriptions', sa.Column('originalPrice', sa.Integer(), nullable=False, server_default='0'))
     op.add_column('subscriptions', sa.Column('selectedExtras', sa.String(), nullable=True))
-    op.add_column('subscriptions', sa.Column('paymentStatus', sa.String(), nullable=False, server_default='demo_purchased'))
+    op.add_column('subscriptions', sa.Column('paymentStatus', sa.String(), nullable=False, server_default='pending'))
     with op.batch_alter_table('subscriptions', schema=None) as batch_op:
         batch_op.create_foreign_key(
             'fk_subscriptions_plan_id',
