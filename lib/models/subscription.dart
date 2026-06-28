@@ -8,6 +8,11 @@ class Subscription {
   final int usedWashes;
   final String? validUntil; // ISO date for monthly; null for package
   final String createdAt;
+  final int? planId;
+  final int price;
+  final int originalPrice;
+  final String? selectedExtras;
+  final String paymentStatus;
 
   Subscription({
     required this.id,
@@ -19,6 +24,11 @@ class Subscription {
     required this.usedWashes,
     this.validUntil,
     required this.createdAt,
+    this.planId,
+    required this.price,
+    required this.originalPrice,
+    this.selectedExtras,
+    required this.paymentStatus,
   });
 
   bool get isActive {
@@ -48,6 +58,11 @@ class Subscription {
         'usedWashes': usedWashes,
         'validUntil': validUntil,
         'createdAt': createdAt,
+        'planId': planId,
+        'price': price,
+        'originalPrice': originalPrice,
+        'selectedExtras': selectedExtras,
+        'paymentStatus': paymentStatus,
       };
 
   factory Subscription.fromMap(Map<String, dynamic> m) {
@@ -61,6 +76,11 @@ class Subscription {
       usedWashes: (m['usedWashes'] as num?)?.toInt() ?? 0,
       validUntil: m['validUntil']?.toString(),
       createdAt: m['createdAt'] ?? '',
+      planId: (m['planId'] as num?)?.toInt(),
+      price: (m['price'] as num?)?.toInt() ?? 0,
+      originalPrice: (m['originalPrice'] as num?)?.toInt() ?? 0,
+      selectedExtras: m['selectedExtras']?.toString(),
+      paymentStatus: m['paymentStatus']?.toString() ?? 'pending',
     );
   }
 }
