@@ -118,6 +118,7 @@ class WasherPublicResponse(BaseModel):
 class UpdateProfileRequest(BaseModel):
     displayName: Optional[str] = Field(default=None, max_length=100)
     phone: Optional[str] = Field(default=None, max_length=20)
+    email: Optional[str] = Field(default=None, max_length=255)
     carModel: Optional[str] = Field(default=None, max_length=50)
     carNumber: Optional[str] = Field(default=None, max_length=20)
     avatarUrl: Optional[str] = Field(default=None, max_length=5000)

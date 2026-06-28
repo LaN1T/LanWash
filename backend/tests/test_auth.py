@@ -161,6 +161,27 @@ class TestProfile:
         assert data["phone"] == "+79991112233"
 
     @pytest.mark.asyncio
+    async def test_update_profile_email(self, async_client):
+        reg = await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "emailtest",
+                "password": "TestPass123!",
+                "displayName": "Email Test",
+            },
+        )
+        token = reg.json()["access_token"]
+        user_id = reg.json()["user"]["id"]
+
+        response = await async_client.put(
+            f"/api/auth/profile/{user_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"email": "email@test.com"},
+        )
+        assert response.status_code == 200
+        assert response.json()["email"] == "email@test.com"
+
+    @pytest.mark.asyncio
     async def test_update_profile_unauthorized(self, async_client):
         response = await async_client.put(
             "/api/auth/profile/1",

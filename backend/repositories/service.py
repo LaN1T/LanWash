@@ -44,3 +44,11 @@ class ServiceRepository(BaseRepository[Service]):
             )
         )
         return {row[0]: row[1] for row in result.all()}
+
+    async def get_prices(self, service_ids: list[str]) -> dict[str, int]:
+        if not service_ids:
+            return {}
+        result = await self._db.execute(
+            select(Service.id, Service.price).where(Service.id.in_(service_ids))
+        )
+        return {row[0]: row[1] for row in result.all()}

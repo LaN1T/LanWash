@@ -511,6 +511,8 @@ class AuthService:
             updates["displayName"] = req.displayName
         if req.phone is not None:
             updates["phone"] = req.phone
+        if req.email is not None:
+            updates["email"] = req.email
         if req.carModel is not None:
             updates["carModel"] = req.carModel
         if req.carNumber is not None:

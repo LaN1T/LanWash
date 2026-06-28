@@ -436,3 +436,110 @@ class TestAppointments:
         data = resp.json()
         # Admin-specified washer should be preserved
         assert data["assignedWasher"] == '["washer_test"]'
+
+    @pytest.mark.asyncio
+    async def test_client_promo_price_is_calculated_and_reported(
+        self, async_client, client_token, admin_token
+    ):
+        """Non-admin booking with a weekend promo must store computed prices and show up in reports."""
+        from datetime import date as dt_date
+
+        # Pick a future Saturday
+        today = dt_date.today()
+        days_until_saturday = (5 - today.weekday()) % 7
+        saturday = today + timedelta(days=max(1, days_until_saturday))
+        date_time = f"{saturday.isoformat()}T10:00:00"
+
+        appt_id = "promo_client_appt"
+        resp = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "id": appt_id,
+                "clientName": "Тест Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": date_time,
+                "washTypeId": "w3",
+                "additionalServices": "[]",
+                "status": "scheduled",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 0,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 0,
+                "assignedWasher": "[]",
+                "promoId": "promo_3",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        # w3 basePrice=1500, promo_3 -20% -> paidPrice=1200, originalPrice=1500
+        assert data["promoId"] == "promo_3"
+        assert data["originalPrice"] == 1500
+        assert data["promoPrice"] == 1200
+        assert data["paidPrice"] == 1200
+
+        # Complete the appointment as admin so it appears in revenue reports
+        complete_resp = await async_client.put(
+            f"/api/appointments/{appt_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "id": appt_id,
+                "clientName": "Тест Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": date_time,
+                "washTypeId": "w3",
+                "additionalServices": "[]",
+                "status": "completed",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": data["promoPrice"],
+                "paidPrice": data["paidPrice"],
+                "isModifiedByAdmin": True,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": data["originalPrice"],
+                "assignedWasher": "[]",
+                "promoId": "promo_3",
+            },
+        )
+        assert complete_resp.status_code == 200
+
+        # Financial report
+        fin_resp = await async_client.get(
+            "/api/reports/financial/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            params={
+                "start_date": saturday.isoformat(),
+                "end_date": saturday.isoformat(),
+            },
+        )
+        assert fin_resp.status_code == 200
+        fin = fin_resp.json()
+        assert fin["summary"]["services_total"] == 1500
+        assert fin["summary"]["discounts_total"] == 300
+        assert fin["summary"]["revenue"] == 1200
+
+        # Promo effectiveness report
+        promo_resp = await async_client.get(
+            "/api/reports/promo-effectiveness/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            params={
+                "start_date": saturday.isoformat(),
+                "end_date": saturday.isoformat(),
+            },
+        )
+        assert promo_resp.status_code == 200
+        promo_items = promo_resp.json()["items"]
+        promo_item = next((i for i in promo_items if i["promo_id"] == "promo_3"), None)
+        assert promo_item is not None
+        assert promo_item["uses_count"] == 1
+        assert promo_item["revenue"] == 1200
+        assert promo_item["discount_total"] == 300

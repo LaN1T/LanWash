@@ -27,9 +27,13 @@ from models import (
     Shift,
     Subscription,
     User,
-    WashType,
     WashTypeConsumable,
 )
+from repositories.promo import PromoRepository
+from repositories.promo_included_extra import PromoIncludedExtraRepository
+from repositories.service import ServiceRepository
+from repositories.wash_type import WashTypeRepository
+from repositories.wash_type_included_extra import WashTypeIncludedExtraRepository
 from schemas import (
     AppointmentRequest,
     AppointmentResponse,
@@ -417,8 +421,10 @@ async def get_by_washer(
     if not appt_ids:
         return []
 
-    query = select(Appointment).where(Appointment.id.in_(appt_ids)).order_by(
-        Appointment.dateTime.asc()
+    query = (
+        select(Appointment)
+        .where(Appointment.id.in_(appt_ids))
+        .order_by(Appointment.dateTime.asc())
     )
     _, items = await paginate(query, db, pagination)
     return items
@@ -518,6 +524,78 @@ async def _track_consumables_usage(
         db.add_all(logs)
 
 
+async def _calculate_client_prices(
+    db: AsyncSession,
+    wash_type_id: str,
+    additional_services_json: str,
+    promo_id: Optional[str],
+    date_time: datetime,
+) -> tuple[int, int, int]:
+    """Calculate original/promo/paid prices for a client-created appointment.
+
+    Returns (original_price, promo_price, paid_price). Raises HTTPException
+    if the selected promo is invalid or not applicable.
+    """
+    promo = None
+    if promo_id:
+        promo_repo = PromoRepository(db)
+        promo = await promo_repo.get_by_id(promo_id)
+        if not promo:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "Указанная акция не найдена"
+            )
+        if promo.washTypeId != wash_type_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Акция не применима к выбранному типу мойки",
+            )
+        if promo.weekendOnly and date_time.weekday() < 5:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Акция действует только по выходным",
+            )
+
+    wash_type_repo = WashTypeRepository(db)
+    base_prices = await wash_type_repo.get_base_prices([wash_type_id])
+    base_price = base_prices.get(wash_type_id, 0)
+
+    wt_extras_repo = WashTypeIncludedExtraRepository(db)
+    wt_included = set(await wt_extras_repo.list_extra_ids_for_wash_type(wash_type_id))
+    promo_included: set[str] = set()
+    if promo:
+        promo_extras_repo = PromoIncludedExtraRepository(db)
+        promo_included_map = await promo_extras_repo.list_extras_for_promos([promo.id])
+        promo_included = set(promo_included_map.get(promo.id, []))
+
+    locked_extras = wt_included | promo_included
+
+    try:
+        extra_ids = json.loads(additional_services_json or "[]")
+    except Exception:
+        extra_ids = []
+    filtered_ids = [eid for eid in extra_ids if eid not in locked_extras]
+
+    extras_price = 0
+    if filtered_ids:
+        service_repo = ServiceRepository(db)
+        service_prices = await service_repo.get_prices(filtered_ids)
+        extras_price = sum(service_prices.get(eid, 0) for eid in filtered_ids)
+
+    regular_price = base_price + extras_price
+
+    if promo:
+        if promo.discountPercent > 0:
+            promo_base_price = base_price * (100 - promo.discountPercent) // 100
+        else:
+            promo_base_price = promo.price
+        paid_price = promo_base_price + extras_price
+    else:
+        promo_base_price = 0
+        paid_price = regular_price
+
+    return regular_price, promo_base_price, paid_price
+
+
 @router.post(
     "/",
     response_model=AppointmentResponse,
@@ -531,13 +609,6 @@ async def create(
     current_user: User = Depends(get_current_user),
 ):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
-    if current_user.role != "admin":
-        # Non-admins cannot set prices; server will calculate or use defaults
-        req.promoPrice = 0
-        req.paidPrice = 0
-        req.originalPrice = 0
-        req.promoId = None
-
     if current_user.username != owner_username.lower() and current_user.role != "admin":
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
@@ -586,6 +657,20 @@ async def create(
         if target_user:
             target_user_id = target_user.id
 
+    # Non-admins cannot set prices; server calculates them from the catalog and promo.
+    if current_user.role != "admin":
+        (
+            req.originalPrice,
+            req.promoPrice,
+            req.paidPrice,
+        ) = await _calculate_client_prices(
+            db,
+            req.washTypeId,
+            req.additionalServices,
+            req.promoId,
+            req.dateTime,
+        )
+
     # Check for active subscription
     today = date.today()
     sub_res = await db.execute(
@@ -604,14 +689,8 @@ async def create(
     if sub:
         subscription_id = sub.id
         sub.usedWashes += 1
+        # Subscription washes are free; keep original/promo prices for reporting.
         req.paidPrice = 0
-        # Preserve original price for savings tracking
-        if req.originalPrice == 0:
-            wt_res = await db.execute(
-                select(WashType).where(WashType.id == req.washTypeId)
-            )
-            wt = wt_res.scalar_one_or_none()
-            req.originalPrice = wt.basePrice if wt else 0
 
     # Находим свободный бокс
     duration = await workload_service.get_appointment_duration(
@@ -1121,17 +1200,12 @@ async def delete_appt(
     current_user: User = Depends(get_current_user),
 ):
     # P0: IDOR check - Only admin or the owner can delete.
-    result = await db.execute(
-        select(Appointment).where(Appointment.id == appt_id)
-    )
+    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
     appt = result.scalar_one_or_none()
 
     if not appt:
         raise HTTPException(404, "Запись не найдена")
-    if (
-        current_user.username != appt.ownerUsername
-        and current_user.role != "admin"
-    ):
+    if current_user.username != appt.ownerUsername and current_user.role != "admin":
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "У вас нет прав на удаление этой записи."
         )

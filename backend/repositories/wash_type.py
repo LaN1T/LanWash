@@ -28,3 +28,13 @@ class WashTypeRepository(BaseRepository[WashType]):
             )
         )
         return {row[0]: row[1] for row in result.all()}
+
+    async def get_base_prices(self, wash_type_ids: list[str]) -> dict[str, int]:
+        if not wash_type_ids:
+            return {}
+        result = await self._db.execute(
+            select(WashType.id, WashType.basePrice).where(
+                WashType.id.in_(wash_type_ids)
+            )
+        )
+        return {row[0]: row[1] for row in result.all()}

@@ -218,6 +218,9 @@ class TestSupportWebSocket:
                     )
                 assert msg_resp.status_code == 200
                 data = ws.receive_json()
+                # Heartbeat pings may arrive before the broadcasted message.
+                while data.get("type") == "ping":
+                    data = ws.receive_json()
                 assert data["type"] == "new_message"
                 assert data["data"]["content"] == "Hello from WS"
 
