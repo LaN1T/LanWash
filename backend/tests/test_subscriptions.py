@@ -291,10 +291,20 @@ class TestSubscriptions:
         assert "totalSaved" in data
         assert data["activeCount"] >= 1
 
-    @pytest.mark.asyncio
-    async def test_client_can_list_subscription_plans(
-        self, async_client, client_token
+    async def _assert_subscription_in_my(
+        self, async_client, client_token, subscription_id
     ):
+        """Проверяет, что купленный абонемент виден в списке клиента."""
+        resp = await async_client.get(
+            "/api/subscriptions/my",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert any(s["id"] == subscription_id for s in data)
+
+    @pytest.mark.asyncio
+    async def test_client_can_list_subscription_plans(self, async_client, client_token):
         resp = await async_client.get(
             "/api/subscriptions/plans",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -303,6 +313,9 @@ class TestSubscriptions:
         data = resp.json()
         assert isinstance(data, list)
         assert len(data) >= 1
+        required_fields = {"id", "code", "name", "type"}
+        for plan in data:
+            assert required_fields.issubset(plan.keys())
 
     @pytest.mark.asyncio
     async def test_client_buys_ready_subscription(
@@ -325,14 +338,16 @@ class TestSubscriptions:
         data = resp.json()
         assert data["washTypeId"] == "w3"
         assert data["totalWashes"] == 5
+        # chistulya: 5 моек со скидкой 10% на тип мойки w3 (basePrice=1500):
+        # 1500 * 5 = 7500; 7500 * 0.90 = 6750
         assert data["price"] == 6750
         assert data["originalPrice"] == 7500
         assert data["paymentStatus"] == "demo_purchased"
 
+        await self._assert_subscription_in_my(async_client, client_token, data["id"])
+
     @pytest.mark.asyncio
-    async def test_client_buys_personal_subscription(
-        self, async_client, client_token
-    ):
+    async def test_client_buys_personal_subscription(self, async_client, client_token):
         resp = await async_client.post(
             "/api/subscriptions/buy",
             headers={"Authorization": f"Bearer {client_token}"},
@@ -349,9 +364,12 @@ class TestSubscriptions:
         data = resp.json()
         assert data["washTypeId"] == "w2"
         assert data["totalWashes"] == 10
-        # (800 + 600) * 10 * 0.90 = 12600
+        # personal: w2 basePrice=800 + доп. услуга s4=600 = 1400 за мойку;
+        # 10 моек дают скидку 10%: 1400 * 10 * 0.90 = 12600
         assert data["price"] == 12600
         assert data["originalPrice"] == 14000
+
+        await self._assert_subscription_in_my(async_client, client_token, data["id"])
 
     @pytest.mark.asyncio
     async def test_client_buys_unlimited_subscription(
@@ -372,14 +390,47 @@ class TestSubscriptions:
         )
         assert resp.status_code == 201
         data = resp.json()
+        # bezlimitka для w1 стоит 8000, действует 30 дней
         assert data["price"] == 8000
         assert data["type"] == "monthly"
         assert data["validUntil"] is not None
+        valid_until = datetime.fromisoformat(data["validUntil"]).date()
+        assert valid_until > datetime.now().date() + timedelta(days=25)
+
+        await self._assert_subscription_in_my(async_client, client_token, data["id"])
 
     @pytest.mark.asyncio
-    async def test_admin_crud_subscription_plan(
-        self, async_client, admin_token
+    async def test_non_admin_cannot_create_plan(self, async_client, client_token):
+        resp = await async_client.post(
+            "/api/subscriptions/admin/plans",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "code": "client-plan",
+                "name": "Client Plan",
+                "type": "package",
+                "washCount": 3,
+                "discountPercent": 5,
+                "sortOrder": 99,
+            },
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_buy_subscription_invalid_plan_returns_404(
+        self, async_client, client_token
     ):
+        resp = await async_client.post(
+            "/api/subscriptions/buy",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "kind": "ready",
+                "ready": {"planId": 999999, "washTypeId": "w1"},
+            },
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_admin_crud_subscription_plan(self, async_client, admin_token):
         create_resp = await async_client.post(
             "/api/subscriptions/admin/plans",
             headers={"Authorization": f"Bearer {admin_token}"},
