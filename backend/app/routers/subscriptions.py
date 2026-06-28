@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.limiter import limiter
 from db.session import get_db
-from models import SubscriptionPlan, User
+from models import User
 from schemas import (
     BuySubscriptionRequest,
     SubscriptionCreateRequest,
@@ -17,6 +17,7 @@ from schemas import (
 from services.auth_service import check_roles, get_current_user
 from services.subscriptions_service import (
     InvalidPlanConfigurationError,
+    PlanAlreadyExistsError,
     PlanNotFoundError,
     SubscriptionNotFoundError,
     SubscriptionsService,
@@ -56,7 +57,9 @@ async def get_subscription_plans(
     return await svc.list_active_plans()
 
 
-@router.post("/buy", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/buy", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("10/minute")
 async def buy_subscription(
     request: Request,
@@ -134,9 +137,8 @@ async def list_all_plans(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import select
-    result = await db.execute(select(SubscriptionPlan).order_by(SubscriptionPlan.sortOrder.asc()))
-    return list(result.scalars().all())
+    svc = SubscriptionsService(db)
+    return await svc.list_all_plans()
 
 
 @router.post(
@@ -151,11 +153,13 @@ async def create_plan(
     req: SubscriptionPlanCreateRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    plan = SubscriptionPlan(**req.model_dump())
-    db.add(plan)
-    await db.commit()
-    await db.refresh(plan)
-    return plan
+    svc = SubscriptionsService(db)
+    try:
+        return await svc.create_plan(req)
+    except PlanAlreadyExistsError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "План с таким кодом уже существует"
+        )
 
 
 @router.put(
@@ -170,16 +174,11 @@ async def update_plan(
     req: SubscriptionPlanUpdateRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import select
-    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == plan_id))
-    plan = result.scalar_one_or_none()
-    if not plan:
+    svc = SubscriptionsService(db)
+    try:
+        return await svc.update_plan(plan_id, req)
+    except PlanNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "План не найден")
-    for field, value in req.model_dump(exclude_unset=True).items():
-        setattr(plan, field, value)
-    await db.commit()
-    await db.refresh(plan)
-    return plan
 
 
 @router.delete(
@@ -193,11 +192,9 @@ async def delete_plan(
     plan_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import select
-    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == plan_id))
-    plan = result.scalar_one_or_none()
-    if not plan:
+    svc = SubscriptionsService(db)
+    try:
+        await svc.delete_plan(plan_id)
+    except PlanNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "План не найден")
-    plan.isActive = False
-    await db.commit()
     return None
