@@ -54,7 +54,7 @@ price         = originalPrice × (1 − discountPercent / 100)
 ```
 
 **Безлимит:**
-- Цена фиксирована в плане и привязана к типу мойки.
+- Цена берётся из поля `washTypePrices` плана по выбранному `washTypeId`.
 
 **Персональный:**
 ```
@@ -90,7 +90,8 @@ price         = originalPrice × (1 − volumeDiscount)
 | `type` | str | `package` или `unlimited` |
 | `washCount` | int | Количество моек (для `package`) |
 | `unlimitedDays` | int | Длительность в днях (для `unlimited`) |
-| `discountPercent` | int | Скидка на базовую цену типа мойки |
+| `discountPercent` | int | Скидка на базовую цену типа мойки (для `package`) |
+| `washTypePrices` | JSON | Цены безлимита по типам мойки: `{ "w1": 8000, ... }` (для `unlimited`) |
 | `sortOrder` | int | Порядок отображения |
 | `isActive` | bool | Активен ли план в каталоге |
 | `createdAt` | datetime | — |
@@ -144,6 +145,14 @@ price         = originalPrice × (1 − volumeDiscount)
 - `lib/screens/client/client_shell.dart` — добавить пункт «Абонементы» в drawer.
 - `lib/services/api_service.dart` — добавить методы `getSubscriptionPlans()`, `buySubscription()`.
 - `lib/models/subscription.dart` — расширить модель при необходимости.
+
+## Миграции и seed-данные
+
+- Alembic-миграция создаёт таблицу `subscription_plans` и добавляет поля в `subscriptions`.
+- Seed-скрипт (`backend/db/seed.py`) добавляет три стартовых плана:
+  - «Чистюля» — 5 моек, скидка 10%.
+  - «Блеск-мастер» — 10 моек, скидка 15%.
+  - «Безлимитка» — 30 дней, цены по типам мойки: w1=8000, w2=12000, w3=22000, w4=40000.
 
 ## Ограничения и допущения
 
