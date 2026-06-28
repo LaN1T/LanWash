@@ -15,6 +15,7 @@ from models import (
     PromoIncludedExtra,
     Service,
     ServiceConsumable,
+    SubscriptionPlan,
     User,
     WashType,
     WashTypeConsumable,
@@ -116,6 +117,42 @@ async def seed_data():
                         basePrice=3000,
                         durationMinutes=90,
                         sortOrder=4,
+                    ),
+                ]
+            )
+            await session.commit()
+
+        # Subscription plans
+        res = await session.execute(select(func.count(SubscriptionPlan.id)))
+        if res.scalar() == 0:
+            session.add_all(
+                [
+                    SubscriptionPlan(
+                        code="chistulya",
+                        name="Чистюля",
+                        description="5 моек со скидкой 10%",
+                        type="package",
+                        washCount=5,
+                        discountPercent=10,
+                        sortOrder=1,
+                    ),
+                    SubscriptionPlan(
+                        code="blesk-master",
+                        name="Блеск-мастер",
+                        description="10 моек со скидкой 15%",
+                        type="package",
+                        washCount=10,
+                        discountPercent=15,
+                        sortOrder=2,
+                    ),
+                    SubscriptionPlan(
+                        code="bezlimitka",
+                        name="Безлимитка",
+                        description="30 дней безлимитных моек одного типа",
+                        type="unlimited",
+                        unlimitedDays=30,
+                        washTypePrices={"w1": 8000, "w2": 12000, "w3": 22000, "w4": 40000},
+                        sortOrder=3,
                     ),
                 ]
             )
