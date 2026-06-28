@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 import json
 
 import structlog
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Subscription, SubscriptionPlan, WashType
@@ -15,9 +16,13 @@ from schemas import (
     BuyReadySubscriptionRequest,
     BuySubscriptionRequest,
     SubscriptionCreateRequest,
+    SubscriptionPlanCreateRequest,
+    SubscriptionPlanUpdateRequest,
 )
 
 logger = structlog.get_logger()
+
+UNLIMITED_WASHES = 999999
 
 
 class SubscriptionNotFoundError(Exception):
@@ -29,6 +34,10 @@ class UserNotFoundError(Exception):
 
 
 class PlanNotFoundError(Exception):
+    pass
+
+
+class PlanAlreadyExistsError(Exception):
     pass
 
 
@@ -48,6 +57,8 @@ class SubscriptionsService:
         self._subscriptions = SubscriptionRepository(db)
         self._users = UserRepository(db)
         self._plans = SubscriptionPlanRepository(db)
+        self._wash_types = WashTypeRepository(db)
+        self._services = ServiceRepository(db)
 
     async def get_my_subscriptions(self, user_id: int) -> list[Subscription]:
         return await self._subscriptions.list_active_for_user(user_id)
@@ -55,6 +66,49 @@ class SubscriptionsService:
     async def list_active_plans(self) -> list[SubscriptionPlan]:
         plans = await self._plans.list_active()
         return plans
+
+    async def list_all_plans(self) -> list[SubscriptionPlan]:
+        result = await self._db.execute(
+            select(SubscriptionPlan).order_by(SubscriptionPlan.sortOrder.asc())
+        )
+        return list(result.scalars().all())
+
+    async def create_plan(self, req: SubscriptionPlanCreateRequest) -> SubscriptionPlan:
+        existing = await self._plans.get_by_code(req.code)
+        if existing:
+            raise PlanAlreadyExistsError()
+
+        plan = SubscriptionPlan(**req.model_dump())
+        await self._plans.add(plan)
+        await self._db.commit()
+        await self._db.refresh(plan)
+        return plan
+
+    async def update_plan(
+        self, plan_id: int, req: SubscriptionPlanUpdateRequest
+    ) -> SubscriptionPlan:
+        plan = await self._plans.get_by_id(plan_id)
+        if not plan:
+            raise PlanNotFoundError()
+
+        for field, value in req.model_dump(exclude_unset=True).items():
+            setattr(plan, field, value)
+
+        if plan.type == "package":
+            plan.unlimitedDays = None
+        elif plan.type == "unlimited":
+            plan.washCount = None
+
+        await self._db.commit()
+        await self._db.refresh(plan)
+        return plan
+
+    async def delete_plan(self, plan_id: int) -> None:
+        plan = await self._plans.get_by_id(plan_id)
+        if not plan:
+            raise PlanNotFoundError()
+        plan.isActive = False
+        await self._db.commit()
 
     async def _calculate_ready_package_price(
         self, plan: SubscriptionPlan, wash_type: WashType
@@ -68,16 +122,22 @@ class SubscriptionsService:
     ) -> tuple[int, int]:
         price = (plan.washTypePrices or {}).get(wash_type_id)
         if price is None:
-            raise InvalidPlanConfigurationError("Цена для выбранного типа мойки не задана")
+            raise InvalidPlanConfigurationError(
+                "Цена для выбранного типа мойки не задана"
+            )
         return price, price
 
     async def _calculate_personal_price(
         self, req: BuyPersonalSubscriptionRequest, wash_type: WashType
     ) -> tuple[int, int]:
-        service_repo = ServiceRepository(self._db)
         selected_extras = json.loads(req.selectedExtras or "[]")
-        prices = await service_repo.get_prices(selected_extras)
-        extras_total = sum(prices.get(eid, 0) for eid in selected_extras)
+        prices = await self._services.get_prices(selected_extras)
+        unknown_extras = [eid for eid in selected_extras if eid not in prices]
+        if unknown_extras:
+            raise InvalidPlanConfigurationError(
+                "Указана неизвестная дополнительная услуга"
+            )
+        extras_total = sum(prices[eid] for eid in selected_extras)
         single = wash_type.basePrice + extras_total
         original = single * req.washCount
 
@@ -109,22 +169,27 @@ class SubscriptionsService:
         if not plan or not plan.isActive:
             raise PlanNotFoundError()
 
-        wash_type_repo = WashTypeRepository(self._db)
-        wash_type = await wash_type_repo.get_by_id(req.washTypeId)
+        wash_type = await self._wash_types.get_by_id(req.washTypeId)
         if not wash_type:
             raise WashTypeNotFoundError()
 
         if plan.type == "package":
             if not plan.washCount:
-                raise InvalidPlanConfigurationError("У пакета не задано количество моек")
-            original_price, price = await self._calculate_ready_package_price(plan, wash_type)
+                raise InvalidPlanConfigurationError(
+                    "У пакета не задано количество моек"
+                )
+            original_price, price = await self._calculate_ready_package_price(
+                plan, wash_type
+            )
             total_washes = plan.washCount
             valid_until = None
         elif plan.type == "unlimited":
             if not plan.unlimitedDays:
                 raise InvalidPlanConfigurationError("У безлимита не задан срок")
-            original_price, price = await self._calculate_ready_unlimited_price(plan, req.washTypeId)
-            total_washes = 999999
+            original_price, price = await self._calculate_ready_unlimited_price(
+                plan, req.washTypeId
+            )
+            total_washes = UNLIMITED_WASHES
             valid_until = date.today() + timedelta(days=plan.unlimitedDays)
         else:
             raise InvalidPlanConfigurationError("Неизвестный тип плана")
@@ -151,8 +216,7 @@ class SubscriptionsService:
     async def _buy_personal(
         self, req: BuyPersonalSubscriptionRequest, user_id: int
     ) -> Subscription:
-        wash_type_repo = WashTypeRepository(self._db)
-        wash_type = await wash_type_repo.get_by_id(req.washTypeId)
+        wash_type = await self._wash_types.get_by_id(req.washTypeId)
         if not wash_type:
             raise WashTypeNotFoundError()
 
