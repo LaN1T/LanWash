@@ -106,6 +106,23 @@ class WashTypeConsumable(Base):
     quantity_per_service = Column(Float, nullable=False)
 
 
+class SubscriptionPlan(Base):
+    __tablename__ = "subscription_plans"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    type = Column(String, nullable=False)  # 'package' or 'unlimited'
+    washCount = Column(Integer, nullable=True)
+    unlimitedDays = Column(Integer, nullable=True)
+    discountPercent = Column(Integer, nullable=False, default=0)
+    washTypePrices = Column(JSON, nullable=True)
+    sortOrder = Column(Integer, nullable=False, default=0)
+    isActive = Column(Boolean, nullable=False, default=True)
+    createdAt = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updatedAt = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
     __table_args__ = (
@@ -120,6 +137,11 @@ class Subscription(Base):
     totalWashes = Column(Integer, nullable=False)
     usedWashes = Column(Integer, nullable=False, default=0)
     validUntil = Column(Date, nullable=True)  # ISO date for monthly; NULL for package
+    planId = Column(Integer, ForeignKey("subscription_plans.id", ondelete="SET NULL"), nullable=True)
+    price = Column(Integer, nullable=False, default=0)
+    originalPrice = Column(Integer, nullable=False, default=0)
+    selectedExtras = Column(String, nullable=True)  # JSON array string
+    paymentStatus = Column(String, nullable=False, default="demo_purchased")
     createdAt = Column(DateTime, nullable=False)
 
 
