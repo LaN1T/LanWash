@@ -257,13 +257,16 @@ class SubscriptionPlanCreateRequest(BaseModel):
     unlimitedDays: Optional[int] = Field(default=None, ge=1)
     discountPercent: int = Field(default=0, ge=0, le=100)
     washTypePrices: Optional[dict[str, int]] = None
-    sortOrder: int = Field(default=0)
+    sortOrder: int = Field(default=0, ge=0)
     isActive: bool = Field(default=True)
 
     @model_validator(mode="after")
     def validate_plan_fields(self):
-        if self.type == "package" and self.washCount is None:
-            raise ValueError("washCount is required for package plans")
+        if self.type == "package":
+            if self.washCount is None:
+                raise ValueError("washCount is required for package plans")
+            if self.unlimitedDays is not None:
+                raise ValueError("unlimitedDays must not be set for package plans")
         if self.type == "unlimited":
             if self.unlimitedDays is None:
                 raise ValueError("unlimitedDays is required for unlimited plans")
@@ -314,10 +317,16 @@ class BuySubscriptionRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_kind_fields(self):
-        if self.kind == "ready" and self.ready is None:
-            raise ValueError("ready is required when kind is 'ready'")
-        if self.kind == "personal" and self.personal is None:
-            raise ValueError("personal is required when kind is 'personal'")
+        if self.kind == "ready":
+            if self.ready is None:
+                raise ValueError("ready is required when kind is 'ready'")
+            if self.personal is not None:
+                raise ValueError("personal must not be provided when kind is 'ready'")
+        if self.kind == "personal":
+            if self.personal is None:
+                raise ValueError("personal is required when kind is 'personal'")
+            if self.ready is not None:
+                raise ValueError("ready must not be provided when kind is 'personal'")
         return self
 
 
