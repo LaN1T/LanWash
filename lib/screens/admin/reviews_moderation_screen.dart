@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app_styles.dart';
 import '../../core/api_client.dart';
 
 class Review {
@@ -146,76 +147,134 @@ class _ReviewsModerationScreenState extends State<ReviewsModerationScreen> {
                       Text(_error!, style: const TextStyle(color: Colors.red)))
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: ListView.builder(
-                    itemCount: _reviews.length,
-                    itemBuilder: (context, i) {
-                      final r = _reviews[i];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    child: Text(r.userName.isNotEmpty
-                                        ? r.userName[0]
-                                        : '?'),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                  child: _reviews.isEmpty
+                      ? LayoutBuilder(
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight),
+                              child: const _EmptyState(),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _reviews.length,
+                          itemBuilder: (context, i) {
+                            final r = _reviews[i];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        Text(r.userName,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold)),
-                                        Text(
-                                            '${'★' * r.rating}${'☆' * (5 - r.rating)}',
-                                            style: const TextStyle(
-                                                color: Colors.amber)),
+                                        CircleAvatar(
+                                          child: Text(r.userName.isNotEmpty
+                                              ? r.userName[0]
+                                              : '?'),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(r.userName,
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                              Text(
+                                                  '${'★' * r.rating}${'☆' * (5 - r.rating)}',
+                                                  style: const TextStyle(
+                                                      color: Colors.amber)),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete,
+                                              color: Colors.red),
+                                          onPressed: () => _delete(r),
+                                        ),
                                       ],
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete,
-                                        color: Colors.red),
-                                    onPressed: () => _delete(r),
-                                  ),
-                                ],
+                                    const SizedBox(height: 12),
+                                    Text(r.comment),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        const Text('Опубликован:'),
+                                        const SizedBox(width: 8),
+                                        Switch(
+                                          value: r.isPublished,
+                                          onChanged: (v) =>
+                                              _togglePublish(r, v),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          r.createdAt
+                                              .substring(0, 16)
+                                              .replaceAll('T', ' '),
+                                          style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 12),
-                              Text(r.comment),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  const Text('Опубликован:'),
-                                  const SizedBox(width: 8),
-                                  Switch(
-                                    value: r.isPublished,
-                                    onChanged: (v) => _togglePublish(r, v),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    r.createdAt
-                                        .substring(0, 16)
-                                        .replaceAll('T', ' '),
-                                    style: TextStyle(
-                                        color: Colors.grey[600], fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.rate_review_outlined,
+              size: 72,
+              color: AppStyles.adaptiveTextSecondary(context),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Нет отзывов на модерацию',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppStyles.adaptiveTextPrimary(context),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Когда клиенты оставят новые отзывы, они появятся здесь.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppStyles.adaptiveTextSecondary(context),
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

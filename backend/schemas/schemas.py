@@ -538,6 +538,33 @@ class RefillRequest(BaseModel):
     amount: float = Field(..., ge=0)
 
 
+class ConsumableUsageLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    consumableId: str
+    appointmentId: str
+    quantityUsed: float
+    timestamp: dt_datetime
+    appointmentDateTime: dt_datetime
+    carModel: str
+    carNumber: str
+    washTypeId: str
+
+
+class ConsumableHistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    type: Literal["consumption", "refill"]
+    id: int
+    appointmentId: Optional[str] = None
+    quantity: float
+    timestamp: dt_datetime
+
+
+class ConsumableHistoryResponse(BaseModel):
+    items: list[ConsumableHistoryItem]
+
+
 class ServiceConsumableRequest(BaseModel):
     serviceId: str = Field(..., max_length=36)
     consumableId: str = Field(..., max_length=36)
@@ -871,6 +898,7 @@ class UserListItem(BaseModel):
     role: str
     displayName: str
     phone: str
+    email: str = ""
     carModel: str
     carNumber: str
     avatarUrl: str = ""

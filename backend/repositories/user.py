@@ -1,9 +1,10 @@
 from datetime import date, datetime, time
+from typing import Any
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import User
+from models import Car, User
 from repositories.base import BaseRepository
 
 
@@ -41,7 +42,7 @@ class UserRepository(BaseRepository[User]):
         )
         return [row[0] for row in result.all() if row[0]]
 
-    async def update_fields(self, pk: int, updates: dict) -> int:
+    async def update_fields(self, pk: int, updates: dict[str, Any]) -> int:
         result = await self._db.execute(
             update(User).where(User.id == pk).values(updates)
         )
@@ -87,15 +88,44 @@ class UserRepository(BaseRepository[User]):
         if q:
             escaped_q = q.replace("%", r"\%").replace("_", r"\_")
             safe_q = f"%{escaped_q}%"
-            filters.append(
-                or_(
-                    User.displayName.ilike(safe_q, escape="\\"),
-                    User.username.ilike(safe_q, escape="\\"),
-                    User.phone.ilike(safe_q, escape="\\"),
-                    User.carModel.ilike(safe_q, escape="\\"),
-                    User.carNumber.ilike(safe_q, escape="\\"),
+            text_filters = [
+                User.displayName.ilike(safe_q, escape="\\"),
+                User.username.ilike(safe_q, escape="\\"),
+                User.phone.ilike(safe_q, escape="\\"),
+                User.email.ilike(safe_q, escape="\\"),
+                User.carModel.ilike(safe_q, escape="\\"),
+                User.carNumber.ilike(safe_q, escape="\\"),
+                User.searchData["phone"].as_string().ilike(safe_q, escape="\\"),
+                User.searchData["email"].as_string().ilike(safe_q, escape="\\"),
+            ]
+
+            raw_digits = "".join(ch for ch in q if ch.isdigit())
+            digits_q = f"%{raw_digits}%" if raw_digits else ""
+            if raw_digits:
+                text_filters.extend(
+                    [
+                        User.searchData["phone"].as_string().ilike(digits_q),
+                        User.searchData["car_number"].as_string().ilike(digits_q),
+                    ]
+                )
+
+            car_filters = [
+                Car.number.ilike(safe_q, escape="\\"),
+                Car.model.ilike(safe_q, escape="\\"),
+                Car.brand.ilike(safe_q, escape="\\"),
+            ]
+            if raw_digits:
+                car_filters.append(Car.numberDigits.ilike(digits_q))
+
+            text_filters.append(
+                exists(
+                    select(1)
+                    .where(Car.userId == User.id)
+                    .where(or_(*car_filters))
                 )
             )
+
+            filters.append(or_(*text_filters))
 
         if role:
             filters.append(User.role == role)

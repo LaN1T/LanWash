@@ -72,10 +72,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       if (error == null) {
         _showSnack('Изменения сохранены');
+        final updated = context.read<AuthProvider>().user;
         setState(() {
           _changePass = false;
           _passCtrl.clear();
           _passConfirmCtrl.clear();
+          if (updated != null) {
+            _nameCtrl.text = updated.displayName;
+            _phoneCtrl.text = updated.phone;
+            // Не затираем введённый email, если бэкенд пока не возвращает его
+            // (например, старая версия API). Если email пришёл — показываем его.
+            if (updated.email.isNotEmpty) {
+              _emailCtrl.text = updated.email;
+            }
+          }
         });
       } else {
         _showSnack(error, isError: true);

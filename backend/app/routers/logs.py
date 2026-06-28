@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,11 +83,11 @@ async def get_by_user(
     )
 
 
-@router.post("/", response_model=LogResponse)
+@router.post("/", response_model=Optional[LogResponse])
 @limiter.limit("30/minute")
 async def create(request: Request, req: LogRequest, db: AsyncSession = Depends(get_db)):
     # Эндпоинт публичный, так как используется для записи логина/регистрации
-    # до авторизации
+    # до авторизации. Записи создаются только для admin и washer.
     svc = LogsService(db)
     return await svc.create_log(req.username.lower(), req.action, req.details)
 

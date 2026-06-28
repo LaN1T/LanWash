@@ -158,6 +158,60 @@ class ConsumablesService:
             for log in logs
         ]
 
+    async def get_usage_history(self, consumable_id: str) -> list[dict]:
+        rows = await self._usage_logs.list_by_consumable(consumable_id)
+        return [
+            {
+                "consumableId": log.consumableId,
+                "appointmentId": log.appointmentId,
+                "quantityUsed": log.quantityUsed,
+                "timestamp": log.timestamp,
+                "appointmentDateTime": appt.dateTime,
+                "carModel": appt.carModel,
+                "carNumber": appt.carNumber,
+                "washTypeId": appt.washTypeId,
+            }
+            for log, appt in rows
+        ]
+
+    async def get_history(
+        self, consumable_id: str, history_type: str | None = None
+    ) -> list[dict]:
+        """Return a merged list of consumption and refill events for a consumable.
+
+        Items are sorted by timestamp descending. If ``history_type`` is provided,
+        only events of that type are returned.
+        """
+        items: list[dict] = []
+
+        if history_type is None or history_type == "consumption":
+            usage_rows = await self._usage_logs.list_by_consumable(consumable_id)
+            for log, _appt in usage_rows:
+                items.append(
+                    {
+                        "type": "consumption",
+                        "id": log.id,
+                        "appointmentId": log.appointmentId,
+                        "quantity": log.quantityUsed,
+                        "timestamp": log.timestamp,
+                    }
+                )
+
+        if history_type is None or history_type == "refill":
+            refill_logs = await self._refill_logs.list_by_consumable(consumable_id)
+            for log in refill_logs:
+                items.append(
+                    {
+                        "type": "refill",
+                        "id": log.id,
+                        "quantity": log.amount,
+                        "timestamp": log.timestamp,
+                    }
+                )
+
+        items.sort(key=lambda x: x["timestamp"], reverse=True)
+        return items
+
     async def get_consumable_forecast(self, consumable_id: str) -> dict | None:
         consumable = await self._consumables.get_by_id(consumable_id)
         if not consumable:
@@ -240,9 +294,7 @@ class ConsumablesService:
     ) -> dict:
         wash_type = await self._wash_types.get_by_id(req.washTypeId)
         if not wash_type:
-            raise ConsumableNotFoundError(
-                f"Тип мойки с id={req.washTypeId} не найден"
-            )
+            raise ConsumableNotFoundError(f"Тип мойки с id={req.washTypeId} не найден")
 
         consumable = await self._consumables.get_by_id(req.consumableId)
         if not consumable:

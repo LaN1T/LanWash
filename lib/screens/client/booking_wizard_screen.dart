@@ -8,6 +8,7 @@ import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../models/car.dart';
+import '../../models/subscription.dart';
 import '../../services/api_service.dart';
 import 'client_shell.dart';
 import '../../core/service_locator.dart';
@@ -50,6 +51,9 @@ class _BWState extends State<BookingWizardScreen> {
   List<Car> _cars = [];
   int? _selectedCarId;
 
+  List<Subscription> _subscriptions = [];
+  int? _selectedSubscriptionId;
+
   Promo? get _promo =>
       widget.templateAppointment != null ? null : widget.initialPromo;
   bool get _isPromo => _promo != null;
@@ -65,6 +69,23 @@ class _BWState extends State<BookingWizardScreen> {
       services: catalog.services,
     );
   }
+
+  Subscription? get _selectedSubscription {
+    if (_selectedSubscriptionId == null) return null;
+    try {
+      return _subscriptions.firstWhere((s) => s.id == _selectedSubscriptionId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get _subscriptionSelected => _selectedSubscription != null;
+
+  int get _finalPrice => _subscriptionSelected ? 0 : _calculator.finalPrice;
+
+  int get _regularPrice => _subscriptionSelected ? _calculator.finalPrice : _calculator.regularPrice;
+
+  bool get _hasDiscount => !_subscriptionSelected && _calculator.hasDiscount;
 
   DateTime _nextValidDate() {
     DateTime d = DateTime.now();
@@ -160,6 +181,7 @@ class _BWState extends State<BookingWizardScreen> {
       _initFromProvider();
       _updateBusySlots();
       _loadCars();
+      _loadSubscriptions();
     });
   }
 
@@ -178,6 +200,32 @@ class _BWState extends State<BookingWizardScreen> {
           }
         }
       });
+    }
+  }
+
+  Future<void> _loadSubscriptions() async {
+    final subs = await sl<ApiService>().getMySubscriptions();
+    if (mounted) {
+      setState(() {
+        _subscriptions = subs;
+        _validateSubscriptionSelection();
+      });
+    }
+  }
+
+  List<Subscription> get _availableSubscriptions {
+    if (_washTypeId.isEmpty) return [];
+    return _subscriptions.where((s) {
+      if (!s.isActive) return false;
+      return s.washTypeId == _washTypeId;
+    }).toList();
+  }
+
+  void _validateSubscriptionSelection() {
+    final available = _availableSubscriptions;
+    if (_selectedSubscriptionId != null &&
+        !available.any((s) => s.id == _selectedSubscriptionId)) {
+      _selectedSubscriptionId = null;
     }
   }
 
@@ -275,7 +323,8 @@ class _BWState extends State<BookingWizardScreen> {
           promoPrice: _isPromo
               ? (_promo!.price > 0 ? _promo!.price : _calculator.promoBasePrice)
               : 0,
-          paidPrice: _calculator.finalPrice,
+          paidPrice: _finalPrice,
+          subscriptionId: _selectedSubscriptionId,
           promoId: _promo?.id,
         ),
         auth);
@@ -401,6 +450,7 @@ class _BWState extends State<BookingWizardScreen> {
                   if (oldWt != null) _extras.removeAll(oldWt.includedExtraIds);
                   _washTypeId = wt.id;
                   _extras.addAll(wt.includedExtraIds);
+                  _validateSubscriptionSelection();
                 }),
                 onExtrasChanged: (id, v) => setState(() {
                   if (!v && _calculator.lockedExtras.contains(id)) return;
@@ -433,11 +483,16 @@ class _BWState extends State<BookingWizardScreen> {
                 name: _nameCtrl.text,
                 car: '${_brandCtrl.text.trim()} ${_modelCtrl.text.trim()}',
                 number: _numCtrl.text,
-                finalPrice: _calculator.finalPrice,
-                regularPrice: _calculator.regularPrice,
-                hasDiscount: _calculator.hasDiscount,
+                finalPrice: _finalPrice,
+                regularPrice: _regularPrice,
+                hasDiscount: _hasDiscount,
                 promoName: _isPromo ? _promo!.name : null,
                 totalDurationLabel: _calculator.durationLabel,
+                subscriptions: _availableSubscriptions,
+                selectedSubscriptionId: _selectedSubscriptionId,
+                selectedSubscriptionName: _selectedSubscription?.name,
+                onSubscriptionChanged: (id) =>
+                    setState(() => _selectedSubscriptionId = id),
               ),
             ],
           ),

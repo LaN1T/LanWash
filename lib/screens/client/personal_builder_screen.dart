@@ -35,7 +35,10 @@ class _PersonalBuilderScreenState extends State<PersonalBuilderScreen> {
       setState(() {
         _washTypes = results[0] as List<WashType>
           ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-        _extras = results[1] as List<Service>;
+        _extras = (results[1] as List<Service>)
+            .where((s) => s.category != 'Акции')
+            .toList()
+          ..sort((a, b) => a.price.compareTo(b.price));
         if (_washTypes.isNotEmpty) {
           _selectedWashTypeId = _washTypes.first.id;
         }

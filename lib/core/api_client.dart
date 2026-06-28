@@ -244,13 +244,17 @@ class ApiClient {
 
       return Failure(AppError.server(response.statusCode, message));
     } on http.ClientException catch (e) {
+      if (kDebugMode) debugPrint('Network error (ClientException): $e | url: $url');
       return Failure(AppError.network(e));
     } on FormatException catch (e) {
+      if (kDebugMode) debugPrint('Format error: $e | url: $url');
       return Failure(AppError.unknown(e));
     } on StateError catch (e) {
       // Ошибки конфигурации (например, не задан API_BASE_URL) не маскируем под сеть
+      if (kDebugMode) debugPrint('Config error: ${e.message} | url: $url');
       return Failure(AppError.unknown(Exception(e.message)));
     } on Exception catch (e) {
+      if (kDebugMode) debugPrint('Network error: $e | url: $url');
       return Failure(AppError.network(e));
     }
   }

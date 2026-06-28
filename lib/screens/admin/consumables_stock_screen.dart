@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
@@ -5,9 +7,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/consumable.dart';
+import '../../providers/consumable_provider.dart';
 import '../../services/api_service.dart';
 import '../../widgets/admin/admin_card.dart';
 import '../../widgets/admin/progress_card.dart';
+import 'consumable_history_screen.dart';
 
 class ConsumablesStockScreen extends StatefulWidget {
   const ConsumablesStockScreen({super.key});
@@ -36,6 +40,7 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
           _consumables = list;
           _loading = false;
         });
+        unawaited(context.read<ConsumableProvider>().refresh());
       }
     } catch (e) {
       if (mounted) {
@@ -59,6 +64,9 @@ class _ConsumablesStockScreenState extends State<ConsumablesStockScreen> {
     if (updated != null) {
       _showSnack('${updated.name} пополнено на $amount ${updated.unit}');
       await _load();
+      if (mounted) {
+        unawaited(context.read<ConsumableProvider>().refresh());
+      }
     }
   }
 
@@ -540,6 +548,30 @@ class _ConsumableDetailSheetState extends State<_ConsumableDetailSheet>
             style: TextStyle(
               color: isLow ? AppStyles.danger : AppStyles.success,
               fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ConsumableHistoryScreen(consumable: c),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.history, size: 18),
+              label: const Text('История использования'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
         ],

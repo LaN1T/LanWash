@@ -41,6 +41,21 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         )
         return result.scalar_one_or_none()
 
+    async def get_active_for_user_and_wash_type_with_lock(
+        self, subscription_id: int, user_id: int, wash_type_id: str
+    ) -> Subscription | None:
+        today = date.today()
+        result = await self._db.execute(
+            select(Subscription)
+            .where(
+                Subscription.id == subscription_id,
+                Subscription.washTypeId == wash_type_id,
+                *self._active_filters(user_id, today),
+            )
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def count_active_for_user(self, user_id: int) -> int:
         today = date.today()
         result = await self._db.execute(

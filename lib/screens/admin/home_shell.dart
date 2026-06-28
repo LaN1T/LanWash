@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../providers/appointment_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/consumable_provider.dart';
 import '../../providers/note_provider.dart';
 import '../../providers/support_provider.dart';
 import '../../widgets/offline_status_indicator.dart';
@@ -16,15 +17,11 @@ import 'add_edit_service_screen.dart';
 import 'logs_screen.dart';
 import 'notes_screen.dart';
 import 'reports_shell_screen.dart'; // Импорт для отчетов
-import 'wash_type_settings_screen.dart';
+import 'admin_settings_shell_screen.dart';
+import 'admin_statistics_shell_screen.dart';
 import '../shared/shift_schedule_screen.dart';
-import '../shared/statistics_screen.dart';
-import 'consumables_stock_screen.dart';
-import 'consumable_links_screen.dart';
 import 'reviews_moderation_screen.dart';
-import 'admin_dashboard_screen.dart';
 import 'client_search_screen.dart';
-import 'inventory_forecast_screen.dart';
 import 'support_tickets_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -37,6 +34,14 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   static const _titles = ['Записи на мойку', 'Услуги'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ConsumableProvider>().load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -328,50 +333,6 @@ class _HomeShellState extends State<HomeShell> {
                     borderRadius: BorderRadius.circular(10)),
               ),
             ),
-          // Дашборд
-          if (isAdmin)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: ListTile(
-                minLeadingWidth: 24,
-                leading: Icon(Icons.dashboard_rounded,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-                title: Text('Дашборд',
-                    style:
-                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const AdminDashboardScreen()));
-                },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          // Прогноз расходников
-          if (isAdmin)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: ListTile(
-                minLeadingWidth: 24,
-                leading: Icon(Icons.inventory_2_outlined,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-                title: Text('Расходники',
-                    style:
-                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const InventoryForecastScreen()));
-                },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
           // Поиск клиентов
           if (isAdmin)
             Padding(
@@ -395,25 +356,27 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           // Статистика
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: ListTile(
-              minLeadingWidth: 24,
-              leading: Icon(Icons.bar_chart_rounded,
-                  color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-              title: Text('Статистика',
-                  style: TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                    ctx,
-                    MaterialPageRoute(
-                        builder: (_) => const StatisticsScreen()));
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+          if (isAdmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              child: ListTile(
+                minLeadingWidth: 24,
+                leading: Icon(Icons.bar_chart_rounded,
+                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                title: Text('Статистика',
+                    style:
+                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                          builder: (_) => const AdminStatisticsShellScreen()));
+                },
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
             ),
-          ),
           // Отчёты
           if (isAdmin)
             Padding(
@@ -436,58 +399,13 @@ class _HomeShellState extends State<HomeShell> {
                     borderRadius: BorderRadius.circular(10)),
               ),
             ),
-          // Управление запасами
-          if (isAdmin)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: ListTile(
-                minLeadingWidth: 24,
-                leading: Icon(Icons.inventory_2_outlined,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-                title: Text('Управление запасами',
-                    style:
-                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const ConsumablesStockScreen()));
-                },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          // Нормы расхода
-          if (isAdmin)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: ListTile(
-                minLeadingWidth: 24,
-                leading: Icon(Icons.link_outlined,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
-                title: Text('Нормы расхода',
-                    style:
-                        TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => const ConsumableLinksScreen()));
-                },
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
           // Настройки
           if (isAdmin)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: ListTile(
                 minLeadingWidth: 24,
-                leading: Icon(Icons.settings_rounded,
-                    color: AppStyles.adaptiveTextSecondary(ctx), size: 22),
+                leading: const _SettingsBadge(),
                 title: Text('Настройки',
                     style:
                         TextStyle(color: AppStyles.adaptiveTextPrimary(ctx))),
@@ -496,7 +414,7 @@ class _HomeShellState extends State<HomeShell> {
                   Navigator.push(
                       ctx,
                       MaterialPageRoute(
-                          builder: (_) => const WashTypeSettingsScreen()));
+                          builder: (_) => const AdminSettingsShellScreen()));
                 },
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
@@ -594,6 +512,23 @@ class _SupportBadge extends StatelessWidget {
       label: Text('$count'),
       backgroundColor: AppStyles.danger,
       child: Icon(Icons.support_agent,
+          color: AppStyles.adaptiveTextSecondary(context), size: 22),
+    );
+  }
+}
+
+class _SettingsBadge extends StatelessWidget {
+  const _SettingsBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final count = context.select<ConsumableProvider, int>((p) => p.lowStockCount);
+
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      backgroundColor: AppStyles.danger,
+      child: Icon(Icons.settings_rounded,
           color: AppStyles.adaptiveTextSecondary(context), size: 22),
     );
   }

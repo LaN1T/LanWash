@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/subscription.dart';
 import '../../services/api_service.dart';
-import 'subscription_screen.dart';
+import '../shared/subscription_detail_widget.dart';
 import 'subscription_type_choice_screen.dart';
 
 class SubscriptionHubScreen extends StatefulWidget {
@@ -32,6 +32,15 @@ class _SubscriptionHubScreenState extends State<SubscriptionHubScreen> {
         _loading = false;
       });
     }
+  }
+
+  void _openDetail(BuildContext context, Subscription subscription) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SubscriptionDetailWidget(subscription: subscription),
+    );
   }
 
   @override
@@ -66,9 +75,20 @@ class _SubscriptionHubScreenState extends State<SubscriptionHubScreen> {
                             MaterialPageRoute(
                                 builder: (_) =>
                                     const SubscriptionTypeChoiceScreen())),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Купить абонемент'),
-                        style: AppStyles.primaryButton,
+                        icon: const Icon(Icons.add, size: 22),
+                        label: const Text(
+                          'Купить абонемент',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: AppStyles.primaryButton.copyWith(
+                          minimumSize: const WidgetStatePropertyAll(
+                              Size(double.infinity, 56)),
+                          padding: const WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(vertical: 14)),
+                        ),
                       ),
                     ),
                   ),
@@ -101,11 +121,7 @@ class _SubscriptionHubScreenState extends State<SubscriptionHubScreen> {
                         delegate: SliverChildBuilderDelegate(
                           (ctx, i) => _SubscriptionCard(
                             subscription: _subscriptions[i],
-                            onTap: () => Navigator.push(
-                                ctx,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const SubscriptionScreen())),
+                            onTap: () => _openDetail(ctx, _subscriptions[i]),
                           ),
                           childCount: _subscriptions.length,
                         ),

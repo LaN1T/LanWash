@@ -11,7 +11,9 @@ import 'inventory_forecast_screen.dart';
 import 'package:lanwash/core/service_locator.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  final bool useScaffold;
+
+  const AdminDashboardScreen({super.key, this.useScaffold = true});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -257,6 +259,72 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final dark = AppStyles.isDark(context);
+    final body = RefreshIndicator(
+      color: AppStyles.primary,
+      onRefresh: _fetchData,
+      child: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppStyles.primary))
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_error!,
+                          style: const TextStyle(color: AppStyles.danger)),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _fetchData,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Повторить'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppStyles.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : _dashboard == null
+                  ? const Center(child: Text('Нет данных'))
+                  : CustomScrollView(
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                          sliver: SliverList(
+                            delegate: SliverChildListDelegate([
+                              _buildInventoryAlertCard(context),
+                              _PeriodSelector(
+                                period: _period,
+                                onChanged: (p) {
+                                  setState(() => _period = p);
+                                  _fetchData();
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              _KpiGrid(dashboard: _dashboard!),
+                              const SizedBox(height: 24),
+                              _RevenueChart(dashboard: _dashboard!),
+                              const SizedBox(height: 24),
+                              _TopWashers(dashboard: _dashboard!),
+                              const SizedBox(height: 24),
+                              _TopClients(dashboard: _dashboard!),
+                              const SizedBox(height: 24),
+                              _buildForecastSection(context),
+                            ]),
+                          ),
+                        ),
+                      ],
+                    ),
+    );
+
+    if (!widget.useScaffold) {
+      return Container(
+        color: dark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFF),
+        child: body,
+      );
+    }
+
     return Scaffold(
       backgroundColor: dark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFF),
       appBar: AppBar(
@@ -265,64 +333,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         title: const Text('Дашборд',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
       ),
-      body: RefreshIndicator(
-        color: AppStyles.primary,
-        onRefresh: _fetchData,
-        child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: AppStyles.primary))
-            : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!,
-                            style: const TextStyle(color: AppStyles.danger)),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _fetchData,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Повторить'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppStyles.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : _dashboard == null
-                    ? const Center(child: Text('Нет данных'))
-                    : CustomScrollView(
-                        slivers: [
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                            sliver: SliverList(
-                              delegate: SliverChildListDelegate([
-                                _buildInventoryAlertCard(context),
-                                _PeriodSelector(
-                                  period: _period,
-                                  onChanged: (p) {
-                                    setState(() => _period = p);
-                                    _fetchData();
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-                                _KpiGrid(dashboard: _dashboard!),
-                                const SizedBox(height: 24),
-                                _RevenueChart(dashboard: _dashboard!),
-                                const SizedBox(height: 24),
-                                _TopWashers(dashboard: _dashboard!),
-                                const SizedBox(height: 24),
-                                _TopClients(dashboard: _dashboard!),
-                                const SizedBox(height: 24),
-                                _buildForecastSection(context),
-                              ]),
-                            ),
-                          ),
-                        ],
-                      ),
-      ),
+      body: body,
     );
   }
 }

@@ -50,6 +50,62 @@ class _SubscriptionCheckoutScreenState
 
   bool get _isReady => widget.planId != null;
 
+  void _showErrorDialog(BuildContext context, String message) {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppStyles.danger),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Ошибка оплаты',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: AppStyles.adaptiveTextPrimary(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            fontSize: 14,
+            color: AppStyles.adaptiveTextSecondary(context),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Закрыть',
+              style: TextStyle(color: AppStyles.adaptiveTextSecondary(context)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _pay(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppStyles.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Повторить'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pay(BuildContext context) async {
     setState(() => _buying = true);
 
@@ -91,21 +147,12 @@ class _SubscriptionCheckoutScreenState
           (route) => route.isFirst,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Не удалось оформить абонемент. Попробуйте позже.'),
-            backgroundColor: AppStyles.danger,
-          ),
-        );
+        _showErrorDialog(context, 'Не удалось оформить абонемент. Попробуйте позже.');
       }
     } on Exception catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: AppStyles.danger,
-        ),
-      );
+      final message = e.toString().replaceFirst('Exception: ', '').trim();
+      _showErrorDialog(context, message.isEmpty ? 'Не удалось оформить абонемент' : message);
     } finally {
       if (mounted) {
         setState(() => _buying = false);
@@ -224,7 +271,9 @@ class _SubscriptionCheckoutScreenState
                 onPressed: _buying ? null : () => _pay(context),
                 style: AppStyles.primaryButton.copyWith(
                   minimumSize:
-                      const WidgetStatePropertyAll(Size(double.infinity, 52)),
+                      const WidgetStatePropertyAll(Size(double.infinity, 60)),
+                  padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(vertical: 16)),
                 ),
                 child: _buying
                     ? const SizedBox(
@@ -235,7 +284,13 @@ class _SubscriptionCheckoutScreenState
                           color: Colors.white,
                         ),
                       )
-                    : Text('Оплатить ${widget.price} ₽ (демо)'),
+                    : Text(
+                        'Оплатить ${widget.price} ₽ (демо)',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ),

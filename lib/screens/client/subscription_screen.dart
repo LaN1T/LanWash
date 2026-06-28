@@ -5,6 +5,7 @@ import '../../app_styles.dart';
 import '../../models/subscription.dart';
 import '../../providers/catalog_provider.dart';
 import '../../services/api_service.dart';
+import '../shared/subscription_detail_widget.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -68,7 +69,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_active.isNotEmpty) ...[
                     _sectionLabel('Активные'),
                     const SizedBox(height: 12),
-                    ..._active.map((s) => _buildSubscriptionCard(s, true)),
+                    ..._active.map((s) => _buildSubscriptionCard(context, s, true)),
                     const SizedBox(height: 24),
                   ],
                   if (_history.isNotEmpty) ...[
@@ -76,7 +77,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     const SizedBox(height: 12),
                     ..._history
                         .take(5)
-                        .map((s) => _buildSubscriptionCard(s, false)),
+                        .map((s) => _buildSubscriptionCard(context, s, false)),
                   ],
                   if (_active.isEmpty && _history.isEmpty)
                     Center(
@@ -112,15 +113,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           fontWeight: FontWeight.w700,
           letterSpacing: 1));
 
-  Widget _buildSubscriptionCard(Subscription s, bool isActive) {
+  void _openDetail(BuildContext context, Subscription subscription) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SubscriptionDetailWidget(subscription: subscription),
+    );
+  }
+
+  Widget _buildSubscriptionCard(
+      BuildContext context, Subscription s, bool isActive) {
     final progress = s.progress.clamp(0.0, 1.0);
     final remaining = s.remaining;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: AppStyles.cardDecorationFor(context),
-      child: Column(
+    return InkWell(
+      onTap: () => _openDetail(context, s),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: AppStyles.cardDecorationFor(context),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -223,8 +237,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   String _formatDate(String iso) {
     try {

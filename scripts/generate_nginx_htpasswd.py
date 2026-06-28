@@ -2,17 +2,19 @@
 """Generate nginx/.htpasswd for Prometheus/Metrics basic auth.
 
 Reads PROMETHEUS_USER and PROMETHEUS_PASSWORD from the environment and writes
-an nginx-compatible htpasswd file. Run before deploying:
+an nginx-compatible htpasswd file using the APR1-MD5 algorithm (openssl).
+Run before deploying:
 
-    python scripts/generate_nginx_htpasswd.py
+    PROMETHEUS_USER=admin PROMETHEUS_PASSWORD='secret' python3 scripts/generate_nginx_htpasswd.py
 
 The generated file is gitignored and must not be committed.
 """
 
 import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
-
-from passlib.apache import HtpasswdFile
 
 
 def main() -> None:
@@ -27,10 +29,23 @@ def main() -> None:
     htpasswd_path = Path(__file__).resolve().parent.parent / "nginx" / ".htpasswd"
     htpasswd_path.parent.mkdir(parents=True, exist_ok=True)
 
-    ht = HtpasswdFile(str(htpasswd_path), new=True)
-    ht.set_password(user, password)
-    ht.save()
+    # Docker may have created this path as a directory; replace it with a file.
+    if htpasswd_path.is_dir():
+        shutil.rmtree(htpasswd_path)
 
+    try:
+        hashed = subprocess.run(
+            ["openssl", "passwd", "-apr1", password],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except FileNotFoundError:
+        raise SystemExit("openssl is required to generate the htpasswd file.")
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(f"openssl failed: {exc.stderr or exc.stdout}")
+
+    htpasswd_path.write_text(f"{user}:{hashed}\n", encoding="utf-8")
     print(f"Generated {htpasswd_path}")
 
 

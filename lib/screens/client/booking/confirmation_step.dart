@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app_styles.dart';
 import '../../../models/service.dart';
+import '../../../models/subscription.dart';
 import '../../../models/wash_type.dart';
 
 class ConfirmationStep extends StatelessWidget {
@@ -12,6 +13,10 @@ class ConfirmationStep extends StatelessWidget {
   final bool hasDiscount;
   final String? promoName;
   final String totalDurationLabel;
+  final List<Subscription> subscriptions;
+  final int? selectedSubscriptionId;
+  final String? selectedSubscriptionName;
+  final ValueChanged<int?> onSubscriptionChanged;
 
   const ConfirmationStep(
       {super.key,
@@ -26,7 +31,11 @@ class ConfirmationStep extends StatelessWidget {
       required this.regularPrice,
       required this.hasDiscount,
       this.promoName,
-      required this.totalDurationLabel});
+      required this.totalDurationLabel,
+      this.subscriptions = const [],
+      this.selectedSubscriptionId,
+      this.selectedSubscriptionName,
+      required this.onSubscriptionChanged});
 
   String _serviceName(String id) {
     for (final s in services) {
@@ -147,6 +156,14 @@ class ConfirmationStep extends StatelessWidget {
                 ],
               ]),
             ),
+            if (subscriptions.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _SubscriptionSelector(
+                subscriptions: subscriptions,
+                selectedId: selectedSubscriptionId,
+                onChanged: onSubscriptionChanged,
+              ),
+            ],
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(18),
@@ -167,12 +184,21 @@ class ConfirmationStep extends StatelessWidget {
                         fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('$finalPrice ₽',
+                  Text(selectedSubscriptionName != null ? '0 ₽' : '$finalPrice ₽',
                       style: const TextStyle(
                           color: AppStyles.primary,
                           fontSize: 24,
                           fontWeight: FontWeight.bold)),
-                  if (hasDiscount)
+                  if (selectedSubscriptionName != null)
+                    Text(
+                      'Оплачено абонементом «$selectedSubscriptionName»',
+                      style: TextStyle(
+                        color: AppStyles.adaptiveTextSecondary(context),
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.right,
+                    )
+                  else if (hasDiscount)
                     Text('$regularPrice ₽',
                         style: TextStyle(
                             color: AppStyles.adaptiveTextSecondary(context),
@@ -183,29 +209,6 @@ class ConfirmationStep extends StatelessWidget {
                 ]),
               ]),
             ),
-            if (hasDiscount) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppStyles.successBg,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: AppStyles.success.withValues(alpha: 0.3)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.savings_rounded,
-                      color: AppStyles.success, size: 16),
-                  const SizedBox(width: 8),
-                  Text('Экономия по акции: ${regularPrice - finalPrice} ₽',
-                      style: const TextStyle(
-                          color: AppStyles.success,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500)),
-                ]),
-              ),
-            ],
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(12),
@@ -311,4 +314,127 @@ class _ConfirmRow extends StatelessWidget {
                   textAlign: TextAlign.right)),
         ]),
       );
+}
+
+
+class _SubscriptionSelector extends StatelessWidget {
+  final List<Subscription> subscriptions;
+  final int? selectedId;
+  final ValueChanged<int?> onChanged;
+
+  const _SubscriptionSelector({
+    required this.subscriptions,
+    required this.selectedId,
+    required this.onChanged,
+  });
+
+  String _validityText(Subscription s) {
+    if (s.validUntil != null && s.validUntil!.isNotEmpty) {
+      return 'До ${s.validUntil!}';
+    }
+    return '${s.remaining} ${s.remaining == 1 ? 'мойка' : s.remaining < 5 ? 'мойки' : 'моек'}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppStyles.cardDecorationFor(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.card_membership_rounded,
+                  color: AppStyles.primary, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                'Абонементы',
+                style: TextStyle(
+                  color: AppStyles.adaptiveTextPrimary(context),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Выберите абонемент, чтобы списать мойку бесплатно',
+            style: TextStyle(
+              color: AppStyles.adaptiveTextSecondary(context),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...subscriptions.map((s) {
+            final selected = selectedId == s.id;
+            return Material(
+              color: selected
+                  ? AppStyles.adaptivePrimaryBg(context)
+                  : AppStyles.adaptiveInnerCard(context),
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => onChanged(selected ? null : s.id),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        selected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: selected ? AppStyles.primary : AppStyles.adaptiveTextSecondary(context),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.name,
+                              style: TextStyle(
+                                color: AppStyles.adaptiveTextPrimary(context),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _validityText(s),
+                              style: TextStyle(
+                                color: AppStyles.adaptiveTextSecondary(context),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          if (selectedId != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => onChanged(null),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppStyles.adaptiveTextSecondary(context),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text('Не использовать абонемент'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

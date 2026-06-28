@@ -9,8 +9,10 @@ from core.limiter import limiter
 from db.session import get_db
 from models import User
 from schemas import (
+    ConsumableHistoryResponse,
     ConsumableRequest,
     ConsumableResponse,
+    ConsumableUsageLogResponse,
     InventoryForecastResponse,
     RefillRequest,
     ServiceConsumableRequest,
@@ -338,6 +340,42 @@ async def get_refill_history(
     return await svc.get_refill_history(consumable_id)
 
 
+@router.get(
+    "/{consumable_id}/usage-history",
+    response_model=list[ConsumableUsageLogResponse],
+)
+@limiter.limit("60/minute")
+async def get_usage_history(
+    request: Request,
+    consumable_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin", "washer"])),
+):
+    svc = ConsumablesService(db)
+    return await svc.get_usage_history(consumable_id)
+
+
+@router.get(
+    "/{consumable_id}/history",
+    response_model=ConsumableHistoryResponse,
+)
+@limiter.limit("60/minute")
+async def get_consumable_history(
+    request: Request,
+    consumable_id: str,
+    type: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(check_roles(["admin"])),
+):
+    """Merged consumption and refill history for a consumable (admin only).
+
+    Filter by ``type`` (``consumption`` or ``refill``) to return only one kind.
+    """
+    svc = ConsumablesService(db)
+    items = await svc.get_history(consumable_id, history_type=type)
+    return {"items": items}
+
+
 @router.get("/{consumable_id}/forecast")
 @limiter.limit("60/minute")
 async def get_consumable_forecast(
@@ -351,6 +389,3 @@ async def get_consumable_forecast(
     if result is None:
         raise HTTPException(404, "Расходник не найден")
     return result
-
-
-

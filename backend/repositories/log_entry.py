@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import LogEntry
+from models import LogEntry, User
 from repositories.base import BaseRepository
 
 _UNSET = object()
@@ -31,11 +31,17 @@ class LogEntryRepository(BaseRepository[LogEntry]):
         limit: int,
         offset: int = 0,
         cursor: Optional[dict] = _UNSET,
+        roles: Optional[list[str]] = None,
     ) -> list[LogEntry]:
         use_cursor = cursor is not _UNSET
         if cursor is _UNSET:
             cursor = None
-        stmt = select(LogEntry).order_by(LogEntry.timestamp.desc(), LogEntry.id.desc())
+        stmt = select(LogEntry)
+        if roles:
+            stmt = stmt.join(User, LogEntry.username == User.username).where(
+                User.role.in_(roles)
+            )
+        stmt = stmt.order_by(LogEntry.timestamp.desc(), LogEntry.id.desc())
         if cursor:
             stmt = stmt.where(self._cursor_clause(cursor))
         if use_cursor:
@@ -51,15 +57,17 @@ class LogEntryRepository(BaseRepository[LogEntry]):
         limit: int,
         offset: int = 0,
         cursor: Optional[dict] = _UNSET,
+        roles: Optional[list[str]] = None,
     ) -> list[LogEntry]:
         use_cursor = cursor is not _UNSET
         if cursor is _UNSET:
             cursor = None
-        stmt = (
-            select(LogEntry)
-            .where(LogEntry.username == username)
-            .order_by(LogEntry.timestamp.desc(), LogEntry.id.desc())
-        )
+        stmt = select(LogEntry).where(LogEntry.username == username)
+        if roles:
+            stmt = stmt.join(User, LogEntry.username == User.username).where(
+                User.role.in_(roles)
+            )
+        stmt = stmt.order_by(LogEntry.timestamp.desc(), LogEntry.id.desc())
         if cursor:
             stmt = stmt.where(self._cursor_clause(cursor))
         if use_cursor:

@@ -29,9 +29,11 @@ from models import (
     User,
     WashTypeConsumable,
 )
+from repositories.fcm_token import FcmTokenRepository
 from repositories.promo import PromoRepository
 from repositories.promo_included_extra import PromoIncludedExtraRepository
 from repositories.service import ServiceRepository
+from repositories.subscription import SubscriptionRepository
 from repositories.wash_type import WashTypeRepository
 from repositories.wash_type_included_extra import WashTypeIncludedExtraRepository
 from schemas import (
@@ -431,6 +433,7 @@ async def get_by_washer(
 
 
 async def _track_consumables_usage(
+    request: Request | None,
     db: AsyncSession,
     appt_id: str,
     wash_type_id: str,
@@ -494,6 +497,7 @@ async def _track_consumables_usage(
                 usage_map[cid] = usage_map.get(cid, 0.0) + float(qty)
 
     # 4. Уменьшение остатков + пакетное сохранение в лог (с блокировкой строк)
+    newly_low: list[Consumable] = []
     if usage_map:
         cids = list(usage_map.keys())
         cons_res = await db.execute(
@@ -505,6 +509,7 @@ async def _track_consumables_usage(
         for cid, qty in usage_map.items():
             consumable = cons_map.get(cid)
             if consumable:
+                was_low = consumable.currentStock < consumable.minStock
                 consumable.currentStock = max(0.0, consumable.currentStock - qty)
                 if consumable.currentStock < consumable.minStock:
                     logger.warning(
@@ -513,6 +518,8 @@ async def _track_consumables_usage(
                         current=consumable.currentStock,
                         minimum=consumable.minStock,
                     )
+                    if not was_low:
+                        newly_low.append(consumable)
             logs.append(
                 ConsumableUsageLog(
                     appointmentId=appt_id,
@@ -522,6 +529,33 @@ async def _track_consumables_usage(
                 )
             )
         db.add_all(logs)
+
+    # 5. Уведомление администраторам о новом низком остатке
+    if request and newly_low:
+        admin_tokens = await FcmTokenRepository(db).list_admin_tokens()
+        if admin_tokens:
+            tokens: list[str] = []
+            seen: set[str] = set()
+            for t in admin_tokens:
+                if t in seen:
+                    continue
+                seen.add(t)
+                try:
+                    tokens.append(decrypt_token(t))
+                except Exception:
+                    pass
+            if tokens:
+                for consumable in newly_low:
+                    await _notify_fcm(
+                        request,
+                        tokens,
+                        "Низкий остаток расходника",
+                        (
+                            f"{consumable.name}: осталось {consumable.currentStock} "
+                            f"(мин. {consumable.minStock})"
+                        ),
+                        {"type": "low_stock", "consumableId": consumable.id},
+                    )
 
 
 async def _calculate_client_prices(
@@ -672,25 +706,44 @@ async def create(
         )
 
     # Check for active subscription
-    today = date.today()
-    sub_res = await db.execute(
-        select(Subscription)
-        .where(
-            Subscription.userId == target_user_id,
-            Subscription.washTypeId == req.washTypeId,
-            Subscription.usedWashes < Subscription.totalWashes,
-            or_(Subscription.validUntil.is_(None), Subscription.validUntil >= today),
-        )
-        .with_for_update()
-    )
-    sub = sub_res.scalar_one_or_none()
-
     subscription_id = req.subscriptionId
-    if sub:
-        subscription_id = sub.id
+    if subscription_id is not None:
+        # Client explicitly chose a subscription; validate it belongs to the user,
+        # matches the wash type and has remaining washes.
+        sub_repo = SubscriptionRepository(db)
+        sub = await sub_repo.get_active_for_user_and_wash_type_with_lock(
+            subscription_id, target_user_id, req.washTypeId
+        )
+        if not sub:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Абонемент не найден, не активен или не подходит для этого типа мойки",
+            )
         sub.usedWashes += 1
         # Subscription washes are free; keep original/promo prices for reporting.
         req.paidPrice = 0
+    else:
+        # Auto-apply an active subscription if the client did not choose one.
+        today = date.today()
+        sub_res = await db.execute(
+            select(Subscription)
+            .where(
+                Subscription.userId == target_user_id,
+                Subscription.washTypeId == req.washTypeId,
+                Subscription.usedWashes < Subscription.totalWashes,
+                or_(
+                    Subscription.validUntil.is_(None), Subscription.validUntil >= today
+                ),
+            )
+            .with_for_update()
+        )
+        sub = sub_res.scalar_one_or_none()
+
+        if sub:
+            subscription_id = sub.id
+            sub.usedWashes += 1
+            # Subscription washes are free; keep original/promo prices for reporting.
+            req.paidPrice = 0
 
     # Находим свободный бокс
     duration = await workload_service.get_appointment_duration(
@@ -765,7 +818,7 @@ async def create(
 
     if effective_status == "completed":
         await _track_consumables_usage(
-            db, req.id, req.washTypeId, req.additionalServices, req.promoId
+            request, db, req.id, req.washTypeId, req.additionalServices, req.promoId
         )
         await db.commit()
 
@@ -1052,6 +1105,17 @@ async def update_appt(
         if old_status != req.status:
             appt.isModifiedByWasher = 1
             appt.isSeenByClient = 0
+            db.add(
+                LogEntry(
+                    username=current_user.username,
+                    action="Изменение статуса мойки",
+                    details=(
+                        f"Запись {appt.id} ({appt.carModel}, {appt.carNumber}): "
+                        f"{old_status} → {req.status}"
+                    ),
+                    timestamp=datetime.now(),
+                )
+            )
 
     await db.commit()
 
@@ -1072,7 +1136,7 @@ async def update_appt(
 
     if req.status == "completed":
         await _track_consumables_usage(
-            db, appt_id, req.washTypeId, req.additionalServices, req.promoId
+            request, db, appt_id, req.washTypeId, req.additionalServices, req.promoId
         )
         await db.commit()
 

@@ -24,6 +24,19 @@ class ConsumableUsageLogRepository(BaseRepository[ConsumableUsageLog]):
         result = await self._db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_by_consumable(
+        self, consumable_id: str, limit: int = 100
+    ) -> list[tuple[ConsumableUsageLog, Appointment]]:
+        stmt = (
+            select(ConsumableUsageLog, Appointment)
+            .join(Appointment, ConsumableUsageLog.appointmentId == Appointment.id)
+            .where(ConsumableUsageLog.consumableId == consumable_id)
+            .order_by(ConsumableUsageLog.timestamp.desc())
+            .limit(limit)
+        )
+        result = await self._db.execute(stmt)
+        return list(result.all())
+
     async def sum_usage_since(self, consumable_id: str, since: datetime) -> float:
         result = await self._db.execute(
             select(func.coalesce(func.sum(ConsumableUsageLog.quantityUsed), 0.0)).where(

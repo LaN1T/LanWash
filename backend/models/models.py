@@ -21,6 +21,11 @@ from sqlalchemy.orm import declared_attr, relationship, validates
 from db.base import Base
 
 
+def _digits(value: str | None) -> str:
+    """Return only digits from a string (for raw phone storage)."""
+    return "".join(ch for ch in (value or "") if ch.isdigit())
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
@@ -34,6 +39,7 @@ class User(Base):
     displayName = Column(String, nullable=False)
     email = Column(String, nullable=True, default="")
     phone = Column(String, nullable=False, default="")
+    searchData = Column(JSON, nullable=False, default=dict)
     carModel = Column(String, nullable=False, default="")
     carNumber = Column(String, nullable=False, default="")
     avatarUrl = Column(String, nullable=True, default="")
@@ -42,6 +48,18 @@ class User(Base):
     passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
     referralCode = Column(String, nullable=True, unique=True, index=True)
+
+    @validates("phone", "email", "carNumber")
+    def _sync_search_data(self, key: str, value: str | None) -> str | None:
+        if self.searchData is None:
+            self.searchData = {}
+        if key == "phone":
+            self.searchData["phone"] = _digits(value)
+        elif key == "email":
+            self.searchData["email"] = (value or "").lower().strip()
+        elif key == "carNumber":
+            self.searchData["car_number"] = _digits(value)
+        return value
 
     appointment_assignments = relationship(
         "AppointmentWasher",
@@ -58,12 +76,19 @@ class Car(Base):
     brand = Column(String, nullable=False, default="")
     model = Column(String, nullable=False, default="")
     number = Column(String, nullable=False, default="")
+    numberDigits = Column(String, nullable=True, default="")
     isPrimary = Column(Boolean, nullable=False, default=False)
+
+    @validates("number")
+    def _sync_number_digits(self, key: str, value: str | None) -> str | None:
+        self.numberDigits = _digits(value)
+        return value
 
     @declared_attr.directive
     def __table_args__(cls):
         return (
             Index("ix_cars_user", "userId"),
+            Index("ix_cars_number_digits", "numberDigits"),
             Index(
                 "uq_user_primary_car",
                 "userId",

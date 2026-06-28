@@ -22,6 +22,7 @@ import '../models/shift.dart';
 import '../models/shift_template.dart';
 import '../models/washer_availability.dart';
 import '../models/consumable.dart';
+import '../models/consumable_history_item.dart';
 import '../models/daily_report.dart';
 import '../models/review.dart';
 import '../models/car.dart';
@@ -833,6 +834,23 @@ class ApiService {
       success: (list) =>
           list.map((m) => ConsumableRefillLog.fromMap(m)).toList(),
       failure: (_) => <ConsumableRefillLog>[],
+    );
+  }
+
+  Future<List<ConsumableHistoryItem>> getConsumableHistory(
+    String id, {
+    required String type,
+  }) async {
+    final result = await ApiClient.get('/consumables/$id/history?type=$type');
+    return result.when(
+      success: (data) {
+        final list = (data['items'] as List<dynamic>? ?? []);
+        return list
+            .map(
+                (m) => ConsumableHistoryItem.fromMap(m as Map<String, dynamic>))
+            .toList();
+      },
+      failure: (_) => <ConsumableHistoryItem>[],
     );
   }
 
@@ -1694,6 +1712,44 @@ class ApiService {
           .map((m) => SubscriptionPlan.fromMap(m as Map<String, dynamic>))
           .toList(),
       failure: (_) => <SubscriptionPlan>[],
+    );
+  }
+
+  Future<List<SubscriptionPlan>> getAdminSubscriptionPlans() async {
+    final result = await ApiClient.getList('/subscriptions/admin/plans');
+    return result.when(
+      success: (list) => list
+          .map((m) => SubscriptionPlan.fromMap(m as Map<String, dynamic>))
+          .toList(),
+      failure: (_) => <SubscriptionPlan>[],
+    );
+  }
+
+  Future<SubscriptionPlan?> createSubscriptionPlan(
+      Map<String, dynamic> body) async {
+    final result =
+        await ApiClient.post('/subscriptions/admin/plans', body: body);
+    return result.when(
+      success: (data) => SubscriptionPlan.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<SubscriptionPlan?> updateSubscriptionPlan(
+      int id, Map<String, dynamic> body) async {
+    final result =
+        await ApiClient.put('/subscriptions/admin/plans/$id', body: body);
+    return result.when(
+      success: (data) => SubscriptionPlan.fromMap(data),
+      failure: (_) => null,
+    );
+  }
+
+  Future<bool> deleteSubscriptionPlan(int id) async {
+    final result = await ApiClient.delete('/subscriptions/admin/plans/$id');
+    return result.when(
+      success: (_) => true,
+      failure: (_) => false,
     );
   }
 

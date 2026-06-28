@@ -156,6 +156,93 @@ class TestConsumables:
         assert history[0]["refilledBy"] == "admin"
 
     @pytest.mark.asyncio
+    async def test_history_merged(self, async_client, admin_token, client_token):
+        # Пополнение
+        refill_resp = await async_client.post(
+            "/api/consumables/c_shampoo/refill",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={"amount": 10.0},
+        )
+        assert refill_resp.status_code == 200
+
+        # Создаём завершённую запись, чтобы списать расходник (w1 использует c_shampoo)
+        appt_resp = await async_client.post(
+            "/api/appointments/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "id": "appt_history_test",
+                "clientName": "История Клиент",
+                "carModel": "Toyota Camry",
+                "carNumber": "А123БВ77",
+                "dateTime": "2099-05-01T10:00:00",
+                "washTypeId": "w1",
+                "additionalServices": "[]",
+                "status": "completed",
+                "notes": "",
+                "isFavorite": False,
+                "ownerUsername": "client_test",
+                "promoPrice": 0,
+                "paidPrice": 1000,
+                "isModifiedByAdmin": False,
+                "isModifiedByWasher": False,
+                "isSeenByClient": True,
+                "originalPrice": 1000,
+                "assignedWasher": "[]",
+                "promoId": None,
+                "box_index": 0,
+            },
+        )
+        assert appt_resp.status_code == 200
+
+        # Объединённая история
+        history_resp = await async_client.get(
+            "/api/consumables/c_shampoo/history",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert history_resp.status_code == 200
+        data = history_resp.json()
+        assert "items" in data
+        items = data["items"]
+        assert len(items) >= 2
+
+        types = [item["type"] for item in items]
+        assert "refill" in types
+        assert "consumption" in types
+
+        # Сортировка по убыванию timestamp — запись (consumption) позже пополнения
+        assert items[0]["type"] == "consumption"
+        assert items[0]["appointmentId"] == "appt_history_test"
+        assert items[0]["quantity"] == 50.0
+
+        # Проверка полей
+        consumption = next(i for i in items if i["type"] == "consumption")
+        assert "id" in consumption
+        assert "appointmentId" in consumption
+        assert "quantity" in consumption
+        assert "timestamp" in consumption
+
+        refill = next(i for i in items if i["type"] == "refill")
+        assert "id" in refill
+        assert refill.get("appointmentId") is None
+        assert refill["quantity"] == 10.0
+
+    @pytest.mark.asyncio
+    async def test_history_forbidden_for_non_admin(
+        self, async_client, client_token, washer_token
+    ):
+        response = await async_client.get(
+            "/api/consumables/c_shampoo/history",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 403
+
+        response = await async_client.get(
+            "/api/consumables/c_shampoo/history",
+            headers={"Authorization": f"Bearer {washer_token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_forecast(self, async_client, admin_token):
         response = await async_client.get(
             "/api/consumables/c_shampoo/forecast",

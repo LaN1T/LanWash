@@ -123,40 +123,44 @@ async def seed_data():
             await session.commit()
 
         # Subscription plans
-        res = await session.execute(select(func.count(SubscriptionPlan.id)))
-        if res.scalar() == 0:
-            session.add_all(
-                [
-                    SubscriptionPlan(
-                        code="chistulya",
-                        name="Чистюля",
-                        description="5 моек со скидкой 10%",
-                        type="package",
-                        washCount=5,
-                        discountPercent=10,
-                        sortOrder=1,
-                    ),
-                    SubscriptionPlan(
-                        code="blesk-master",
-                        name="Блеск-мастер",
-                        description="10 моек со скидкой 15%",
-                        type="package",
-                        washCount=10,
-                        discountPercent=15,
-                        sortOrder=2,
-                    ),
-                    SubscriptionPlan(
-                        code="bezlimitka",
-                        name="Безлимитка",
-                        description="30 дней безлимитных моек одного типа",
-                        type="unlimited",
-                        unlimitedDays=30,
-                        washTypePrices={"w1": 8000, "w2": 12000, "w3": 22000, "w4": 40000},
-                        sortOrder=3,
-                    ),
-                ]
+        plan_fixtures = [
+            {
+                "code": "chistulya",
+                "name": "Чистюля",
+                "description": "5 моек со скидкой 10%",
+                "type": "package",
+                "washCount": 5,
+                "discountPercent": 10,
+                "sortOrder": 1,
+            },
+            {
+                "code": "blesk-master",
+                "name": "Блеск-мастер",
+                "description": "10 моек со скидкой 15%",
+                "type": "package",
+                "washCount": 10,
+                "discountPercent": 15,
+                "sortOrder": 2,
+            },
+            {
+                "code": "bezlimitka",
+                "name": "Безлимитка",
+                "description": "30 дней безлимитных моек одного типа",
+                "type": "unlimited",
+                "unlimitedDays": 30,
+                "washTypePrices": {"w1": 8000, "w2": 12000, "w3": 22000, "w4": 40000},
+                "sortOrder": 3,
+            },
+        ]
+        for fixture in plan_fixtures:
+            exists = await session.execute(
+                select(func.count(SubscriptionPlan.id)).where(
+                    SubscriptionPlan.code == fixture["code"]
+                )
             )
-            await session.commit()
+            if exists.scalar() == 0:
+                session.add(SubscriptionPlan(**fixture))
+        await session.commit()
 
         # Services (только доп.услуги, без типов мойки)
         res = await session.execute(select(func.count(Service.id)))

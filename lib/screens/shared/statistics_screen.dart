@@ -13,7 +13,9 @@ import '../admin/detailed_analytics_screen.dart';
 import 'package:lanwash/core/service_locator.dart';
 
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key});
+  final bool useScaffold;
+
+  const StatisticsScreen({super.key, this.useScaffold = true});
 
   @override
   State<StatisticsScreen> createState() => _StatisticsScreenState();
@@ -98,9 +100,63 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final dark = AppStyles.isDark(context);
 
     if (!isAdmin) {
+      if (!widget.useScaffold) {
+        return const Center(child: Text('Нет доступа'));
+      }
       return Scaffold(
         appBar: AppBar(title: const Text('Статистика')),
         body: const Center(child: Text('Нет доступа')),
+      );
+    }
+
+    final body = RefreshIndicator(
+      color: AppStyles.primary,
+      onRefresh: _loadReport,
+      child: CustomScrollView(
+        slivers: [
+          // Date selector
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _buildDateSelector(context),
+            ),
+          ),
+          // Content
+          if (_loading)
+            const SliverFillRemaining(child: _SkeletonView())
+          else if (_error != null)
+            SliverFillRemaining(child: _buildError(context))
+          else if (_report != null)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildKpiGrid(context, _report!),
+                  const SizedBox(height: 20),
+                  _buildProgressSection(context, _report!),
+                  const SizedBox(height: 20),
+                  _buildTopServicesChart(context, _report!),
+                  const SizedBox(height: 20),
+                  _buildBoxOccupancy(context, _report!),
+                  const SizedBox(height: 20),
+                  _buildWashersSection(context, _report!),
+                  const SizedBox(height: 20),
+                  _buildConsumablesAlerts(context, _report!),
+                  if (isAdmin) ...[
+                    const SizedBox(height: 24),
+                    _buildGrafanaButton(context),
+                  ],
+                ]),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (!widget.useScaffold) {
+      return Container(
+        color: dark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFF),
+        child: body,
       );
     }
 
@@ -120,49 +176,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             ),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppStyles.primary,
-        onRefresh: _loadReport,
-        child: CustomScrollView(
-          slivers: [
-            // Date selector
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: _buildDateSelector(context),
-              ),
-            ),
-            // Content
-            if (_loading)
-              const SliverFillRemaining(child: _SkeletonView())
-            else if (_error != null)
-              SliverFillRemaining(child: _buildError(context))
-            else if (_report != null)
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _buildKpiGrid(context, _report!),
-                    const SizedBox(height: 20),
-                    _buildProgressSection(context, _report!),
-                    const SizedBox(height: 20),
-                    _buildTopServicesChart(context, _report!),
-                    const SizedBox(height: 20),
-                    _buildBoxOccupancy(context, _report!),
-                    const SizedBox(height: 20),
-                    _buildWashersSection(context, _report!),
-                    const SizedBox(height: 20),
-                    _buildConsumablesAlerts(context, _report!),
-                    if (isAdmin) ...[
-                      const SizedBox(height: 24),
-                      _buildGrafanaButton(context),
-                    ],
-                  ]),
-                ),
-              ),
-          ],
-        ),
-      ),
+      body: body,
     );
   }
 

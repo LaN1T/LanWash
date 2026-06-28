@@ -282,6 +282,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Icons.alternate_email_rounded, 'Логин', user?.username ?? '—'),
           _infoTile(Icons.phone_outlined, 'Телефон',
               (user?.phone ?? '').isEmpty ? '—' : user!.phone),
+          _infoTile(Icons.email_outlined, 'Email',
+              (user?.email ?? '').isEmpty ? '—' : user!.email),
           const SizedBox(height: 24),
 
           if (!isAdmin) ...[

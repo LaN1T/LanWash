@@ -21,6 +21,7 @@ import 'providers/favorite_provider.dart';
 import 'providers/support_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/language_provider.dart';
+import 'providers/consumable_provider.dart';
 import 'services/api_service.dart';
 import 'services/car_catalog_service.dart';
 import 'services/notification_service.dart';
@@ -105,6 +106,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => SupportProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ConsumableProvider(api: sl<ApiService>()),
         ),
       ],
       child: const LanWashApp(),

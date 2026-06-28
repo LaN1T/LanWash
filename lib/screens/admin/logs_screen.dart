@@ -199,6 +199,8 @@ class _LogCard extends StatelessWidget {
     if (a.contains('Создание')) return AppStyles.success;
     if (a.contains('Редактир')) return AppStyles.warning;
     if (a.contains('избранное')) return AppStyles.favorite;
+    if (a.contains('статус')) return AppStyles.warning;
+    if (a.contains('qr_scan') || a.contains('QR')) return AppStyles.primary;
     return AppStyles.textSecondary;
   }
 
@@ -215,6 +217,9 @@ class _LogCard extends StatelessWidget {
     if (a.contains('Редактир')) return Icons.edit_outlined;
     if (a.contains('избранное')) return Icons.star_outline_rounded;
     if (a.contains('профиль')) return Icons.manage_accounts_outlined;
+    if (a.contains('статус')) return Icons.sync_alt_rounded;
+    if (a.contains('qr_scan') || a.contains('QR'))
+      return Icons.qr_code_scanner_rounded;
     return Icons.info_outline_rounded;
   }
 

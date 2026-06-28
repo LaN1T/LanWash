@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app_styles.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import 'package:lanwash/core/service_locator.dart';
+import 'client_detail_screen.dart';
 
 class ClientSearchScreen extends StatefulWidget {
   const ClientSearchScreen({super.key});
@@ -13,6 +15,7 @@ class ClientSearchScreen extends StatefulWidget {
 
 class _ClientSearchScreenState extends State<ClientSearchScreen> {
   final _searchCtrl = TextEditingController();
+  Timer? _debounce;
   List<User> _users = [];
   int _total = 0;
   bool _loading = false;
@@ -23,6 +26,7 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(_onSearchChanged);
     _load();
   }
 
@@ -57,6 +61,21 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
     }
   }
 
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _load(reset: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.removeListener(_onSearchChanged);
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = AppStyles.isDark(context);
@@ -77,15 +96,19 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
               decoration: InputDecoration(
                 hintText: 'Имя, телефон, авто, номер...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _load(reset: true);
-                        },
-                      )
-                    : null,
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchCtrl,
+                  builder: (context, value, child) {
+                    if (value.text.isEmpty) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        _load(reset: true);
+                      },
+                    );
+                  },
+                ),
                 filled: true,
                 fillColor: AppStyles.adaptiveCard(context),
                 border: OutlineInputBorder(
@@ -103,7 +126,6 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
                   borderSide: const BorderSide(color: AppStyles.primary),
                 ),
               ),
-              onSubmitted: (_) => _load(reset: true),
             ),
           ),
           if (_total > 0)
@@ -138,8 +160,11 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
                             itemBuilder: (ctx, i) {
                               if (i >= _users.length) {
                                 if (!_loading) {
-                                  _offset += _limit;
-                                  _load();
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    _offset += _limit;
+                                    _load();
+                                  });
                                 }
                                 return const Padding(
                                   padding: EdgeInsets.all(16),
@@ -149,7 +174,16 @@ class _ClientSearchScreenState extends State<ClientSearchScreen> {
                                 );
                               }
                               final u = _users[i];
-                              return _UserCard(user: u);
+                              return InkWell(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ClientDetailScreen(user: u),
+                                  ),
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                child: _UserCard(user: u),
+                              );
                             },
                           ),
           ),
