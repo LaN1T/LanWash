@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../app_styles.dart';
 import '../../models/subscription.dart';
@@ -123,9 +124,36 @@ class _SubscriptionCard extends StatelessWidget {
 
   const _SubscriptionCard({required this.subscription, required this.onTap});
 
+  bool get _isUnlimited =>
+      subscription.type == 'monthly' || subscription.totalWashes >= 999999;
+
+  String _remainingLabel() {
+    if (_isUnlimited) {
+      if (subscription.validUntil != null) {
+        return 'Действует до: ${_formatDate(subscription.validUntil!)}';
+      }
+      return 'Безлимитный абонемент';
+    }
+    final remaining = subscription.remaining;
+    final washesWord = remaining == 1
+        ? 'мойка'
+        : remaining < 5
+            ? 'мойки'
+            : 'моек';
+    return 'Осталось: $remaining $washesWord';
+  }
+
+  String _formatDate(String iso) {
+    try {
+      final dt = DateTime.parse(iso);
+      return DateFormat('d MMMM yyyy', 'ru').format(dt);
+    } catch (_) {
+      return iso;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final remaining = subscription.remaining;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: AppStyles.cardDecorationFor(context),
@@ -177,20 +205,21 @@ class _SubscriptionCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Осталось: $remaining ${remaining == 1 ? 'мойка' : remaining < 5 ? 'мойки' : 'моек'}',
+                      _remainingLabel(),
                       style: TextStyle(
                         fontSize: 13,
                         color: AppStyles.adaptiveTextSecondary(context),
                       ),
                     ),
-                    Text(
-                      '${subscription.usedWashes} / ${subscription.totalWashes}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppStyles.adaptiveTextMuted(context),
+                    if (!_isUnlimited)
+                      Text(
+                        '${subscription.usedWashes} / ${subscription.totalWashes}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppStyles.adaptiveTextMuted(context),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],

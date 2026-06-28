@@ -1710,7 +1710,7 @@ class ApiService {
     final result = await ApiClient.post('/subscriptions/buy', body: body);
     return result.when(
       success: (data) => Subscription.fromMap(data),
-      failure: (_) => null,
+      failure: (err) => throw Exception(err.message),
     );
   }
 

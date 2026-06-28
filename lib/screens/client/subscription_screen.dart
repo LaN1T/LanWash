@@ -144,7 +144,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                 ),
               ),
-              if (s.price > 0)
+              if (s.price > 0) ...[
+                const SizedBox(width: 12),
                 Text(
                   '${s.price} ₽',
                   style: const TextStyle(
@@ -153,8 +154,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     color: AppStyles.primary,
                   ),
                 ),
+              ],
               if (!isActive) ...[
-                if (s.price > 0) const SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Text(
                   s.usedWashes >= s.totalWashes ? 'Исчерпан' : 'Истёк',
                   style: const TextStyle(

@@ -36,9 +36,14 @@ class _ReadyPlanWashTypeScreenState extends State<ReadyPlanWashTypeScreen> {
     }
   }
 
+  bool _isAvailable(WashType wt) {
+    if (!widget.plan.isUnlimited) return true;
+    return widget.plan.washTypePrices?.containsKey(wt.id) ?? false;
+  }
+
   int _priceFor(WashType wt) {
     if (widget.plan.isUnlimited) {
-      return widget.plan.washTypePrices?[wt.id] ?? wt.basePrice;
+      return widget.plan.washTypePrices![wt.id]!;
     }
     final count = widget.plan.washCount ?? 1;
     return wt.basePrice * count * (100 - widget.plan.discountPercent) ~/ 100;
@@ -46,7 +51,7 @@ class _ReadyPlanWashTypeScreenState extends State<ReadyPlanWashTypeScreen> {
 
   int _originalPriceFor(WashType wt) {
     if (widget.plan.isUnlimited) {
-      return widget.plan.washTypePrices?[wt.id] ?? wt.basePrice;
+      return widget.plan.washTypePrices![wt.id]!;
     }
     final count = widget.plan.washCount ?? 1;
     return wt.basePrice * count;
@@ -75,25 +80,29 @@ class _ReadyPlanWashTypeScreenState extends State<ReadyPlanWashTypeScreen> {
               itemCount: _washTypes.length,
               itemBuilder: (ctx, i) {
                 final wt = _washTypes[i];
-                final price = _priceFor(wt);
-                final original = _originalPriceFor(wt);
+                final available = _isAvailable(wt);
+                final price = available ? _priceFor(wt) : 0;
+                final original = available ? _originalPriceFor(wt) : 0;
                 return _WashTypeCard(
                   washType: wt,
                   price: price,
                   originalPrice: original,
                   discountPercent: widget.plan.discountPercent,
                   isUnlimited: widget.plan.isUnlimited,
-                  onTap: () => Navigator.push(
-                      ctx,
-                      MaterialPageRoute(
-                          builder: (_) => SubscriptionCheckoutScreen.ready(
-                                name: widget.plan.name,
-                                planId: widget.plan.id,
-                                washTypeId: wt.id,
-                                washTypeName: wt.name,
-                                price: price,
-                                originalPrice: original,
-                              ))),
+                  available: available,
+                  onTap: available
+                      ? () => Navigator.push(
+                          ctx,
+                          MaterialPageRoute(
+                              builder: (_) => SubscriptionCheckoutScreen.ready(
+                                    name: widget.plan.name,
+                                    planId: widget.plan.id,
+                                    washTypeId: wt.id,
+                                    washTypeName: wt.name,
+                                    price: price,
+                                    originalPrice: original,
+                                  )))
+                      : null,
                 );
               },
             ),
@@ -107,7 +116,8 @@ class _WashTypeCard extends StatelessWidget {
   final int originalPrice;
   final int discountPercent;
   final bool isUnlimited;
-  final VoidCallback onTap;
+  final bool available;
+  final VoidCallback? onTap;
 
   const _WashTypeCard({
     required this.washType,
@@ -115,14 +125,20 @@ class _WashTypeCard extends StatelessWidget {
     required this.originalPrice,
     required this.discountPercent,
     required this.isUnlimited,
-    required this.onTap,
+    this.available = true,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final disabledColor = AppStyles.adaptiveTextMuted(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: AppStyles.cardDecorationFor(context),
+      decoration: AppStyles.cardDecorationFor(context).copyWith(
+        color: available
+            ? null
+            : AppStyles.adaptiveBgMuted(context),
+      ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
@@ -142,7 +158,9 @@ class _WashTypeCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppStyles.adaptiveTextPrimary(context),
+                          color: available
+                              ? AppStyles.adaptiveTextPrimary(context)
+                              : disabledColor,
                         ),
                       ),
                       if (washType.description.isNotEmpty)
@@ -152,12 +170,14 @@ class _WashTypeCard extends StatelessWidget {
                             washType.description,
                             style: TextStyle(
                               fontSize: 13,
-                              color: AppStyles.adaptiveTextSecondary(context),
+                              color: available
+                                  ? AppStyles.adaptiveTextSecondary(context)
+                                  : disabledColor,
                             ),
                           ),
                         ),
                       const SizedBox(height: 8),
-                      if (!isUnlimited && discountPercent > 0)
+                      if (available && !isUnlimited && discountPercent > 0)
                         Row(
                           children: [
                             Text(
@@ -195,14 +215,14 @@ class _WashTypeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '$price ₽',
-                      style: const TextStyle(
-                        fontSize: 18,
+                      available ? '$price ₽' : 'Недоступно',
+                      style: TextStyle(
+                        fontSize: available ? 18 : 14,
                         fontWeight: FontWeight.bold,
-                        color: AppStyles.primary,
+                        color: available ? AppStyles.primary : disabledColor,
                       ),
                     ),
-                    if (!isUnlimited)
+                    if (available && !isUnlimited)
                       Text(
                         '${washType.basePrice} ₽ / мойка',
                         style: TextStyle(
@@ -212,9 +232,11 @@ class _WashTypeCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(width: 8),
-                Icon(Icons.chevron_right,
-                    color: AppStyles.adaptiveTextMuted(context)),
+                if (available) ...[
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right,
+                      color: AppStyles.adaptiveTextMuted(context)),
+                ],
               ],
             ),
           ),
