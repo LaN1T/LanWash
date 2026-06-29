@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
@@ -21,7 +22,9 @@ class FavoriteProvider extends ChangeNotifier {
       _extraFavSet = await _api.getExtraFavorites(_currentUser);
       _serviceFavSet = await _api.getServiceFavorites(_currentUser);
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('FavoriteProvider.loadForUser error: $e');
+    }
   }
 
   Future<void> clearData() async {
@@ -43,7 +46,9 @@ class FavoriteProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('FavoriteProvider.toggleServiceFavorite error: $e');
+    }
   }
 
   Future<void> toggleExtraFavorite(String serviceId) async {
@@ -58,6 +63,8 @@ class FavoriteProvider extends ChangeNotifier {
         }
         notifyListeners();
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('FavoriteProvider.toggleExtraFavorite error: $e');
+    }
   }
 }

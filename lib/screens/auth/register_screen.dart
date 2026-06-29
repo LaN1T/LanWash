@@ -198,8 +198,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (v == null || v.trim().isEmpty) {
                           return lang.tr('validation_required');
                         }
-                        if (v.trim().length < 3)
+                        if (v.trim().length < 3) {
                           return lang.tr('validation_login_short');
+                        }
                         return null;
                       },
                     ),

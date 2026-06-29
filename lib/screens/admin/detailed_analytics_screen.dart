@@ -536,8 +536,9 @@ class _TopServicesChart extends StatelessWidget {
                   showTitles: true,
                   getTitlesWidget: (value, meta) {
                     final idx = value.toInt();
-                    if (idx < 0 || idx >= report.topServices.length)
+                    if (idx < 0 || idx >= report.topServices.length) {
                       return const SizedBox.shrink();
+                    }
                     final name = report.topServices[idx].name;
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),

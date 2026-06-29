@@ -43,6 +43,14 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Inject Firebase configuration
+        run: |
+          if [ -n "${{ secrets.FIREBASE_OPTIONS }}" ]; then
+            echo "${{ secrets.FIREBASE_OPTIONS }}" > lib/firebase_options.dart
+          else
+            cp lib/firebase_options.dart.example lib/firebase_options.dart
+          fi
+
       - name: Analyze code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
@@ -69,6 +77,14 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Inject Firebase configuration
+        run: |
+          if [ -n "${{ secrets.FIREBASE_OPTIONS }}" ]; then
+            echo "${{ secrets.FIREBASE_OPTIONS }}" > lib/firebase_options.dart
+          else
+            cp lib/firebase_options.dart.example lib/firebase_options.dart
+          fi
 
       - name: Build Android APK
         run: flutter build apk --release --obfuscate --split-debug-info=symbols/
@@ -97,6 +113,14 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Inject Firebase configuration
+        run: |
+          if [ -n "${{ secrets.FIREBASE_OPTIONS }}" ]; then
+            echo "${{ secrets.FIREBASE_OPTIONS }}" > lib/firebase_options.dart
+          else
+            cp lib/firebase_options.dart.example lib/firebase_options.dart
+          fi
 
       - name: Build Web
         run: flutter build web --release

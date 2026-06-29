@@ -1,10 +1,11 @@
 import asyncio
-import os
 from typing import Any, Dict, List
 
 import firebase_admin
 import structlog
 from firebase_admin import credentials, messaging
+
+from core.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -19,33 +20,37 @@ class FCMService:
         return cls._instance
 
     def _initialize_firebase(self):
-        if not firebase_admin._apps:
-            project_id = os.getenv("FIREBASE_PROJECT_ID")
-            if project_id:
-                cred_dict = {
-                    "type": "service_account",
-                    "project_id": project_id,
-                    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-                    "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace(
-                        r"\n", "\n"
-                    ),
-                    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-                    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-                    "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
-                    "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
-                    "auth_provider_x509_cert_url": os.getenv(
-                        "FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
-                    ),
-                    "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
-                }
-                try:
-                    cred = credentials.Certificate(cred_dict)
-                    firebase_admin.initialize_app(cred)
-                    logger.info("firebase_initialized")
-                except Exception as e:
-                    logger.error("firebase_init_failed", error=str(e))
-            else:
-                logger.warning("firebase_env_not_set")
+        if firebase_admin._apps:
+            return
+        settings = get_settings()
+        project_id = settings.firebase_project_id
+        if not project_id:
+            logger.warning("firebase_project_id_not_set")
+            return
+        cred_dict = {
+            "type": "service_account",
+            "project_id": project_id,
+            "private_key_id": settings.firebase_private_key_id,
+            "private_key": settings.firebase_private_key.replace(r"\n", "\n"),
+            "client_email": settings.firebase_client_email,
+            "client_id": settings.firebase_client_id,
+            "auth_uri": settings.firebase_auth_uri,
+            "token_uri": settings.firebase_token_uri,
+            "auth_provider_x509_cert_url": (
+                settings.firebase_auth_provider_x509_cert_url
+            ),
+            "client_x509_cert_url": settings.firebase_client_x509_cert_url,
+        }
+        try:
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            logger.info("firebase_initialized")
+        except Exception as e:
+            logger.error("firebase_init_failed", error=str(e))
+            if settings.is_production:
+                raise RuntimeError(
+                    f"Firebase initialization failed in production: {e}"
+                ) from e
 
     async def send_notification_to_tokens(
         self, tokens: List[str], title: str, body: str, data: Dict[str, Any] = None

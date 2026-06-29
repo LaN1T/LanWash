@@ -51,7 +51,6 @@ class _SubscriptionCheckoutScreenState
   bool get _isReady => widget.planId != null;
 
   void _showErrorDialog(BuildContext context, String message) {
-    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(

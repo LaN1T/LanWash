@@ -89,7 +89,9 @@ if settings.sentry_dsn:
             StarletteIntegration(transaction_style="endpoint"),
             FastApiIntegration(transaction_style="endpoint"),
         ],
-        traces_sample_rate=1.0 if settings.is_production else 0.0,
+        traces_sample_rate=(
+            settings.sentry_traces_sample_rate if settings.is_production else 0.0
+        ),
         before_send=_sentry_scrub_sensitive,
     )
     logger.info("sentry_initialized", environment=settings.environment)
@@ -126,6 +128,10 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("inventory_task_schedule_failed", error=str(e))
     except Exception as e:
+        if settings.is_production:
+            raise RuntimeError(
+                f"ARQ pool initialization failed in production: {e}"
+            ) from e
         logger.warning("arq_pool_initialization_failed", error=str(e))
         app.state.arq_pool = None
 

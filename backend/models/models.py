@@ -145,7 +145,9 @@ class SubscriptionPlan(Base):
     sortOrder = Column(Integer, nullable=False, default=0)
     isActive = Column(Boolean, nullable=False, default=True)
     createdAt = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updatedAt = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updatedAt = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class Subscription(Base):
@@ -162,7 +164,9 @@ class Subscription(Base):
     totalWashes = Column(Integer, nullable=False)
     usedWashes = Column(Integer, nullable=False, default=0)
     validUntil = Column(Date, nullable=True)  # ISO date for monthly; NULL for package
-    planId = Column(Integer, ForeignKey("subscription_plans.id", ondelete="SET NULL"), nullable=True)
+    planId = Column(
+        Integer, ForeignKey("subscription_plans.id", ondelete="SET NULL"), nullable=True
+    )
     price = Column(Integer, nullable=False, default=0)
     originalPrice = Column(Integer, nullable=False, default=0)
     selectedExtras = Column(String, nullable=True)  # JSON array string
@@ -365,7 +369,7 @@ class DeletedNotification(Base):
 class FcmToken(Base):
     __tablename__ = "fcm_tokens"
     username = Column(String, primary_key=True)
-    token = Column(String, nullable=False)
+    token = Column(String(2048), nullable=False)
     platform = Column(String, nullable=False)  # android, ios, web
     updatedAt = Column(DateTime, nullable=False)
 

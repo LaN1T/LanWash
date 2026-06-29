@@ -9,11 +9,13 @@ async def add_notification(
     telegram_id: str,
     message: str,
 ) -> NotificationQueue:
-    """Add a notification to the queue."""
+    """Add a notification to the queue.
+
+    The caller is responsible for committing the session.
+    """
     repo = NotificationQueueRepository(db)
     notification = await repo.add_notification(telegram_id, message)
-    await db.commit()
-    await db.refresh(notification)
+    # Do not commit here; callers control transaction boundaries.
     return notification
 
 

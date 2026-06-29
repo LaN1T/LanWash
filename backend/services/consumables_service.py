@@ -563,7 +563,11 @@ class ConsumablesService:
 
         try:
             wb = await asyncio.to_thread(
-                openpyxl.load_workbook, filename=io.BytesIO(content)
+                openpyxl.load_workbook,
+                filename=io.BytesIO(content),
+                data_only=True,
+                read_only=True,
+                keep_links=False,
             )
         except Exception as e:
             raise ValueError(f"Не удалось открыть файл: {e}")

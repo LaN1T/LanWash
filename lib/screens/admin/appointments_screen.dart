@@ -200,7 +200,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
               if (picked != null) {
                 final formattedPicked = DateFormat('yyyy-MM-dd').format(picked);
-                provider.setDate(formattedPicked, auth);
+                await provider.setDate(formattedPicked, auth);
               }
             },
             borderRadius: BorderRadius.circular(8),
@@ -302,7 +302,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 // ─── Карточка записи ─────────────────────────────────────────────────────────
 class _AppointmentCard extends StatelessWidget {
   final Appointment appointment;
-  final List<dynamic> services;
+  final List<Service> services;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
 
@@ -403,7 +403,7 @@ class _AppointmentCard extends StatelessWidget {
                 ])
               else
                 Text(
-                    '${a.calculateTotalPrice(services.cast<Service>(), context.watch<CatalogProvider>().washTypeById(a.washTypeId))} ₽',
+                    '${a.calculateTotalPrice(services, context.watch<CatalogProvider>().washTypeById(a.washTypeId))} ₽',
                     style: AppStyles.price.copyWith(fontSize: 15)),
             ]),
             if (a.additionalServices.isNotEmpty) ...[

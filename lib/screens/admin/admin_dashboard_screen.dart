@@ -602,8 +602,9 @@ class _RevenueChart extends StatelessWidget {
                     interval: data.length > 10 ? 5 : 1,
                     getTitlesWidget: (value, meta) {
                       final idx = value.toInt();
-                      if (idx < 0 || idx >= data.length)
+                      if (idx < 0 || idx >= data.length) {
                         return const SizedBox.shrink();
+                      }
                       final d = data[idx];
                       return Text(
                         DateFormat('dd.MM').format(DateTime.parse(d.date)),

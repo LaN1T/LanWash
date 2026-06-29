@@ -441,7 +441,8 @@ class TestAppointments:
     async def test_client_promo_price_is_calculated_and_reported(
         self, async_client, client_token, admin_token
     ):
-        """Non-admin booking with a weekend promo must store computed prices and show up in reports."""
+        """Non-admin booking with a weekend promo must store computed prices
+        and show up in reports."""
         from datetime import date as dt_date
 
         # Pick a future Saturday

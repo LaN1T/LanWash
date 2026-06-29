@@ -26,7 +26,29 @@ _EXPOSED_HEADERS = [
     "X-Frame-Options",
 ]
 
-_EXCLUDED_APP_CHECK_PATHS = {"/health", "/metrics", "/docs", "/redoc", "/openapi.json"}
+_EXCLUDED_APP_CHECK_PATHS = {
+    "/health",
+    "/metrics",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/webhook",
+    "/uploads/",
+    "/landing/",
+    "/static/",
+}
+
+
+def _is_app_check_excluded(path: str) -> bool:
+    if path in _EXCLUDED_APP_CHECK_PATHS:
+        return True
+    for prefix in _EXCLUDED_APP_CHECK_PATHS:
+        if prefix.endswith("/"):
+            if path.startswith(prefix):
+                return True
+        elif path == prefix or path.startswith(f"{prefix}/"):
+            return True
+    return False
 
 _METRICS_RATE_LIMIT: dict[str, list[float]] = {}
 _METRICS_MAX_PER_MINUTE = 60
@@ -82,7 +104,7 @@ async def metrics_rate_limit_middleware(
 async def app_check_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ):
-    if request.url.path not in _EXCLUDED_APP_CHECK_PATHS:
+    if not _is_app_check_excluded(request.url.path):
         await verify_app_check_token(request)
     return await call_next(request)
 

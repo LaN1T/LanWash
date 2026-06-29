@@ -56,36 +56,49 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 async def _get_redis():
     try:
-        client = get_redis()
-        if client is not None:
-            await client.ping()
-        return client
-    except Exception:
+        return get_redis()
+    except Exception as e:
+        if settings.is_production:
+            raise RuntimeError(f"Redis is required in production: {e}") from e
+        logger.warning("redis_unavailable", error=str(e))
         return None
 
 
 async def blacklist_token(jti: str, expires_in_seconds: int):
     """Add a JWT jti to the blacklist with TTL."""
     r = await _get_redis()
-    if r:
-        try:
-            await r.setex(f"{BLACKLIST_PREFIX}{jti}", expires_in_seconds, "1")
-        except Exception:
-            pass
+    if r is None:
+        if settings.is_production:
+            raise RuntimeError(
+                "Cannot blacklist token: Redis is not available in production"
+            )
+        return
+    try:
+        await r.setex(f"{BLACKLIST_PREFIX}{jti}", expires_in_seconds, "1")
+    except redis.RedisError as e:
+        logger.critical("token_blacklist_write_failed", jti=jti, error=str(e))
+        if settings.is_production:
+            raise RuntimeError(f"Failed to blacklist token in production: {e}") from e
 
 
 async def is_token_blacklisted(jti: str) -> bool:
     """Check if a JWT jti is blacklisted."""
     r = await _get_redis()
-    if r:
-        try:
-            return await r.exists(f"{BLACKLIST_PREFIX}{jti}") == 1
-        except redis.RedisError as e:
-            logger.critical("redis_blacklist_unavailable", error=str(e))
+    if r is None:
+        if settings.is_production:
+            raise RuntimeError(
+                "Cannot check token blacklist: Redis is not available in production"
+            )
+        return False
+    try:
+        return await r.exists(f"{BLACKLIST_PREFIX}{jti}") == 1
+    except redis.RedisError as e:
+        logger.critical("redis_blacklist_unavailable", error=str(e))
+        if settings.is_production:
             raise HTTPException(
                 status.HTTP_503_SERVICE_UNAVAILABLE, "Service temporarily unavailable"
-            )
-    return False
+            ) from e
+        return False
 
 
 def validate_password_strength(password: str) -> Optional[str]:
@@ -125,7 +138,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire, "jti": jti})
+    to_encode.update({"exp": expire, "jti": jti, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -153,7 +166,10 @@ async def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         jti: str = payload.get("jti")
+        token_type: str = payload.get("type", "access")
         if username is None:
+            raise credentials_exception
+        if token_type != "access":  # nosec: B105 (token type comparison, not a password)
             raise credentials_exception
         if jti and await is_token_blacklisted(jti):
             raise credentials_exception

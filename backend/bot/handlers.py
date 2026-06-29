@@ -1,16 +1,16 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 
+from core.config import get_settings
+
 router = Router()
 
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Send welcome message with WebApp button."""
-    # ngrok URL
-    web_app_url = (
-        "https://uncleavable-september-unattainably.ngrok-free.dev?t=1780777105"
-    )
+    settings = get_settings()
+    web_app_url = settings.telegram_mini_app_url or "https://app.lanwash.ru"
     await message.answer(
         "🚗 Добро пожаловать в LanWash!\n\nЗапишитесь на мойку прямо здесь:",
         reply_markup=types.InlineKeyboardMarkup(

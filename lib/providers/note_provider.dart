@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/note.dart';
 import '../services/api_service.dart';
@@ -37,7 +38,9 @@ class NoteProvider extends ChangeNotifier {
     try {
       _unreadNotes = await _api.getUnreadNotesCount();
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('NoteProvider.refreshUnreadCount error: $e');
+    }
   }
 
   Future<Note?> addNote(
@@ -69,7 +72,9 @@ class NoteProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('NoteProvider.markNoteRead error: $e');
+    }
   }
 
   Future<void> markAllNotesRead() async {
@@ -80,7 +85,9 @@ class NoteProvider extends ChangeNotifier {
         _unreadNotes = 0;
         notifyListeners();
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('NoteProvider.markAllNotesRead error: $e');
+    }
   }
 
   Future<void> deleteNote(int noteId) async {
@@ -91,6 +98,8 @@ class NoteProvider extends ChangeNotifier {
         _unreadNotes = _noteList.where((n) => !n.isRead).length;
         notifyListeners();
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('NoteProvider.deleteNote error: $e');
+    }
   }
 }

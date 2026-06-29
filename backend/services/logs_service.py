@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models import LogEntry, User
 from repositories.log_entry import LogEntryRepository
 
-
 _LOG_ROLES = {"admin", "washer"}
 
 

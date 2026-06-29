@@ -72,7 +72,7 @@ void main() async {
   await initializeDateFormatting('ru', null);
 
   // Инициализация push-уведомлений
-  sl<NotificationService>().init().catchError((_) {});
+  unawaited(sl<NotificationService>().init().catchError((_) {}));
 
   runApp(
     MultiProvider(

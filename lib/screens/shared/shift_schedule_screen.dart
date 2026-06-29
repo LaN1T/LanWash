@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -424,9 +426,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     _weekStart = _mondayOf(DateTime.now());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isWasher) {
-        _jumpToMyNearestShiftWeek();
+        unawaited(_jumpToMyNearestShiftWeek());
       } else {
-        _loadData();
+        unawaited(_loadData());
       }
     });
   }
@@ -464,7 +466,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     } catch (e, st) {
       debugPrint('ShiftSchedule: failed to load nearest shift week: $e\n$st');
     }
-    if (mounted) _loadData();
+    if (mounted) await _loadData();
   }
 
   Future<void> _loadData() async {
@@ -507,7 +509,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       }
 
       if (_mode == ShiftScheduleMode.shifts) {
-        _loadTemplates();
+        await _loadTemplates();
       }
     } catch (e, st) {
       debugPrint('ShiftSchedule: _loadData failed: $e\n$st');
@@ -599,7 +601,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   void _changeWeek(int delta) {
     setState(() => _weekStart = _weekStart.add(Duration(days: 7 * delta)));
-    _loadData();
+    unawaited(_loadData());
   }
 
   Shift? _findShift(int userId, DateTime date) {
@@ -631,7 +633,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final ok = await context.read<ApiService>().approveShift(shift.id);
     if (ok != null && mounted) {
       _showSnack('Смена одобрена');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -639,7 +641,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final ok = await context.read<ApiService>().rejectShift(shift.id);
     if (ok != null && mounted) {
       _showSnack('Смена отклонена');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -647,7 +649,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final ok = await context.read<ApiService>().reopenShift(shift.id);
     if (ok != null && mounted) {
       _showSnack('Смена возвращена на рассмотрение');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -689,7 +691,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         .moveShift(moved.id, targetWasher.id!, targetDateStr);
     if (result != null && mounted) {
       _showSnack('Смена перемещена');
-      _loadData();
+      await _loadData();
     } else if (mounted) {
       _showSnack('Не удалось переместить смену', isError: true);
     }
@@ -702,7 +704,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         _highlightedWasherId = washer.id;
         _weekStart = _mondayOf(DateTime.parse(shift.date));
       });
-      _loadData();
+      unawaited(_loadData());
     } catch (_) {}
   }
 
@@ -824,7 +826,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     );
     if (template != null && mounted) {
       _showSnack('Шаблон сохранён');
-      _loadTemplates();
+      await _loadTemplates();
     }
   }
 
@@ -843,7 +845,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (mounted) {
       _showSnack(
           count > 0 ? 'Применено $count смен' : 'Не удалось применить шаблон');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -852,7 +854,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         await context.read<ApiService>().deleteShiftTemplate(template.id);
     if (ok && mounted) {
       _showSnack('Шаблон удалён');
-      _loadTemplates();
+      await _loadTemplates();
     }
   }
 
@@ -864,7 +866,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (updated != null && mounted) {
       _showSnack(
           isDefault ? 'Шаблон по умолчанию установлен' : 'По умолчанию снят');
-      _loadTemplates();
+      await _loadTemplates();
     }
   }
 
@@ -967,7 +969,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     );
     if (result != null && mounted) {
       _showSnack('Смена вставлена');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1022,7 +1024,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     }
     if (mounted) {
       _showSnack('Неделя вставлена');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1084,7 +1086,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     }
     if (mounted) {
       _showSnack('День вставлен');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1126,7 +1128,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         );
     if (result != null && mounted) {
       _showSnack('Смена продублирована');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1134,7 +1136,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     final ok = await context.read<ApiService>().deleteShift(shift.id);
     if (ok && mounted) {
       _showSnack('Смена удалена');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1168,7 +1170,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
       await api.deleteShift(shift.id);
     }
     _showSnack('Смены удалены');
-    _loadData();
+    await _loadData();
   }
 
   Future<void> _confirmBulkAction(String action) async {
@@ -1211,7 +1213,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (mounted) {
       _showSnack(
           action == 'approve' ? 'Все заявки одобрены' : 'Все заявки отклонены');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1223,7 +1225,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
     if (mounted) {
       _showSnack(
           ok.isNotEmpty ? 'Доступность сохранена' : 'Не удалось сохранить');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1235,7 +1237,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
         );
     if (mounted) {
       _showSnack(ok ? 'Доступность сброшена' : 'Не удалось сбросить');
-      _loadData();
+      await _loadData();
     }
   }
 
@@ -1294,7 +1296,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
             ? 'Смена сохранена'
             : 'Заявка на смену отправлена администратору';
         _showSnack(msg);
-        _loadData();
+        await _loadData();
       }
     }
   }
@@ -1599,7 +1601,7 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
             final newMode = modes[index];
             if (newMode != _mode) {
               setState(() => _mode = newMode);
-              _loadData();
+              unawaited(_loadData());
             }
           },
           borderRadius: BorderRadius.circular(12),
@@ -1624,8 +1626,9 @@ class _ShiftScheduleScreenState extends State<ShiftScheduleScreen> {
 
   Widget _buildShiftsViewOrAvailability() {
     if (_mode == ShiftScheduleMode.shifts) return _buildShiftsView();
-    if (_mode == ShiftScheduleMode.availability)
+    if (_mode == ShiftScheduleMode.availability) {
       return _buildAvailabilityView();
+    }
     return _buildAnalyticsView();
   }
 

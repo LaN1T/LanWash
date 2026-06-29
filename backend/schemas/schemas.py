@@ -156,7 +156,7 @@ class ReferralStatsResponse(BaseModel):
 
 class FcmTokenRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    token: str = Field(..., min_length=1, max_length=1000)
+    token: str = Field(..., min_length=1, max_length=2048)
     platform: str = Field(..., max_length=20)
 
 

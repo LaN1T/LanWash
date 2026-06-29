@@ -7,13 +7,23 @@ class TestLogs:
     """Тесты логирования действий."""
 
     @pytest.mark.asyncio
-    async def test_create_log_public(self, async_client):
-        """Создание лога — публичный endpoint (для логирования входа/регистрации).
-
-        Записи создаются только для admin/washer.
-        """
+    async def test_create_log_requires_auth(self, async_client):
         response = await async_client.post(
             "/api/logs/",
+            json={
+                "username": "admin",
+                "action": "login",
+                "details": "Вход с устройства iPhone",
+            },
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_create_log_admin(self, async_client, admin_token):
+        """Админ может создавать логи для себя."""
+        response = await async_client.post(
+            "/api/logs/",
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "username": "admin",
                 "action": "login",
@@ -27,10 +37,11 @@ class TestLogs:
         assert "id" in data
 
     @pytest.mark.asyncio
-    async def test_create_log_skips_client(self, async_client):
+    async def test_create_log_skips_client(self, async_client, client_token):
         """Для клиентов запись в журнал действий не создаётся."""
         response = await async_client.post(
             "/api/logs/",
+            headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "username": "client_test",
                 "action": "login",
@@ -41,10 +52,27 @@ class TestLogs:
         assert response.json() is None
 
     @pytest.mark.asyncio
+    async def test_create_log_forbidden_other_user(
+        self, async_client, client_token
+    ):
+        """Аутентифицированный пользователь не может писать логи за другого."""
+        response = await async_client.post(
+            "/api/logs/",
+            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "username": "admin",
+                "action": "login",
+                "details": "",
+            },
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_get_all_logs_admin(self, async_client, admin_token, washer_token):
         # Создаём лог от имени админа
         await async_client.post(
             "/api/logs/",
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "username": "admin",
                 "action": "test_action",
@@ -54,6 +82,7 @@ class TestLogs:
         # Создаём лог от имени мойщика
         await async_client.post(
             "/api/logs/",
+            headers={"Authorization": f"Bearer {washer_token}"},
             json={
                 "username": "washer_test",
                 "action": "washer_action",
@@ -73,10 +102,13 @@ class TestLogs:
         assert "washer_action" in actions
 
     @pytest.mark.asyncio
-    async def test_get_all_logs_hides_clients(self, async_client, admin_token):
+    async def test_get_all_logs_hides_clients(
+        self, async_client, admin_token, client_token
+    ):
         # Лог клиента не должен попасть в общий журнал
         await async_client.post(
             "/api/logs/",
+            headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "username": "client_test",
                 "action": "client_action",
@@ -104,6 +136,7 @@ class TestLogs:
     async def test_get_logs_by_user(self, async_client, admin_token, washer_token):
         await async_client.post(
             "/api/logs/",
+            headers={"Authorization": f"Bearer {washer_token}"},
             json={
                 "username": "washer_test",
                 "action": "specific_action",
@@ -120,9 +153,12 @@ class TestLogs:
         assert data[0]["username"] == "washer_test"
 
     @pytest.mark.asyncio
-    async def test_get_logs_by_user_hides_client(self, async_client, admin_token):
+    async def test_get_logs_by_user_hides_client(
+        self, async_client, admin_token, client_token
+    ):
         await async_client.post(
             "/api/logs/",
+            headers={"Authorization": f"Bearer {client_token}"},
             json={
                 "username": "client_test",
                 "action": "specific_action",
@@ -167,6 +203,7 @@ class TestLogsCursorPagination:
         for i in range(3):
             await async_client.post(
                 "/api/logs/",
+                headers={"Authorization": f"Bearer {admin_token}"},
                 json={
                     "username": "admin",
                     "action": f"action_{i}",
@@ -187,6 +224,7 @@ class TestLogsCursorPagination:
         for i in range(3):
             await async_client.post(
                 "/api/logs/",
+                headers={"Authorization": f"Bearer {admin_token}"},
                 json={
                     "username": "admin",
                     "action": f"cursor_action_{i}",
@@ -221,6 +259,7 @@ class TestLogsCursorPagination:
         for i in range(3):
             await async_client.post(
                 "/api/logs/",
+                headers={"Authorization": f"Bearer {washer_token}"},
                 json={
                     "username": username,
                     "action": f"user_cursor_{i}",

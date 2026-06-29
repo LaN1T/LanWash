@@ -49,6 +49,7 @@ from services.audit_service import log_admin_action
 from services.auth_service import check_roles, get_current_user
 from services.fcm_service import fcm_service
 from services.notification_service import add_notification
+from services.subscriptions_service import SubscriptionsService
 from services.workload_service import workload_service
 
 logger = structlog.get_logger()
@@ -814,11 +815,10 @@ async def create(
     appt = Appointment(**appt_data)
     db.add(appt)
     await db.commit()
-    appointments_total.labels(status=appt.status).inc()
 
     if effective_status == "completed":
         await _track_consumables_usage(
-            request, db, req.id, req.washTypeId, req.additionalServices, req.promoId
+            request, db, appt.id, req.washTypeId, req.additionalServices, req.promoId
         )
         await db.commit()
 
@@ -1133,6 +1133,7 @@ async def update_appt(
                 f"{appt.carModel}, бокс {appt.box_index + 1}"
             )
             await add_notification(db, client_tg, message)
+            await db.commit()
 
     if req.status == "completed":
         await _track_consumables_usage(
@@ -1298,6 +1299,9 @@ async def delete_appt(
         .where(Appointment.id == appt_id)
         .values(isHiddenFromAdmin=True)
     )
+
+    if appt.subscriptionId:
+        await SubscriptionsService(db).restore_wash(appt.subscriptionId, washes=1)
 
     if current_user.role == "admin":
         await log_admin_action(
@@ -1831,6 +1835,9 @@ async def cancel_with_reason(
 
     appt.cancel_reason = req.reason
     appt.status = "cancelled"
+
+    if appt.subscriptionId:
+        await SubscriptionsService(db).restore_wash(appt.subscriptionId, washes=1)
 
     db.add(
         LogEntry(

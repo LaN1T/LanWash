@@ -34,8 +34,11 @@ raw_db_url = os.environ.get("DATABASE_URL")
 if raw_db_url:
     os.environ["DATABASE_URL"] = _resolve_local_database_url(raw_db_url)
 
-os.environ["JWT_SECRET_KEY"] = "test_secret_key_minimum_32_chars_long"
+os.environ["JWT_SECRET_KEY"] = (
+    "test-secret-key-with-at-least-43-characters-for-url-safe-token"
+)
 os.environ["INITIAL_ADMIN_PASSWORD"] = "TestPass123!"
+os.environ.setdefault("DEV_WASHER_PASSWORD", "DevWasher123!")
 os.environ.setdefault(
     "FCM_ENCRYPTION_KEY", "zM1-xb7fhoXQAbRzvCGSyMeZb37IdYLS2GN_zBUrFYw="
 )

@@ -7,3 +7,6 @@ scrape_configs:
     static_configs:
       - targets: ['host.docker.internal:8000']
     metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials: ${PROMETHEUS_API_TOKEN:-}

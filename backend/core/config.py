@@ -17,8 +17,19 @@ class Settings(BaseSettings):
     @field_validator("jwt_secret_key", mode="after")
     @classmethod
     def _validate_jwt_secret_key(cls, value: str) -> str:
-        if value and len(value) < 32:
-            raise ValueError("jwt_secret_key must be at least 32 characters long")
+        if len(value) < 43:
+            raise ValueError(
+                "jwt_secret_key must be at least 43 characters (256 bits url-safe)"
+            )
+        lower = value.lower()
+        exact_placeholders = {
+            "change_me_min_32_chars_use_secrets_token_urlsafe",
+            "change_me_to_something_secure",
+            "replace_with_43_plus_random_urlsafe_chars",
+            "placeholder",
+        }
+        if lower in exact_placeholders:
+            raise ValueError("jwt_secret_key looks like a placeholder")
         return value
 
     # Environment
@@ -45,12 +56,26 @@ class Settings(BaseSettings):
 
     # Error tracking (optional)
     sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.1
 
     # Redis
     redis_url: str = ""
 
     # Telegram Bot (optional)
     telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""
+    telegram_mini_app_url: str = ""
+
+    # Firebase / FCM
+    firebase_project_id: str = ""
+    firebase_private_key_id: str = ""
+    firebase_private_key: str = ""
+    firebase_client_email: str = ""
+    firebase_client_id: str = ""
+    firebase_auth_uri: str = "https://accounts.google.com/o/oauth2/auth"
+    firebase_token_uri: str = "https://oauth2.googleapis.com/token"
+    firebase_auth_provider_x509_cert_url: str = "https://www.googleapis.com/oauth2/v1/certs"
+    firebase_client_x509_cert_url: str = ""
 
     # AI providers (optional)
     gemini_api_key: Optional[str] = None

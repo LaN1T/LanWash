@@ -28,7 +28,14 @@ services:
     image: redis:7.4-alpine
     container_name: lanwash_redis
     restart: always
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: >-
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
     networks:
       - lanwash
 
@@ -58,9 +65,10 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    volumes:
+      - uploads_data:/app/uploads
     tmpfs:
       - /tmp
-      - /app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -172,8 +180,10 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   prometheus_data:
   grafana_data:
+  uploads_data:
 
 networks:
   lanwash:

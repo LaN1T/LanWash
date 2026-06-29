@@ -1,5 +1,5 @@
-from datetime import date, datetime, timedelta
 import json
+from datetime import date, datetime, timedelta
 
 import structlog
 from sqlalchemy import select
@@ -283,6 +283,16 @@ class SubscriptionsService:
         await self._db.commit()
         await self._db.refresh(sub)
         return {"ok": True, "remaining": sub.totalWashes - sub.usedWashes}
+
+    async def restore_wash(self, subscription_id: int | None, washes: int = 1) -> None:
+        """Decrement usedWashes when an appointment that consumed a subscription
+        is cancelled or deleted."""
+        if not subscription_id or washes <= 0:
+            return
+        sub = await self._subscriptions.get_by_id(subscription_id)
+        if sub:
+            sub.usedWashes = max(0, sub.usedWashes - washes)
+            await self._db.commit()
 
     async def get_subscription_stats(self, user_id: int) -> dict:
         active_count = await self._subscriptions.count_active_for_user(user_id)

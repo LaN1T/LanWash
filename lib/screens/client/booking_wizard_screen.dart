@@ -124,9 +124,10 @@ class _BWState extends State<BookingWizardScreen> {
     // Check if at least one box is free
     for (int boxIdx = 0; boxIdx < busy.length; boxIdx++) {
       bool isBoxFree = true;
-      for (final slot in busy[boxIdx]) {
-        final slotStart = DateTime.parse(slot['start']);
-        final slotEnd = DateTime.parse(slot['end']);
+      for (final slot in busy[boxIdx] as List<dynamic>) {
+        final slotMap = slot as Map<String, dynamic>;
+        final slotStart = DateTime.parse(slotMap['start'] as String);
+        final slotEnd = DateTime.parse(slotMap['end'] as String);
 
         if (start.isBefore(slotEnd) && end.isAfter(slotStart)) {
           isBoxFree = false;

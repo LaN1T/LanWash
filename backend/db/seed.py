@@ -31,25 +31,29 @@ async def seed_data():
     async with db_session.AsyncSessionLocal() as session:
         now = datetime.now()
 
+        import os
+
         admin_pass = settings.initial_admin_password
 
-        if not admin_pass or admin_pass == "change_me_to_something_secure":
-            logger.warning("admin_password_not_set")
-        else:
-            # Upsert админа с использованием Argon2
-            stmt = (
-                insert(User)
-                .values(
-                    username="admin",
-                    passwordHash=pwd_context.hash(admin_pass),
-                    role="admin",
-                    displayName="Администратор",
-                    createdAt=now,
-                )
-                .on_conflict_do_nothing(index_elements=["username"])
+        if not admin_pass:
+            raise RuntimeError("INITIAL_ADMIN_PASSWORD is not set")
+        if admin_pass in ("change_me_to_something_secure", "REPLACE_WITH_STRONG_PASSWORD"):
+            raise RuntimeError("INITIAL_ADMIN_PASSWORD is set to the default placeholder")
+
+        # Upsert админа с использованием Argon2
+        stmt = (
+            insert(User)
+            .values(
+                username="admin",
+                passwordHash=pwd_context.hash(admin_pass),
+                role="admin",
+                displayName="Администратор",
+                createdAt=now,
             )
-            await session.execute(stmt)
-            await session.commit()
+            .on_conflict_do_nothing(index_elements=["username"])
+        )
+        await session.execute(stmt)
+        await session.commit()
 
         # Seed мойщиков для dev (только в не-production окружениях)
         if not settings.is_production:
@@ -58,9 +62,11 @@ async def seed_data():
                 ("washer2", "Петр", "+79007654321"),
                 ("washer3", "Алексей", "+79001112233"),
             ]
-            dev_washer_password = "Washer_1312"
+            dev_washer_password = os.environ.get("DEV_WASHER_PASSWORD")
+            if not dev_washer_password:
+                raise RuntimeError("DEV_WASHER_PASSWORD must be set for seeding dev washers")
             if dev_washer_password == "Washer_1312":
-                logger.warning("dev_washer_default_password_used")
+                raise RuntimeError("DEV_WASHER_PASSWORD is set to the default value")
             for login, name, phone in washers:
                 stmt = (
                     insert(User)

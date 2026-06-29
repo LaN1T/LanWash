@@ -11,7 +11,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../models/service.dart';
 import '../../services/api_service.dart';
+import '../../core/api_result.dart';
 import 'review_create_screen.dart';
+import '../../models/tip.dart';
 
 class ClientAppointmentDetailScreen extends StatefulWidget {
   final Appointment appointment;
@@ -704,7 +706,7 @@ class _InfoTile extends StatelessWidget {
 
 class TipBottomSheet extends StatefulWidget {
   final String appointmentId;
-  final dynamic api;
+  final ApiService api;
   final double bottomPadding;
 
   const TipBottomSheet({
@@ -927,7 +929,7 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
         method: _method,
       );
       result.when(
-        success: (tip) {
+        success: (Tip tip) {
           if (_method == 'sbp') {
             _sbpUrl = tip.sbpUrl;
           }
@@ -938,7 +940,7 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
             });
           }
         },
-        failure: (err) {
+        failure: (AppError err) {
           if (mounted) {
             setState(() => _isLoading = false);
             final msg = err.message.isNotEmpty

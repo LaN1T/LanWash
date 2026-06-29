@@ -313,7 +313,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context,
                       MaterialPageRoute(builder: (_) => const CarListScreen()),
                     );
-                    _loadPrimaryCar();
+                    await _loadPrimaryCar();
                   },
                 ),
               ),

@@ -43,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
       final token = await ApiService.getToken();
       if (json != null && token != null) {
         _user = User.fromMap(jsonDecode(json));
-        _notifications.updateTokenOnServer(_user!.username);
+        await _notifications.updateTokenOnServer(_user!.username);
       }
     } catch (_) {
       _errorMessage = 'error_session_load';
@@ -84,7 +84,7 @@ class AuthProvider extends ChangeNotifier {
 
       _user = user;
       await _saveUser(user);
-      _notifications.updateTokenOnServer(user.username);
+      await _notifications.updateTokenOnServer(user.username);
 
       notifyListeners();
       await _api.createLog(

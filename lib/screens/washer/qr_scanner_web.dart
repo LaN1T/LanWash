@@ -56,7 +56,7 @@ class _QrScannerWebBodyState extends State<QrScannerBody> {
         );
         return;
       }
-      Navigator.of(context).push(
+      await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => AppointmentDetailWidget(
               appointment: appointment, isClient: false),

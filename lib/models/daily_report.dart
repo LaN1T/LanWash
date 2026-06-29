@@ -26,7 +26,7 @@ class DailyReport {
         revenue: json['revenue'] ?? 0,
         appointmentsCount: json['appointmentsCount'] ?? 0,
         completedCount: json['completedCount'] ?? 0,
-        averageCheck: (json['averageCheck'] ?? 0).toDouble(),
+        averageCheck: (json['averageCheck'] as num? ?? 0).toDouble(),
         boxOccupancy: (json['boxOccupancy'] as Map<String, dynamic>?)
                 ?.map((k, v) => MapEntry(k, v as int)) ??
             {},
@@ -87,7 +87,7 @@ class ConsumableAlert {
   factory ConsumableAlert.fromJson(Map<String, dynamic> json) =>
       ConsumableAlert(
         name: json['name'] ?? '',
-        currentStock: (json['currentStock'] ?? 0).toDouble(),
-        minStock: (json['minStock'] ?? 0).toDouble(),
+        currentStock: (json['currentStock'] as num? ?? 0).toDouble(),
+        minStock: (json['minStock'] as num? ?? 0).toDouble(),
       );
 }

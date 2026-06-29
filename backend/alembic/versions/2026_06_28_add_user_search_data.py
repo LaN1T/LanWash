@@ -5,10 +5,11 @@ Revises: 834b3fb6eb66
 Create Date: 2026-06-28 21:30:00.000000
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "2026_06_28_add_user_search_data"
 down_revision = "834b3fb6eb66"

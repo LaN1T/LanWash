@@ -36,10 +36,10 @@ class AdminDashboard {
         totalAppointments: json['totalAppointments'] ?? 0,
         completedAppointments: json['completedAppointments'] ?? 0,
         cancelledAppointments: json['cancelledAppointments'] ?? 0,
-        averageCheck: (json['averageCheck'] ?? 0).toDouble(),
+        averageCheck: (json['averageCheck'] as num? ?? 0).toDouble(),
         newClients: json['newClients'] ?? 0,
         returningClients: json['returningClients'] ?? 0,
-        averageRating: (json['averageRating'] ?? 0).toDouble(),
+        averageRating: (json['averageRating'] as num? ?? 0).toDouble(),
         dailyBreakdown: (json['dailyBreakdown'] as List<dynamic>?)
                 ?.map((e) => DailyBreakdown.fromJson(e as Map<String, dynamic>))
                 .toList() ??

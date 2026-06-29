@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +20,7 @@ class _SupportChatsScreenState extends State<SupportChatsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SupportProvider>().loadChats(isAdmin: false);
+      unawaited(context.read<SupportProvider>().loadChats(isAdmin: false));
     });
   }
 
@@ -27,7 +29,7 @@ class _SupportChatsScreenState extends State<SupportChatsScreen> {
     final chat = await provider.createChat('');
     if (!mounted) return;
     if (chat != null) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => ClientSupportChatScreen(chat: chat)),
       );

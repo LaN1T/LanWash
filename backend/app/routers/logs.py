@@ -85,9 +85,17 @@ async def get_by_user(
 
 @router.post("/", response_model=Optional[LogResponse])
 @limiter.limit("30/minute")
-async def create(request: Request, req: LogRequest, db: AsyncSession = Depends(get_db)):
-    # Эндпоинт публичный, так как используется для записи логина/регистрации
-    # до авторизации. Записи создаются только для admin и washer.
+async def create(
+    request: Request,
+    req: LogRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Authenticated users may only create logs for themselves.
+    if current_user.username != req.username.lower():
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "You can only create logs for your own account."
+        )
     svc = LogsService(db)
     return await svc.create_log(req.username.lower(), req.action, req.details)
 

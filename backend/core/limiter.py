@@ -31,11 +31,11 @@ def get_proxy_aware_remote_address(request: Request) -> str:
     if _is_trusted_proxy(direct_host):
         x_forwarded_for = request.headers.get("X-Forwarded-For")
         if x_forwarded_for:
-            # Take the first (closest to client) IP
-            return x_forwarded_for.split(",")[0].strip()
+            # Nginx appends the real client IP at the end of the chain.
+            return x_forwarded_for.split(",")[-1].strip()
         x_real_ip = request.headers.get("X-Real-IP")
         if x_real_ip:
-            return x_real_ip
+            return x_real_ip.strip()
     if direct_host:
         return direct_host
     return "127.0.0.1"

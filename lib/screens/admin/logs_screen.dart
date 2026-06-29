@@ -70,7 +70,7 @@ class _LogsScreenState extends State<LogsScreen> {
     );
     if (ok == true) {
       await LogService.instance.clearAll();
-      _load();
+      await _load();
     }
   }
 
@@ -218,8 +218,9 @@ class _LogCard extends StatelessWidget {
     if (a.contains('избранное')) return Icons.star_outline_rounded;
     if (a.contains('профиль')) return Icons.manage_accounts_outlined;
     if (a.contains('статус')) return Icons.sync_alt_rounded;
-    if (a.contains('qr_scan') || a.contains('QR'))
+    if (a.contains('qr_scan') || a.contains('QR')) {
       return Icons.qr_code_scanner_rounded;
+    }
     return Icons.info_outline_rounded;
   }
 

@@ -314,3 +314,31 @@ class TestRefreshToken:
 
         refresh_response = await async_client.post("/api/auth/refresh")
         assert refresh_response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_refresh_token_cannot_be_used_as_access_token(
+        self, async_client
+    ):
+        await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "refreshasaccess",
+                "password": "TestPass123!",
+                "displayName": "Refresh as Access",
+            },
+        )
+        login_response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": "refreshasaccess",
+                "password": "TestPass123!",
+            },
+        )
+        assert login_response.status_code == 200
+        refresh_token = login_response.json()["refresh_token"]
+
+        response = await async_client.get(
+            "/api/auth/washers",
+            headers={"Authorization": f"Bearer {refresh_token}"},
+        )
+        assert response.status_code == 401

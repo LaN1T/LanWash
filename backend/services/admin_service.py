@@ -9,6 +9,7 @@ from core.redis_client import get_redis
 from repositories import AppointmentRepository, ReviewRepository, UserRepository
 from schemas import ForecastResponse
 from services.forecast_service import generate_forecast
+from services.subscriptions_service import SubscriptionsService
 
 
 class AdminService:
@@ -243,6 +244,7 @@ class AdminService:
 
         processed = 0
         now = datetime.now()
+        sub_service = SubscriptionsService(self._db)
         for appt in appointments:
             if appt.status == "cancelled":
                 errors.append(f"{appt.id}: уже отменена")
@@ -255,6 +257,8 @@ class AdminService:
                 appt.notes = f"{appt.notes}\n[Отмена: {reason}]".strip()
             appt.isModifiedByAdmin = 1
             appt.updatedAt = now
+            if appt.subscriptionId:
+                await sub_service.restore_wash(appt.subscriptionId, washes=1)
             processed += 1
 
         await self._db.commit()
@@ -271,6 +275,7 @@ class AdminService:
 
         processed = 0
         now = datetime.now()
+        sub_service = SubscriptionsService(self._db)
         for appt in appointments:
             if appt.status == status:
                 errors.append(f"{appt.id}: уже имеет статус {status}")
@@ -281,6 +286,8 @@ class AdminService:
             appt.status = status
             appt.isModifiedByAdmin = 1
             appt.updatedAt = now
+            if status == "cancelled" and appt.subscriptionId:
+                await sub_service.restore_wash(appt.subscriptionId, washes=1)
             processed += 1
 
         await self._db.commit()

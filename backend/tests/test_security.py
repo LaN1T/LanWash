@@ -1,10 +1,13 @@
 import jwt
 import pytest
 
+from core.config import get_settings
 from services.auth_service import (
     create_access_token,
     validate_password_strength,
 )
+
+settings = get_settings()
 
 
 class TestPasswordValidation:
@@ -44,9 +47,8 @@ class TestJWT:
         assert isinstance(token, str)
         assert len(token) > 0
 
-        # Декодируем без проверки подписи для теста
         payload = jwt.decode(
-            token, "test_secret_key_minimum_32_chars_long", algorithms=["HS256"]
+            token, settings.jwt_secret_key, algorithms=["HS256"]
         )
         assert payload["sub"] == "testuser"
         assert payload["role"] == "client"
@@ -59,6 +61,4 @@ class TestJWT:
             {"sub": "testuser"}, expires_delta=timedelta(seconds=-1)
         )
         with pytest.raises(jwt.ExpiredSignatureError):
-            jwt.decode(
-                token, "test_secret_key_minimum_32_chars_long", algorithms=["HS256"]
-            )
+            jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
