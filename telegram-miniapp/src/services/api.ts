@@ -32,13 +32,13 @@ api.interceptors.response.use(
       if (!refreshPromise) {
         refreshPromise = api
           .post('/auth/refresh', {}, { withCredentials: true })
-          .then((res) => {
+          .then(async (res) => {
             const { user, access_token } = res.data
-            useAuthStore.getState().setAuth(user, access_token)
+            await useAuthStore.getState().setAuth(user, access_token)
             return access_token as string
           })
-          .catch(() => {
-            useAuthStore.getState().logout()
+          .catch(async () => {
+            await useAuthStore.getState().logout()
             return null
           })
           .finally(() => {

@@ -24,10 +24,10 @@ function App() {
       try {
         if (initData) {
           const res = await telegramAuth(initData)
-          setAuth(res.user, res.access_token)
+          await setAuth(res.user, res.access_token)
         } else if (isInTelegram) {
           const res = await api.post('/auth/refresh', {}, { withCredentials: true })
-          setAuth(res.data.user, res.data.access_token)
+          await setAuth(res.data.user, res.data.access_token)
         }
       } catch (e) {
         console.error('Auth failed', e)
@@ -36,7 +36,7 @@ function App() {
       }
     }
     auth()
-  }, [initData, ready, isInTelegram])
+  }, [initData, ready, isInTelegram, setAuth])
 
   if (!ready) {
     return (

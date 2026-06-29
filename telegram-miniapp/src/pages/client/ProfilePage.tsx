@@ -154,7 +154,7 @@ export default function ProfilePage() {
 
       {/* Logout */}
       <button
-        onClick={logout}
+        onClick={async () => { await logout() }}
         style={{
           width: '100%',
           padding: '16px 24px',
