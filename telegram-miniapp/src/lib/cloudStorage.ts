@@ -3,7 +3,7 @@ export const STORAGE_KEYS = {
   USER: 'lw_user',
 } as const
 
-function getTg(): Window['Telegram']['WebApp'] | undefined {
+function getTg() {
   return window.Telegram?.WebApp
 }
 
@@ -11,11 +11,11 @@ export async function getItem(key: string): Promise<string | null> {
   const tg = getTg()
   const storage = tg?.CloudStorage
   if (storage) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       storage.getItem(key, (err, value) => {
         if (err) {
           console.warn('CloudStorage getItem error', err)
-          resolve(null)
+          reject(err)
         } else if (value == null || value === '') {
           resolve(null)
         } else {
@@ -28,7 +28,7 @@ export async function getItem(key: string): Promise<string | null> {
     return localStorage.getItem(key)
   } catch (e) {
     console.warn('localStorage getItem error', e)
-    return null
+    throw e
   }
 }
 
