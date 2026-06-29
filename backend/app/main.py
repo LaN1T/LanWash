@@ -212,7 +212,22 @@ miniapp_dir = os.path.join(
 if os.path.exists(miniapp_dir):
 
     @app.get("/{path:path}")
-    async def serve_miniapp(path: str):
+    async def serve_miniapp(request: Request, path: str):
+        # Do not let the catch-all mask API or backend-only paths.
+        backend_prefixes = (
+            "/api/",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+            "/metrics",
+            "/health",
+            "/webhook",
+            "/ws/",
+            "/uploads/",
+        )
+        if request.url.path.startswith(backend_prefixes):
+            raise HTTPException(404, "Not found")
+
         headers = {
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
