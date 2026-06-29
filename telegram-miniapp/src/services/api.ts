@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { isAuthResponse } from './auth'
 
 export const api = axios.create({
   baseURL: '/api',
@@ -23,7 +24,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     if (error.response?.status === 401 && originalRequest) {
-      if (originalRequest.url === '/auth/refresh') {
+      if (originalRequest.url?.endsWith('/auth/refresh')) {
         useAuthStore.getState().logout()
         return Promise.reject(error)
       }
@@ -32,9 +33,13 @@ api.interceptors.response.use(
         refreshPromise = api
           .post('/auth/refresh', {}, { withCredentials: true })
           .then(async (res) => {
+            if (!isAuthResponse(res.data)) {
+              await useAuthStore.getState().logout()
+              return null
+            }
             const { user, access_token } = res.data
             await useAuthStore.getState().setAuth(user, access_token)
-            return access_token as string
+            return access_token
           })
           .catch(async () => {
             await useAuthStore.getState().logout()
