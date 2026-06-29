@@ -102,6 +102,7 @@ class UserResponse(BaseModel):
     isFavoriteAdmin: bool
     passwordVersion: int = 1
     referralCode: Optional[str] = None
+    telegramLinked: bool = False
 
 
 class WasherPublicResponse(BaseModel):

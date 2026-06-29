@@ -1,5 +1,7 @@
 import pytest
 
+from services.auth_service import AuthService, TelegramNotLinkedError
+
 
 class TestRegister:
     @pytest.mark.asyncio
@@ -342,3 +344,39 @@ class TestRefreshToken:
             headers={"Authorization": f"Bearer {refresh_token}"},
         )
         assert response.status_code == 401
+
+
+class TestTelegramAuth:
+    @pytest.mark.asyncio
+    async def test_telegram_auth_unlinked_raises(self, db_session, monkeypatch):
+        def _fake_verify(init_data, max_age_seconds=300):
+            return {
+                "id": 999999,
+                "username": "tg_unlinked",
+                "first_name": "Unlinked",
+            }
+
+        monkeypatch.setattr(
+            "services.telegram_auth_service.verify_telegram_init_data", _fake_verify
+        )
+        svc = AuthService(db_session)
+        with pytest.raises(TelegramNotLinkedError):
+            await svc.telegram_auth("dummy_init_data")
+
+    @pytest.mark.asyncio
+    async def test_telegram_auth_unlinked_returns_409(self, async_client, monkeypatch):
+        def _fake_verify(init_data, max_age_seconds=300):
+            return {
+                "id": 999999,
+                "username": "tg_unlinked",
+                "first_name": "Unlinked",
+            }
+
+        monkeypatch.setattr(
+            "services.telegram_auth_service.verify_telegram_init_data", _fake_verify
+        )
+        response = await async_client.post(
+            "/api/auth/telegram", json={"initData": "dummy_init_data"}
+        )
+        assert response.status_code == 409
+        assert "не привязан" in response.json()["detail"].lower()

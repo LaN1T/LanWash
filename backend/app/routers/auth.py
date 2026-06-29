@@ -43,6 +43,7 @@ from services.auth_service import (
     ProfileAccessDeniedError,
     SelfReferralError,
     StatsAccessDeniedError,
+    TelegramNotLinkedError,
     UsernameAlreadyExistsError,
     UserNotFoundError,
     get_current_user,
@@ -181,6 +182,7 @@ async def register(
     "/telegram",
     response_model=TelegramAuthResponse,
     summary="Авторизация через Telegram Mini App",
+    responses={409: {"description": "Telegram ID не привязан к аккаунту"}},
 )
 @limiter.limit("10/minute")
 async def telegram_auth(
@@ -194,6 +196,8 @@ async def telegram_auth(
         result = await svc.telegram_auth(req.initData)
         _set_refresh_cookie(response, result["refresh_token"], get_settings())
         return result
+    except TelegramNotLinkedError as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
     except InvalidCredentialsError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except RuntimeError:

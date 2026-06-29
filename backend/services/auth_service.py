@@ -271,6 +271,14 @@ class AvatarAccessDeniedError(Exception):
     pass
 
 
+class TelegramNotLinkedError(Exception):
+    """Telegram ID is not linked to any existing account."""
+
+
+class TelegramAlreadyLinkedError(Exception):
+    """Telegram ID is already linked to another account."""
+
+
 # Dummy hash for constant-time login (prevents user enumeration via timing)
 _DUMMY_ARGON2_HASH = "$argon2id$v=19$m=65536,t=3,p=4$fw/hvFdqba015jynFCJE6A$VHeA4BTTk+oc195w+F46DmejGXJK/bzxYCREJ/OGnbw"  # noqa: E501
 
@@ -307,6 +315,25 @@ class AuthService:
         self._fcm_repo = FcmTokenRepository(db)
         self._appointment_repo = AppointmentRepository(db)
 
+    def _issue_token_pair(self, user: User) -> dict:
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token_data = {
+            "sub": user.username,
+            "role": user.role,
+            "pwd_ver": user.passwordVersion,
+        }
+        access_token = create_access_token(
+            data=token_data, expires_delta=access_token_expires
+        )
+        refresh_token = create_refresh_token(token_data)
+        return {
+            "user": user,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            # OAuth2 token type, not a password.
+            "token_type": "bearer",  # nosec: B105
+        }
+
     async def login(self, username: str, password: str) -> dict:
         user = await self._user_repo.get_by_username(username)
         if not user:
@@ -317,24 +344,7 @@ class AuthService:
         if not await async_verify_password(password, user.passwordHash):
             raise InvalidCredentialsError("Неверный логин или пароль")
 
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        token_data = {
-            "sub": user.username,
-            "role": user.role,
-            "pwd_ver": user.passwordVersion,
-        }
-        access_token = create_access_token(
-            data=token_data,
-            expires_delta=access_token_expires,
-        )
-        refresh_token = create_refresh_token(token_data)
-        return {
-            "user": user,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            # OAuth2 token type, not a password.
-            "token_type": "bearer",  # nosec: B105
-        }
+        return self._issue_token_pair(user)
 
     @atomic
     async def register(self, req) -> dict:
@@ -390,101 +400,24 @@ class AuthService:
 
         await self._db.refresh(new_user)
 
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        token_data = {
-            "sub": new_user.username,
-            "role": new_user.role,
-            "pwd_ver": new_user.passwordVersion,
-        }
-        access_token = create_access_token(
-            data=token_data,
-            expires_delta=access_token_expires,
-        )
-        refresh_token = create_refresh_token(token_data)
-
-        return {
-            "user": new_user,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            # OAuth2 token type, not a password.
-            "token_type": "bearer",  # nosec: B105
-        }
-
-    @atomic
-    async def _create_telegram_user(
-        self, username: str, display_name: str, photo_url: str, telegram_id: str
-    ) -> User:
-        """Atomic helper: create a new user coming from Telegram auth."""
-        import secrets
-        import string
-
-        referral_code = await _ensure_unique_referral_code(self._db)
-        random_password = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(16)
-        )
-        new_user = User(
-            username=username.lower().strip(),
-            passwordHash=await async_get_password_hash(random_password),
-            role="client",
-            displayName=display_name,
-            phone="",
-            carModel="",
-            carNumber="",
-            avatarUrl=photo_url,
-            createdAt=datetime.now(),
-            isFavoriteAdmin=0,
-            telegramId=telegram_id,
-            referralCode=referral_code,
-        )
-        await self._user_repo.add(new_user)
-        await self._db.flush()
-        await self._db.refresh(new_user)
-        return new_user
+        return self._issue_token_pair(new_user)
 
     async def telegram_auth(self, init_data: str) -> dict:
         from services.telegram_auth_service import verify_telegram_init_data
 
         user_data = verify_telegram_init_data(init_data)
         if not user_data:
-            raise InvalidCredentialsError("Неверные данные Telegram")
+            raise InvalidCredentialsError("Неверные или устаревшие данные Telegram")
 
         telegram_id = str(user_data.get("id"))
-        username = user_data.get("username") or f"tg_{telegram_id}"
-        display_name = user_data.get("first_name") or username
-        photo_url = user_data.get("photo_url", "")
+        if not telegram_id:
+            raise InvalidCredentialsError("Неверные данные Telegram")
 
         user = await self._user_repo.get_by_telegram_id(telegram_id)
-
         if not user:
-            user = await self._user_repo.get_by_username(username.lower().strip())
-            if user:
-                user.telegramId = telegram_id
-                await self._db.commit()
-                await self._db.refresh(user)
-            else:
-                user = await self._create_telegram_user(
-                    username, display_name, photo_url, telegram_id
-                )
+            raise TelegramNotLinkedError("Telegram не привязан к аккаунту")
 
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        token_data = {
-            "sub": user.username,
-            "role": user.role,
-            "pwd_ver": user.passwordVersion,
-        }
-        access_token = create_access_token(
-            data=token_data,
-            expires_delta=access_token_expires,
-        )
-        refresh_token = create_refresh_token(token_data)
-
-        return {
-            "user": user,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            # OAuth2 token type, not a password.
-            "token_type": "bearer",  # nosec: B105
-        }
+        return self._issue_token_pair(user)
 
     async def link_telegram(
         self, username: str, password: str, telegram_id: str
@@ -500,25 +433,7 @@ class AuthService:
         user.telegramId = telegram_id.strip()
         await self._db.commit()
 
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        token_data = {
-            "sub": user.username,
-            "role": user.role,
-            "pwd_ver": user.passwordVersion,
-        }
-        access_token = create_access_token(
-            data=token_data,
-            expires_delta=access_token_expires,
-        )
-        refresh_token = create_refresh_token(token_data)
-
-        return {
-            "user": user,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            # OAuth2 token type, not a password.
-            "token_type": "bearer",  # nosec: B105
-        }
+        return self._issue_token_pair(user)
 
     async def get_washers(self) -> list[dict]:
         cache_key = "washers:list"
@@ -776,24 +691,7 @@ class AuthService:
                 ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
                 await blacklist_token(jti, ttl)
 
-        token_data = {
-            "sub": user.username,
-            "role": user.role,
-            "pwd_ver": user.passwordVersion,
-        }
-        access_token = create_access_token(
-            data=token_data,
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-        )
-        new_refresh_token = create_refresh_token(token_data)
-
-        return {
-            "user": user,
-            "access_token": access_token,
-            "refresh_token": new_refresh_token,
-            # OAuth2 token type, not a password.
-            "token_type": "bearer",  # nosec: B105
-        }
+        return self._issue_token_pair(user)
 
     async def logout(self, token: str, refresh_token: str | None = None) -> dict:
         for value in (token, refresh_token):
