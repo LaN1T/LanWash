@@ -1,48 +1,216 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
-import { api } from '../../services/api'
-
-interface UserStats {
-  totalAppointments: number
-  totalSpent: number
-  favoriteWashType: string
-  level: string
-  levelProgress: number
-  points: number
-}
+import type { User as StoreUser } from '../../stores/authStore'
+import {
+  getUserStats,
+  updateProfile,
+  unlinkTelegram,
+  type UserStats,
+  type User as ProfileUser,
+  type ProfileUpdatePayload,
+} from '../../services/profile'
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore()
+  const { user, token, logout, setAuth } = useAuthStore()
+  const profileUser = user as ProfileUser | null
+
   const [stats, setStats] = useState<UserStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loadingStats, setLoadingStats] = useState(true)
+  const [editMode, setEditMode] = useState(false)
+  const [form, setForm] = useState({
+    displayName: '',
+    phone: '',
+    email: '',
+    carModel: '',
+    carNumber: '',
+    currentPassword: '',
+    newPassword: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [unlinking, setUnlinking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.username) {
-      api.get(`/auth/stats/${encodeURIComponent(user.username)}`).then((res) => {
-        setStats(res.data)
-        setLoading(false)
-      }).catch(() => {
-        setLoading(false)
-      })
+      setLoadingStats(true)
+      getUserStats(user.username)
+        .then(setStats)
+        .catch(() => {})
+        .finally(() => setLoadingStats(false))
     }
   }, [user?.username])
 
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        displayName: user.displayName || '',
+        phone: user.phone || '',
+        email: profileUser?.email || '',
+        carModel: user.carModel || '',
+        carNumber: user.carNumber || '',
+      }))
+    }
+  }, [user, profileUser?.email])
+
+  const handleChange =
+    (field: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((prev) => ({ ...prev, [field]: e.target.value }))
+    }
+
+  const resetEdit = () => {
+    setEditMode(false)
+    setError(null)
+    setSuccess(null)
+    setForm((prev) => ({
+      ...prev,
+      currentPassword: '',
+      newPassword: '',
+    }))
+  }
+
+  const handleSave = async () => {
+    if (!user || token === null) return
+
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const payload: ProfileUpdatePayload = {
+        displayName: form.displayName,
+        phone: form.phone,
+        email: form.email || undefined,
+        carModel: form.carModel,
+        carNumber: form.carNumber,
+      }
+
+      if (form.newPassword) {
+        if (!form.currentPassword) {
+          throw new Error('Для смены пароля введите текущий пароль')
+        }
+        payload.currentPassword = form.currentPassword
+        payload.newPassword = form.newPassword
+      }
+
+      const updated = await updateProfile(user.id, payload)
+      await setAuth(updated as StoreUser, token)
+      resetEdit()
+      setSuccess('Профиль обновлён')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка сохранения профиля')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUnlink = async () => {
+    if (!user || token === null) return
+
+    const password = window.prompt('Для отвязки Telegram введите пароль')
+    if (!password) return
+
+    setUnlinking(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      await unlinkTelegram(password)
+      await setAuth({ ...user, telegramLinked: false } as StoreUser, token)
+      setSuccess('Telegram отвязан от аккаунта')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка отвязки Telegram')
+    } finally {
+      setUnlinking(false)
+    }
+  }
+
   const infoRow = (label: string, value: string) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #E2E8F0' }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '14px 0',
+        borderBottom: '1px solid #E2E8F0',
+      }}
+    >
       <span style={{ fontSize: 14, color: '#64748B' }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: '#0F172A' }}>{value || '—'}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#0F172A' }}>
+        {value || '—'}
+      </span>
     </div>
   )
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 10,
+    border: '1px solid #E2E8F0',
+    fontSize: 15,
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 4,
+    fontWeight: 500,
+  }
+
+  const buttonPrimaryStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '14px 24px',
+    borderRadius: 12,
+    background: '#1A56DB',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 600,
+    border: 'none',
+    cursor: 'pointer',
+  }
+
+  const buttonSecondaryStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '14px 24px',
+    borderRadius: 12,
+    background: '#FFFFFF',
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: 600,
+    border: '1px solid #E2E8F0',
+    cursor: 'pointer',
+  }
+
   return (
     <div style={{ padding: 16 }}>
+      {(error || success) && (
+        <div
+          style={{
+            background: error ? '#FEF2F2' : '#F0FDF4',
+            color: error ? '#B91C1C' : '#15803D',
+            borderRadius: 12,
+            padding: '12px 16px',
+            marginBottom: 16,
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          {error || success}
+        </div>
+      )}
+
       {/* Avatar + Name */}
       <div
         style={{
           background: '#FFFFFF',
           borderRadius: 16,
           border: '1px solid #E2E8F0',
-          boxShadow: '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
+          boxShadow:
+            '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
           padding: 24,
           marginBottom: 16,
           textAlign: 'center',
@@ -66,7 +234,14 @@ export default function ProfilePage() {
         >
           {(user?.displayName || 'U').charAt(0).toUpperCase()}
         </div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>
+        <div
+          style={{
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#0F172A',
+            marginBottom: 4,
+          }}
+        >
           {user?.displayName || 'Пользователь'}
         </div>
         <div
@@ -85,20 +260,32 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats Card */}
-      {!loading && stats && (
+      {!loadingStats && stats && (
         <div
           style={{
             background: '#FFFFFF',
             borderRadius: 16,
             border: '1px solid #E2E8F0',
-            boxShadow: '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
+            boxShadow:
+              '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
             padding: 20,
             marginBottom: 16,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{stats.level}</div>
-            <div style={{ fontSize: 12, color: '#64748B' }}>{stats.points} баллов</div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>
+              {stats.level}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748B' }}>
+              {stats.points} баллов
+            </div>
           </div>
           <div
             style={{
@@ -119,13 +306,28 @@ export default function ProfilePage() {
               }}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 16,
+              marginTop: 16,
+            }}
+          >
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#1A56DB' }}>{stats.totalAppointments}</div>
+              <div
+                style={{ fontSize: 20, fontWeight: 700, color: '#1A56DB' }}
+              >
+                {stats.totalAppointments}
+              </div>
               <div style={{ fontSize: 12, color: '#64748B' }}>Всего записей</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}>{stats.totalSpent}₽</div>
+              <div
+                style={{ fontSize: 20, fontWeight: 700, color: '#059669' }}
+              >
+                {stats.totalSpent}₽
+              </div>
               <div style={{ fontSize: 12, color: '#64748B' }}>Потрачено</div>
             </div>
           </div>
@@ -138,23 +340,287 @@ export default function ProfilePage() {
           background: '#FFFFFF',
           borderRadius: 16,
           border: '1px solid #E2E8F0',
-          boxShadow: '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
-          padding: '8px 20px 0',
+          boxShadow:
+            '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
+          padding: '8px 20px 20px',
           marginBottom: 16,
         }}
       >
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', letterSpacing: 0.8, padding: '12px 0 8px' }}>
-          ЛИЧНЫЕ ДАННЫЕ
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 0 8px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#64748B',
+              letterSpacing: 0.8,
+            }}
+          >
+            ЛИЧНЫЕ ДАННЫЕ
+          </div>
+          {!editMode && (
+            <button
+              onClick={() => {
+                setEditMode(true)
+                setError(null)
+                setSuccess(null)
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#1A56DB',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              Редактировать
+            </button>
+          )}
         </div>
-        {infoRow('Телефон', user?.phone || '')}
-        {infoRow('Автомобиль', user?.carModel || '')}
-        {infoRow('Госномер', user?.carNumber || '')}
-        {infoRow('Логин', user?.username || '')}
+
+        {editMode ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleSave()
+            }}
+          >
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="displayName" style={labelStyle}>
+                Имя
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                placeholder="Ваше имя"
+                value={form.displayName}
+                onChange={handleChange('displayName')}
+                disabled={saving}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="phone" style={labelStyle}>
+                Телефон
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                placeholder="+7..."
+                value={form.phone}
+                onChange={handleChange('phone')}
+                disabled={saving}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="email" style={labelStyle}>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="email@example.com"
+                value={form.email}
+                onChange={handleChange('email')}
+                disabled={saving}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="carModel" style={labelStyle}>
+                Автомобиль
+              </label>
+              <input
+                id="carModel"
+                type="text"
+                placeholder="Марка и модель"
+                value={form.carModel}
+                onChange={handleChange('carModel')}
+                disabled={saving}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label htmlFor="carNumber" style={labelStyle}>
+                Госномер
+              </label>
+              <input
+                id="carNumber"
+                type="text"
+                placeholder="А000АА00"
+                value={form.carNumber}
+                onChange={handleChange('carNumber')}
+                disabled={saving}
+                style={inputStyle}
+              />
+            </div>
+
+            <div
+              style={{
+                background: '#F8FAFC',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#0F172A',
+                  marginBottom: 12,
+                }}
+              >
+                Смена пароля
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label htmlFor="currentPassword" style={labelStyle}>
+                  Текущий пароль
+                </label>
+                <input
+                  id="currentPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.currentPassword}
+                  onChange={handleChange('currentPassword')}
+                  disabled={saving}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label htmlFor="newPassword" style={labelStyle}>
+                  Новый пароль
+                </label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.newPassword}
+                  onChange={handleChange('newPassword')}
+                  disabled={saving}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                ...buttonPrimaryStyle,
+                opacity: saving ? 0.7 : 1,
+                marginBottom: 10,
+              }}
+            >
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={resetEdit}
+              style={{
+                ...buttonSecondaryStyle,
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              Отмена
+            </button>
+          </form>
+        ) : (
+          <>
+            {infoRow('Телефон', user?.phone || '')}
+            {profileUser?.email && infoRow('Email', profileUser.email)}
+            {infoRow('Автомобиль', user?.carModel || '')}
+            {infoRow('Госномер', user?.carNumber || '')}
+            {infoRow('Логин', user?.username || '')}
+          </>
+        )}
+      </div>
+
+      {/* Telegram */}
+      <div
+        style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          boxShadow:
+            '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
+          padding: 20,
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: profileUser?.telegramLinked ? 16 : 0,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: '#0F172A',
+                marginBottom: 4,
+              }}
+            >
+              Telegram
+            </div>
+            <div style={{ fontSize: 13, color: '#64748B' }}>
+              {profileUser?.telegramLinked
+                ? 'Аккаунт привязан к Telegram'
+                : 'Telegram не привязан'}
+            </div>
+          </div>
+          {profileUser?.telegramLinked && (
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: '#22C55E',
+              }}
+            />
+          )}
+        </div>
+        {profileUser?.telegramLinked && (
+          <button
+            onClick={() => void handleUnlink()}
+            disabled={unlinking}
+            style={{
+              width: '100%',
+              padding: '14px 24px',
+              borderRadius: 12,
+              background: '#FFFFFF',
+              color: '#DC2626',
+              fontSize: 15,
+              fontWeight: 600,
+              border: '1px solid #E2E8F0',
+              cursor: 'pointer',
+              opacity: unlinking ? 0.7 : 1,
+            }}
+          >
+            {unlinking ? 'Отвязка...' : 'Отвязать Telegram'}
+          </button>
+        )}
       </div>
 
       {/* Logout */}
       <button
-        onClick={async () => { await logout() }}
+        onClick={async () => {
+          await logout()
+        }}
         style={{
           width: '100%',
           padding: '16px 24px',
