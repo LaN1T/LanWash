@@ -66,18 +66,13 @@ def add_cors_middleware(app):
     if allow_credentials and "*" in allow_origins:
         raise ValueError("Wildcard CORS origin is not allowed with credentials")
 
-    if not settings.is_production:
-        cors_kwargs = {"allow_origin_regex": r"^http://localhost:\d+$"}
-    else:
-        cors_kwargs = {"allow_origins": allow_origins}
-
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=allow_credentials,
+        allow_origins=allow_origins,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
         expose_headers=_EXPOSED_HEADERS,
-        **cors_kwargs,
     )
 
 
