@@ -18,6 +18,7 @@ interface AuthState {
   token: string | null
   isLoading: boolean
   error: string | null
+  hydrated: boolean
   setAuth: (user: User, token: string) => Promise<void>
   setLoading: (loading: boolean) => void
   logout: () => Promise<void>
@@ -33,13 +34,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   isLoading: true,
   error: null,
+  hydrated: false,
   setAuth: async (user, token) => {
     try {
       await Promise.all([
         cloudStorage.setItem(cloudStorage.STORAGE_KEYS.USER, JSON.stringify(user)),
         cloudStorage.setItem(cloudStorage.STORAGE_KEYS.ACCESS_TOKEN, token),
       ])
-      set({ user, token, isLoading: false, error: null })
+      set({ user, token, isLoading: false, error: null, hydrated: true })
     } catch (err) {
       set({ error: formatError(err), isLoading: false })
       throw err
@@ -76,9 +78,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
       }
 
-      set({ user, token, isLoading: false, error: null })
+      set({ user, token, isLoading: false, error: null, hydrated: true })
     } catch (err) {
-      set({ error: formatError(err), isLoading: false })
+      set({ error: formatError(err), isLoading: false, hydrated: true })
     }
   },
 }))

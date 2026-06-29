@@ -6,10 +6,16 @@ import { api } from '../services/api'
 
 export function useAuthGuard() {
   const { initData, ready, isInTelegram } = useTelegram()
-  const { token, setAuth, setLoading } = useAuthStore()
+  const { token, setAuth, setLoading, logout, init, hydrated } = useAuthStore()
+
+  // Restore persisted auth state before any auto-login attempt.
+  useEffect(() => {
+    init()
+  }, [init])
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !hydrated) return
+    if (token) return
 
     const attemptAutoLogin = async () => {
       setLoading(true)
@@ -22,6 +28,8 @@ export function useAuthGuard() {
           await setAuth(res.data.user, res.data.access_token)
         }
       } catch (e: any) {
+        // 409 is expected when the Telegram account is not linked to a user yet.
+        // In that case we keep the user on the auth gateway without showing an error.
         if (e.response?.status !== 409) {
           console.error('Auth failed', e)
         }
@@ -30,10 +38,18 @@ export function useAuthGuard() {
       }
     }
 
-    if (!token) {
-      attemptAutoLogin()
-    }
-  }, [initData, ready, isInTelegram])
+    attemptAutoLogin()
+  }, [
+    initData,
+    ready,
+    isInTelegram,
+    token,
+    hydrated,
+    setAuth,
+    setLoading,
+    logout,
+    init,
+  ])
 
-  return { ready, isInTelegram }
+  return { ready: ready && hydrated, isInTelegram }
 }
