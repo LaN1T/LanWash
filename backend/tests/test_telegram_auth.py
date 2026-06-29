@@ -39,3 +39,33 @@ def test_verify_init_data_accepts_fresh():
     result = verify_telegram_init_data(fresh, max_age_seconds=300)
     assert result is not None
     assert result["id"] == 123
+
+
+def test_verify_init_data_rejects_invalid_signature():
+    fresh = _make_init_data(123)
+    tampered = fresh.replace("user=", "user=1")
+    assert verify_telegram_init_data(tampered, max_age_seconds=300) is None
+
+
+def test_verify_init_data_rejects_missing_hash():
+    fresh = _make_init_data(123)
+    missing_hash = "&".join(p for p in fresh.split("&") if not p.startswith("hash="))
+    assert verify_telegram_init_data(missing_hash, max_age_seconds=300) is None
+
+
+def test_verify_init_data_rejects_missing_auth_date():
+    fresh = _make_init_data(123)
+    missing_date = "&".join(
+        p for p in fresh.split("&") if not p.startswith("auth_date=")
+    )
+    assert verify_telegram_init_data(missing_date, max_age_seconds=300) is None
+
+
+def test_verify_init_data_rejects_malformed_user_json():
+    fresh = _make_init_data(123)
+    malformed = fresh.replace("user=", "user={bad")
+    assert verify_telegram_init_data(malformed, max_age_seconds=300) is None
+
+
+def test_verify_init_data_rejects_empty_init_data():
+    assert verify_telegram_init_data("", max_age_seconds=300) is None

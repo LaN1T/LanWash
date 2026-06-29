@@ -1,5 +1,4 @@
 import time
-from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 from urllib.parse import parse_qsl
 import hashlib
@@ -45,5 +44,5 @@ def verify_telegram_init_data(init_data: str, max_age_seconds: int = 300) -> Opt
 
         user_raw = parsed.get("user", "{}")
         return json.loads(user_raw)
-    except Exception:
+    except (ValueError, TypeError, json.JSONDecodeError):
         return None
