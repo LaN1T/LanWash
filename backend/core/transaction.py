@@ -27,6 +27,9 @@ def atomic(func):
 
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
+        if self._db.in_transaction():
+            async with self._db.begin_nested():
+                return await func(self, *args, **kwargs)
         async with self._db.begin():
             return await func(self, *args, **kwargs)
 

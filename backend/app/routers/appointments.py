@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import date, datetime, time, timedelta
 from typing import Optional
 
@@ -53,6 +54,17 @@ from services.subscriptions_service import SubscriptionsService
 from services.workload_service import workload_service
 
 logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def _atomic_session(db: AsyncSession):
+    """Begin a transaction if one is not already active, otherwise use a savepoint."""
+    if db.in_transaction():
+        async with db.begin_nested():
+            yield db
+    else:
+        async with db.begin():
+            yield db
 
 
 async def _auto_assign_washer(db: AsyncSession, date_time: datetime) -> Optional[str]:
@@ -644,184 +656,180 @@ async def create(
     current_user: User = Depends(get_current_user),
 ):
     owner_username = req.ownerUsername if req.ownerUsername else current_user.username
-    if current_user.username != owner_username.lower() and current_user.role != "admin":
+    owner_username_lower = owner_username.lower()
+    if current_user.username != owner_username_lower and current_user.role != "admin":
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Вы не можете создавать записи для других пользователей.",
         )
 
+    # Resolve target user once and validate existence when acting as admin.
+    if current_user.role == "admin" and current_user.username != owner_username_lower:
+        target_user_res = await db.execute(
+            select(User).where(User.username == owner_username_lower)
+        )
+        target_user = target_user_res.scalar_one_or_none()
+        if not target_user:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, "Указанный пользователь не найден"
+            )
+        target_user_id = target_user.id
+    else:
+        target_user_id = current_user.id
+
     # Клиенты и мойщики могут создавать только запланированные записи
     effective_status = req.status if current_user.role == "admin" else "scheduled"
 
-    # Если указан carId, валидируем принадлежность и подставляем данные
-    car_model = req.carModel
-    car_number = req.carNumber
-    if req.carId is not None:
-        # Determine the target user for car ownership validation
-        target_user_id = current_user.id
-        if (
-            current_user.role == "admin"
-            and current_user.username != owner_username.lower()
-        ):
-            target_user_res = await db.execute(
-                select(User).where(User.username == owner_username.lower())
+    async with _atomic_session(db):
+        # Если указан carId, валидируем принадлежность и подставляем данные
+        car_model = req.carModel
+        car_number = req.carNumber
+        if req.carId is not None:
+            car_res = await db.execute(
+                select(Car).where(Car.id == req.carId, Car.userId == target_user_id)
             )
-            target_user = target_user_res.scalar_one_or_none()
-            if target_user:
-                target_user_id = target_user.id
+            car = car_res.scalar_one_or_none()
+            if not car:
+                raise HTTPException(
+                    status.HTTP_403_FORBIDDEN,
+                    "Указанный автомобиль не найден или не принадлежит клиенту",
+                )
+            car_model = f"{car.brand} {car.model}".strip()
+            car_number = car.number
 
-        car_res = await db.execute(
-            select(Car).where(Car.id == req.carId, Car.userId == target_user_id)
-        )
-        car = car_res.scalar_one_or_none()
-        if not car:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "Указанный автомобиль не найден или не принадлежит клиенту",
+        # Non-admins cannot set prices; server calculates them from the catalog and promo.
+        if current_user.role != "admin":
+            (
+                req.originalPrice,
+                req.promoPrice,
+                req.paidPrice,
+            ) = await _calculate_client_prices(
+                db,
+                req.washTypeId,
+                req.additionalServices,
+                req.promoId,
+                req.dateTime,
             )
-        car_model = f"{car.brand} {car.model}".strip()
-        car_number = car.number
 
-    # Determine target user ID for subscription lookup
-    target_user_id = current_user.id
-    if current_user.role == "admin" and current_user.username != owner_username.lower():
-        target_user_res = await db.execute(
-            select(User).where(User.username == owner_username.lower())
-        )
-        target_user = target_user_res.scalar_one_or_none()
-        if target_user:
-            target_user_id = target_user.id
-
-    # Non-admins cannot set prices; server calculates them from the catalog and promo.
-    if current_user.role != "admin":
-        (
-            req.originalPrice,
-            req.promoPrice,
-            req.paidPrice,
-        ) = await _calculate_client_prices(
-            db,
-            req.washTypeId,
-            req.additionalServices,
-            req.promoId,
-            req.dateTime,
-        )
-
-    # Check for active subscription
-    subscription_id = req.subscriptionId
-    if subscription_id is not None:
-        # Client explicitly chose a subscription; validate it belongs to the user,
-        # matches the wash type and has remaining washes.
-        sub_repo = SubscriptionRepository(db)
-        sub = await sub_repo.get_active_for_user_and_wash_type_with_lock(
-            subscription_id, target_user_id, req.washTypeId
-        )
-        if not sub:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Абонемент не найден, не активен или не подходит для этого типа мойки",
+        # Check for active subscription
+        subscription_id = req.subscriptionId
+        if subscription_id is not None:
+            # Client explicitly chose a subscription; validate it belongs to the user,
+            # matches the wash type and has remaining washes.
+            sub_repo = SubscriptionRepository(db)
+            sub = await sub_repo.get_active_for_user_and_wash_type_with_lock(
+                subscription_id, target_user_id, req.washTypeId
             )
-        sub.usedWashes += 1
-        # Subscription washes are free; keep original/promo prices for reporting.
-        req.paidPrice = 0
-    else:
-        # Auto-apply an active subscription if the client did not choose one.
-        today = date.today()
-        sub_res = await db.execute(
-            select(Subscription)
-            .where(
-                Subscription.userId == target_user_id,
-                Subscription.washTypeId == req.washTypeId,
-                Subscription.usedWashes < Subscription.totalWashes,
-                or_(
-                    Subscription.validUntil.is_(None), Subscription.validUntil >= today
-                ),
-            )
-            .with_for_update()
-        )
-        sub = sub_res.scalar_one_or_none()
-
-        if sub:
-            subscription_id = sub.id
+            if not sub:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Абонемент не найден, не активен или не подходит для этого типа мойки",
+                )
             sub.usedWashes += 1
             # Subscription washes are free; keep original/promo prices for reporting.
             req.paidPrice = 0
+        else:
+            # Auto-apply an active subscription if the client did not choose one.
+            today = date.today()
+            sub_res = await db.execute(
+                select(Subscription)
+                .where(
+                    Subscription.userId == target_user_id,
+                    Subscription.washTypeId == req.washTypeId,
+                    Subscription.usedWashes < Subscription.totalWashes,
+                    or_(
+                        Subscription.validUntil.is_(None),
+                        Subscription.validUntil >= today,
+                    ),
+                )
+                .with_for_update()
+            )
+            sub = sub_res.scalar_one_or_none()
 
-    # Находим свободный бокс
-    duration = await workload_service.get_appointment_duration(
-        db, req.washTypeId, req.additionalServices, req.promoId
-    )
-    box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
+            if sub:
+                subscription_id = sub.id
+                sub.usedWashes += 1
+                # Subscription washes are free; keep original/promo prices for reporting.
+                req.paidPrice = 0
 
-    if box_idx == -1:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "К сожалению, на это время нет свободных боксов.",
+        # Находим свободный бокс
+        duration = await workload_service.get_appointment_duration(
+            db, req.washTypeId, req.additionalServices, req.promoId
         )
+        box_idx = await workload_service.find_available_box(db, req.dateTime, duration)
 
-    appt_data = {
-        "id": req.id if req.id else str(uuid.uuid4()),
-        "userId": target_user_id,
-        "clientName": req.clientName,
-        "carModel": car_model,
-        "carNumber": car_number,
-        "dateTime": req.dateTime,
-        "washTypeId": req.washTypeId,
-        "additionalServices": req.additionalServices,
-        "status": effective_status,
-        "notes": req.notes,
-        "isFavorite": int(req.isFavorite),
-        "ownerUsername": owner_username.lower(),
-        "promoPrice": req.promoPrice,
-        "paidPrice": req.paidPrice,
-        "promoId": req.promoId,
-        "subscriptionId": subscription_id,
-        "box_index": box_idx,
-    }
+        if box_idx == -1:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "К сожалению, на это время нет свободных боксов.",
+            )
 
-    if current_user.role == "admin":
-        assigned = req.assignedWasher
-        if not assigned or assigned == "[]":
+        appt_data = {
+            "id": req.id if req.id else str(uuid.uuid4()),
+            "userId": target_user_id,
+            "clientName": req.clientName,
+            "carModel": car_model,
+            "carNumber": car_number,
+            "dateTime": req.dateTime,
+            "washTypeId": req.washTypeId,
+            "additionalServices": req.additionalServices,
+            "status": effective_status,
+            "notes": req.notes,
+            "isFavorite": int(req.isFavorite),
+            "ownerUsername": owner_username_lower,
+            "promoPrice": req.promoPrice,
+            "paidPrice": req.paidPrice,
+            "promoId": req.promoId,
+            "subscriptionId": subscription_id,
+            "box_index": box_idx,
+        }
+
+        if current_user.role == "admin":
+            assigned = req.assignedWasher
+            if not assigned or assigned == "[]":
+                auto_washer = await _auto_assign_washer(db, req.dateTime)
+                if auto_washer:
+                    assigned = json.dumps([auto_washer])
+            appt_data.update(
+                {
+                    "isModifiedByAdmin": int(req.isModifiedByAdmin),
+                    "isModifiedByWasher": int(req.isModifiedByWasher),
+                    "isSeenByClient": 1
+                    if not (req.isModifiedByAdmin or req.isModifiedByWasher)
+                    else 0,
+                    "originalPrice": req.originalPrice,
+                    "assignedWasher": assigned,
+                }
+            )
+        else:
+            assigned = "[]"
             auto_washer = await _auto_assign_washer(db, req.dateTime)
             if auto_washer:
                 assigned = json.dumps([auto_washer])
-        appt_data.update(
-            {
-                "isModifiedByAdmin": int(req.isModifiedByAdmin),
-                "isModifiedByWasher": int(req.isModifiedByWasher),
-                "isSeenByClient": 1
-                if not (req.isModifiedByAdmin or req.isModifiedByWasher)
-                else 0,
-                "originalPrice": req.originalPrice,
-                "assignedWasher": assigned,
-            }
-        )
-    else:
-        assigned = "[]"
-        auto_washer = await _auto_assign_washer(db, req.dateTime)
-        if auto_washer:
-            assigned = json.dumps([auto_washer])
-        appt_data.update(
-            {
-                "isModifiedByAdmin": 0,
-                "isModifiedByWasher": 0,
-                "isSeenByClient": 1,
-                "originalPrice": req.paidPrice
-                if req.originalPrice == 0
-                else req.originalPrice,
-                "assignedWasher": assigned,
-            }
-        )
+            appt_data.update(
+                {
+                    "isModifiedByAdmin": 0,
+                    "isModifiedByWasher": 0,
+                    "isSeenByClient": 1,
+                    "originalPrice": req.paidPrice
+                    if req.originalPrice == 0
+                    else req.originalPrice,
+                    "assignedWasher": assigned,
+                }
+            )
 
-    appt = Appointment(**appt_data)
-    db.add(appt)
-    await db.commit()
+        appt = Appointment(**appt_data)
+        db.add(appt)
 
-    if effective_status == "completed":
-        await _track_consumables_usage(
-            request, db, appt.id, req.washTypeId, req.additionalServices, req.promoId
-        )
-        await db.commit()
+        if effective_status == "completed":
+            await _track_consumables_usage(
+                request, db, appt.id, req.washTypeId, req.additionalServices, req.promoId
+            )
 
+        await db.flush()
+        await db.refresh(appt)
+
+    # FCM notification is best-effort and happens outside the DB transaction.
     if appt.ownerUsername:
         res = await db.execute(
             select(FcmToken.token).where(FcmToken.username == appt.ownerUsername)
@@ -847,7 +855,6 @@ async def create(
                 )
 
     appointments_total.labels(status=effective_status).inc()
-    await db.refresh(appt)
     try:
         await appointment_ws_manager.notify_appointment(db, appt, "created")
     except Exception as e:
