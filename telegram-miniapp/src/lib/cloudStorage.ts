@@ -1,23 +1,9 @@
-interface CloudStorage {
-  getItem(key: string, callback: (err: Error | null, value: string | null) => void): void
-  setItem(key: string, value: string, callback: (err: Error | null, saved: boolean) => void): void
-  removeItem(key: string, callback: (err: Error | null, removed: boolean) => void): void
-}
-
-interface TelegramWebApp {
-  initData: string
-  initDataUnsafe: { user?: { id: number; username?: string; first_name?: string; photo_url?: string } }
-  expand(): void
-  ready(): void
-  CloudStorage?: CloudStorage
-}
-
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   ACCESS_TOKEN: 'lw_access_token',
   USER: 'lw_user',
 } as const
 
-function getTg(): TelegramWebApp | undefined {
+function getTg() {
   return window.Telegram?.WebApp
 }
 
