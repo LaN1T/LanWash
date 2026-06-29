@@ -27,6 +27,52 @@ interface Service {
   category: string
 }
 
+interface Step0ServiceProps {
+  name: string
+  setName: (value: string) => void
+  car: string
+  setCar: (value: string) => void
+  plate: string
+  setPlate: (value: string) => void
+  cars: Car[]
+  onCarSelect: (carId: string) => void
+  washTypes: WashType[]
+  washTypeId: string
+  onWashTypeChange: (washType: WashType) => void
+  extras: Set<string>
+  onExtraToggle: (id: string) => void
+  extraServices: Service[]
+  errors: Record<string, string>
+}
+
+interface Step1DateTimeProps {
+  days: Date[]
+  selectedDate: Date
+  onDateChange: (date: Date) => void
+  selectedSlot: number
+  onSlotChange: (index: number) => void
+  isSlotAvailable: (hour: number, minute: number) => boolean
+  getDuration: () => number
+  loadingSlots: boolean
+}
+
+interface Step2ConfirmProps {
+  date: Date
+  washType?: WashType
+  extras: string[]
+  services: Service[]
+  name: string
+  car: string
+  plate: string
+  basePrice: number
+  finalPrice: number
+  totalDiscount: number
+  subscriptionDiscount: number
+  promoDiscount: number
+  promoTitle?: string
+  totalDuration: number
+}
+
 const MAX_DISCOUNT_PERCENT = 100
 
 export default function BookingPage() {
@@ -35,6 +81,7 @@ export default function BookingPage() {
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
+  const saveController = useRef<AbortController | null>(null)
 
   // Form state
   const [name, setName] = useState(user?.displayName || '')
@@ -73,8 +120,16 @@ export default function BookingPage() {
     return date.toLocaleDateString('sv-SE')
   }
 
+  // Abort save request on unmount
+  useEffect(() => {
+    return () => {
+      saveController.current?.abort()
+    }
+  }, [])
+
   // Load data
   useEffect(() => {
+    let mounted = true
     const promoCode = searchParams.get('promo') || ''
     setQueryPromoCode(promoCode)
     setLoadError(null)
@@ -85,10 +140,12 @@ export default function BookingPage() {
         const [wtRes, svcRes, carsRes, subsRes, promosRes] = await Promise.all([
           api.get('/wash-types/'),
           api.get('/services/'),
-          getMyCars().catch(() => [] as Car[]),
-          getMySubscriptions().catch(() => [] as Subscription[]),
-          getPromos().catch(() => [] as Promo[]),
+          getMyCars(),
+          getMySubscriptions(),
+          getPromos(),
         ])
+        if (!mounted) return
+
         const wts = wtRes.data.sort((a: WashType, b: WashType) => a.sortOrder - b.sortOrder)
         setWashTypes(wts)
         setServices(svcRes.data)
@@ -110,13 +167,19 @@ export default function BookingPage() {
           }
         }
       } catch {
+        if (!mounted) return
         setLoadError('Не удалось загрузить данные. Проверьте соединение и попробуйте снова.')
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     load()
+    return () => {
+      mounted = false
+    }
   }, [searchParams])
 
   // Load busy slots when date changes
@@ -279,6 +342,9 @@ export default function BookingPage() {
     }
 
     setIsSaving(true)
+    const controller = new AbortController()
+    saveController.current = controller
+
     try {
       const payload: AppointmentCreatePayload = {
         clientName: name.trim(),
@@ -291,11 +357,14 @@ export default function BookingPage() {
         ownerUsername: user?.username || '',
         promoCode: appliedPromo?.id || queryPromoCode || undefined,
       }
-      await createAppointment(payload)
+      await createAppointment(payload, controller.signal)
+      if (controller.signal.aborted) return
       navigate('/bookings')
     } catch (e) {
+      if (controller.signal.aborted) return
       setSubmitError(getBackendErrorMessage(e))
     } finally {
+      saveController.current = null
       setIsSaving(false)
     }
   }
@@ -563,7 +632,7 @@ function Step0Service({
   cars, onCarSelect,
   washTypes, washTypeId, onWashTypeChange,
   extras, onExtraToggle, extraServices, errors,
-}: any) {
+}: Step0ServiceProps) {
   const inputStyle = (hasError: boolean): React.CSSProperties => ({
     width: '100%',
     padding: '14px 16px',
@@ -633,12 +702,17 @@ function Step0Service({
       <div>
         <input
           style={inputStyle(!!errors.plate)}
-          value={formatPlate(plate)}
+          value={plate}
           onChange={(e) => setPlate(e.target.value)}
           placeholder="А 123 БВ 777"
-          maxLength={14}
+          maxLength={12}
         />
         {errors.plate && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>{errors.plate}</div>}
+        {plate && (
+          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4, letterSpacing: 1.5, fontWeight: 600 }}>
+            {formatPlate(plate)}
+          </div>
+        )}
       </div>
 
       <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginTop: 8 }}>Выберите услугу</h3>
@@ -748,7 +822,7 @@ function Step0Service({
 function Step1DateTime({
   days, selectedDate, onDateChange, selectedSlot, onSlotChange,
   isSlotAvailable, getDuration, loadingSlots,
-}: any) {
+}: Step1DateTimeProps) {
   const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
   const dayNames = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
 
@@ -860,7 +934,7 @@ function Step2Confirm({
   date, washType, extras, services, name, car, plate,
   basePrice, finalPrice, totalDiscount, subscriptionDiscount, promoDiscount, promoTitle,
   totalDuration,
-}: any) {
+}: Step2ConfirmProps) {
   const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60)
     const m = minutes % 60
@@ -872,7 +946,7 @@ function Step2Confirm({
   const extraList = extras
     .filter((id: string) => !washType?.includedExtraIds?.includes(id))
     .map((id: string) => services.find((s: Service) => s.id === id))
-    .filter(Boolean)
+    .filter((s): s is Service => Boolean(s))
 
   const infoRow = (label: string, value: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #E2E8F0' }}>
@@ -889,7 +963,7 @@ function Step2Confirm({
         {infoRow('Клиент', name)}
         {infoRow('Авто', `${car} · ${plate}`)}
         {infoRow('Услуга', washType?.name || '')}
-        {extraList.length > 0 && infoRow('Дополнительно', extraList.map((s: Service) => s.name).join(', '))}
+        {extraList.length > 0 && infoRow('Дополнительно', extraList.map((s) => s.name).join(', '))}
         {infoRow('Длительность', formatDuration(totalDuration))}
         {subscriptionDiscount > 0 && infoRow('Скидка по подписке', `-${subscriptionDiscount}%`)}
         {promoDiscount > 0 && infoRow('Промокод', `${promoTitle || 'Акция'} -${promoDiscount}%`)}

@@ -22,7 +22,7 @@ export async function getBusySlots(date: string, signal?: AbortSignal): Promise<
   return res.data
 }
 
-export async function createAppointment(data: AppointmentCreatePayload) {
-  const res = await api.post('/appointments', data)
+export async function createAppointment(data: AppointmentCreatePayload, signal?: AbortSignal) {
+  const res = await api.post('/appointments', data, { signal })
   return res.data
 }
