@@ -4,13 +4,9 @@ import { useAuthStore } from './stores/authStore'
 import { useAuthGuard } from './hooks/useAuthGuard'
 import Layout from './components/Layout'
 
-const HomePage = React.lazy(() => import('./pages/client/HomePage'))
-const BookingPage = React.lazy(() => import('./pages/client/BookingPage'))
-const PromosPage = React.lazy(() => import('./pages/client/PromosPage'))
-const MyBookingsPage = React.lazy(() => import('./pages/client/MyBookingsPage'))
-const BookingDetailPage = React.lazy(() => import('./pages/client/BookingDetailPage'))
-const ProfilePage = React.lazy(() => import('./pages/client/ProfilePage'))
-const WasherHomePage = React.lazy(() => import('./pages/washer/WasherHomePage'))
+const ClientRoutes = React.lazy(() => import('./routes/ClientRoutes'))
+const WasherRoutes = React.lazy(() => import('./routes/WasherRoutes'))
+const AdminRoutes = React.lazy(() => import('./routes/AdminRoutes'))
 const AuthGatewayPage = React.lazy(() => import('./pages/auth/AuthGatewayPage'))
 
 function App() {
@@ -56,26 +52,14 @@ function AppRoutes() {
     )
   }
 
-  return (
-    <Routes>
-      {user?.role === 'washer' ? (
-        <>
-          <Route path="/" element={<WasherHomePage />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </>
-      ) : (
-        <>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/booking" element={<BookingPage />} />
-          <Route path="/promos" element={<PromosPage />} />
-          <Route path="/bookings" element={<MyBookingsPage />} />
-          <Route path="/bookings/:id" element={<BookingDetailPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </>
-      )}
-    </Routes>
-  )
+  switch (user?.role) {
+    case 'admin':
+      return <AdminRoutes />
+    case 'washer':
+      return <WasherRoutes />
+    default:
+      return <ClientRoutes />
+  }
 }
 
 export default App
