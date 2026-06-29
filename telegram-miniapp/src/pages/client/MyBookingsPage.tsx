@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { Link } from 'react-router-dom'
 import { getMyAppointments, type Appointment } from '../../services/appointments'
 import { connectAppointmentsSocket } from '../../services/appointmentSocket'
@@ -8,75 +8,28 @@ import AppointmentCard from '../../components/AppointmentCard'
 
 type Tab = 'active' | 'history'
 
+type SocketStatus = 'connecting' | 'open' | 'error' | 'closed'
+
 const ACTIVE_STATUSES = new Set<AppointmentStatus>(['scheduled', 'confirmed', 'in_progress'])
 
-export default function MyBookingsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('active')
-  const token = useAuthStore((state) => state.token)
+interface TabButtonProps {
+  value: Tab
+  label: string
+  active: boolean
+  onClick: () => void
+}
 
-  useEffect(() => {
-    if (!token) return
-
-    const cleanup = connectAppointmentsSocket(token, (updated) => {
-      setAppointments((prev) => {
-        const existingIndex = prev.findIndex((appt) => appt.id === updated.id)
-        if (existingIndex === -1) {
-          return [updated, ...prev]
-        }
-        const next = [...prev]
-        next[existingIndex] = updated
-        return next
-      })
-    })
-
-    return cleanup
-  }, [token])
-
-  const load = () => {
-    let mounted = true
-    setLoading(true)
-    setError(null)
-    getMyAppointments()
-      .then((data) => {
-        if (!mounted) return
-        const sorted = (data || []).sort(
-          (a: Appointment, b: Appointment) =>
-            new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime(),
-        )
-        setAppointments(sorted)
-      })
-      .catch((err) => {
-        if (!mounted) return
-        setAppointments([])
-        setError(err instanceof Error ? err.message : 'Не удалось загрузить записи')
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-    return () => {
-      mounted = false
-    }
-  }
-
-  useEffect(load, [])
-
-  const filtered = appointments.filter((appt) =>
-    tab === 'active' ? ACTIVE_STATUSES.has(appt.status) : !ACTIVE_STATUSES.has(appt.status),
-  )
-
-  const TabButton = ({ value, label }: { value: Tab; label: string }) => (
+const TabButton = memo(function TabButton({ label, active, onClick }: TabButtonProps) {
+  return (
     <button
-      onClick={() => setTab(value)}
+      onClick={onClick}
       style={{
         flex: 1,
         padding: '10px 0',
         borderRadius: 10,
         border: 'none',
-        background: tab === value ? '#1A56DB' : 'transparent',
-        color: tab === value ? '#FFFFFF' : '#64748B',
+        background: active ? '#1A56DB' : 'transparent',
+        color: active ? '#FFFFFF' : '#64748B',
         fontSize: 14,
         fontWeight: 600,
         cursor: 'pointer',
@@ -86,14 +39,120 @@ export default function MyBookingsPage() {
       {label}
     </button>
   )
+})
+
+function sortByDateTimeDesc(list: Appointment[]): Appointment[] {
+  return [...list].sort(
+    (a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime(),
+  )
+}
+
+export default function MyBookingsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>('active')
+  const [socketStatus, setSocketStatus] = useState<SocketStatus>('connecting')
+  const token = useAuthStore((state) => state.token)
+
+  const socketUpdateTimesRef = useRef<Map<string, number>>(new Map())
+  const httpRequestStartRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (!token) return
+
+    const cleanup = connectAppointmentsSocket(token, {
+      onUpdate: (updated) => {
+        socketUpdateTimesRef.current.set(updated.id, Date.now())
+        setAppointments((prev) => {
+          const existingIndex = prev.findIndex((appt) => appt.id === updated.id)
+          let next: Appointment[]
+          if (existingIndex === -1) {
+            next = [updated, ...prev]
+          } else {
+            next = [...prev]
+            next[existingIndex] = updated
+          }
+          return sortByDateTimeDesc(next)
+        })
+      },
+      onStatusChange: setSocketStatus,
+    })
+
+    return cleanup
+  }, [token])
+
+  const load = () => {
+    const controller = new AbortController()
+    const signal = controller.signal
+    const requestStart = Date.now()
+    httpRequestStartRef.current = requestStart
+
+    setLoading(true)
+    setError(null)
+
+    getMyAppointments(signal)
+      .then((data) => {
+        if (signal.aborted) return
+        const httpList = data || []
+        setAppointments((prev) => {
+          const httpMap = new Map(httpList.map((appt) => [appt.id, appt]))
+          const next: Appointment[] = []
+
+          for (const appt of prev) {
+            const socketUpdatedAt = socketUpdateTimesRef.current.get(appt.id)
+            if (socketUpdatedAt && socketUpdatedAt > requestStart) {
+              next.push(appt)
+              continue
+            }
+            const httpAppt = httpMap.get(appt.id)
+            if (httpAppt) {
+              next.push(httpAppt)
+              httpMap.delete(appt.id)
+            } else {
+              next.push(appt)
+            }
+          }
+
+          for (const httpAppt of httpMap.values()) {
+            next.push(httpAppt)
+          }
+
+          return sortByDateTimeDesc(next)
+        })
+      })
+      .catch((err) => {
+        if (signal.aborted) return
+        setAppointments([])
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить записи')
+      })
+      .finally(() => {
+        if (!signal.aborted) setLoading(false)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }
+
+  useEffect(() => {
+    const cleanup = load()
+    return cleanup
+  }, [])
+
+  const filtered = appointments.filter((appt) =>
+    tab === 'active' ? ACTIVE_STATUSES.has(appt.status) : !ACTIVE_STATUSES.has(appt.status),
+  )
+
+  const showSocketWarning = socketStatus === 'error' || socketStatus === 'closed'
 
   if (loading) {
     return (
       <div style={{ padding: 16 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 16 }}>Мои записи</h2>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: '#F1F5F9', borderRadius: 12, padding: 4 }}>
-          <TabButton value="active" label="Активные" />
-          <TabButton value="history" label="История" />
+          <TabButton value="active" label="Активные" active={tab === 'active'} onClick={() => setTab('active')} />
+          <TabButton value="history" label="История" active={tab === 'history'} onClick={() => setTab('history')} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[1, 2, 3].map((i) => (
@@ -114,9 +173,32 @@ export default function MyBookingsPage() {
   return (
     <div style={{ padding: 16 }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 16 }}>Мои записи</h2>
+
+      {showSocketWarning && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 12,
+            padding: '8px 12px',
+            borderRadius: 10,
+            background: '#FEF3C7',
+            color: '#92400E',
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 4h22M1 12h22M1 20h22" />
+          </svg>
+          Обновления записей могут приходить с задержкой
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: '#F1F5F9', borderRadius: 12, padding: 4 }}>
-        <TabButton value="active" label="Активные" />
-        <TabButton value="history" label="История" />
+        <TabButton value="active" label="Активные" active={tab === 'active'} onClick={() => setTab('active')} />
+        <TabButton value="history" label="История" active={tab === 'history'} onClick={() => setTab('history')} />
       </div>
 
       {error ? (
