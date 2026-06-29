@@ -237,6 +237,7 @@ async def link_telegram(
         await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except TelegramAlreadyLinkedError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
     except RuntimeError:
         await record_failed_attempt(identifier)

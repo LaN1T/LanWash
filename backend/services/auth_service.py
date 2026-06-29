@@ -13,6 +13,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError as JWTError
 from passlib.context import CryptContext
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
@@ -432,12 +433,6 @@ class AuthService:
         if not telegram_id:
             raise InvalidCredentialsError("Неверные данные Telegram")
 
-        existing_by_tg = await self._user_repo.get_by_telegram_id(telegram_id)
-        if existing_by_tg:
-            raise TelegramAlreadyLinkedError(
-                "Этот Telegram уже привязан к другому аккаунту"
-            )
-
         user = await self._user_repo.get_by_username(username.lower().strip())
         if not user:
             # Constant-time dummy verification to prevent username enumeration
@@ -447,9 +442,24 @@ class AuthService:
         if not await async_verify_password(password, user.passwordHash):
             raise InvalidCredentialsError("Неверный логин или пароль")
 
+        existing_by_tg = await self._user_repo.get_by_telegram_id(telegram_id)
+        if existing_by_tg:
+            if existing_by_tg.id != user.id:
+                raise TelegramAlreadyLinkedError(
+                    "Этот Telegram уже привязан к другому аккаунту"
+                )
+            # Idempotent: already linked to this user
+            return self._issue_token_pair(user)
+
         user.telegramId = telegram_id.strip()
-        await self._db.commit()
-        await self._db.refresh(user)
+        try:
+            await self._db.commit()
+            await self._db.refresh(user)
+        except IntegrityError as exc:
+            await self._db.rollback()
+            raise TelegramAlreadyLinkedError(
+                "Этот Telegram уже привязан к другому аккаунту"
+            ) from exc
 
         return self._issue_token_pair(user)
 

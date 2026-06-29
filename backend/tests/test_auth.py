@@ -567,3 +567,59 @@ class TestLinkTelegram:
         )
         assert response.status_code == 409
         assert "уже привязан" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_nonexistent_user_returns_invalid_credentials(
+        self, db_session
+    ):
+        svc = AuthService(db_session)
+        init_data = make_test_init_data(telegram_id="999999")
+        with pytest.raises(InvalidCredentialsError):
+            await svc.link_telegram(init_data, "nonexistent_user", "AnyPass123!")
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_idempotent_same_user(self, db_session, test_user):
+        svc = AuthService(db_session)
+        init_data = make_test_init_data(telegram_id="999999")
+        first = await svc.link_telegram(
+            init_data, test_user.username, "CorrectPassword123!"
+        )
+        assert first["user"].telegramId == "999999"
+        assert "access_token" in first
+
+        second = await svc.link_telegram(
+            init_data, test_user.username, "CorrectPassword123!"
+        )
+        assert second["user"].telegramId == "999999"
+        assert "access_token" in second
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_endpoint_invalid_init_data_returns_401(
+        self, async_client
+    ):
+        response = await async_client.post(
+            "/api/auth/link-telegram",
+            json={
+                "initData": "tampered_or_expired_init_data",
+                "username": "linktestuser",
+                "password": "CorrectPassword123!",
+            },
+        )
+        assert response.status_code == 401
+        assert "telegram" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_endpoint_wrong_password_returns_401(
+        self, async_client, test_user
+    ):
+        init_data = make_test_init_data(telegram_id="999999")
+        response = await async_client.post(
+            "/api/auth/link-telegram",
+            json={
+                "initData": init_data,
+                "username": test_user.username,
+                "password": "WrongPassword123!",
+            },
+        )
+        assert response.status_code == 401
+        assert "неверный логин или пароль" in response.json()["detail"].lower()
