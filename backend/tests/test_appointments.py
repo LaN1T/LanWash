@@ -102,6 +102,36 @@ class TestAppointments:
         assert any(a["id"] == "appt_4" for a in data)
 
     @pytest.mark.asyncio
+    async def test_get_my_appointments(self, async_client, client_token):
+        await self._create_appointment(
+            async_client, client_token, "appt_4_me", "2099-07-02T10:00:00"
+        )
+        response = await async_client.get(
+            "/api/appointments/by-owner/me",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert any(a["id"] == "appt_4_me" for a in data)
+
+    @pytest.mark.asyncio
+    async def test_get_my_appointments_status_filter(
+        self, async_client, client_token
+    ):
+        await self._create_appointment(
+            async_client, client_token, "appt_me_scheduled", "2099-07-03T10:00:00"
+        )
+        response = await async_client.get(
+            "/api/appointments/by-owner/me?status=completed",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert not any(a["id"] == "appt_me_scheduled" for a in data)
+
+    @pytest.mark.asyncio
     async def test_get_appointments_by_owner_forbidden(
         self, async_client, client_token
     ):

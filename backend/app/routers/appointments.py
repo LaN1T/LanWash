@@ -339,6 +339,26 @@ async def get_all(
     return appointments
 
 
+@router.get("/by-owner/me", response_model=list[AppointmentResponse])
+@limiter.limit("60/minute")
+async def get_my_appointments(
+    request: Request,
+    status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return appointments for the currently authenticated user."""
+    filters = [Appointment.ownerUsername == current_user.username]
+    if status:
+        filters.append(Appointment.status == status)
+    result = await db.execute(
+        select(Appointment)
+        .where(and_(*filters))
+        .order_by(Appointment.dateTime.asc())
+    )
+    return result.scalars().all()
+
+
 @router.get("/by-owner/{username}", response_model=list[AppointmentResponse])
 @limiter.limit("60/minute")
 async def get_by_owner(
