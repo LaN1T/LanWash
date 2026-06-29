@@ -30,6 +30,7 @@ from schemas import (
     TelegramAuthRequest,
     TelegramAuthResponse,
     TelegramLinkRequest,
+    TelegramRegisterRequest,
     UpdateProfileRequest,
     UserResponse,
     UserStatsResponse,
@@ -241,6 +242,33 @@ async def link_telegram(
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
     except RuntimeError:
         await record_failed_attempt(identifier)
+        raise HTTPException(500, "Internal server error")
+
+
+@router.post(
+    "/telegram-register",
+    response_model=TelegramAuthResponse,
+    summary="Регистрация нового пользователя через Telegram Mini App",
+)
+@limiter.limit("5/minute")
+async def telegram_register(
+    req: TelegramRegisterRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    svc = AuthService(db)
+    try:
+        result = await svc.register_telegram_user(req)
+        _set_refresh_cookie(response, result["refresh_token"], get_settings())
+        return result
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    except UsernameAlreadyExistsError as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except TelegramAlreadyLinkedError as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except RuntimeError:
         raise HTTPException(500, "Internal server error")
 
 

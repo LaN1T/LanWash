@@ -10,12 +10,13 @@ import pytest_asyncio
 
 from core.config import get_settings
 from models import User
-from schemas import UserResponse
+from schemas import TelegramRegisterRequest, UserResponse
 from services.auth_service import (
     AuthService,
     InvalidCredentialsError,
     TelegramAlreadyLinkedError,
     TelegramNotLinkedError,
+    UsernameAlreadyExistsError,
 )
 
 TEST_BOT_TOKEN = "test_bot_token"
@@ -623,3 +624,75 @@ class TestLinkTelegram:
         )
         assert response.status_code == 401
         assert "неверный логин или пароль" in response.json()["detail"].lower()
+
+
+class TestTelegramRegister:
+    @pytest.mark.asyncio
+    async def test_telegram_register_user_success(self, db_session):
+        svc = AuthService(db_session)
+        req = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="111222"),
+            username="newtguser",
+            password="StrongPass123!",
+            displayName="New User",
+        )
+        result = await svc.register_telegram_user(req)
+        assert result["user"].username == "newtguser"
+        assert result["user"].telegramId == "111222"
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_duplicate_telegram(self, db_session):
+        svc = AuthService(db_session)
+        req1 = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="111222"),
+            username="tguser1",
+            password="StrongPass123!",
+            displayName="First",
+        )
+        await svc.register_telegram_user(req1)
+
+        req2 = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="111222"),
+            username="tguser2",
+            password="StrongPass123!",
+            displayName="Second",
+        )
+        with pytest.raises(TelegramAlreadyLinkedError):
+            await svc.register_telegram_user(req2)
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_duplicate_username(self, db_session):
+        svc = AuthService(db_session)
+        req1 = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="111222"),
+            username="dupusertg",
+            password="StrongPass123!",
+            displayName="First",
+        )
+        await svc.register_telegram_user(req1)
+
+        req2 = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="333444"),
+            username="dupusertg",
+            password="StrongPass123!",
+            displayName="Second",
+        )
+        with pytest.raises(UsernameAlreadyExistsError):
+            await svc.register_telegram_user(req2)
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_success(self, async_client):
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="333444"),
+                "username": "endpointtg",
+                "password": "StrongPass123!",
+                "displayName": "Endpoint",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user"]["username"] == "endpointtg"
+        assert data["user"]["telegramId"] == "333444"
+        assert "access_token" in data

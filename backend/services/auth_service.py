@@ -463,6 +463,71 @@ class AuthService:
 
         return self._issue_token_pair(user)
 
+    async def register_telegram_user(self, req) -> dict:
+        from schemas import TelegramRegisterRequest
+
+        if not isinstance(req, TelegramRegisterRequest):
+            raise TypeError("req must be TelegramRegisterRequest")
+
+        from services.telegram_auth_service import verify_telegram_init_data
+
+        user_data = verify_telegram_init_data(req.initData)
+        if not user_data:
+            raise InvalidCredentialsError("Неверные данные Telegram")
+
+        telegram_id = str(user_data.get("id"))
+        if not telegram_id:
+            raise InvalidCredentialsError("Неверные данные Telegram")
+
+        existing_tg = await self._user_repo.get_by_telegram_id(telegram_id)
+        if existing_tg:
+            raise TelegramAlreadyLinkedError("Этот Telegram уже используется")
+
+        username = req.username.lower().strip()
+        existing_user = await self._user_repo.get_by_username(username)
+        if existing_user:
+            raise UsernameAlreadyExistsError("Логин уже занят")
+
+        password_error = validate_password_strength(req.password)
+        if password_error:
+            raise ValueError(password_error)
+
+        referral_code = await _ensure_unique_referral_code(self._db)
+        new_user = User(
+            username=username,
+            passwordHash=await async_get_password_hash(req.password),
+            role="client",
+            displayName=req.displayName.strip(),
+            phone=req.phone or "",
+            carModel=req.carModel or "",
+            carNumber=req.carNumber or "",
+            avatarUrl=user_data.get("photo_url", ""),
+            createdAt=datetime.now(timezone.utc),
+            isFavoriteAdmin=0,
+            telegramId=telegram_id,
+            referralCode=referral_code,
+        )
+
+        await self._user_repo.add(new_user)
+        await self._db.flush()
+
+        if req.referralCode:
+            ref_code = req.referralCode.strip().upper()
+            referrer = await self._user_repo.get_by_referral_code(ref_code)
+            if referrer:
+                referral = Referral(
+                    referrerId=referrer.id,
+                    referredId=new_user.id,
+                    rewardClaimed=False,
+                    createdAt=datetime.now(timezone.utc),
+                )
+                await self._referral_repo.add(referral)
+
+        await self._db.commit()
+        await self._db.refresh(new_user)
+
+        return self._issue_token_pair(new_user)
+
     async def get_washers(self) -> list[dict]:
         cache_key = "washers:list"
         cached = await cache.get(cache_key)

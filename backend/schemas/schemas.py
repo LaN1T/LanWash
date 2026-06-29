@@ -773,6 +773,19 @@ class TelegramLinkRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
 
 
+class TelegramRegisterRequest(BaseModel):
+    initData: str = Field(
+        ..., min_length=10, description="Telegram WebApp initData string"
+    )
+    username: str = Field(..., min_length=3, max_length=30)
+    password: str = Field(..., min_length=8, max_length=128)
+    displayName: str = Field(..., min_length=1, max_length=100)
+    phone: Optional[str] = Field(default=None, max_length=20)
+    carModel: Optional[str] = Field(default=None, max_length=50)
+    carNumber: Optional[str] = Field(default=None, max_length=20)
+    referralCode: Optional[str] = Field(default=None, max_length=20)
+
+
 class TelegramAuthResponse(BaseModel):
     user: UserResponse
     access_token: str
