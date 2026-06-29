@@ -1,6 +1,7 @@
 import { create } from 'zustand'
+import { cloudStorage } from '../lib/cloudStorage'
 
-interface User {
+export interface User {
   id: number
   username: string
   role: string
@@ -9,6 +10,7 @@ interface User {
   carModel: string
   carNumber: string
   avatarUrl: string
+  telegramLinked?: boolean
 }
 
 interface AuthState {
@@ -18,6 +20,7 @@ interface AuthState {
   setAuth: (user: User, token: string) => void
   setLoading: (loading: boolean) => void
   logout: () => void
+  init: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -26,9 +29,25 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   setAuth: (user, token) => {
     set({ user, token, isLoading: false })
+    cloudStorage.setItem(cloudStorage.STORAGE_KEYS.USER, JSON.stringify(user))
+    cloudStorage.setItem(cloudStorage.STORAGE_KEYS.ACCESS_TOKEN, token)
   },
   setLoading: (loading) => set({ isLoading: loading }),
   logout: () => {
-    set({ user: null, token: null })
+    cloudStorage.removeItem(cloudStorage.STORAGE_KEYS.USER)
+    cloudStorage.removeItem(cloudStorage.STORAGE_KEYS.ACCESS_TOKEN)
+    set({ user: null, token: null, isLoading: false })
+  },
+  init: async () => {
+    try {
+      const [userRaw, token] = await Promise.all([
+        cloudStorage.getItem(cloudStorage.STORAGE_KEYS.USER),
+        cloudStorage.getItem(cloudStorage.STORAGE_KEYS.ACCESS_TOKEN),
+      ])
+      const user = userRaw ? JSON.parse(userRaw) : null
+      set({ user, token, isLoading: false })
+    } catch {
+      set({ user: null, token: null, isLoading: false })
+    }
   },
 }))
