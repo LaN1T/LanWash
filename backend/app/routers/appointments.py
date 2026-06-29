@@ -7,6 +7,7 @@ from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from starlette.status import HTTP_400_BAD_REQUEST
 from sqlalchemy import String, and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +40,7 @@ from repositories.wash_type_included_extra import WashTypeIncludedExtraRepositor
 from schemas import (
     AppointmentRequest,
     AppointmentResponse,
+    AppointmentStatus,
     AssignWasherRequest,
     CancelReasonRequest,
     LateReportRequest,
@@ -176,6 +178,8 @@ router = APIRouter(
     prefix="/api/appointments",
     tags=["appointments"],
 )
+
+VALID_APPOINTMENT_STATUSES = {s.value for s in AppointmentStatus}
 
 
 @router.get(
@@ -348,6 +352,10 @@ async def get_my_appointments(
     current_user: User = Depends(get_current_user),
 ):
     """Return appointments for the currently authenticated user."""
+    if status and status not in VALID_APPOINTMENT_STATUSES:
+        raise HTTPException(
+            HTTP_400_BAD_REQUEST, "Недопустимый статус записи"
+        )
     filters = [Appointment.ownerUsername == current_user.username]
     if status:
         filters.append(Appointment.status == status)
@@ -1763,10 +1771,10 @@ async def report_late(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Только владелец может сообщить об опоздании."
         )
-    if appt.status != "scheduled":
+    if appt.status not in ("scheduled", "confirmed"):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Можно сообщить об опоздании только для запланированной записи.",
+            "Можно сообщить об опоздании только для активной записи.",
         )
 
     # Idempotency: if the value is already the same, return without mutating
@@ -1840,10 +1848,10 @@ async def cancel_with_reason(
             status.HTTP_403_FORBIDDEN,
             "Только владелец может отменить запись с указанием причины.",
         )
-    if appt.status not in ("scheduled", "in_progress"):
+    if appt.status not in ("scheduled", "confirmed", "in_progress"):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Можно отменить только запланированную или текущую запись.",
+            "Можно отменить только активную запись.",
         )
 
     appt.cancel_reason = req.reason
@@ -1935,3 +1943,35 @@ async def stats(
         "scheduled": counts.get("scheduled", 0),
         "completed": counts.get("completed", 0),
     }
+
+
+@router.get("/{appt_id}", response_model=AppointmentResponse)
+@limiter.limit("60/minute")
+async def get_appointment(
+    request: Request,
+    appt_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return a single appointment if the current user is the owner,
+    an assigned washer, or an admin."""
+    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
+    appt = result.scalar_one_or_none()
+    if not appt:
+        raise HTTPException(404, "Запись не найдена")
+
+    is_owner = current_user.username == appt.ownerUsername
+    is_admin = current_user.role == "admin"
+    assigned_washers = (
+        json.loads(appt.assignedWasher) if appt.assignedWasher else []
+    )
+    is_assigned_washer = (
+        current_user.role == "washer" and current_user.username in assigned_washers
+    )
+
+    if not (is_owner or is_admin or is_assigned_washer):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "У вас нет доступа к этой записи."
+        )
+
+    return appt

@@ -1,4 +1,7 @@
 import { api } from './api'
+import type { AppointmentStatus } from '../utils/appointments'
+
+export type { AppointmentStatus }
 
 export interface BusySlot {
   date: string
@@ -12,7 +15,7 @@ export interface AppointmentCreatePayload {
   dateTime: string
   washTypeId: string
   additionalServices: string
-  status: string
+  status: AppointmentStatus
   ownerUsername: string
   promoCode?: string
 }
@@ -26,7 +29,7 @@ export interface Appointment {
   dateTime: string
   washTypeId: string
   additionalServices: string
-  status: string
+  status: AppointmentStatus
   notes: string
   isFavorite: boolean
   ownerUsername: string
@@ -54,8 +57,13 @@ export async function createAppointment(data: AppointmentCreatePayload, signal?:
   return res.data
 }
 
-export async function getMyAppointments(): Promise<Appointment[]> {
-  const res = await api.get('/appointments/by-owner/me')
+export async function getMyAppointments(signal?: AbortSignal): Promise<Appointment[]> {
+  const res = await api.get('/appointments/by-owner/me', { signal })
+  return res.data
+}
+
+export async function getAppointmentById(id: string, signal?: AbortSignal): Promise<Appointment> {
+  const res = await api.get(`/appointments/${id}`, { signal })
   return res.data
 }
 

@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { api } from '../../services/api'
 import WeekCalendar from '../../components/WeekCalendar'
 import AppointmentCard from '../../components/AppointmentCard'
+import type { AppointmentStatus } from '../../utils/appointments'
 
 interface Appointment {
   id: string
   dateTime: string
   carModel: string
   carNumber: string
-  status: string
+  status: AppointmentStatus
   clientName: string
   box_index: number
 }
@@ -28,7 +29,7 @@ export default function WasherHomePage() {
       .finally(() => setLoading(false))
   }, [selectedDate])
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: AppointmentStatus) => {
     try {
       await api.put(`/appointments/${id}`, { status })
       setAppointments((prev) =>

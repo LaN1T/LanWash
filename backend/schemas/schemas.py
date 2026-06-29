@@ -4,6 +4,7 @@ from datetime import date
 from datetime import date as dt_date
 from datetime import datetime as dt_datetime
 from datetime import time as dt_time
+from enum import Enum
 from typing import Annotated, List, Literal, Optional
 
 from pydantic import (
@@ -348,6 +349,14 @@ class BuySubscriptionRequest(BaseModel):
 
 
 # ─── Appointments ────────────────────────────────────────────────────────────
+class AppointmentStatus(str, Enum):
+    scheduled = "scheduled"
+    confirmed = "confirmed"
+    in_progress = "in_progress"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
 class AppointmentRequest(BaseModel):
     id: str = Field(..., max_length=36, description="Уникальный ID записи")
     clientName: str = Field(..., max_length=100, description="Имя клиента")
@@ -371,7 +380,9 @@ class AppointmentRequest(BaseModel):
             raise ValueError("additionalServices must be valid JSON")
         return v
 
-    status: Literal["scheduled", "in_progress", "completed", "cancelled"] = "scheduled"
+    status: Literal[
+        "scheduled", "confirmed", "in_progress", "completed", "cancelled"
+    ] = "scheduled"
     notes: str = Field(default="", max_length=1000, description="Заметки")
     isFavorite: bool = False
     ownerUsername: str = Field(
@@ -908,7 +919,9 @@ class BulkCancelRequest(BaseModel):
 
 class BulkUpdateStatusRequest(BaseModel):
     appointmentIds: List[str] = Field(..., min_length=1, max_length=100)
-    status: str = Field(..., pattern=r"^(scheduled|in_progress|completed|cancelled)$")
+    status: str = Field(
+        ..., pattern=r"^(scheduled|confirmed|in_progress|completed|cancelled)$"
+    )
 
 
 class BulkResult(BaseModel):

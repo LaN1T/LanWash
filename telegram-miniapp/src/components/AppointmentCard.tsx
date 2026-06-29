@@ -1,24 +1,21 @@
+import { statusMap, parseWashers, type AppointmentStatus } from '../utils/appointments'
+
 interface Props {
   appointment: {
     id: string
     dateTime: string
     carModel: string
     carNumber: string
-    status: string
+    status: AppointmentStatus
     box_index: number | null
+    assignedWasher?: string
   }
-}
-
-const statusMap: Record<string, { label: string; color: string; bg: string }> = {
-  scheduled: { label: 'Запланирована', color: '#1A56DB', bg: '#EFF4FF' },
-  in_progress: { label: 'В процессе', color: '#7C3AED', bg: '#F5F3FF' },
-  completed: { label: 'Завершена', color: '#059669', bg: '#ECFDF5' },
-  cancelled: { label: 'Отменена', color: '#DC2626', bg: '#FEF2F2' },
 }
 
 export default function AppointmentCard({ appointment }: Props) {
   const status = statusMap[appointment.status] || { label: appointment.status, color: '#999', bg: '#F1F5F9' }
   const dt = new Date(appointment.dateTime)
+  const washers = parseWashers(appointment.assignedWasher || '[]')
 
   return (
     <div
@@ -84,6 +81,11 @@ export default function AppointmentCard({ appointment }: Props) {
             {appointment.box_index !== null && appointment.box_index !== undefined && (
               <span style={{ marginLeft: 8, color: '#1A56DB', fontWeight: 600 }}>
                 Бокс {appointment.box_index + 1}
+              </span>
+            )}
+            {washers.length > 0 && (
+              <span style={{ marginLeft: 8, color: '#64748B' }}>
+                · {washers.join(', ')}
               </span>
             )}
           </div>

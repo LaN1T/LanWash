@@ -4,11 +4,12 @@ import { AxiosError } from 'axios'
 import { api } from '../../services/api'
 import { useCatalogStore } from '../../stores/catalogStore'
 import {
-  getMyAppointments,
+  getAppointmentById,
   cancelAppointment,
   reportLate,
   type Appointment,
 } from '../../services/appointments'
+import { statusMap, parseWashers } from '../../utils/appointments'
 
 interface WashType {
   id: string
@@ -18,14 +19,6 @@ interface WashType {
   durationMinutes: number
 }
 
-const statusMap: Record<string, { label: string; color: string; bg: string }> = {
-  scheduled: { label: 'Запланирована', color: '#1A56DB', bg: '#EFF4FF' },
-  confirmed: { label: 'Подтверждена', color: '#1A56DB', bg: '#EFF4FF' },
-  in_progress: { label: 'В процессе', color: '#7C3AED', bg: '#F5F3FF' },
-  completed: { label: 'Завершена', color: '#059669', bg: '#ECFDF5' },
-  cancelled: { label: 'Отменена', color: '#DC2626', bg: '#FEF2F2' },
-}
-
 const LATE_OPTIONS = [15, 30, 60]
 
 function formatDateTime(dateTime: string) {
@@ -33,15 +26,6 @@ function formatDateTime(dateTime: string) {
   return {
     date: dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' }),
     time: dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-  }
-}
-
-function parseWashers(assignedWasher: string): string[] {
-  try {
-    const parsed = JSON.parse(assignedWasher)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
   }
 }
 
@@ -72,24 +56,22 @@ export default function BookingDetailPage() {
 
     const load = async () => {
       try {
-        const [appointments] = await Promise.all([getMyAppointments()])
+        const appt = await getAppointmentById(id)
         if (!mounted) return
-        const found = appointments.find((a) => a.id === id)
-        if (!found) {
-          setError('Запись не найдена')
-          setLoading(false)
-          return
-        }
-        setAppointment(found)
+        setAppointment(appt)
         try {
-          const wtRes = await api.get(`/wash-types/${found.washTypeId}`)
+          const wtRes = await api.get(`/wash-types/${appt.washTypeId}`)
           if (mounted) setWashType(wtRes.data)
         } catch {
           // wash type name is optional for display
         }
-      } catch {
+      } catch (e) {
         if (!mounted) return
-        setError('Не удалось загрузить запись')
+        const message =
+          e instanceof AxiosError
+            ? e.response?.data?.detail || e.message
+            : 'Не удалось загрузить запись'
+        setError(message)
       } finally {
         if (mounted) setLoading(false)
       }
@@ -117,8 +99,9 @@ export default function BookingDetailPage() {
   const status = appointment ? statusMap[appointment.status] || { label: appointment.status, color: '#999', bg: '#F1F5F9' } : null
   const dt = appointment ? formatDateTime(appointment.dateTime) : null
 
-  const canCancel = appointment?.status === 'scheduled' || appointment?.status === 'in_progress'
-  const canReportLate = appointment?.status === 'scheduled'
+  const activeStatuses = new Set(['scheduled', 'confirmed'])
+  const canCancel = appointment && activeStatuses.has(appointment.status)
+  const canReportLate = appointment && activeStatuses.has(appointment.status)
 
   const handleCancel = async () => {
     if (!appointment || !cancelReason.trim()) return

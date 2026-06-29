@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMyAppointments, type Appointment } from '../../services/appointments'
+import { type AppointmentStatus } from '../../utils/appointments'
 import AppointmentCard from '../../components/AppointmentCard'
 
 type Tab = 'active' | 'history'
 
-const ACTIVE_STATUSES = new Set(['scheduled', 'confirmed', 'in_progress'])
+const ACTIVE_STATUSES = new Set<AppointmentStatus>(['scheduled', 'confirmed', 'in_progress'])
 
 export default function MyBookingsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('active')
 
-  useEffect(() => {
+  const load = () => {
     let mounted = true
     setLoading(true)
+    setError(null)
     getMyAppointments()
       .then((data) => {
         if (!mounted) return
@@ -24,9 +27,10 @@ export default function MyBookingsPage() {
         )
         setAppointments(sorted)
       })
-      .catch(() => {
+      .catch((err) => {
         if (!mounted) return
         setAppointments([])
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить записи')
       })
       .finally(() => {
         if (mounted) setLoading(false)
@@ -34,7 +38,9 @@ export default function MyBookingsPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }
+
+  useEffect(load, [])
 
   const filtered = appointments.filter((appt) =>
     tab === 'active' ? ACTIVE_STATUSES.has(appt.status) : !ACTIVE_STATUSES.has(appt.status),
@@ -92,7 +98,38 @@ export default function MyBookingsPage() {
         <TabButton value="history" label="История" />
       </div>
 
-      {filtered.length === 0 ? (
+      {error ? (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: 40,
+            color: '#64748B',
+          }}
+        >
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ADB5C8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}>
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p style={{ fontSize: 15, fontWeight: 500, color: '#B91C1C' }}>{error}</p>
+          <button
+            onClick={load}
+            style={{
+              marginTop: 12,
+              padding: '10px 20px',
+              borderRadius: 10,
+              border: 'none',
+              background: '#1A56DB',
+              color: '#FFFFFF',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Повторить
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
         <div
           style={{
             textAlign: 'center',
