@@ -2,14 +2,14 @@ import hashlib
 import hmac
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 import pytest
 import pytest_asyncio
 
 from core.config import get_settings
-from models import User
+from models import Appointment, Car, User
 from schemas import TelegramRegisterRequest, UserResponse
 from services.auth_service import (
     AuthService,
@@ -57,6 +57,24 @@ async def test_user(db_session):
         role="client",
         displayName="Link Test",
         createdAt=datetime.now(),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+
+@pytest_asyncio.fixture
+async def tg_dummy_user(db_session):
+    """Auto-created tg_<id> dummy account with a linked Telegram ID."""
+    from services.auth_service import get_password_hash
+
+    user = User(
+        username="tg_12345",
+        passwordHash=get_password_hash("DummyPass123!"),
+        role="client",
+        displayName="TG Dummy",
+        createdAt=datetime.now(),
+        telegramId="12345",
     )
     db_session.add(user)
     await db_session.commit()
@@ -498,6 +516,48 @@ class TestLinkTelegram:
             init_data, test_user.username, "CorrectPassword123!"
         )
         assert result["user"].telegramId == "999999"
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_merges_data(
+        self, db_session, test_user, tg_dummy_user
+    ):
+        svc = AuthService(db_session)
+
+        appointment = Appointment(
+            id="appt-merge-1",
+            userId=tg_dummy_user.id,
+            clientName="TG Client",
+            carModel="Lada",
+            carNumber="А111АА77",
+            dateTime=datetime.now() + timedelta(days=1),
+            washTypeId="w1",
+            ownerUsername=tg_dummy_user.username,
+        )
+        car = Car(
+            userId=tg_dummy_user.id,
+            brand="Lada",
+            model="Granta",
+            number="А111АА77",
+        )
+        db_session.add(appointment)
+        db_session.add(car)
+        await db_session.commit()
+
+        init_data = make_test_init_data(telegram_id=tg_dummy_user.telegramId)
+        result = await svc.link_telegram(
+            init_data, test_user.username, "CorrectPassword123!"
+        )
+        assert result["user"].telegramId == tg_dummy_user.telegramId
+
+        merged_appointment = await db_session.get(Appointment, "appt-merge-1")
+        assert merged_appointment.ownerUsername == test_user.username
+        assert merged_appointment.userId == test_user.id
+
+        merged_car = await db_session.get(Car, car.id)
+        assert merged_car.userId == test_user.id
+
+        old_user = await db_session.get(User, tg_dummy_user.id)
+        assert old_user is None
 
     @pytest.mark.asyncio
     async def test_link_telegram_wrong_password(self, db_session, test_user):

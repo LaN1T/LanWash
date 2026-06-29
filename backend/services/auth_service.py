@@ -422,6 +422,46 @@ class AuthService:
 
         return self._issue_token_pair(user)
 
+    async def _merge_telegram_user_data(
+        self, target_user: User, telegram_id: str
+    ) -> None:
+        from sqlalchemy import update
+        from models import (
+            Appointment,
+            Car,
+            Review,
+            ShiftTemplate,
+            Subscription,
+            SupportChat,
+        )
+
+        old_user = await self._user_repo.get_by_telegram_id(telegram_id)
+        if not old_user or old_user.id == target_user.id:
+            return
+
+        # Models linked by userId FK
+        for model in (Car, Subscription, Review, SupportChat):
+            await self._db.execute(
+                update(model)
+                .where(model.userId == old_user.id)
+                .values(userId=target_user.id)
+            )
+
+        # Models linked by ownerUsername
+        await self._db.execute(
+            update(Appointment)
+            .where(Appointment.ownerUsername == old_user.username)
+            .values(ownerUsername=target_user.username, userId=target_user.id)
+        )
+        await self._db.execute(
+            update(ShiftTemplate)
+            .where(ShiftTemplate.ownerUsername == old_user.username)
+            .values(ownerUsername=target_user.username)
+        )
+
+        await self._db.delete(old_user)
+        await self._db.flush()
+
     async def link_telegram(
         self, init_data: str, username: str, password: str
     ) -> dict:
@@ -446,12 +486,15 @@ class AuthService:
 
         existing_by_tg = await self._user_repo.get_by_telegram_id(telegram_id)
         if existing_by_tg:
-            if existing_by_tg.id != user.id:
+            if existing_by_tg.id == user.id:
+                # Idempotent: already linked to this user
+                return self._issue_token_pair(user)
+            if not existing_by_tg.username.startswith("tg_"):
                 raise TelegramAlreadyLinkedError(
                     "Этот Telegram уже привязан к другому аккаунту"
                 )
-            # Idempotent: already linked to this user
-            return self._issue_token_pair(user)
+            # Auto-created tg_<id> dummy account: merge data into the real account
+            await self._merge_telegram_user_data(user, telegram_id)
 
         user.telegramId = telegram_id.strip()
         try:
