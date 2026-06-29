@@ -250,12 +250,7 @@ class ApiService {
           debugPrint(
               'getAppointments failure: ${err.message} (code: ${err.statusCode})');
         }
-        return PaginatedAppointments(
-            appointments: [],
-            totalPages: 1,
-            currentPage: 1,
-            currentDate: '',
-            uniqueDates: []);
+        throw err;
       },
     );
   }
