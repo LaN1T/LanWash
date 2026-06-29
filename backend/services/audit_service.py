@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime, time
 from decimal import Decimal
 
+from core.limiter import get_proxy_aware_remote_address
 from models import AdminAuditLog
 
 
@@ -36,7 +37,7 @@ async def log_admin_action(
         entity_id=str(entity_id),
         old_values=json.dumps(old_values or {}, cls=_AuditJsonEncoder),
         new_values=json.dumps(new_values or {}, cls=_AuditJsonEncoder),
-        ip_address=request.client.host if request and request.client else None,
+        ip_address=get_proxy_aware_remote_address(request) if request else None,
         user_agent=request.headers.get("user-agent") if request else None,
         created_at=datetime.now(),
     )
