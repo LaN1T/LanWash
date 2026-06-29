@@ -96,6 +96,9 @@ class ApiService {
     return result.when(
       success: (data) async {
         await setToken(data['access_token']);
+        if (data['refresh_token'] != null) {
+          await ApiClient.setRefreshToken(data['refresh_token'] as String);
+        }
         return User.fromMap(data['user']);
       },
       failure: (err) {
@@ -129,6 +132,9 @@ class ApiService {
     return result.when(
       success: (data) async {
         await setToken(data['access_token']);
+        if (data['refresh_token'] != null) {
+          await ApiClient.setRefreshToken(data['refresh_token'] as String);
+        }
         return {'user': data['user']};
       },
       failure: (err) {

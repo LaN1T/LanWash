@@ -13,6 +13,7 @@ import 'api_result.dart';
 class ApiClient {
   static const _storage = FlutterSecureStorage();
   static String? _cachedToken;
+  static String? _cachedRefreshToken;
   static Completer<String?>? _refreshCompleter;
   static http.Client _httpClient = http.Client();
 
@@ -24,6 +25,10 @@ class ApiClient {
   @visibleForTesting
   static set token(String? token) => _cachedToken = token;
 
+  /// Для тестов: позволяет установить refresh-токен без обращения к хранилищу.
+  @visibleForTesting
+  static set refreshToken(String? token) => _cachedRefreshToken = token;
+
   static Future<String?> getToken() async {
     try {
       _cachedToken ??= await _storage.read(key: 'jwt_token');
@@ -31,6 +36,15 @@ class ApiClient {
       if (kDebugMode) debugPrint('getToken error: $e');
     }
     return _cachedToken;
+  }
+
+  static Future<String?> getRefreshToken() async {
+    try {
+      _cachedRefreshToken ??= await _storage.read(key: 'refresh_token');
+    } catch (e) {
+      if (kDebugMode) debugPrint('getRefreshToken error: $e');
+    }
+    return _cachedRefreshToken;
   }
 
   static Future<void> setToken(String token) async {
@@ -42,10 +56,21 @@ class ApiClient {
     }
   }
 
+  static Future<void> setRefreshToken(String token) async {
+    _cachedRefreshToken = token;
+    try {
+      await _storage.write(key: 'refresh_token', value: token);
+    } catch (e) {
+      if (kDebugMode) debugPrint('setRefreshToken error: $e');
+    }
+  }
+
   static Future<void> deleteToken() async {
     _cachedToken = null;
+    _cachedRefreshToken = null;
     try {
       await _storage.delete(key: 'jwt_token');
+      await _storage.delete(key: 'refresh_token');
     } catch (e) {
       if (kDebugMode) debugPrint('deleteToken error: $e');
     }
@@ -152,22 +177,26 @@ class ApiClient {
 
     _refreshCompleter = Completer<String?>();
     try {
-      final token = _cachedToken;
-      if (token == null) {
+      final refreshToken = await getRefreshToken();
+      if (refreshToken == null) {
         _refreshCompleter!.complete(null);
         return null;
       }
 
       final refreshResponse = await _httpClient.post(
         Uri.parse('${AppConfig.baseUrl}/auth/refresh'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {'Authorization': 'Bearer $refreshToken'},
       );
 
       if (refreshResponse.statusCode == 200) {
         final data = jsonDecode(refreshResponse.body);
         if (data is Map && data['access_token'] != null) {
           final newToken = data['access_token'] as String;
+          final newRefreshToken = data['refresh_token'] as String?;
           await setToken(newToken);
+          if (newRefreshToken != null) {
+            await setRefreshToken(newRefreshToken);
+          }
           _refreshCompleter!.complete(newToken);
           return newToken;
         }
