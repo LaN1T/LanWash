@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { AxiosError } from 'axios'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { validateName, validateCarModel, validatePlate, formatPlate } from '../../utils/validators'
 import { getMyCars, type Car } from '../../services/cars'
-import { getBusySlots, createAppointment, type BusySlot } from '../../services/appointments'
+import { getBusySlots, createAppointment, type BusySlot, type AppointmentCreatePayload } from '../../services/appointments'
 import { getMySubscriptions, type Subscription } from '../../services/subscriptions'
 import { getPromos, type Promo } from '../../services/catalog'
 
@@ -60,63 +61,82 @@ export default function BookingPage() {
   const [washTypes, setWashTypes] = useState<WashType[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const pageRef = useRef<HTMLDivElement>(null)
 
+  const formatLocalDate = (date: Date) => {
+    return date.toLocaleDateString('sv-SE')
+  }
+
   // Load data
   useEffect(() => {
     const promoCode = searchParams.get('promo') || ''
     setQueryPromoCode(promoCode)
+    setLoadError(null)
+    setLoading(true)
 
-    Promise.all([
-      api.get('/wash-types/'),
-      api.get('/services/'),
-      getMyCars().catch(() => [] as Car[]),
-      getMySubscriptions().catch(() => [] as Subscription[]),
-      getPromos().catch(() => [] as Promo[]),
-    ]).then(([wtRes, svcRes, carsRes, subsRes, promosRes]) => {
-      const wts = wtRes.data.sort((a: WashType, b: WashType) => a.sortOrder - b.sortOrder)
-      setWashTypes(wts)
-      setServices(svcRes.data)
-      setCars(carsRes)
-      setSubscriptions(subsRes)
+    const load = async () => {
+      try {
+        const [wtRes, svcRes, carsRes, subsRes, promosRes] = await Promise.all([
+          api.get('/wash-types/'),
+          api.get('/services/'),
+          getMyCars().catch(() => [] as Car[]),
+          getMySubscriptions().catch(() => [] as Subscription[]),
+          getPromos().catch(() => [] as Promo[]),
+        ])
+        const wts = wtRes.data.sort((a: WashType, b: WashType) => a.sortOrder - b.sortOrder)
+        setWashTypes(wts)
+        setServices(svcRes.data)
+        setCars(carsRes)
+        setSubscriptions(subsRes)
 
-      // Set default wash type
-      const basic = wts.find((w: WashType) => w.name.toLowerCase().includes('базовая') || w.name.toLowerCase().includes('basic')) || wts[0]
-      if (basic) {
-        setWashTypeId(basic.id)
-        setExtras(new Set(basic.includedExtraIds || []))
-      }
-
-      // Apply promo from query if valid
-      if (promoCode && promosRes.length > 0) {
-        const matched = promosRes.find((p: Promo) => p.id.toLowerCase() === promoCode.toLowerCase())
-        if (matched) {
-          setAppliedPromo(matched)
+        // Set default wash type
+        const basic = wts.find((w: WashType) => w.name.toLowerCase().includes('базовая') || w.name.toLowerCase().includes('basic')) || wts[0]
+        if (basic) {
+          setWashTypeId(basic.id)
+          setExtras(new Set(basic.includedExtraIds || []))
         }
-      }
 
-      setLoading(false)
-    })
+        // Apply promo from query if valid
+        if (promoCode && promosRes.length > 0) {
+          const matched = promosRes.find((p: Promo) => p.id.toLowerCase() === promoCode.toLowerCase())
+          if (matched) {
+            setAppliedPromo(matched)
+          }
+        }
+      } catch {
+        setLoadError('Не удалось загрузить данные. Проверьте соединение и попробуйте снова.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
   }, [searchParams])
 
   // Load busy slots when date changes
   useEffect(() => {
     if (!washTypeId) return
-    const dateStr = selectedDate.toISOString().split('T')[0]
+    const controller = new AbortController()
+    const dateStr = formatLocalDate(selectedDate)
     setLoadingSlots(true)
-    getBusySlots(dateStr)
+    getBusySlots(dateStr, controller.signal)
       .then((slots) => {
+        if (controller.signal.aborted) return
         setBusySlots(slots)
         setLoadingSlots(false)
       })
       .catch(() => {
+        if (controller.signal.aborted) return
         setBusySlots([])
         setLoadingSlots(false)
       })
+    return () => controller.abort()
   }, [selectedDate, washTypeId])
 
   const selectedWashType = washTypes.find((w) => w.id === washTypeId)
@@ -228,11 +248,39 @@ export default function BookingPage() {
     }
   }
 
+  const getBackendErrorMessage = (e: unknown): string => {
+    if (e instanceof AxiosError && e.response?.data?.detail) {
+      return String(e.response.data.detail)
+    }
+    return 'Не удалось создать запись. Попробуйте ещё раз.'
+  }
+
   const handleConfirm = async () => {
     if (isSaving) return
+    setSubmitError(null)
+
+    const nameErr = validateName(name)
+    const carErr = validateCarModel(car)
+    const plateErr = validatePlate(plate)
+    const newErrors: Record<string, string> = {}
+    if (nameErr) newErrors.name = nameErr
+    if (carErr) newErrors.car = carErr
+    if (plateErr) newErrors.plate = plateErr
+    setErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      pageRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    if (!washTypeId || !selectedDate || selectedSlot === -1) {
+      setSubmitError('Пожалуйста, выберите услугу, дату и время.')
+      return
+    }
+
     setIsSaving(true)
     try {
-      await createAppointment({
+      const payload: AppointmentCreatePayload = {
         clientName: name.trim(),
         carModel: car.trim(),
         carNumber: plate.replace(/\s/g, '').toUpperCase(),
@@ -242,10 +290,11 @@ export default function BookingPage() {
         status: 'scheduled',
         ownerUsername: user?.username || '',
         promoCode: appliedPromo?.id || queryPromoCode || undefined,
-      })
+      }
+      await createAppointment(payload)
       navigate('/bookings')
     } catch (e) {
-      alert('Не удалось создать запись. Попробуйте ещё раз.')
+      setSubmitError(getBackendErrorMessage(e))
     } finally {
       setIsSaving(false)
     }
@@ -320,6 +369,28 @@ export default function BookingPage() {
     return (
       <div style={{ padding: 16, textAlign: 'center', color: '#64748B', marginTop: 60 }}>
         Загрузка...
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: 16, textAlign: 'center', color: '#64748B', marginTop: 60 }}>
+        <div style={{ marginBottom: 16 }}>{loadError}</div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '12px 24px',
+            borderRadius: 12,
+            background: '#1A56DB',
+            color: 'white',
+            fontSize: 15,
+            fontWeight: 600,
+            border: 'none',
+          }}
+        >
+          Повторить
+        </button>
       </div>
     )
   }
@@ -430,6 +501,13 @@ export default function BookingPage() {
           />
         )}
       </div>
+
+      {/* Submit error */}
+      {submitError && (
+        <div style={{ padding: '12px 16px 0', background: '#FFFFFF', borderTop: '1px solid #E2E8F0' }}>
+          <div style={{ color: '#DC2626', fontSize: 13, textAlign: 'center' }}>{submitError}</div>
+        </div>
+      )}
 
       {/* Bottom Bar */}
       <div
