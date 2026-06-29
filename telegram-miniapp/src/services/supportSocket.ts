@@ -2,7 +2,7 @@ import { isSupportMessage, type SupportMessage } from './support'
 import { useAuthStore } from '../stores/authStore'
 
 type ServerMessage =
-  | { type: 'message'; data: unknown }
+  | { type: 'new_message'; data: unknown }
   | { type: 'status_update'; data: unknown }
   | { type: 'ping' }
 
@@ -94,7 +94,7 @@ export function connectSupportSocket(
           return
         }
 
-        if (message.type === 'message') {
+        if (message.type === 'new_message') {
           if (isSupportMessage(message.data)) {
             onMessage(message.data)
           } else {

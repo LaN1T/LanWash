@@ -62,7 +62,7 @@ export async function updateAvailability(
   entries: AvailabilityEntry[],
 ): Promise<WasherAvailability[]> {
   const res = await api.put(`/washers/${userId}/availability`, { entries })
-  return res.data
+  return res.data.entries
 }
 
 export async function deleteAvailability(

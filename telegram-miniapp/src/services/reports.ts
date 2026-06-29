@@ -103,10 +103,23 @@ export interface ShiftLoadReport {
     userId: number
     displayName: string
     confirmedMinutes: number
+    pendingMinutes: number
+    rejectedMinutes: number
+    utilizationPercent: number
+    isOvertime: boolean
+    isUnderload: boolean
   }>
-  statusCounts: Record<string, number>
+  statusCounts: {
+    confirmed: number
+    pending: number
+    rejected: number
+  }
   conflictCount: number
-  availabilityCoverage: Record<string, number>
+  availabilityCoverage: {
+    availableDays: number
+    unavailableDays: number
+    unknownDays: number
+  }
 }
 
 export async function getDailyReport(date: string, signal?: AbortSignal): Promise<DailyReport> {

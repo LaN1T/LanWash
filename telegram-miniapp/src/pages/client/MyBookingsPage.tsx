@@ -91,7 +91,7 @@ export default function MyBookingsPage() {
     setLoading(true)
     setError(null)
 
-    getMyAppointments(signal)
+    getMyAppointments({}, signal)
       .then((data) => {
         if (signal.aborted) return
         const httpList = data || []

@@ -8,6 +8,23 @@ export interface Consumable {
   minStock: number
 }
 
+export function isConsumable(value: unknown): value is Consumable {
+  if (typeof value !== 'object' || value === null) return false
+  const c = value as Record<string, unknown>
+
+  return (
+    typeof c.id === 'string' &&
+    typeof c.name === 'string' &&
+    typeof c.unit === 'string' &&
+    typeof c.currentStock === 'number' &&
+    typeof c.minStock === 'number'
+  )
+}
+
+function isConsumableArray(value: unknown): value is Consumable[] {
+  return Array.isArray(value) && value.every(isConsumable)
+}
+
 export interface ConsumableUsageLog {
   consumableId: string
   appointmentId: string
@@ -49,40 +66,90 @@ export interface WashTypeConsumableLink {
   quantity_per_service: number
 }
 
+export interface InventoryForecastItem {
+  consumable_id: string
+  name: string
+  unit: string
+  current_stock: number
+  min_stock: number
+  avg_daily_usage: number
+  planned_usage_7d: number
+  days_until_low: number | null
+  days_until_empty: number | null
+  recommended_order_amount: number
+  status: 'critical' | 'warning' | 'ok'
+}
+
 export interface InventoryForecast {
-  items: Array<{
-    consumable_id: string
-    name: string
-    unit: string
-    predicted_usage: number
-    current_stock: number
-    recommended_refill: number
-  }>
+  items: InventoryForecastItem[]
   generated_at: string
+}
+
+function isInventoryForecast(value: unknown): value is InventoryForecast {
+  if (typeof value !== 'object' || value === null) return false
+  const f = value as Record<string, unknown>
+
+  return (
+    Array.isArray(f.items) &&
+    f.items.every((item: unknown) => {
+      if (typeof item !== 'object' || item === null) return false
+      const i = item as Record<string, unknown>
+      return (
+        typeof i.consumable_id === 'string' &&
+        typeof i.name === 'string' &&
+        typeof i.unit === 'string' &&
+        typeof i.current_stock === 'number' &&
+        typeof i.min_stock === 'number' &&
+        typeof i.avg_daily_usage === 'number' &&
+        typeof i.planned_usage_7d === 'number' &&
+        (i.days_until_low === null || typeof i.days_until_low === 'number') &&
+        (i.days_until_empty === null || typeof i.days_until_empty === 'number') &&
+        typeof i.recommended_order_amount === 'number' &&
+        typeof i.status === 'string' &&
+        ['critical', 'warning', 'ok'].includes(i.status)
+      )
+    }) &&
+    typeof f.generated_at === 'string'
+  )
 }
 
 export async function getConsumables(signal?: AbortSignal): Promise<Consumable[]> {
   const res = await api.get('/consumables/', { signal })
+  if (!isConsumableArray(res.data)) {
+    throw new Error('Invalid consumables response')
+  }
   return res.data
 }
 
 export async function getLowStockAlerts(signal?: AbortSignal): Promise<Consumable[]> {
   const res = await api.get('/consumables/alerts/low-stock', { signal })
+  if (!isConsumableArray(res.data)) {
+    throw new Error('Invalid low stock alerts response')
+  }
   return res.data
 }
 
 export async function getInventoryForecast(signal?: AbortSignal): Promise<InventoryForecast> {
   const res = await api.get('/consumables/forecast', { signal })
+  if (!isInventoryForecast(res.data)) {
+    throw new Error('Invalid inventory forecast response')
+  }
   return res.data
 }
 
 export async function getConsumableById(id: string, signal?: AbortSignal): Promise<Consumable> {
   const res = await api.get(`/consumables/${id}`, { signal })
+  if (!isConsumable(res.data)) {
+    throw new Error('Invalid consumable response')
+  }
   return res.data
 }
 
 export async function refillConsumable(id: string, amount: number): Promise<Consumable> {
   const res = await api.post(`/consumables/${id}/refill`, { amount })
+  if (!isConsumable(res.data)) {
+    throw new Error('Invalid consumable response')
+  }
   return res.data
 }
 
@@ -139,9 +206,8 @@ export async function downloadImportTemplate(signal?: AbortSignal): Promise<Blob
 export async function importRefills(file: File): Promise<unknown> {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await api.post('/consumables/import-refills', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  // Let Axios set the multipart boundary automatically.
+  const res = await api.post('/consumables/import-refills', formData)
   return res.data
 }
 

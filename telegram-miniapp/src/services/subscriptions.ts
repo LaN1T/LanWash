@@ -1,13 +1,53 @@
 import { api } from './api'
 
 export interface Subscription {
-  id: string
+  id: number
+  userId: number
   name: string
-  discountPercent: number
+  type: string
+  washTypeId: string
+  totalWashes: number
+  usedWashes: number
+  validUntil: string | null
+  planId: number | null
+  price: number
+  originalPrice: number
+  selectedExtras: string
+  paymentStatus: string
+  createdAt: string
+}
+
+export function isSubscription(value: unknown): value is Subscription {
+  if (typeof value !== 'object' || value === null) return false
+  const s = value as Record<string, unknown>
+
+  return (
+    typeof s.id === 'number' &&
+    typeof s.userId === 'number' &&
+    typeof s.name === 'string' &&
+    typeof s.type === 'string' &&
+    typeof s.washTypeId === 'string' &&
+    typeof s.totalWashes === 'number' &&
+    typeof s.usedWashes === 'number' &&
+    (s.validUntil === null || typeof s.validUntil === 'string') &&
+    (s.planId === null || typeof s.planId === 'number') &&
+    typeof s.price === 'number' &&
+    typeof s.originalPrice === 'number' &&
+    typeof s.selectedExtras === 'string' &&
+    typeof s.paymentStatus === 'string' &&
+    typeof s.createdAt === 'string'
+  )
+}
+
+function isSubscriptionArray(value: unknown): value is Subscription[] {
+  return Array.isArray(value) && value.every(isSubscription)
 }
 
 export async function getMySubscriptions(signal?: AbortSignal): Promise<Subscription[]> {
   const res = await api.get('/subscriptions/my', { signal })
+  if (!isSubscriptionArray(res.data)) {
+    throw new Error('Invalid subscriptions response')
+  }
   return res.data
 }
 

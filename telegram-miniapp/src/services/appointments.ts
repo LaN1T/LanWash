@@ -9,6 +9,7 @@ export interface BusySlot {
 }
 
 export interface AppointmentCreatePayload {
+  id: string
   clientName: string
   carModel: string
   carNumber: string
@@ -57,8 +58,15 @@ export async function createAppointment(data: AppointmentCreatePayload, signal?:
   return res.data
 }
 
-export async function getMyAppointments(signal?: AbortSignal): Promise<Appointment[]> {
-  const res = await api.get('/appointments/by-owner/me', { signal })
+export interface MyAppointmentListParams {
+  status?: AppointmentStatus
+}
+
+export async function getMyAppointments(
+  params: MyAppointmentListParams = {},
+  signal?: AbortSignal,
+): Promise<Appointment[]> {
+  const res = await api.get('/appointments/by-owner/me', { params, signal })
   return res.data
 }
 
@@ -69,6 +77,23 @@ export async function getAppointmentById(id: string, signal?: AbortSignal): Prom
 
 export async function cancelAppointment(id: string, reason: string) {
   const res = await api.post(`/appointments/${id}/cancel-reason`, { reason })
+  return res.data
+}
+
+export async function updateAppointmentStatus(
+  id: string,
+  status: AppointmentStatus,
+  notes?: string,
+): Promise<Appointment> {
+  // Backend PUT /appointments/{id} expects a full AppointmentRequest payload.
+  // We fetch the current appointment and send only the changed fields along with
+  // the existing data; the backend enforces role-based field restrictions.
+  const appt = await getAppointmentById(id)
+  const payload = { ...appt, status, notes: notes ?? appt.notes }
+  const res = await api.put(`/appointments/${id}`, payload)
+  if (!isAppointment(res.data)) {
+    throw new Error('Invalid appointment response')
+  }
   return res.data
 }
 
@@ -119,7 +144,6 @@ function isAppointmentArray(value: unknown): value is Appointment[] {
 
 export interface AppointmentListParams {
   date?: string
-  status?: AppointmentStatus
   page?: number
 }
 

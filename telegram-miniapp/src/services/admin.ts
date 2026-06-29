@@ -1,6 +1,5 @@
 import { api } from './api'
-import type { AppointmentStatus } from '../utils/appointments'
-import type { BulkResult } from './appointments'
+export { bulkAssignWasher, bulkCancel, bulkUpdateStatus } from './appointments'
 
 export interface DashboardKpi {
   fromDate: string
@@ -20,16 +19,14 @@ export interface DashboardKpi {
     completed: number
   }>
   topWashers: Array<{
-    username: string
-    displayName: string
-    appointments: number
+    name: string
     revenue: number
+    appointments: number
   }>
   topClients: Array<{
-    username: string
-    displayName: string
-    appointments: number
-    revenue: number
+    name: string
+    visits: number
+    totalSpent: number
   }>
 }
 
@@ -102,17 +99,6 @@ function isUserListResponse(value: unknown): value is UserListResponse {
   )
 }
 
-function isBulkResult(value: unknown): value is BulkResult {
-  if (typeof value !== 'object' || value === null) return false
-  const r = value as Record<string, unknown>
-  return (
-    typeof r.processed === 'number' &&
-    typeof r.failed === 'number' &&
-    Array.isArray(r.errors) &&
-    r.errors.every((e: unknown) => typeof e === 'string')
-  )
-}
-
 export async function getDashboard(
   fromDate: string,
   toDate: string,
@@ -137,39 +123,6 @@ export async function searchUsers(
   const res = await api.get('/admin/users', { params, signal })
   if (!isUserListResponse(res.data)) {
     throw new Error('Invalid user list response')
-  }
-  return res.data
-}
-
-export async function bulkAssignWasher(
-  appointmentIds: string[],
-  washerUsername: string,
-): Promise<BulkResult> {
-  const res = await api.post('/admin/bulk/assign-washer', { appointmentIds, washerUsername })
-  if (!isBulkResult(res.data)) {
-    throw new Error('Invalid bulk result response')
-  }
-  return res.data
-}
-
-export async function bulkCancel(
-  appointmentIds: string[],
-  reason?: string,
-): Promise<BulkResult> {
-  const res = await api.post('/admin/bulk/cancel', { appointmentIds, reason })
-  if (!isBulkResult(res.data)) {
-    throw new Error('Invalid bulk result response')
-  }
-  return res.data
-}
-
-export async function bulkUpdateStatus(
-  appointmentIds: string[],
-  status: AppointmentStatus,
-): Promise<BulkResult> {
-  const res = await api.post('/admin/bulk/update-status', { appointmentIds, status })
-  if (!isBulkResult(res.data)) {
-    throw new Error('Invalid bulk result response')
   }
   return res.data
 }
