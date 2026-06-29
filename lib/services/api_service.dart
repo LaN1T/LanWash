@@ -102,7 +102,8 @@ class ApiService {
         return User.fromMap(data['user']);
       },
       failure: (err) {
-        return null;
+        if (err.statusCode == 401) return null;
+        throw err;
       },
     );
   }

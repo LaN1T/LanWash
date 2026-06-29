@@ -35,9 +35,12 @@ class FavoriteProvider extends ChangeNotifier {
   }
 
   Future<void> toggleServiceFavorite(String id) async {
-    final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
+    if (_currentUser.isEmpty) {
+      debugPrint('FavoriteProvider: cannot toggle favorite with no user loaded');
+      return;
+    }
     try {
-      final ok = await _api.toggleServiceFavorite(user, id);
+      final ok = await _api.toggleServiceFavorite(_currentUser, id);
       if (ok) {
         if (_serviceFavSet.contains(id)) {
           _serviceFavSet.remove(id);
@@ -52,9 +55,12 @@ class FavoriteProvider extends ChangeNotifier {
   }
 
   Future<void> toggleExtraFavorite(String serviceId) async {
-    final user = _currentUser.isNotEmpty ? _currentUser : 'admin';
+    if (_currentUser.isEmpty) {
+      debugPrint('FavoriteProvider: cannot toggle favorite with no user loaded');
+      return;
+    }
     try {
-      final ok = await _api.toggleExtraFavorite(user, serviceId);
+      final ok = await _api.toggleExtraFavorite(_currentUser, serviceId);
       if (ok) {
         if (_extraFavSet.contains(serviceId)) {
           _extraFavSet.remove(serviceId);

@@ -56,11 +56,20 @@ class User {
         carModel: m['carModel'] ?? '',
         carNumber: m['carNumber'] ?? '',
         avatarUrl: m['avatarUrl'] ?? '',
-        createdAt: m['createdAt'] != null
-            ? DateTime.parse(m['createdAt'])
-            : DateTime.now(),
-        isFavoriteAdmin: m['isFavoriteAdmin'] == 1,
+        createdAt: _parseDateTime(m['createdAt']) ?? DateTime.now(),
+        isFavoriteAdmin:
+            m['isFavoriteAdmin'] == 1 || m['isFavoriteAdmin'] == true,
       );
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    try {
+      return DateTime.parse(value.toString());
+    } catch (_) {
+      return null;
+    }
+  }
 
   User copyWith({
     String? displayName,
