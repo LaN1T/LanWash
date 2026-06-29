@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMyAppointments, type Appointment } from '../../services/appointments'
+import { connectAppointmentsSocket } from '../../services/appointmentSocket'
+import { useAuthStore } from '../../stores/authStore'
 import { type AppointmentStatus } from '../../utils/appointments'
 import AppointmentCard from '../../components/AppointmentCard'
 
@@ -13,6 +15,25 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('active')
+  const token = useAuthStore((state) => state.token)
+
+  useEffect(() => {
+    if (!token) return
+
+    const cleanup = connectAppointmentsSocket(token, (updated) => {
+      setAppointments((prev) => {
+        const existingIndex = prev.findIndex((appt) => appt.id === updated.id)
+        if (existingIndex === -1) {
+          return [updated, ...prev]
+        }
+        const next = [...prev]
+        next[existingIndex] = updated
+        return next
+      })
+    })
+
+    return cleanup
+  }, [token])
 
   const load = () => {
     let mounted = true
