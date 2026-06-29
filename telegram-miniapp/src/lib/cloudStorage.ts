@@ -3,7 +3,7 @@ export const STORAGE_KEYS = {
   USER: 'lw_user',
 } as const
 
-function getTg() {
+function getTg(): Window['Telegram']['WebApp'] | undefined {
   return window.Telegram?.WebApp
 }
 
@@ -13,7 +13,10 @@ export async function getItem(key: string): Promise<string | null> {
   if (storage) {
     return new Promise((resolve) => {
       storage.getItem(key, (err, value) => {
-        if (err || value == null || value === '') {
+        if (err) {
+          console.warn('CloudStorage getItem error', err)
+          resolve(null)
+        } else if (value == null || value === '') {
           resolve(null)
         } else {
           resolve(value)
@@ -31,14 +34,18 @@ export async function setItem(key: string, value: string): Promise<void> {
     return new Promise((resolve, reject) => {
       storage.setItem(key, value, (err, saved) => {
         if (err || !saved) {
-          reject(err)
+          reject(err ?? new Error(`CloudStorage setItem failed for key "${key}"`))
         } else {
           resolve()
         }
       })
     })
   }
-  localStorage.setItem(key, value)
+  try {
+    localStorage.setItem(key, value)
+  } catch (e) {
+    throw new Error(`localStorage setItem failed for key "${key}": ${e}`)
+  }
 }
 
 export async function removeItem(key: string): Promise<void> {
@@ -48,14 +55,18 @@ export async function removeItem(key: string): Promise<void> {
     return new Promise((resolve, reject) => {
       storage.removeItem(key, (err, removed) => {
         if (err || !removed) {
-          reject(err)
+          reject(err ?? new Error(`CloudStorage removeItem failed for key "${key}"`))
         } else {
           resolve()
         }
       })
     })
   }
-  localStorage.removeItem(key)
+  try {
+    localStorage.removeItem(key)
+  } catch (e) {
+    throw new Error(`localStorage removeItem failed for key "${key}": ${e}`)
+  }
 }
 
 export const cloudStorage = { STORAGE_KEYS, getItem, setItem, removeItem }
