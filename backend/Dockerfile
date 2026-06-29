@@ -37,6 +37,10 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Create non-root user
 RUN groupadd -r lanwash && useradd -r -g lanwash lanwash
 
+# Ensure upload volume mountpoint is writable by the runtime user
+RUN mkdir -p /app/uploads /app/uploads/avatars && \
+    chown -R lanwash:lanwash /app/uploads
+
 # Copy only runtime application code
 COPY --chown=lanwash:lanwash main.py alembic.ini ./
 COPY --chown=lanwash:lanwash app/ app/
@@ -62,4 +66,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
 # Run with uvicorn (production settings)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--workers", "2"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1", "--workers", "2"]
