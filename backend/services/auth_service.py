@@ -68,7 +68,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 async def _get_redis():
     try:
-        return get_redis()
+        return await get_redis()
     except Exception as e:
         if settings.is_production:
             raise RuntimeError(f"Redis is required in production: {e}") from e

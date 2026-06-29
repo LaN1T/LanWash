@@ -26,7 +26,7 @@ class AdminService:
     async def get_dashboard(self, from_date: str, to_date: str) -> dict:
         cache_key = f"dashboard:{from_date}:{to_date}"
         try:
-            redis = get_redis()
+            redis = await get_redis()
             if redis:
                 cached = await redis.get(cache_key)
                 if cached:
@@ -175,7 +175,7 @@ class AdminService:
         }
 
         try:
-            redis = get_redis()
+            redis = await get_redis()
             if redis:
                 await redis.setex(
                     cache_key, self._DASHBOARD_CACHE_TTL_SECONDS, json.dumps(result)
@@ -188,7 +188,7 @@ class AdminService:
     async def get_forecast(self, days: int) -> ForecastResponse:
         cache_key = f"forecast:{days}"
         try:
-            redis = get_redis()
+            redis = await get_redis()
             if redis:
                 cached = await redis.get(cache_key)
                 if cached:
@@ -200,7 +200,7 @@ class AdminService:
         forecast = await generate_forecast(self._db, days=days)
 
         try:
-            redis = get_redis()
+            redis = await get_redis()
             if redis:
                 await redis.setex(cache_key, 3600, _json.dumps(forecast.model_dump()))
         except Exception:

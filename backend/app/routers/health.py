@@ -45,7 +45,7 @@ async def health_check_deep(request: Request, db: AsyncSession = Depends(get_db)
 
     # Redis check
     try:
-        redis_client = get_redis()
+        redis_client = await get_redis()
         if redis_client is not None:
             await redis_client.ping()
             checks["redis"] = {"status": "ok"}

@@ -27,7 +27,7 @@ def _key(prefix: str, identifier: str) -> str:
 
 async def _get_redis_or_none():
     try:
-        r = get_redis()
+        r = await get_redis()
         if r is not None:
             await r.ping()
         return r

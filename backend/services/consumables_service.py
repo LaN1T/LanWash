@@ -80,7 +80,7 @@ class ConsumablesService:
     async def get_inventory_forecast(self):
         cache_key = "inventory:forecast"
         try:
-            redis = get_redis()
+            redis = await get_redis()
             if redis:
                 cached = await redis.get(cache_key)
                 if cached:
@@ -92,7 +92,7 @@ class ConsumablesService:
         data = forecast.model_dump()
 
         try:
-            redis = get_redis()
+            redis = await get_redis()
             if redis:
                 await redis.setex(
                     cache_key, self._FORECAST_CACHE_TTL_SECONDS, json.dumps(data)
