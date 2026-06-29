@@ -12,6 +12,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PlainSerializer,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -102,7 +103,12 @@ class UserResponse(BaseModel):
     isFavoriteAdmin: bool
     passwordVersion: int = 1
     referralCode: Optional[str] = None
-    telegramLinked: bool = False
+    telegramId: Optional[str] = None
+
+    @computed_field
+    @property
+    def telegramLinked(self) -> bool:
+        return self.telegramId is not None and self.telegramId != ""
 
 
 class WasherPublicResponse(BaseModel):

@@ -1,6 +1,8 @@
 import pytest
+from datetime import datetime
 
-from services.auth_service import AuthService, TelegramNotLinkedError
+from schemas import UserResponse
+from services.auth_service import AuthService, TelegramAlreadyLinkedError, TelegramNotLinkedError
 
 
 class TestRegister:
@@ -380,3 +382,117 @@ class TestTelegramAuth:
         )
         assert response.status_code == 409
         assert "не привязан" in response.json()["detail"].lower()
+
+
+class TestUserResponseTelegramLinked:
+    def test_telegram_linked_true_when_telegram_id_set(self):
+        user = UserResponse(
+            id=1,
+            username="tguser",
+            role="client",
+            displayName="TG User",
+            phone="",
+            carModel="",
+            carNumber="",
+            createdAt=datetime.now(),
+            isFavoriteAdmin=False,
+            telegramId="123456789",
+        )
+        assert user.telegramLinked is True
+
+    def test_telegram_linked_false_when_telegram_id_empty(self):
+        user = UserResponse(
+            id=2,
+            username="notguser",
+            role="client",
+            displayName="No TG User",
+            phone="",
+            carModel="",
+            carNumber="",
+            createdAt=datetime.now(),
+            isFavoriteAdmin=False,
+            telegramId=None,
+        )
+        assert user.telegramLinked is False
+
+    def test_telegram_linked_false_when_telegram_id_is_empty_string(self):
+        user = UserResponse(
+            id=3,
+            username="emptytguser",
+            role="client",
+            displayName="Empty TG User",
+            phone="",
+            carModel="",
+            carNumber="",
+            createdAt=datetime.now(),
+            isFavoriteAdmin=False,
+            telegramId="",
+        )
+        assert user.telegramLinked is False
+
+
+class TestLinkTelegram:
+    @pytest.mark.asyncio
+    async def test_link_telegram_already_linked_to_other_user(self, db_session):
+        from services.auth_service import get_password_hash
+        from models import User
+
+        first = User(
+            username="first_tg",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="First",
+            createdAt=datetime.now(),
+            telegramId="shared_tg_id",
+        )
+        second = User(
+            username="second_tg",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="Second",
+            createdAt=datetime.now(),
+        )
+        db_session.add(first)
+        db_session.add(second)
+        await db_session.commit()
+
+        svc = AuthService(db_session)
+        with pytest.raises(TelegramAlreadyLinkedError):
+            await svc.link_telegram("second_tg", "TestPass123!", "shared_tg_id")
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_endpoint_returns_409_when_already_linked(
+        self, async_client, db_session
+    ):
+        from services.auth_service import get_password_hash
+        from models import User
+
+        first = User(
+            username="first_tg_endpoint",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="First Endpoint",
+            createdAt=datetime.now(),
+            telegramId="shared_endpoint_tg_id",
+        )
+        second = User(
+            username="second_tg_endpoint",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="Second Endpoint",
+            createdAt=datetime.now(),
+        )
+        db_session.add(first)
+        db_session.add(second)
+        await db_session.commit()
+
+        response = await async_client.post(
+            "/api/auth/link-telegram",
+            json={
+                "username": "second_tg_endpoint",
+                "password": "TestPass123!",
+                "telegramId": "shared_endpoint_tg_id",
+            },
+        )
+        assert response.status_code == 409
+        assert "уже привязан" in response.json()["detail"].lower()

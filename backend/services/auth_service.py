@@ -430,7 +430,14 @@ class AuthService:
         if not await async_verify_password(password, user.passwordHash):
             raise InvalidCredentialsError("Неверный логин или пароль")
 
-        user.telegramId = telegram_id.strip()
+        telegram_id = telegram_id.strip()
+        existing = await self._user_repo.get_by_telegram_id(telegram_id)
+        if existing is not None and existing.id != user.id:
+            raise TelegramAlreadyLinkedError(
+                "Этот Telegram уже привязан к другому аккаунту"
+            )
+
+        user.telegramId = telegram_id
         await self._db.commit()
 
         return self._issue_token_pair(user)

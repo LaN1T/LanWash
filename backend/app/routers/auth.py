@@ -43,6 +43,7 @@ from services.auth_service import (
     ProfileAccessDeniedError,
     SelfReferralError,
     StatsAccessDeniedError,
+    TelegramAlreadyLinkedError,
     TelegramNotLinkedError,
     UsernameAlreadyExistsError,
     UserNotFoundError,
@@ -208,6 +209,7 @@ async def telegram_auth(
     "/link-telegram",
     response_model=TelegramAuthResponse,
     summary="Привязка Telegram к существующему аккаунту",
+    responses={409: {"description": "Telegram ID уже привязан к другому аккаунту"}},
 )
 @limiter.limit("5/minute")
 async def link_telegram(
@@ -223,6 +225,8 @@ async def link_telegram(
         return result
     except InvalidCredentialsError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
+    except TelegramAlreadyLinkedError as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
 
 
 @router.post(
