@@ -59,7 +59,9 @@ class TestReviews:
         return login_resp.json()["user"]
 
     @pytest.mark.asyncio
-    async def test_create_review_with_appointment(self, async_client, client_token):
+    async def test_create_review_with_appointment(
+        self, async_client, client_token, admin_token
+    ):
         user = await self._get_client_user(async_client, client_token)
         appt_resp = await self._create_appointment(
             async_client,
@@ -70,10 +72,10 @@ class TestReviews:
         )
         assert appt_resp.status_code == 200
 
-        # Обновляем статус на completed (клиент может редактировать свою запись)
+        # Обновляем статус на completed от имени администратора
         update_resp = await async_client.put(
             "/api/appointments/appt_review_1",
-            headers={"Authorization": f"Bearer {client_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "id": "appt_review_1",
                 "clientName": "Тест Клиент",
@@ -247,7 +249,9 @@ class TestReviews:
             assert r["isPublished"] is True
 
     @pytest.mark.asyncio
-    async def test_create_duplicate_review(self, async_client, client_token):
+    async def test_create_duplicate_review(
+        self, async_client, client_token, admin_token
+    ):
         user = await self._get_client_user(async_client, client_token)
         appt_resp = await self._create_appointment(
             async_client,
@@ -259,10 +263,10 @@ class TestReviews:
         )
         assert appt_resp.status_code == 200
 
-        # Обновляем статус на completed
+        # Обновляем статус на completed от имени администратора
         update_resp = await async_client.put(
             "/api/appointments/appt_review_dup",
-            headers={"Authorization": f"Bearer {client_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "id": "appt_review_dup",
                 "clientName": "Тест Клиент",
@@ -331,7 +335,7 @@ class TestReviews:
         assert data["userName"] != "Spoofed Name"
 
     @pytest.mark.asyncio
-    async def test_has_review_endpoint(self, async_client, client_token):
+    async def test_has_review_endpoint(self, async_client, client_token, admin_token):
         user = await self._get_client_user(async_client, client_token)
         appt_resp = await self._create_appointment(
             async_client,
@@ -343,10 +347,10 @@ class TestReviews:
         )
         assert appt_resp.status_code == 200
 
-        # Обновляем статус на completed
+        # Обновляем статус на completed от имени администратора
         update_resp = await async_client.put(
             "/api/appointments/appt_review_has",
-            headers={"Authorization": f"Bearer {client_token}"},
+            headers={"Authorization": f"Bearer {admin_token}"},
             json={
                 "id": "appt_review_has",
                 "clientName": "Тест Клиент",
