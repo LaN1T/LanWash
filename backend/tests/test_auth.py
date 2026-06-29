@@ -14,6 +14,8 @@ from schemas import TelegramRegisterRequest, UserResponse
 from services.auth_service import (
     AuthService,
     InvalidCredentialsError,
+    InvalidReferralCodeError,
+    SelfReferralError,
     TelegramAlreadyLinkedError,
     TelegramNotLinkedError,
     UsernameAlreadyExistsError,
@@ -712,3 +714,144 @@ class TestTelegramRegister:
         )
         assert response.status_code == 401
         assert "telegram" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_weak_password_returns_400(
+        self, async_client
+    ):
+        # Password is 8+ chars but lacks uppercase / digit / special symbol,
+        # so it passes Pydantic min_length and hits the router strength check.
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="222333"),
+                "username": "weaktguser",
+                "password": "password",
+                "displayName": "Weak",
+            },
+        )
+        assert response.status_code == 400
+        assert "Регистрация не удалась" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_invalid_referral_code_returns_400(
+        self, async_client
+    ):
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="444555"),
+                "username": "refertguser",
+                "password": "StrongPass123!",
+                "displayName": "Referral",
+                "referralCode": "INVALID1",
+            },
+        )
+        assert response.status_code == 400
+        assert "реферальный код" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_service_invalid_referral_code_raises(
+        self, db_session
+    ):
+        svc = AuthService(db_session)
+        req = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="444666"),
+            username="refersvcuser",
+            password="StrongPass123!",
+            displayName="Referral Svc",
+            referralCode="INVALID1",
+        )
+        with pytest.raises(InvalidReferralCodeError):
+            await svc.register_telegram_user(req)
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_service_self_referral_raises(self, db_session):
+        from services.auth_service import get_password_hash
+
+        user = User(
+            username="selfreferrer",
+            passwordHash=get_password_hash("StrongPass123!"),
+            role="client",
+            displayName="Self Referrer",
+            createdAt=datetime.now(),
+            referralCode="SELFREF1",
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        svc = AuthService(db_session)
+        req = TelegramRegisterRequest(
+            initData=make_test_init_data(telegram_id="444777"),
+            username="selfreferrer",
+            password="StrongPass123!",
+            displayName="Self Referrer",
+            referralCode="SELFREF1",
+        )
+        with pytest.raises(SelfReferralError):
+            await svc.register_telegram_user(req)
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_invalid_username_returns_400(
+        self, async_client
+    ):
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="555666"),
+                "username": "Bad-User!",
+                "password": "StrongPass123!",
+                "displayName": "Bad Username",
+            },
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_duplicate_telegram_returns_409(
+        self, async_client
+    ):
+        await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="666777"),
+                "username": "firsttg",
+                "password": "StrongPass123!",
+                "displayName": "First",
+            },
+        )
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="666777"),
+                "username": "secondtg",
+                "password": "StrongPass123!",
+                "displayName": "Second",
+            },
+        )
+        assert response.status_code == 409
+        assert "telegram" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_duplicate_username_returns_409(
+        self, async_client
+    ):
+        await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="777888"),
+                "username": "sharedname",
+                "password": "StrongPass123!",
+                "displayName": "First",
+            },
+        )
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": make_test_init_data(telegram_id="777999"),
+                "username": "sharedname",
+                "password": "StrongPass123!",
+                "displayName": "Second",
+            },
+        )
+        assert response.status_code == 409
+        assert "Логин уже занят" in response.json()["detail"]

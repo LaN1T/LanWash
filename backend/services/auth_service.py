@@ -28,6 +28,8 @@ from repositories import (
     ReferralRepository,
     UserRepository,
 )
+from schemas import TelegramRegisterRequest
+from services.telegram_auth_service import verify_telegram_init_data
 
 logger = structlog.get_logger()
 
@@ -464,13 +466,9 @@ class AuthService:
         return self._issue_token_pair(user)
 
     @atomic
-    async def register_telegram_user(self, req) -> dict:
-        from schemas import TelegramRegisterRequest
-
+    async def register_telegram_user(self, req: TelegramRegisterRequest) -> dict:
         if not isinstance(req, TelegramRegisterRequest):
             raise TypeError("req must be TelegramRegisterRequest")
-
-        from services.telegram_auth_service import verify_telegram_init_data
 
         user_data = verify_telegram_init_data(req.initData)
         if not user_data:
@@ -485,13 +483,24 @@ class AuthService:
             raise TelegramAlreadyLinkedError("Этот Telegram уже используется")
 
         username = req.username.lower().strip()
-        existing_user = await self._user_repo.get_by_username(username)
-        if existing_user:
-            raise UsernameAlreadyExistsError("Логин уже занят")
 
         password_error = validate_password_strength(req.password)
         if password_error:
             raise ValueError(password_error)
+
+        # Check referral code before duplicate checks (same as regular register)
+        referrer = None
+        if req.referralCode is not None and req.referralCode.strip():
+            ref_code = req.referralCode.strip().upper()
+            referrer = await self._user_repo.get_by_referral_code(ref_code)
+            if not referrer:
+                raise InvalidReferralCodeError("Неверный реферальный код.")
+            if referrer.username == username:
+                raise SelfReferralError("Нельзя использовать свой реферальный код.")
+
+        existing_user = await self._user_repo.get_by_username(username)
+        if existing_user:
+            raise UsernameAlreadyExistsError("Логин уже занят")
 
         referral_code = await _ensure_unique_referral_code(self._db)
         new_user = User(
@@ -502,7 +511,7 @@ class AuthService:
             phone=req.phone or "",
             carModel=req.carModel or "",
             carNumber=req.carNumber or "",
-            avatarUrl=user_data.get("photo_url", ""),
+            avatarUrl=user_data.get("photo_url") or "",
             createdAt=datetime.now(timezone.utc),
             isFavoriteAdmin=0,
             telegramId=telegram_id,
@@ -512,17 +521,14 @@ class AuthService:
         await self._user_repo.add(new_user)
         await self._db.flush()
 
-        if req.referralCode:
-            ref_code = req.referralCode.strip().upper()
-            referrer = await self._user_repo.get_by_referral_code(ref_code)
-            if referrer:
-                referral = Referral(
-                    referrerId=referrer.id,
-                    referredId=new_user.id,
-                    rewardClaimed=False,
-                    createdAt=datetime.now(timezone.utc),
-                )
-                await self._referral_repo.add(referral)
+        if referrer is not None:
+            referral = Referral(
+                referrerId=referrer.id,
+                referredId=new_user.id,
+                rewardClaimed=False,
+                createdAt=datetime.now(timezone.utc),
+            )
+            await self._referral_repo.add(referral)
 
         await self._db.refresh(new_user)
 

@@ -257,20 +257,63 @@ async def telegram_register(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    generic_error = HTTPException(
+        status.HTTP_400_BAD_REQUEST,
+        "Регистрация не удалась. Проверьте введённые данные.",
+    )
+
+    client_ip = request.client.host if request.client else "unknown"
+    identifier = f"register:{client_ip}"
+
+    if await is_locked_out(identifier):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Слишком много попыток регистрации. Попробуйте позже.",
+        )
+
+    if not req.username.strip():
+        await record_failed_attempt(identifier)
+        raise generic_error
+
+    if not USERNAME_PATTERN.match(req.username.lower().strip()):
+        await record_failed_attempt(identifier)
+        raise generic_error
+
+    password_error = validate_password_strength(req.password)
+    if password_error:
+        await record_failed_attempt(identifier)
+        raise generic_error
+
+    if not req.displayName.strip():
+        await record_failed_attempt(identifier)
+        raise generic_error
+
     svc = AuthService(db)
     try:
         result = await svc.register_telegram_user(req)
+        await reset_attempts(identifier)
         _set_refresh_cookie(response, result["refresh_token"], get_settings())
         return result
     except ValueError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except UsernameAlreadyExistsError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
     except TelegramAlreadyLinkedError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except InvalidReferralCodeError as e:
+        await record_failed_attempt(identifier)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    except SelfReferralError as e:
+        await record_failed_attempt(identifier)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except InvalidCredentialsError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except RuntimeError:
+        await record_failed_attempt(identifier)
         raise HTTPException(500, "Internal server error")
 
 
