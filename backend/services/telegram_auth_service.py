@@ -39,7 +39,7 @@ def verify_telegram_init_data(init_data: str, max_age_seconds: int = 300) -> Opt
             return None
         auth_date = int(auth_date_str)
         now = int(time.time())
-        if now - auth_date > max_age_seconds:
+        if abs(now - auth_date) > max_age_seconds:
             return None
 
         user_raw = parsed.get("user", "{}")

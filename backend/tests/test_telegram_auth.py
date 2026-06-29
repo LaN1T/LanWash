@@ -1,4 +1,5 @@
 import time
+import urllib.parse
 from urllib.parse import quote
 import hashlib
 import hmac
@@ -62,9 +63,18 @@ def test_verify_init_data_rejects_missing_auth_date():
 
 
 def test_verify_init_data_rejects_malformed_user_json():
-    fresh = _make_init_data(123)
-    malformed = fresh.replace("user=", "user={bad")
+    auth_date = int(time.time())
+    bad_user = "{bad"
+    data_check_string = f"auth_date={auth_date}\nuser={bad_user}"
+    secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+    hash_ = hmac.new(secret, data_check_string.encode(), hashlib.sha256).hexdigest()
+    malformed = f"auth_date={auth_date}&user={urllib.parse.quote(bad_user)}&hash={hash_}"
     assert verify_telegram_init_data(malformed, max_age_seconds=300) is None
+
+
+def test_verify_init_data_rejects_future_auth_date():
+    future = _make_init_data(123, auth_date_offset=400)
+    assert verify_telegram_init_data(future, max_age_seconds=300) is None
 
 
 def test_verify_init_data_rejects_empty_init_data():
