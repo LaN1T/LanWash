@@ -3,6 +3,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import List, Optional
 
 import jwt
@@ -31,14 +32,23 @@ logger = structlog.get_logger()
 
 settings = get_settings()
 
-SECRET_KEY = settings.jwt_secret_key
-if len(SECRET_KEY) < 32:
-    raise RuntimeError(
-        "JWT_SECRET_KEY слишком короткий. Минимум 32 символа для безопасности."
-    )
-
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
+
+@lru_cache(maxsize=1)
+def _get_secret_key() -> str:
+    """Return the current JWT secret key (cached per process).
+
+    Call ``_get_secret_key.cache_clear()`` after rotating the secret to force
+    a reload without restarting the process.
+    """
+    key = get_settings().jwt_secret_key
+    if len(key) < 32:
+        raise RuntimeError(
+            "JWT_SECRET_KEY слишком короткий. Минимум 32 символа для безопасности."
+        )
+    return key
 
 BLACKLIST_PREFIX = "jwt_blacklist:"
 
@@ -138,8 +148,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire, "jti": jti, "type": "access"})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    to_encode.update(
+        {
+            "exp": expire,
+            "jti": jti,
+            "type": "access",
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+        }
+    )
+    encoded_jwt = jwt.encode(to_encode, _get_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
 
@@ -149,8 +167,16 @@ def create_refresh_token(data: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.jwt_refresh_token_expire_days
     )
-    to_encode.update({"exp": expire, "jti": jti, "type": "refresh"})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    to_encode.update(
+        {
+            "exp": expire,
+            "jti": jti,
+            "type": "refresh",
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+        }
+    )
+    encoded_jwt = jwt.encode(to_encode, _get_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
 
@@ -163,7 +189,13 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            _get_secret_key(),
+            algorithms=[ALGORITHM],
+            issuer=settings.jwt_issuer,
+            audience=settings.jwt_audience,
+        )
         username: str = payload.get("sub")
         jti: str = payload.get("jti")
         token_type: str = payload.get("type", "access")
@@ -548,7 +580,11 @@ class AuthService:
             # Blacklist current token after password change
             try:
                 payload = jwt.decode(
-                    token, get_settings().jwt_secret_key, algorithms=["HS256"]
+                    token,
+                    _get_secret_key(),
+                    algorithms=["HS256"],
+                    issuer=settings.jwt_issuer,
+                    audience=settings.jwt_audience,
                 )
                 jti = payload.get("jti")
                 exp = payload.get("exp")
@@ -699,7 +735,11 @@ class AuthService:
         )
         try:
             payload = jwt.decode(
-                refresh_token, get_settings().jwt_secret_key, algorithms=["HS256"]
+                refresh_token,
+                _get_secret_key(),
+                algorithms=["HS256"],
+                issuer=settings.jwt_issuer,
+                audience=settings.jwt_audience,
             )
         except jwt.JWTError:
             raise credentials_exception
@@ -761,7 +801,11 @@ class AuthService:
                 continue
             try:
                 payload = jwt.decode(
-                    value, get_settings().jwt_secret_key, algorithms=["HS256"]
+                    value,
+                    _get_secret_key(),
+                    algorithms=["HS256"],
+                    issuer=settings.jwt_issuer,
+                    audience=settings.jwt_audience,
                 )
                 jti = payload.get("jti")
                 exp = payload.get("exp")

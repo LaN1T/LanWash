@@ -48,11 +48,17 @@ class TestJWT:
         assert len(token) > 0
 
         payload = jwt.decode(
-            token, settings.jwt_secret_key, algorithms=["HS256"]
+            token,
+            settings.jwt_secret_key,
+            algorithms=["HS256"],
+            issuer=settings.jwt_issuer,
+            audience=settings.jwt_audience,
         )
         assert payload["sub"] == "testuser"
         assert payload["role"] == "client"
         assert "exp" in payload
+        assert payload["iss"] == settings.jwt_issuer
+        assert payload["aud"] == settings.jwt_audience
 
     def test_token_expiration(self):
         from datetime import timedelta
@@ -61,4 +67,10 @@ class TestJWT:
             {"sub": "testuser"}, expires_delta=timedelta(seconds=-1)
         )
         with pytest.raises(jwt.ExpiredSignatureError):
-            jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+            jwt.decode(
+                token,
+                settings.jwt_secret_key,
+                algorithms=["HS256"],
+                issuer=settings.jwt_issuer,
+                audience=settings.jwt_audience,
+            )

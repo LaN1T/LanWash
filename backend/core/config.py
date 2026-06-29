@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     # Security
     jwt_secret_key: str
     jwt_refresh_token_expire_days: int = 7
+    jwt_issuer: str = "lanwash"
+    jwt_audience: str = "lanwash-api"
     initial_admin_password: str
 
     # CORS
