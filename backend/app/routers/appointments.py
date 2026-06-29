@@ -26,7 +26,6 @@ from models import (
     LogEntry,
     ServiceConsumable,
     Shift,
-    Subscription,
     User,
     WashTypeConsumable,
 )

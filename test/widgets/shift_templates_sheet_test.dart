@@ -12,12 +12,12 @@ void main() {
   testWidgets('ShiftTemplatesSheet renders templates and apply button',
       (tester) async {
     final templates = [
-      ShiftTemplate(
+      const ShiftTemplate(
         id: 1,
         ownerUsername: 'admin',
         name: 'Будни',
         isDefault: true,
-        slots: const [
+        slots: [
           ShiftTemplateSlot(weekday: 1, startTime: '09:00', endTime: '18:00'),
         ],
       ),
