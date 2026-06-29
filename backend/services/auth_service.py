@@ -420,25 +420,36 @@ class AuthService:
         return self._issue_token_pair(user)
 
     async def link_telegram(
-        self, username: str, password: str, telegram_id: str
+        self, init_data: str, username: str, password: str
     ) -> dict:
-        user = await self._user_repo.get_by_username(username.lower().strip())
+        from services.telegram_auth_service import verify_telegram_init_data
 
+        user_data = verify_telegram_init_data(init_data)
+        if not user_data:
+            raise InvalidCredentialsError("Неверные данные Telegram")
+
+        telegram_id = str(user_data.get("id"))
+        if not telegram_id:
+            raise InvalidCredentialsError("Неверные данные Telegram")
+
+        existing_by_tg = await self._user_repo.get_by_telegram_id(telegram_id)
+        if existing_by_tg:
+            raise TelegramAlreadyLinkedError(
+                "Этот Telegram уже привязан к другому аккаунту"
+            )
+
+        user = await self._user_repo.get_by_username(username.lower().strip())
         if not user:
+            # Constant-time dummy verification to prevent username enumeration
+            await async_verify_password(password, _DUMMY_ARGON2_HASH)
             raise InvalidCredentialsError("Неверный логин или пароль")
 
         if not await async_verify_password(password, user.passwordHash):
             raise InvalidCredentialsError("Неверный логин или пароль")
 
-        telegram_id = telegram_id.strip()
-        existing = await self._user_repo.get_by_telegram_id(telegram_id)
-        if existing is not None and existing.id != user.id:
-            raise TelegramAlreadyLinkedError(
-                "Этот Telegram уже привязан к другому аккаунту"
-            )
-
-        user.telegramId = telegram_id
+        user.telegramId = telegram_id.strip()
         await self._db.commit()
+        await self._db.refresh(user)
 
         return self._issue_token_pair(user)
 

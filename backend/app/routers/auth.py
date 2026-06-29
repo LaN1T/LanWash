@@ -218,15 +218,29 @@ async def link_telegram(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    identifier = f"{client_ip}:{req.username.lower().strip()}"
+
+    if await is_locked_out(identifier):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Слишком много неудачных попыток. Попробуйте позже.",
+        )
+
     svc = AuthService(db)
     try:
-        result = await svc.link_telegram(req.username, req.password, req.telegramId)
+        result = await svc.link_telegram(req.initData, req.username, req.password)
+        await reset_attempts(identifier)
         _set_refresh_cookie(response, result["refresh_token"], get_settings())
         return result
     except InvalidCredentialsError as e:
+        await record_failed_attempt(identifier)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except TelegramAlreadyLinkedError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except RuntimeError:
+        await record_failed_attempt(identifier)
+        raise HTTPException(500, "Internal server error")
 
 
 @router.post(

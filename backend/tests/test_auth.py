@@ -1,8 +1,63 @@
-import pytest
+import hashlib
+import hmac
+import json
+import time
 from datetime import datetime
+from urllib.parse import urlencode
 
+import pytest
+import pytest_asyncio
+
+from core.config import get_settings
+from models import User
 from schemas import UserResponse
-from services.auth_service import AuthService, TelegramAlreadyLinkedError, TelegramNotLinkedError
+from services.auth_service import (
+    AuthService,
+    InvalidCredentialsError,
+    TelegramAlreadyLinkedError,
+    TelegramNotLinkedError,
+)
+
+TEST_BOT_TOKEN = "test_bot_token"
+
+
+def make_test_init_data(telegram_id: str) -> str:
+    """Build a valid Telegram WebApp initData string for tests."""
+    params = {
+        "user": json.dumps({"id": telegram_id}, separators=(",", ":")),
+        "auth_date": str(int(time.time())),
+    }
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
+    secret_key = hmac.new(
+        b"WebAppData", TEST_BOT_TOKEN.encode(), hashlib.sha256
+    ).digest()
+    params["hash"] = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
+    ).hexdigest()
+    return urlencode(params)
+
+
+@pytest.fixture(autouse=True)
+def _set_test_telegram_bot_token(monkeypatch):
+    """Ensure initData verification uses the test bot token."""
+    monkeypatch.setattr(get_settings(), "telegram_bot_token", TEST_BOT_TOKEN)
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    """Pre-created user for Telegram linking tests."""
+    from services.auth_service import get_password_hash
+
+    user = User(
+        username="linktestuser",
+        passwordHash=get_password_hash("CorrectPassword123!"),
+        role="client",
+        displayName="Link Test",
+        createdAt=datetime.now(),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
 
 
 class TestRegister:
@@ -433,9 +488,24 @@ class TestUserResponseTelegramLinked:
 
 class TestLinkTelegram:
     @pytest.mark.asyncio
+    async def test_link_telegram_success(self, db_session, test_user):
+        svc = AuthService(db_session)
+        init_data = make_test_init_data(telegram_id="999999")
+        result = await svc.link_telegram(
+            init_data, test_user.username, "CorrectPassword123!"
+        )
+        assert result["user"].telegramId == "999999"
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_wrong_password(self, db_session, test_user):
+        svc = AuthService(db_session)
+        init_data = make_test_init_data(telegram_id="999999")
+        with pytest.raises(InvalidCredentialsError):
+            await svc.link_telegram(init_data, test_user.username, "wrong")
+
+    @pytest.mark.asyncio
     async def test_link_telegram_already_linked_to_other_user(self, db_session):
         from services.auth_service import get_password_hash
-        from models import User
 
         first = User(
             username="first_tg",
@@ -457,15 +527,15 @@ class TestLinkTelegram:
         await db_session.commit()
 
         svc = AuthService(db_session)
+        init_data = make_test_init_data(telegram_id="shared_tg_id")
         with pytest.raises(TelegramAlreadyLinkedError):
-            await svc.link_telegram("second_tg", "TestPass123!", "shared_tg_id")
+            await svc.link_telegram(init_data, "second_tg", "TestPass123!")
 
     @pytest.mark.asyncio
     async def test_link_telegram_endpoint_returns_409_when_already_linked(
         self, async_client, db_session
     ):
         from services.auth_service import get_password_hash
-        from models import User
 
         first = User(
             username="first_tg_endpoint",
@@ -486,12 +556,13 @@ class TestLinkTelegram:
         db_session.add(second)
         await db_session.commit()
 
+        init_data = make_test_init_data(telegram_id="shared_endpoint_tg_id")
         response = await async_client.post(
             "/api/auth/link-telegram",
             json={
+                "initData": init_data,
                 "username": "second_tg_endpoint",
                 "password": "TestPass123!",
-                "telegramId": "shared_endpoint_tg_id",
             },
         )
         assert response.status_code == 409
