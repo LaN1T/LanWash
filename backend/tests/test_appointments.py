@@ -197,21 +197,39 @@ class TestAppointments:
 
     @pytest.mark.asyncio
     async def test_get_appointment_by_id_forbidden(
-        self, async_client, client_token
+        self, async_client, client_token, admin_token
     ):
-        # A client should not be able to guess and view another user's appointment.
+        # A client should not be able to view another user's appointment.
+        await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "other_user",
+                "password": "TestPass123!",
+                "displayName": "Other User",
+            },
+        )
+        await self._create_appointment(
+            async_client,
+            admin_token,
+            "appt_other_detail",
+            "2099-07-07T10:00:00",
+            owner="other_user",
+        )
         response = await async_client.get(
-            "/api/appointments/nonexistent",
+            "/api/appointments/appt_other_detail",
             headers={"Authorization": f"Bearer {client_token}"},
         )
-        assert response.status_code == 404
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_update_appointment_status(self, async_client, client_token):
+    async def test_update_appointment_client_restricted(
+        self, async_client, client_token
+    ):
         create_resp = await self._create_appointment(
             async_client, client_token, "appt_5", "2099-08-01T10:00:00"
         )
         assert create_resp.status_code == 200
+        original = create_resp.json()
 
         update_resp = await async_client.put(
             "/api/appointments/appt_5",
@@ -219,9 +237,9 @@ class TestAppointments:
             json={
                 "id": "appt_5",
                 "clientName": "Тест Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": "2099-08-01T10:00:00",
+                "carModel": "Honda Civic",
+                "carNumber": "В777ВВ77",
+                "dateTime": "2099-08-01T11:00:00",
                 "washTypeId": "w1",
                 "additionalServices": "[]",
                 "status": "completed",
@@ -240,8 +258,17 @@ class TestAppointments:
             },
         )
         assert update_resp.status_code == 200
-        assert update_resp.json()["status"] == "completed"
-        assert update_resp.json()["paidPrice"] == 1500
+        data = update_resp.json()
+        # Allowed fields are updated
+        assert data["carModel"] == "Honda Civic"
+        assert data["carNumber"] == "В777ВВ77"
+        assert data["notes"] == "Обновлённые заметки"
+        # Privileged fields are ignored for clients
+        assert data["status"] == original["status"]
+        assert data["paidPrice"] == original["paidPrice"]
+        assert data["originalPrice"] == original["originalPrice"]
+        assert data["dateTime"] == original["dateTime"]
+        assert data["box_index"] == original["box_index"]
 
     @pytest.mark.asyncio
     async def test_delete_appointment_owner(self, async_client, client_token):
@@ -256,13 +283,29 @@ class TestAppointments:
         assert response.json()["ok"] is True
 
     @pytest.mark.asyncio
-    async def test_delete_appointment_forbidden(self, async_client, client_token):
-        # Создаём запись от имени другого пользователя через admin
-        # (или просто пробуем удалить несуществующую — но лучше создать реальную)
-        # Создаём через client_token с owner=client_test,
-        # а удаляем тем же токеном — это ок
-        # Попробуем удалить чужую запись: создадим через другой токен
-        pass  # Пропускаем, т.к. сложно создать чужую запись без admin
+    async def test_delete_appointment_forbidden(
+        self, async_client, client_token, admin_token
+    ):
+        await async_client.post(
+            "/api/auth/register",
+            json={
+                "username": "other_user_delete",
+                "password": "TestPass123!",
+                "displayName": "Other User Delete",
+            },
+        )
+        await self._create_appointment(
+            async_client,
+            admin_token,
+            "appt_other_delete",
+            "2099-09-02T10:00:00",
+            owner="other_user_delete",
+        )
+        response = await async_client.delete(
+            "/api/appointments/appt_other_delete",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_toggle_favorite(self, async_client, client_token):

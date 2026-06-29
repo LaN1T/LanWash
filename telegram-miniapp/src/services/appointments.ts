@@ -17,7 +17,7 @@ export interface AppointmentCreatePayload {
   additionalServices: string
   status: AppointmentStatus
   ownerUsername: string
-  promoCode?: string
+  promoId?: string
 }
 
 export interface Appointment {

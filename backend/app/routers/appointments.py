@@ -926,6 +926,7 @@ async def update_appt(
     original_assignedWasher = appt.assignedWasher
     original_promoId = appt.promoId
     original_box_index = appt.box_index
+    original_subscriptionId = appt.subscriptionId
 
     # Логирование для отладки прав доступа
     logger.debug(
@@ -978,6 +979,24 @@ async def update_appt(
         req.paidPrice = original_paidPrice
         req.promoId = original_promoId
         req.assignedWasher = original_assignedWasher
+        req.subscriptionId = original_subscriptionId
+        req.box_index = original_box_index
+
+    # Clients (owners) can only update car details and notes; ignore privileged fields
+    if is_owner and not is_admin and not is_washer:
+        req.clientName = original_clientName
+        req.dateTime = original_dateTime
+        req.washTypeId = original_washTypeId
+        req.additionalServices = original_additionalServices
+        req.status = original_status
+        req.isFavorite = bool(original_isFavorite)
+        req.ownerUsername = original_ownerUsername
+        req.promoPrice = original_promoPrice
+        req.paidPrice = original_paidPrice
+        req.originalPrice = original_originalPrice
+        req.promoId = original_promoId
+        req.assignedWasher = original_assignedWasher
+        req.subscriptionId = original_subscriptionId
         req.box_index = original_box_index
 
     old_status = appt.status

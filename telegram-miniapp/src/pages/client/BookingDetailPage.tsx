@@ -209,7 +209,7 @@ export default function BookingDetailPage() {
         <InfoRow label="Тип мойки" value={washType?.name || appointment.washTypeId} />
         <InfoRow label="Автомобиль" value={`${appointment.carModel} · ${appointment.carNumber}`} />
         {appointment.box_index > 0 && <InfoRow label="Бокс" value={`${appointment.box_index + 1}`} />}
-        <InfoRow label="Стоимость" value={`${(appointment.paidPrice || appointment.promoPrice || appointment.originalPrice || 0).toLocaleString('ru-RU')} ₽`} />
+        <InfoRow label="Стоимость" value={`${(appointment.paidPrice ?? appointment.promoPrice ?? appointment.originalPrice ?? 0).toLocaleString('ru-RU')} ₽`} />
         {assignedWashers.length > 0 && <InfoRow label="Мойщик" value={assignedWashers.join(', ')} />}
         {appointment.cancel_reason && <InfoRow label="Причина отмены" value={appointment.cancel_reason} />}
         {appointment.late_minutes > 0 && <InfoRow label="Опоздание" value={`${appointment.late_minutes} мин`} />}

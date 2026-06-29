@@ -363,7 +363,7 @@ export default function BookingPage() {
         additionalServices: JSON.stringify(Array.from(extras)),
         status: 'scheduled',
         ownerUsername: user?.username || '',
-        promoCode: appliedPromo?.id || undefined,
+        promoId: appliedPromo?.id || undefined,
       }
       await createAppointment(payload, controller.signal)
       if (controller.signal.aborted) return
