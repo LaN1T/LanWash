@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import React, { Suspense } from 'react'
 import { useAuthStore } from './stores/authStore'
 import { useAuthGuard } from './hooks/useAuthGuard'
@@ -11,9 +11,9 @@ const AuthGatewayPage = React.lazy(() => import('./pages/auth/AuthGatewayPage'))
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AppContent />
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 

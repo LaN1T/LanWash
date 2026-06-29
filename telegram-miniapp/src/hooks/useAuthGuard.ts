@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTelegram } from './useTelegram'
 import { useAuthStore } from '../stores/authStore'
 import { telegramAuth } from '../services/auth'
@@ -6,7 +6,15 @@ import { api } from '../services/api'
 
 export function useAuthGuard() {
   const { initData, ready, isInTelegram } = useTelegram()
-  const { token, setAuth, setLoading, logout, init, hydrated } = useAuthStore()
+  const { token, setAuth, setLoading, init, hydrated } = useAuthStore()
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   // Restore persisted auth state before any auto-login attempt.
   useEffect(() => {
@@ -18,14 +26,14 @@ export function useAuthGuard() {
     if (token) return
 
     const attemptAutoLogin = async () => {
-      setLoading(true)
+      if (mounted.current) setLoading(true)
       try {
         if (initData) {
           const res = await telegramAuth(initData)
-          await setAuth(res.user, res.access_token)
+          if (mounted.current) await setAuth(res.user, res.access_token)
         } else if (isInTelegram) {
           const res = await api.post('/auth/refresh', {}, { withCredentials: true })
-          await setAuth(res.data.user, res.data.access_token)
+          if (mounted.current) await setAuth(res.data.user, res.data.access_token)
         }
       } catch (e: any) {
         // 409 is expected when the Telegram account is not linked to a user yet.
@@ -34,7 +42,7 @@ export function useAuthGuard() {
           console.error('Auth failed', e)
         }
       } finally {
-        setLoading(false)
+        if (mounted.current) setLoading(false)
       }
     }
 
@@ -47,7 +55,6 @@ export function useAuthGuard() {
     hydrated,
     setAuth,
     setLoading,
-    logout,
     init,
   ])
 

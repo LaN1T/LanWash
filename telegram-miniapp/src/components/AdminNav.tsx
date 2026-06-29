@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useAuthStore } from '../stores/authStore'
 
 interface NavItem {
   path: string
@@ -25,10 +24,7 @@ const navItems: NavItem[] = [
 ]
 
 export default function AdminNav() {
-  const { user } = useAuthStore()
   const location = useLocation()
-
-  if (user?.role !== 'admin') return null
 
   return (
     <nav
@@ -58,10 +54,10 @@ export default function AdminNav() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 2,
-              minWidth: 64,
+              gap: '2px',
+              minWidth: '64px',
               color: isActive ? '#1A56DB' : '#64748B',
-              fontSize: 11,
+              fontSize: '11px',
               fontWeight: isActive ? 600 : 500,
               textDecoration: 'none',
               padding: '4px 12px',

@@ -26,6 +26,7 @@ export default function AdminRoutes() {
       <Route path="/appointments" element={<AdminAppointmentsPage />} />
       <Route path="/appointments/:id" element={<AdminAppointmentDetailPage />} />
       <Route path="/washers" element={<AdminWashersPage />} />
+      <Route path="/washers/:id" element={<AdminWashersPage />} />
       <Route path="/shifts" element={<AdminShiftsPage />} />
       <Route path="/consumables" element={<AdminConsumablesPage />} />
       <Route path="/reports" element={<AdminReportsPage />} />

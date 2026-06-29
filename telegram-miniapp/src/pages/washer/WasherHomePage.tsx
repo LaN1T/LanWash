@@ -3,6 +3,7 @@ import { api } from '../../services/api'
 import WeekCalendar from '../../components/WeekCalendar'
 import AppointmentCard from '../../components/AppointmentCard'
 import type { AppointmentStatus } from '../../utils/appointments'
+import { useRoleGuard } from '../../hooks/useRoleGuard'
 
 interface Appointment {
   id: string
@@ -15,6 +16,7 @@ interface Appointment {
 }
 
 export default function WasherHomePage() {
+  useRoleGuard(['washer'])
   const [selectedDate, setSelectedDate] = useState('')
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(false)
