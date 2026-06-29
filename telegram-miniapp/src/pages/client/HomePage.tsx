@@ -1,23 +1,88 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
-import { api } from '../../services/api'
+import { useCatalogStore } from '../../stores/catalogStore'
 import { getGreeting } from '../../utils/validators'
+
+const formatPrice = (price: number): string =>
+  `${price.toLocaleString('ru-RU')} ₽`
 
 export default function HomePage() {
   const { user } = useAuthStore()
-  const [promoCount, setPromoCount] = useState(0)
+  const { services, promos, loading, error, fetch } = useCatalogStore()
+  const [refreshing, setRefreshing] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const touchStartY = useRef<number | null>(null)
+  const pullDistance = useRef<number>(0)
 
   useEffect(() => {
-    api.get('/services/promos').then((res) => {
-      setPromoCount((res.data || []).length)
-    }).catch(() => {
-      setPromoCount(0)
-    })
-  }, [])
+    fetch()
+  }, [fetch])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetch()
+    setRefreshing(false)
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    if (el.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY
+      pullDistance.current = 0
+    }
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return
+    const y = e.touches[0].clientY
+    const delta = y - touchStartY.current
+    if (delta > 0 && containerRef.current?.scrollTop === 0) {
+      pullDistance.current = Math.min(delta, 80)
+    }
+  }
+
+  const onTouchEnd = () => {
+    if (pullDistance.current > 60) {
+      void handleRefresh()
+    }
+    touchStartY.current = null
+    pullDistance.current = 0
+  }
+
+  const displayedServices = services.slice(0, 6)
 
   return (
-    <div style={{ padding: 16 }}>
+    <div
+      ref={containerRef}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      style={{
+        padding: 16,
+        minHeight: '100vh',
+        overflowY: 'auto',
+        overscrollBehaviorY: 'contain',
+      }}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(refreshing || pullDistance.current > 0) && (
+        <div
+          style={{
+            height: refreshing ? 40 : pullDistance.current,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#64748B',
+            fontSize: 13,
+            transition: refreshing ? undefined : 'height 0.1s ease-out',
+          }}
+        >
+          {refreshing ? 'Обновление...' : 'Отпустите для обновления'}
+        </div>
+      )}
+
       {/* Header with time-based greeting */}
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontSize: 15, color: '#64748B', marginBottom: 4 }}>
@@ -88,72 +153,192 @@ export default function HomePage() {
         </div>
       </Link>
 
-      {/* Promos button */}
-      <Link to="/promos" style={{ textDecoration: 'none' }}>
+      {/* Loading state */}
+      {loading && !refreshing && (
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              height: 120,
+              borderRadius: 16,
+              background: '#E2E8F0',
+              marginBottom: 12,
+              animation: 'pulse 1.5s infinite',
+            }}
+          />
+          <div
+            style={{
+              height: 80,
+              borderRadius: 16,
+              background: '#E2E8F0',
+              animation: 'pulse 1.5s infinite',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Error state */}
+      {!loading && error && (
+        <div
+          style={{
+            background: '#FEF2F2',
+            border: '1px solid #FECACA',
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 20,
+            color: '#B91C1C',
+            fontSize: 14,
+          }}
+        >
+          {error}
+          <button
+            onClick={handleRefresh}
+            style={{
+              marginTop: 10,
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#1A56DB',
+              color: 'white',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Повторить
+          </button>
+        </div>
+      )}
+
+      {/* Promos section */}
+      {!loading && promos.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', margin: 0 }}>
+              Акции и спецпредложения
+            </h3>
+            <Link to="/promos" style={{ fontSize: 13, color: '#1A56DB', textDecoration: 'none', fontWeight: 600 }}>
+              Все
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {promos.map((promo) => (
+              <Link
+                key={promo.id}
+                to={`/booking?promo=${promo.id}`}
+                style={{ textDecoration: 'none' }}
+              >
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 16,
+                    border: '1px solid #E2E8F0',
+                    boxShadow: '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        background: '#EFF4FF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        color: '#1A56DB',
+                        fontSize: 14,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {promo.discountPercent ? `-${promo.discountPercent}%` : '%'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 2 }}>
+                        {promo.title}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.4 }}>
+                        {promo.description}
+                      </div>
+                    </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Services section */}
+      {!loading && displayedServices.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', margin: 0 }}>
+              Популярные услуги
+            </h3>
+            <Link to="/services" style={{ fontSize: 13, color: '#1A56DB', textDecoration: 'none', fontWeight: 600 }}>
+              Все
+            </Link>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {displayedServices.map((service) => (
+              <Link
+                key={service.id}
+                to="/booking"
+                style={{ textDecoration: 'none' }}
+              >
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    borderRadius: 16,
+                    border: '1px solid #E2E8F0',
+                    boxShadow: '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
+                    padding: 14,
+                    cursor: 'pointer',
+                    height: '100%',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', marginBottom: 6 }}>
+                    {service.name}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1A56DB' }}>
+                    {formatPrice(service.price)}
+                  </div>
+                  {service.category && (
+                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                      {service.category}
+                    </div>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty catalog state */}
+      {!loading && !error && services.length === 0 && promos.length === 0 && (
         <div
           style={{
             background: '#FFFFFF',
             borderRadius: 16,
             border: '1px solid #E2E8F0',
-            boxShadow: '0 4px 16px rgba(26, 86, 219, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03)',
-            padding: '16px 18px',
+            padding: 24,
             marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            cursor: 'pointer',
+            textAlign: 'center',
+            color: '#64748B',
+            fontSize: 14,
           }}
         >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: '#EFF4FF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1A56DB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 7h10l-3 7H7z"/>
-              <path d="M20.4 7H22l-3 7h-1.4"/>
-              <circle cx="9" cy="19" r="1.5"/>
-              <circle cx="17" cy="19" r="1.5"/>
-              <path d="M7 7l-2-2"/>
-              <path d="M17 7l2-2"/>
-            </svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>
-              Акции и спецпредложения
-            </div>
-            <div style={{ fontSize: 13, color: '#64748B' }}>
-              {promoCount === 0
-                ? 'Нет активных акций'
-                : `${promoCount} ${promoCount === 1 ? 'предложение' : promoCount < 5 ? 'предложения' : 'предложений'}`}
-            </div>
-          </div>
-          {promoCount > 0 && (
-            <div
-              style={{
-                padding: '4px 10px',
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #1A56DB, #3B82F6)',
-                color: 'white',
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {promoCount}
-            </div>
-          )}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
+          Услуги и акции скоро появятся
         </div>
-      </Link>
+      )}
 
       {/* How it works */}
       <div style={{ marginBottom: 8 }}>
@@ -207,6 +392,14 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
