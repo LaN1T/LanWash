@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 import { validateName, validateCarModel, validatePlate, formatPlate } from '../../utils/validators'
+import { getMyCars, type Car } from '../../services/cars'
+import { getBusySlots, createAppointment, type BusySlot } from '../../services/appointments'
+import { getMySubscriptions, type Subscription } from '../../services/subscriptions'
+import { getPromos, type Promo } from '../../services/catalog'
 
 interface WashType {
   id: string
@@ -22,14 +26,12 @@ interface Service {
   category: string
 }
 
-interface BusySlot {
-  start: string
-  end: string
-}
+const MAX_DISCOUNT_PERCENT = 100
 
 export default function BookingPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [step, setStep] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -47,10 +49,14 @@ export default function BookingPage() {
     return d
   })
   const [selectedSlot, setSelectedSlot] = useState(-1)
-  const [busySlots, setBusySlots] = useState<BusySlot[][]>([])
+  const [busySlots, setBusySlots] = useState<BusySlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
 
   // Data
+  const [cars, setCars] = useState<Car[]>([])
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [appliedPromo, setAppliedPromo] = useState<Promo | null>(null)
+  const [queryPromoCode, setQueryPromoCode] = useState('')
   const [washTypes, setWashTypes] = useState<WashType[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,10 +68,21 @@ export default function BookingPage() {
 
   // Load data
   useEffect(() => {
-    Promise.all([api.get('/wash-types/'), api.get('/services/')]).then(([wtRes, svcRes]) => {
+    const promoCode = searchParams.get('promo') || ''
+    setQueryPromoCode(promoCode)
+
+    Promise.all([
+      api.get('/wash-types/'),
+      api.get('/services/'),
+      getMyCars().catch(() => [] as Car[]),
+      getMySubscriptions().catch(() => [] as Subscription[]),
+      getPromos().catch(() => [] as Promo[]),
+    ]).then(([wtRes, svcRes, carsRes, subsRes, promosRes]) => {
       const wts = wtRes.data.sort((a: WashType, b: WashType) => a.sortOrder - b.sortOrder)
       setWashTypes(wts)
       setServices(svcRes.data)
+      setCars(carsRes)
+      setSubscriptions(subsRes)
 
       // Set default wash type
       const basic = wts.find((w: WashType) => w.name.toLowerCase().includes('базовая') || w.name.toLowerCase().includes('basic')) || wts[0]
@@ -73,22 +90,33 @@ export default function BookingPage() {
         setWashTypeId(basic.id)
         setExtras(new Set(basic.includedExtraIds || []))
       }
+
+      // Apply promo from query if valid
+      if (promoCode && promosRes.length > 0) {
+        const matched = promosRes.find((p: Promo) => p.id.toLowerCase() === promoCode.toLowerCase())
+        if (matched) {
+          setAppliedPromo(matched)
+        }
+      }
+
       setLoading(false)
     })
-  }, [])
+  }, [searchParams])
 
   // Load busy slots when date changes
   useEffect(() => {
     if (!washTypeId) return
     const dateStr = selectedDate.toISOString().split('T')[0]
     setLoadingSlots(true)
-    api.get(`/appointments/busy-slots?date=${dateStr}`).then((res) => {
-      setBusySlots(res.data.busy_slots || [])
-      setLoadingSlots(false)
-    }).catch(() => {
-      setBusySlots([])
-      setLoadingSlots(false)
-    })
+    getBusySlots(dateStr)
+      .then((slots) => {
+        setBusySlots(slots)
+        setLoadingSlots(false)
+      })
+      .catch(() => {
+        setBusySlots([])
+        setLoadingSlots(false)
+      })
   }, [selectedDate, washTypeId])
 
   const selectedWashType = washTypes.find((w) => w.id === washTypeId)
@@ -104,7 +132,7 @@ export default function BookingPage() {
     return duration
   }
 
-  const getFinalPrice = () => {
+  const getBasePrice = () => {
     let price = selectedWashType?.basePrice || 0
     for (const id of extras) {
       if (!selectedWashType?.includedExtraIds?.includes(id)) {
@@ -113,6 +141,29 @@ export default function BookingPage() {
       }
     }
     return price
+  }
+
+  const getSubscriptionDiscountPercent = () => {
+    if (!subscriptions.length) return 0
+    return Math.max(...subscriptions.map((s) => s.discountPercent || 0))
+  }
+
+  const getPromoDiscountPercent = () => {
+    return appliedPromo?.discountPercent || 0
+  }
+
+  const getFinalPrice = () => {
+    const base = getBasePrice()
+    const totalDiscount = Math.min(
+      getSubscriptionDiscountPercent() + getPromoDiscountPercent(),
+      MAX_DISCOUNT_PERCENT,
+    )
+    return Math.round(base * (1 - totalDiscount / 100))
+  }
+
+  const parseBusyTime = (time: string) => {
+    const [h, m] = time.split(':').map((part) => parseInt(part, 10))
+    return { hour: isNaN(h) ? 0 : h, minute: isNaN(m) ? 0 : m }
   }
 
   const isSlotAvailable = (hour: number, minute: number) => {
@@ -124,22 +175,14 @@ export default function BookingPage() {
     const totalMinutes = hour * 60 + minute + duration + 5
     if (totalMinutes > 22 * 60) return false
 
-    const start = dt
-    const end = new Date(dt.getTime() + duration * 60000)
-
-    for (const boxSlots of busySlots) {
-      let isBoxFree = true
-      for (const slot of boxSlots) {
-        const slotStart = new Date(slot.start)
-        const slotEnd = new Date(slot.end)
-        if (start < slotEnd && end > slotStart) {
-          isBoxFree = false
-          break
-        }
+    for (const slot of busySlots) {
+      const { hour: busyHour, minute: busyMinute } = parseBusyTime(slot.time)
+      if (busyHour === hour && busyMinute === minute) {
+        return false
       }
-      if (isBoxFree) return true
     }
-    return busySlots.length === 0 // No boxes configured = all free
+
+    return true
   }
 
   const getFinalDateTime = () => {
@@ -189,7 +232,7 @@ export default function BookingPage() {
     if (isSaving) return
     setIsSaving(true)
     try {
-      await api.post('/appointments/', {
+      await createAppointment({
         clientName: name.trim(),
         carModel: car.trim(),
         carNumber: plate.replace(/\s/g, '').toUpperCase(),
@@ -198,6 +241,7 @@ export default function BookingPage() {
         additionalServices: JSON.stringify(Array.from(extras)),
         status: 'scheduled',
         ownerUsername: user?.username || '',
+        promoCode: appliedPromo?.id || queryPromoCode || undefined,
       })
       navigate('/bookings')
     } catch (e) {
@@ -238,6 +282,19 @@ export default function BookingPage() {
     }
   }
 
+  const handleCarSelect = (carId: string) => {
+    if (carId === '') {
+      setCar('')
+      setPlate('')
+      return
+    }
+    const selected = cars.find((c) => c.id === carId)
+    if (selected) {
+      setCar(selected.model)
+      setPlate(selected.number)
+    }
+  }
+
   // Generate days
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date()
@@ -250,6 +307,12 @@ export default function BookingPage() {
   const extraServices = services
     .filter((s) => s.category !== 'Акции')
     .sort((a, b) => a.price - b.price)
+
+  const subscriptionDiscount = getSubscriptionDiscountPercent()
+  const promoDiscount = getPromoDiscountPercent()
+  const basePrice = getBasePrice()
+  const finalPrice = getFinalPrice()
+  const totalDiscount = Math.min(subscriptionDiscount + promoDiscount, MAX_DISCOUNT_PERCENT)
 
   const steps = ['Услуга', 'Дата и время', 'Подтверждение']
 
@@ -325,6 +388,8 @@ export default function BookingPage() {
             name={name} setName={setName}
             car={car} setCar={setCar}
             plate={plate} setPlate={handlePlateChange}
+            cars={cars}
+            onCarSelect={handleCarSelect}
             washTypes={washTypes}
             washTypeId={washTypeId}
             onWashTypeChange={handleWashTypeChange}
@@ -355,7 +420,12 @@ export default function BookingPage() {
             name={name}
             car={car}
             plate={plate}
-            finalPrice={getFinalPrice()}
+            basePrice={basePrice}
+            finalPrice={finalPrice}
+            totalDiscount={totalDiscount}
+            subscriptionDiscount={subscriptionDiscount}
+            promoDiscount={promoDiscount}
+            promoTitle={appliedPromo?.title}
             totalDuration={getDuration()}
           />
         )}
@@ -412,6 +482,7 @@ export default function BookingPage() {
 // ─── Step 0: Service ─────────────────────────────────────────────────────────
 function Step0Service({
   name, setName, car, setCar, plate, setPlate,
+  cars, onCarSelect,
   washTypes, washTypeId, onWashTypeChange,
   extras, onExtraToggle, extraServices, errors,
 }: any) {
@@ -428,6 +499,8 @@ function Step0Service({
     fontWeight: plate ? 600 : 400,
   })
 
+  const hasCars = cars.length > 0
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A' }}>Ваши данные</h3>
@@ -441,6 +514,33 @@ function Step0Service({
         />
         {errors.name && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>{errors.name}</div>}
       </div>
+
+      {hasCars && (
+        <div>
+          <label style={{ fontSize: 13, color: '#64748B', marginBottom: 6, display: 'block' }}>Выберите авто</label>
+          <select
+            onChange={(e) => onCarSelect(e.target.value)}
+            defaultValue=""
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 12,
+              border: '1px solid #E2E8F0',
+              fontSize: 15,
+              background: '#FFFFFF',
+              color: '#0F172A',
+              outline: 'none',
+            }}
+          >
+            <option value="">Другой авто</option>
+            {cars.map((c: Car) => (
+              <option key={c.id} value={c.id}>
+                {c.model} · {c.number}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <input
@@ -678,7 +778,11 @@ function Step1DateTime({
 }
 
 // ─── Step 2: Confirm ─────────────────────────────────────────────────────────
-function Step2Confirm({ date, washType, extras, services, name, car, plate, finalPrice, totalDuration }: any) {
+function Step2Confirm({
+  date, washType, extras, services, name, car, plate,
+  basePrice, finalPrice, totalDiscount, subscriptionDiscount, promoDiscount, promoTitle,
+  totalDuration,
+}: any) {
   const formatDuration = (minutes: number) => {
     const h = Math.floor(minutes / 60)
     const m = minutes % 60
@@ -709,6 +813,9 @@ function Step2Confirm({ date, washType, extras, services, name, car, plate, fina
         {infoRow('Услуга', washType?.name || '')}
         {extraList.length > 0 && infoRow('Дополнительно', extraList.map((s: Service) => s.name).join(', '))}
         {infoRow('Длительность', formatDuration(totalDuration))}
+        {subscriptionDiscount > 0 && infoRow('Скидка по подписке', `-${subscriptionDiscount}%`)}
+        {promoDiscount > 0 && infoRow('Промокод', `${promoTitle || 'Акция'} -${promoDiscount}%`)}
+        {totalDiscount > 0 && basePrice !== finalPrice && infoRow('Без скидки', `${basePrice} ₽`)}
       </div>
 
       <div
