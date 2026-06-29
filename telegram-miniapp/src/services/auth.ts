@@ -10,9 +10,20 @@ export interface AuthResponse {
     carModel: string
     carNumber: string
     avatarUrl: string
+    telegramLinked?: boolean
   }
   access_token: string
   token_type: string
+}
+
+export interface RegisterData {
+  username: string
+  password: string
+  displayName: string
+  phone?: string
+  carModel?: string
+  carNumber?: string
+  referralCode?: string
 }
 
 export async function telegramAuth(initData: string): Promise<AuthResponse> {
@@ -20,7 +31,23 @@ export async function telegramAuth(initData: string): Promise<AuthResponse> {
   return res.data
 }
 
-export async function linkAccount(username: string, password: string): Promise<AuthResponse> {
-  const res = await api.post('/auth/link-telegram', { username, password })
+export async function linkTelegram(
+  initData: string,
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  const res = await api.post('/auth/link-telegram', { initData, username, password })
   return res.data
+}
+
+export async function registerTelegram(
+  initData: string,
+  data: RegisterData
+): Promise<AuthResponse> {
+  const res = await api.post('/auth/telegram-register', { initData, ...data })
+  return res.data
+}
+
+export async function logoutBackend(token: string): Promise<void> {
+  await api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } })
 }

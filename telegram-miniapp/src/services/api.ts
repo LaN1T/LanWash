@@ -3,16 +3,14 @@ import { useAuthStore } from '../stores/authStore'
 
 export const api = axios.create({
   baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
   withCredentials: true,
 })
 
 let refreshPromise: Promise<string | null> | null = null
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const token = useAuthStore.getState().token
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
@@ -26,6 +24,7 @@ api.interceptors.response.use(
     const originalRequest = error.config
     if (error.response?.status === 401 && originalRequest) {
       if (originalRequest.url === '/auth/refresh') {
+        useAuthStore.getState().logout()
         return Promise.reject(error)
       }
 
