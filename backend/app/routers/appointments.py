@@ -730,25 +730,12 @@ async def create(
             req.paidPrice = 0
         else:
             # Auto-apply an active subscription if the client did not choose one.
-            today = date.today()
-            sub_res = await db.execute(
-                select(Subscription)
-                .where(
-                    Subscription.userId == target_user_id,
-                    Subscription.washTypeId == req.washTypeId,
-                    Subscription.usedWashes < Subscription.totalWashes,
-                    or_(
-                        Subscription.validUntil.is_(None),
-                        Subscription.validUntil >= today,
-                    ),
-                )
-                .with_for_update()
+            # The increment is performed atomically by the DB to avoid race conditions.
+            sub = await SubscriptionRepository(db).increment_used_washes_for_auto_apply(
+                target_user_id, req.washTypeId
             )
-            sub = sub_res.scalar_one_or_none()
-
             if sub:
                 subscription_id = sub.id
-                sub.usedWashes += 1
                 # Subscription washes are free; keep original/promo prices for reporting.
                 req.paidPrice = 0
 

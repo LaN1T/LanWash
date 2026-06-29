@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Appointment, Subscription
@@ -64,6 +64,36 @@ class SubscriptionRepository(BaseRepository[Subscription]):
             )
         )
         return result.scalar() or 0
+
+    async def increment_used_washes_for_auto_apply(
+        self, user_id: int, wash_type_id: str
+    ) -> Subscription | None:
+        """Atomically increment usedWashes for an active subscription and return it.
+
+        Uses an UPDATE ... RETURNING against a correlated subquery so the
+        predicate is re-evaluated on the locked row, preventing concurrent
+        over-use of a subscription.
+        """
+        today = date.today()
+        subq = (
+            select(Subscription.id)
+            .where(
+                Subscription.userId == user_id,
+                Subscription.washTypeId == wash_type_id,
+                Subscription.usedWashes < Subscription.totalWashes,
+                or_(Subscription.validUntil.is_(None), Subscription.validUntil >= today),
+            )
+            .order_by(Subscription.createdAt.asc())
+            .limit(1)
+            .subquery()
+        )
+        result = await self._db.execute(
+            update(Subscription)
+            .where(Subscription.id == subq.c.id)
+            .values(usedWashes=Subscription.usedWashes + 1)
+            .returning(Subscription)
+        )
+        return result.scalar_one_or_none()
 
     async def sum_saved_for_user(self, user_id: int) -> int:
         result = await self._db.execute(
