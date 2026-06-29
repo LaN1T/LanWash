@@ -463,6 +463,7 @@ class AuthService:
 
         return self._issue_token_pair(user)
 
+    @atomic
     async def register_telegram_user(self, req) -> dict:
         from schemas import TelegramRegisterRequest
 
@@ -523,7 +524,6 @@ class AuthService:
                 )
                 await self._referral_repo.add(referral)
 
-        await self._db.commit()
         await self._db.refresh(new_user)
 
         return self._issue_token_pair(new_user)

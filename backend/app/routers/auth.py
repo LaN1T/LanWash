@@ -268,6 +268,8 @@ async def telegram_register(
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
     except TelegramAlreadyLinkedError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except InvalidCredentialsError as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
     except RuntimeError:
         raise HTTPException(500, "Internal server error")
 

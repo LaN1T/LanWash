@@ -644,7 +644,7 @@ class TestTelegramRegister:
     async def test_telegram_register_duplicate_telegram(self, db_session):
         svc = AuthService(db_session)
         req1 = TelegramRegisterRequest(
-            initData=make_test_init_data(telegram_id="111222"),
+            initData=make_test_init_data(telegram_id="555111"),
             username="tguser1",
             password="StrongPass123!",
             displayName="First",
@@ -652,7 +652,7 @@ class TestTelegramRegister:
         await svc.register_telegram_user(req1)
 
         req2 = TelegramRegisterRequest(
-            initData=make_test_init_data(telegram_id="111222"),
+            initData=make_test_init_data(telegram_id="555111"),
             username="tguser2",
             password="StrongPass123!",
             displayName="Second",
@@ -664,7 +664,7 @@ class TestTelegramRegister:
     async def test_telegram_register_duplicate_username(self, db_session):
         svc = AuthService(db_session)
         req1 = TelegramRegisterRequest(
-            initData=make_test_init_data(telegram_id="111222"),
+            initData=make_test_init_data(telegram_id="777222"),
             username="dupusertg",
             password="StrongPass123!",
             displayName="First",
@@ -672,7 +672,7 @@ class TestTelegramRegister:
         await svc.register_telegram_user(req1)
 
         req2 = TelegramRegisterRequest(
-            initData=make_test_init_data(telegram_id="333444"),
+            initData=make_test_init_data(telegram_id="777333"),
             username="dupusertg",
             password="StrongPass123!",
             displayName="Second",
@@ -696,3 +696,19 @@ class TestTelegramRegister:
         assert data["user"]["username"] == "endpointtg"
         assert data["user"]["telegramId"] == "333444"
         assert "access_token" in data
+
+    @pytest.mark.asyncio
+    async def test_telegram_register_endpoint_invalid_init_data_returns_401(
+        self, async_client
+    ):
+        response = await async_client.post(
+            "/api/auth/telegram-register",
+            json={
+                "initData": "tampered_or_expired_init_data",
+                "username": "badinituser",
+                "password": "StrongPass123!",
+                "displayName": "Bad Init",
+            },
+        )
+        assert response.status_code == 401
+        assert "telegram" in response.json()["detail"].lower()
