@@ -184,7 +184,10 @@ class ConfirmationStep extends StatelessWidget {
                         fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(selectedSubscriptionName != null ? '0 ₽' : '$finalPrice ₽',
+                  Text(
+                      selectedSubscriptionName != null
+                          ? '0 ₽'
+                          : '$finalPrice ₽',
                       style: const TextStyle(
                           color: AppStyles.primary,
                           fontSize: 24,
@@ -316,7 +319,6 @@ class _ConfirmRow extends StatelessWidget {
       );
 }
 
-
 class _SubscriptionSelector extends StatelessWidget {
   final List<Subscription> subscriptions;
   final int? selectedId;
@@ -386,7 +388,9 @@ class _SubscriptionSelector extends StatelessWidget {
                         selected
                             ? Icons.check_circle_rounded
                             : Icons.radio_button_unchecked_rounded,
-                        color: selected ? AppStyles.primary : AppStyles.adaptiveTextSecondary(context),
+                        color: selected
+                            ? AppStyles.primary
+                            : AppStyles.adaptiveTextSecondary(context),
                         size: 22,
                       ),
                       const SizedBox(width: 12),

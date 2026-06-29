@@ -522,7 +522,8 @@ class _SettingsBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = context.select<ConsumableProvider, int>((p) => p.lowStockCount);
+    final count =
+        context.select<ConsumableProvider, int>((p) => p.lowStockCount);
 
     return Badge(
       isLabelVisible: count > 0,

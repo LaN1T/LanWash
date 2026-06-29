@@ -50,7 +50,8 @@ class _SubscriptionPlanSettingsScreenState
               child: const Text('Отмена')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyles.danger, foregroundColor: Colors.white),
+                backgroundColor: AppStyles.danger,
+                foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить'),
           ),
@@ -119,7 +120,8 @@ class _SubscriptionPlanSettingsScreenState
                               children: [
                                 Icon(Icons.card_membership_outlined,
                                     size: 56,
-                                    color: AppStyles.adaptiveTextMuted(context)),
+                                    color:
+                                        AppStyles.adaptiveTextMuted(context)),
                                 const SizedBox(height: 16),
                                 Text(
                                   'Нет готовых абонементов',
@@ -295,8 +297,7 @@ class _PlanEditorState extends State<_PlanEditor> {
         TextEditingController(text: plan?.unlimitedDays?.toString() ?? '');
     _discountCtrl =
         TextEditingController(text: (plan?.discountPercent ?? 0).toString());
-    _sortCtrl =
-        TextEditingController(text: (plan?.sortOrder ?? 0).toString());
+    _sortCtrl = TextEditingController(text: (plan?.sortOrder ?? 0).toString());
     _isActive = plan?.isActive ?? true;
     _type = plan?.type ?? 'package';
     if (plan?.washTypePrices != null) {
@@ -334,9 +335,8 @@ class _PlanEditorState extends State<_PlanEditor> {
 
     final body = <String, dynamic>{
       'name': name,
-      'description': _descCtrl.text.trim().isEmpty
-          ? null
-          : _descCtrl.text.trim(),
+      'description':
+          _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       'discountPercent': discount,
       'sortOrder': sortOrder,
       'isActive': _isActive,
@@ -358,7 +358,9 @@ class _PlanEditorState extends State<_PlanEditor> {
     final api = sl<ApiService>();
     final ok = _isEditing
         ? (await api.updateSubscriptionPlan(widget.plan!.id, body)) != null
-        : (await api.createSubscriptionPlan({...body, 'code': code, 'type': _type})) != null;
+        : (await api.createSubscriptionPlan(
+                {...body, 'code': code, 'type': _type})) !=
+            null;
 
     if (!mounted) return;
     setState(() => _saving = false);
@@ -446,23 +448,20 @@ class _PlanEditorState extends State<_PlanEditor> {
                 ],
                 TextField(
                   controller: _nameCtrl,
-                  decoration: AppStyles.inputDecorationFor(
-                      context, 'Название',
+                  decoration: AppStyles.inputDecorationFor(context, 'Название',
                       icon: Icons.label_outline),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _descCtrl,
                   maxLines: 3,
-                  decoration: AppStyles.inputDecorationFor(
-                      context, 'Описание',
+                  decoration: AppStyles.inputDecorationFor(context, 'Описание',
                       icon: Icons.notes),
                 ),
                 const SizedBox(height: 16),
                 SegmentedButton<String>(
                   segments: const [
-                    ButtonSegment(
-                        value: 'package', label: Text('Пакет моек')),
+                    ButtonSegment(value: 'package', label: Text('Пакет моек')),
                     ButtonSegment(
                         value: 'unlimited', label: Text('Безлимитка')),
                   ],
@@ -672,8 +671,7 @@ class _WashTypePricesDialogState extends State<_WashTypePricesDialog> {
                     child: TextField(
                       controller: _controllers[wt.id],
                       keyboardType: TextInputType.number,
-                      decoration: AppStyles.inputDecorationFor(
-                          context, '₽'),
+                      decoration: AppStyles.inputDecorationFor(context, '₽'),
                     ),
                   ),
                 ],

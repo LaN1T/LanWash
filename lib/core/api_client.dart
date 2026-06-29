@@ -273,7 +273,8 @@ class ApiClient {
 
       return Failure(AppError.server(response.statusCode, message));
     } on http.ClientException catch (e) {
-      if (kDebugMode) debugPrint('Network error (ClientException): $e | url: $url');
+      if (kDebugMode)
+        debugPrint('Network error (ClientException): $e | url: $url');
       return Failure(AppError.network(e));
     } on FormatException catch (e) {
       if (kDebugMode) debugPrint('Format error: $e | url: $url');

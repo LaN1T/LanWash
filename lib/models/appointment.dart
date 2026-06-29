@@ -108,8 +108,9 @@ class Appointment {
         assignedWashers: _parseWashers(m['assignedWasher']),
         promoId: m['promoId']?.toString(),
         carId: m['carId'] != null ? (m['carId'] as num).toInt() : null,
-        subscriptionId:
-            m['subscriptionId'] != null ? (m['subscriptionId'] as num).toInt() : null,
+        subscriptionId: m['subscriptionId'] != null
+            ? (m['subscriptionId'] as num).toInt()
+            : null,
         boxIndex: (m['box_index'] as num?)?.toInt() ?? 0,
         lateMinutes: (m['late_minutes'] as num?)?.toInt() ?? 0,
         cancelReason: m['cancel_reason']?.toString() ?? '',

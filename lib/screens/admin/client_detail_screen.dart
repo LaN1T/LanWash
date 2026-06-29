@@ -35,12 +35,16 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
   Future<void> _load() async {
     final api = sl<ApiService>();
     final results = await Future.wait([
-      api.getCarsForUser(widget.user.id!).then((list) => _CarsResult(list))
+      api
+          .getCarsForUser(widget.user.id!)
+          .then((list) => _CarsResult(list))
           .catchError((e) => _CarsResult([], e.toString())),
-      api.getAppointmentsByOwner(widget.user.username)
+      api
+          .getAppointmentsByOwner(widget.user.username)
           .then((list) => _AppointmentsResult(list))
           .catchError((e) => _AppointmentsResult([], e.toString())),
-      api.getServices()
+      api
+          .getServices()
           .then((list) => _ServicesResult(list))
           .catchError((e) => _ServicesResult([], e.toString())),
     ]);
@@ -460,7 +464,8 @@ class _Placeholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: AppStyles.adaptiveTextSecondary(context)),
+            Icon(icon,
+                size: 48, color: AppStyles.adaptiveTextSecondary(context)),
             const SizedBox(height: 12),
             Text(
               text,

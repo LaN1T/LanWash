@@ -107,7 +107,8 @@ class _PersonalBuilderScreenState extends State<PersonalBuilderScreen> {
                       const SizedBox(height: 12),
                       RadioGroup<String>(
                         groupValue: _selectedWashTypeId,
-                        onChanged: (v) => setState(() => _selectedWashTypeId = v),
+                        onChanged: (v) =>
+                            setState(() => _selectedWashTypeId = v),
                         child: Column(
                           children: _washTypes
                               .map((wt) => _WashTypeTile(washType: wt))
@@ -163,7 +164,8 @@ class _PersonalBuilderScreenState extends State<PersonalBuilderScreen> {
                   decoration: BoxDecoration(
                     color: AppStyles.adaptiveCard(context),
                     border: Border(
-                        top: BorderSide(color: AppStyles.adaptiveBorder(context))),
+                        top: BorderSide(
+                            color: AppStyles.adaptiveBorder(context))),
                   ),
                   child: SafeArea(
                     child: ElevatedButton(
@@ -172,8 +174,8 @@ class _PersonalBuilderScreenState extends State<PersonalBuilderScreen> {
                           : () {
                               final wt = _selectedWashType!;
                               final selectedExtras = _extras
-                                  .where((e) =>
-                                      _selectedExtraIds.contains(e.id))
+                                  .where(
+                                      (e) => _selectedExtraIds.contains(e.id))
                                   .map((e) => e.id)
                                   .toList();
                               Navigator.push(
@@ -219,7 +221,8 @@ class _WashTypeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = RadioGroup.maybeOf<String>(context)?.groupValue == washType.id;
+    final selected =
+        RadioGroup.maybeOf<String>(context)?.groupValue == washType.id;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -228,7 +231,8 @@ class _WashTypeTile extends StatelessWidget {
             : AppStyles.adaptiveCard(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: selected ? AppStyles.primary : AppStyles.adaptiveBorder(context),
+          color:
+              selected ? AppStyles.primary : AppStyles.adaptiveBorder(context),
         ),
       ),
       child: RadioListTile<String>(

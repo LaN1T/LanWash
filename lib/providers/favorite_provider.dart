@@ -36,7 +36,8 @@ class FavoriteProvider extends ChangeNotifier {
 
   Future<void> toggleServiceFavorite(String id) async {
     if (_currentUser.isEmpty) {
-      debugPrint('FavoriteProvider: cannot toggle favorite with no user loaded');
+      debugPrint(
+          'FavoriteProvider: cannot toggle favorite with no user loaded');
       return;
     }
     try {
@@ -56,7 +57,8 @@ class FavoriteProvider extends ChangeNotifier {
 
   Future<void> toggleExtraFavorite(String serviceId) async {
     if (_currentUser.isEmpty) {
-      debugPrint('FavoriteProvider: cannot toggle favorite with no user loaded');
+      debugPrint(
+          'FavoriteProvider: cannot toggle favorite with no user loaded');
       return;
     }
     try {

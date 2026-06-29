@@ -83,7 +83,8 @@ class _BWState extends State<BookingWizardScreen> {
 
   int get _finalPrice => _subscriptionSelected ? 0 : _calculator.finalPrice;
 
-  int get _regularPrice => _subscriptionSelected ? _calculator.finalPrice : _calculator.regularPrice;
+  int get _regularPrice =>
+      _subscriptionSelected ? _calculator.finalPrice : _calculator.regularPrice;
 
   bool get _hasDiscount => !_subscriptionSelected && _calculator.hasDiscount;
 

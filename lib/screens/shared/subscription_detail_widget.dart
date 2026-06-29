@@ -22,7 +22,8 @@ class SubscriptionDetailWidget extends StatelessWidget {
 
   String _remainingLabel() {
     if (_isUnlimited) {
-      if (subscription.validUntil != null && subscription.validUntil!.isNotEmpty) {
+      if (subscription.validUntil != null &&
+          subscription.validUntil!.isNotEmpty) {
         return 'Действует до ${_formatDate(subscription.validUntil!)}';
       }
       return 'Безлимитный абонемент';
@@ -109,7 +110,8 @@ class SubscriptionDetailWidget extends StatelessWidget {
           if (extraIds.isNotEmpty) ...[
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => _showExtras(context, catalogProvider.services, extraIds),
+              onTap: () =>
+                  _showExtras(context, catalogProvider.services, extraIds),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -142,7 +144,8 @@ class SubscriptionDetailWidget extends StatelessWidget {
     );
   }
 
-  void _showExtras(BuildContext context, List<Service> services, List<String> ids) {
+  void _showExtras(
+      BuildContext context, List<Service> services, List<String> ids) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

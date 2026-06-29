@@ -146,12 +146,14 @@ class _SubscriptionCheckoutScreenState
           (route) => route.isFirst,
         );
       } else {
-        _showErrorDialog(context, 'Не удалось оформить абонемент. Попробуйте позже.');
+        _showErrorDialog(
+            context, 'Не удалось оформить абонемент. Попробуйте позже.');
       }
     } on Exception catch (e) {
       if (!context.mounted) return;
       final message = e.toString().replaceFirst('Exception: ', '').trim();
-      _showErrorDialog(context, message.isEmpty ? 'Не удалось оформить абонемент' : message);
+      _showErrorDialog(
+          context, message.isEmpty ? 'Не удалось оформить абонемент' : message);
     } finally {
       if (mounted) {
         setState(() => _buying = false);

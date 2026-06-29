@@ -135,9 +135,7 @@ class _WashTypeCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: AppStyles.cardDecorationFor(context).copyWith(
-        color: available
-            ? null
-            : AppStyles.adaptiveBgMuted(context),
+        color: available ? null : AppStyles.adaptiveBgMuted(context),
       ),
       child: Material(
         color: Colors.transparent,

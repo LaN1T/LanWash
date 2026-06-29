@@ -40,8 +40,7 @@ void main() {
     return MaterialApp(home: child);
   }
 
-  testWidgets('ReportsShell shows report groups and navigates',
-      (tester) async {
+  testWidgets('ReportsShell shows report groups and navigates', (tester) async {
     await tester.pumpWidget(buildTestWidget(child: const ReportsShellScreen()));
     await tester.pumpAndSettle();
 
