@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import json
 import os
 import re
@@ -115,7 +116,9 @@ def _verify_metrics_token(
 ):
     if not settings.prometheus_api_token:
         raise HTTPException(status_code=403, detail="Metrics auth not configured")
-    if not credentials or credentials.credentials != settings.prometheus_api_token:
+    if not credentials or not hmac.compare_digest(
+        credentials.credentials, settings.prometheus_api_token
+    ):
         raise HTTPException(status_code=403, detail="Forbidden")
     return credentials.credentials
 
