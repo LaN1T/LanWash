@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       ])
       set({ user, token, isLoading: false, error: null })
     } catch (err) {
-      set({ error: formatError(err) })
+      set({ error: formatError(err), isLoading: false })
       throw err
     }
   },
@@ -54,7 +54,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       ])
       set({ user: null, token: null, isLoading: false, error: null })
     } catch (err) {
-      set({ error: formatError(err) })
+      set({ error: formatError(err), isLoading: false })
       throw err
     }
   },

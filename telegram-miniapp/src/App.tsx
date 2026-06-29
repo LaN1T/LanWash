@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import React, { useEffect, Suspense } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useAuthStore } from './stores/authStore'
 import { useTelegram } from './hooks/useTelegram'
 import { telegramAuth } from './services/auth'
@@ -15,10 +15,20 @@ const WasherHomePage = React.lazy(() => import('./pages/washer/WasherHomePage'))
 
 function App() {
   const { initData, ready, isInTelegram } = useTelegram()
-  const { user, token, setAuth, setLoading } = useAuthStore()
+  const { user, token, error, setAuth, setLoading, init } = useAuthStore()
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    if (!ready) return
+    init().finally(() => setHydrated(true))
+  }, [init])
+
+  useEffect(() => {
+    if (!ready || !hydrated) return
+    if (token) {
+      setLoading(false)
+      return
+    }
+
     const auth = async () => {
       setLoading(true)
       try {
@@ -36,7 +46,7 @@ function App() {
       }
     }
     auth()
-  }, [initData, ready, isInTelegram, setAuth])
+  }, [initData, ready, isInTelegram, setAuth, setLoading, token, hydrated])
 
   if (!ready) {
     return (
@@ -64,7 +74,7 @@ function App() {
                 </p>
               </>
             ) : (
-              <p>Ошибка авторизации. Попробуйте ещё раз.</p>
+              <p>{error || 'Ошибка авторизации. Попробуйте ещё раз.'}</p>
             )}
           </div>
         </Layout>
