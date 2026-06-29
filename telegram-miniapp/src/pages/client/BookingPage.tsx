@@ -3,11 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import { api } from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
-import { validateName, validateCarModel, validatePlate, formatPlate } from '../../utils/validators'
+import { validateName, validateCarModel, validatePlate } from '../../utils/validators'
 import { getMyCars, type Car } from '../../services/cars'
 import { getBusySlots, createAppointment, type BusySlot, type AppointmentCreatePayload } from '../../services/appointments'
 import { getMySubscriptions, type Subscription } from '../../services/subscriptions'
 import { getPromos, type Promo } from '../../services/catalog'
+import { PlateInput } from '../../components/PlateInput'
 
 interface WashType {
   id: string
@@ -705,23 +706,13 @@ function Step0Service({
       </div>
 
       <div>
-        <input
-          style={{
-            ...inputStyle(!!errors.plate),
-            letterSpacing: plate ? 1.5 : 0,
-            fontWeight: plate ? 600 : 400,
-          }}
+        <PlateInput
           value={plate}
-          onChange={(e) => setPlate(e.target.value)}
+          onChange={setPlate}
           placeholder="А 123 БВ 777"
-          maxLength={12}
+          hasError={!!errors.plate}
         />
         {errors.plate && <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>{errors.plate}</div>}
-        {plate && (
-          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4, letterSpacing: 1.5, fontWeight: 600 }}>
-            {formatPlate(plate)}
-          </div>
-        )}
       </div>
 
       <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginTop: 8 }}>Выберите услугу</h3>
