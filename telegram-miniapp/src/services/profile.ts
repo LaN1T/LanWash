@@ -1,17 +1,5 @@
 import { api } from './api'
-
-export interface User {
-  id: number
-  username: string
-  role: 'client' | 'washer' | 'admin'
-  displayName: string
-  phone: string
-  email?: string
-  carModel: string
-  carNumber: string
-  avatarUrl: string
-  telegramLinked: boolean
-}
+import type { User } from '../stores/authStore'
 
 export interface ProfileUpdatePayload {
   displayName?: string
@@ -33,20 +21,78 @@ export interface UserStats {
   points: number
 }
 
+function isValidUser(obj: unknown): obj is User {
+  if (typeof obj !== 'object' || obj === null) {
+    return false
+  }
+  const u = obj as Record<string, unknown>
+
+  if (typeof u.id !== 'number') return false
+  if (typeof u.username !== 'string') return false
+  if (typeof u.role !== 'string') return false
+  if (!['client', 'washer', 'admin'].includes(u.role)) return false
+  if (typeof u.displayName !== 'string') return false
+  if (typeof u.phone !== 'string') return false
+  if (typeof u.carModel !== 'string') return false
+  if (typeof u.carNumber !== 'string') return false
+  if (typeof u.avatarUrl !== 'string') return false
+  if (typeof u.telegramLinked !== 'boolean' && typeof u.telegramLinked !== 'undefined') {
+    return false
+  }
+
+  return true
+}
+
+function isUserStats(obj: unknown): obj is UserStats {
+  if (typeof obj !== 'object' || obj === null) {
+    return false
+  }
+  const s = obj as Record<string, unknown>
+
+  if (typeof s.totalAppointments !== 'number') return false
+  if (typeof s.totalSpent !== 'number') return false
+  if (typeof s.favoriteWashType !== 'string') return false
+  if (typeof s.level !== 'string') return false
+  if (typeof s.levelProgress !== 'number') return false
+  if (typeof s.points !== 'number') return false
+
+  return true
+}
+
+function isUnlinkResponse(obj: unknown): obj is { status: string } {
+  if (typeof obj !== 'object' || obj === null) {
+    return false
+  }
+  const d = obj as Record<string, unknown>
+
+  if (typeof d.status !== 'string') return false
+
+  return true
+}
+
 export async function updateProfile(
   userId: number,
   data: ProfileUpdatePayload
 ): Promise<User> {
   const res = await api.put(`/auth/profile/${userId}`, data)
-  return res.data as User
+  if (!isValidUser(res.data)) {
+    throw new Error('Invalid user response from server')
+  }
+  return res.data
 }
 
 export async function getUserStats(username: string): Promise<UserStats> {
   const res = await api.get(`/auth/stats/${encodeURIComponent(username)}`)
-  return res.data as UserStats
+  if (!isUserStats(res.data)) {
+    throw new Error('Invalid stats response from server')
+  }
+  return res.data
 }
 
 export async function unlinkTelegram(password: string): Promise<{ status: string }> {
   const res = await api.post('/auth/unlink-telegram', { password })
-  return res.data as { status: string }
+  if (!isUnlinkResponse(res.data)) {
+    throw new Error('Invalid unlink response from server')
+  }
+  return res.data
 }

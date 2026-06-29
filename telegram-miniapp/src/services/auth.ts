@@ -1,17 +1,8 @@
 import { api } from './api'
+import type { User } from '../stores/authStore'
 
 export interface AuthResponse {
-  user: {
-    id: number
-    username: string
-    role: 'client' | 'washer' | 'admin'
-    displayName: string
-    phone: string
-    carModel: string
-    carNumber: string
-    avatarUrl: string
-    telegramLinked: boolean
-  }
+  user: User
   access_token: string
   token_type: string
 }
@@ -39,7 +30,9 @@ function isValidUser(obj: unknown): obj is AuthResponse['user'] {
   if (typeof u.carModel !== 'string') return false
   if (typeof u.carNumber !== 'string') return false
   if (typeof u.avatarUrl !== 'string') return false
-  if (typeof u.telegramLinked !== 'boolean') return false
+  if (typeof u.telegramLinked !== 'boolean' && typeof u.telegramLinked !== 'undefined') {
+    return false
+  }
 
   const role = u.role
   if (role !== 'client' && role !== 'washer' && role !== 'admin') {

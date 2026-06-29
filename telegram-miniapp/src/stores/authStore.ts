@@ -4,9 +4,10 @@ import { cloudStorage } from '../lib/cloudStorage'
 export interface User {
   id: number
   username: string
-  role: string
+  role: 'client' | 'washer' | 'admin'
   displayName: string
   phone: string
+  email?: string
   carModel: string
   carNumber: string
   avatarUrl: string

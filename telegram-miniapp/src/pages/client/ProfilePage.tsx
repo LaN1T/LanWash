@@ -1,21 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
-import type { User as StoreUser } from '../../stores/authStore'
+import type { User } from '../../stores/authStore'
 import {
   getUserStats,
   updateProfile,
   unlinkTelegram,
   type UserStats,
-  type User as ProfileUser,
   type ProfileUpdatePayload,
 } from '../../services/profile'
 
 export default function ProfilePage() {
   const { user, token, logout, setAuth } = useAuthStore()
-  const profileUser = user as ProfileUser | null
 
   const [stats, setStats] = useState<UserStats | null>(null)
   const [loadingStats, setLoadingStats] = useState(true)
+  const [statsError, setStatsError] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState({
     displayName: '',
@@ -25,21 +24,30 @@ export default function ProfilePage() {
     carNumber: '',
     currentPassword: '',
     newPassword: '',
+    confirmNewPassword: '',
   })
   const [saving, setSaving] = useState(false)
   const [unlinking, setUnlinking] = useState(false)
+  const [showUnlinkPassword, setShowUnlinkPassword] = useState(false)
+  const [unlinkPassword, setUnlinkPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.username) {
       setLoadingStats(true)
+      setStatsError(null)
       getUserStats(user.username)
         .then(setStats)
-        .catch(() => {})
+        .catch((err) => {
+          console.error(err)
+          setStatsError('Не удалось загрузить статистику')
+        })
         .finally(() => setLoadingStats(false))
+    } else {
+      setLoadingStats(false)
     }
-  }, [user?.username])
+  }, [user])
 
   useEffect(() => {
     if (user) {
@@ -47,12 +55,12 @@ export default function ProfilePage() {
         ...prev,
         displayName: user.displayName || '',
         phone: user.phone || '',
-        email: profileUser?.email || '',
+        email: user.email || '',
         carModel: user.carModel || '',
         carNumber: user.carNumber || '',
       }))
     }
-  }, [user, profileUser?.email])
+  }, [user])
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -68,6 +76,7 @@ export default function ProfilePage() {
       ...prev,
       currentPassword: '',
       newPassword: '',
+      confirmNewPassword: '',
     }))
   }
 
@@ -79,12 +88,16 @@ export default function ProfilePage() {
     setSuccess(null)
 
     try {
+      if (form.newPassword && form.newPassword !== form.confirmNewPassword) {
+        throw new Error('Новые пароли не совпадают')
+      }
+
       const payload: ProfileUpdatePayload = {
-        displayName: form.displayName,
-        phone: form.phone,
-        email: form.email || undefined,
-        carModel: form.carModel,
-        carNumber: form.carNumber,
+        displayName: form.displayName.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+        email: form.email.trim() || undefined,
+        carModel: form.carModel.trim() || undefined,
+        carNumber: form.carNumber.trim() || undefined,
       }
 
       if (form.newPassword) {
@@ -95,8 +108,8 @@ export default function ProfilePage() {
         payload.newPassword = form.newPassword
       }
 
-      const updated = await updateProfile(user.id, payload)
-      await setAuth(updated as StoreUser, token)
+      const updated: User = await updateProfile(user.id, payload)
+      await setAuth(updated, token)
       resetEdit()
       setSuccess('Профиль обновлён')
     } catch (err) {
@@ -109,22 +122,26 @@ export default function ProfilePage() {
   const handleUnlink = async () => {
     if (!user || token === null) return
 
-    const password = window.prompt('Для отвязки Telegram введите пароль')
-    if (!password) return
-
     setUnlinking(true)
     setError(null)
     setSuccess(null)
 
     try {
-      await unlinkTelegram(password)
-      await setAuth({ ...user, telegramLinked: false } as StoreUser, token)
+      await unlinkTelegram(unlinkPassword)
+      await setAuth({ ...user, telegramLinked: false }, token)
       setSuccess('Telegram отвязан от аккаунта')
+      setShowUnlinkPassword(false)
+      setUnlinkPassword('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка отвязки Telegram')
     } finally {
       setUnlinking(false)
     }
+  }
+
+  const handleLogout = async () => {
+    if (!window.confirm('Вы уверены, что хотите выйти из аккаунта?')) return
+    await logout()
   }
 
   const infoRow = (label: string, value: string) => (
@@ -184,6 +201,8 @@ export default function ProfilePage() {
     border: '1px solid #E2E8F0',
     cursor: 'pointer',
   }
+
+  const telegramLinked = user?.telegramLinked ?? false
 
   return (
     <div style={{ padding: 16 }}>
@@ -255,7 +274,11 @@ export default function ProfilePage() {
             fontWeight: 600,
           }}
         >
-          {user?.role === 'washer' ? 'Мойщик' : 'Клиент'}
+          {user?.role === 'admin'
+            ? 'Администратор'
+            : user?.role === 'washer'
+              ? 'Мойщик'
+              : 'Клиент'}
         </div>
       </div>
 
@@ -299,7 +322,7 @@ export default function ProfilePage() {
             <div
               style={{
                 height: '100%',
-                width: `${stats.levelProgress}%`,
+                width: `${Math.min(100, Math.max(0, stats.levelProgress))}%`,
                 borderRadius: 4,
                 background: 'linear-gradient(90deg, #1A56DB, #3B82F6)',
                 transition: 'width 0.5s ease',
@@ -331,6 +354,22 @@ export default function ProfilePage() {
               <div style={{ fontSize: 12, color: '#64748B' }}>Потрачено</div>
             </div>
           </div>
+        </div>
+      )}
+      {!loadingStats && statsError && !stats && (
+        <div
+          style={{
+            background: '#FEF2F2',
+            borderRadius: 16,
+            border: '1px solid #FECACA',
+            padding: 20,
+            marginBottom: 16,
+            color: '#B91C1C',
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          {statsError}
         </div>
       )}
 
@@ -496,7 +535,7 @@ export default function ProfilePage() {
                   style={inputStyle}
                 />
               </div>
-              <div>
+              <div style={{ marginBottom: 12 }}>
                 <label htmlFor="newPassword" style={labelStyle}>
                   Новый пароль
                 </label>
@@ -506,6 +545,20 @@ export default function ProfilePage() {
                   placeholder="••••••••"
                   value={form.newPassword}
                   onChange={handleChange('newPassword')}
+                  disabled={saving}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label htmlFor="confirmNewPassword" style={labelStyle}>
+                  Подтвердите новый пароль
+                </label>
+                <input
+                  id="confirmNewPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.confirmNewPassword}
+                  onChange={handleChange('confirmNewPassword')}
                   disabled={saving}
                   style={inputStyle}
                 />
@@ -538,7 +591,7 @@ export default function ProfilePage() {
         ) : (
           <>
             {infoRow('Телефон', user?.phone || '')}
-            {profileUser?.email && infoRow('Email', profileUser.email)}
+            {user?.email && infoRow('Email', user.email)}
             {infoRow('Автомобиль', user?.carModel || '')}
             {infoRow('Госномер', user?.carNumber || '')}
             {infoRow('Логин', user?.username || '')}
@@ -563,7 +616,7 @@ export default function ProfilePage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: profileUser?.telegramLinked ? 16 : 0,
+            marginBottom: telegramLinked ? 16 : 0,
           }}
         >
           <div>
@@ -578,12 +631,12 @@ export default function ProfilePage() {
               Telegram
             </div>
             <div style={{ fontSize: 13, color: '#64748B' }}>
-              {profileUser?.telegramLinked
+              {telegramLinked
                 ? 'Аккаунт привязан к Telegram'
                 : 'Telegram не привязан'}
             </div>
           </div>
-          {profileUser?.telegramLinked && (
+          {telegramLinked && (
             <div
               style={{
                 width: 10,
@@ -594,9 +647,9 @@ export default function ProfilePage() {
             />
           )}
         </div>
-        {profileUser?.telegramLinked && (
+        {telegramLinked && !showUnlinkPassword && (
           <button
-            onClick={() => void handleUnlink()}
+            onClick={() => setShowUnlinkPassword(true)}
             disabled={unlinking}
             style={{
               width: '100%',
@@ -614,13 +667,60 @@ export default function ProfilePage() {
             {unlinking ? 'Отвязка...' : 'Отвязать Telegram'}
           </button>
         )}
+        {telegramLinked && showUnlinkPassword && (
+          <div
+            style={{
+              background: '#F8FAFC',
+              borderRadius: 12,
+              padding: 16,
+            }}
+          >
+            <div style={{ marginBottom: 12 }}>
+              <label htmlFor="unlinkPassword" style={labelStyle}>
+                Введите пароль для подтверждения
+              </label>
+              <input
+                id="unlinkPassword"
+                type="password"
+                placeholder="••••••••"
+                value={unlinkPassword}
+                onChange={(e) => setUnlinkPassword(e.target.value)}
+                disabled={unlinking}
+                style={inputStyle}
+              />
+            </div>
+            <button
+              onClick={() => void handleUnlink()}
+              disabled={unlinking || !unlinkPassword}
+              style={{
+                ...buttonPrimaryStyle,
+                opacity: unlinking || !unlinkPassword ? 0.7 : 1,
+                marginBottom: 10,
+              }}
+            >
+              {unlinking ? 'Отвязка...' : 'Подтвердить отвязку'}
+            </button>
+            <button
+              type="button"
+              disabled={unlinking}
+              onClick={() => {
+                setShowUnlinkPassword(false)
+                setUnlinkPassword('')
+              }}
+              style={{
+                ...buttonSecondaryStyle,
+                opacity: unlinking ? 0.7 : 1,
+              }}
+            >
+              Отмена
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Logout */}
       <button
-        onClick={async () => {
-          await logout()
-        }}
+        onClick={() => void handleLogout()}
         style={{
           width: '100%',
           padding: '16px 24px',
