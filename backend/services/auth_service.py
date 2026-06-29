@@ -728,6 +728,14 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+        # Blacklist the old refresh token BEFORE issuing a new pair to prevent
+        # concurrent replay attacks.
+        if jti:
+            exp = payload.get("exp")
+            if exp:
+                ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
+                await blacklist_token(jti, ttl)
+
         token_data = {
             "sub": user.username,
             "role": user.role,
@@ -738,12 +746,6 @@ class AuthService:
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         )
         new_refresh_token = create_refresh_token(token_data)
-
-        if jti:
-            exp = payload.get("exp")
-            if exp:
-                ttl = max(0, int(exp - datetime.now(timezone.utc).timestamp()))
-                await blacklist_token(jti, ttl)
 
         return {
             "user": user,
