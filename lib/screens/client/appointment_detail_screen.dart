@@ -128,7 +128,7 @@ class _ClientAppointmentDetailScreenState
                 '${a.carModel} · ${a.carNumber}'),
             _InfoTile(Icons.local_car_wash_rounded, 'Услуга',
                 catalogProvider.washTypeName(a.washTypeId)),
-            _InfoTile(Icons.layers_rounded, 'Бокс', 'Бокс №${a.box_index + 1}'),
+            _InfoTile(Icons.layers_rounded, 'Бокс', 'Бокс №${a.boxIndex + 1}'),
             _InfoTile(Icons.payments_rounded, 'Итого',
                 '${a.calculateTotalPrice(services, washType)} ₽'),
             if (a.additionalServices.isNotEmpty) ...[
@@ -810,26 +810,28 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
               const SizedBox(height: 16),
               const Text('Способ оплаты:', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
-              _MethodRadio(
-                value: 'sbp',
+              RadioGroup<String>(
                 groupValue: _method,
-                label: 'СБП',
-                icon: Icons.account_balance,
-                onChanged: (v) => setState(() => _method = v),
-              ),
-              _MethodRadio(
-                value: 'cash',
-                groupValue: _method,
-                label: 'Наличные',
-                icon: Icons.money,
-                onChanged: (v) => setState(() => _method = v),
-              ),
-              _MethodRadio(
-                value: 'app',
-                groupValue: _method,
-                label: 'Через приложение',
-                icon: Icons.phone_android,
-                onChanged: (v) => setState(() => _method = v),
+                onChanged: (v) => setState(() => _method = v!),
+                child: const Column(
+                  children: [
+                    _MethodRadio(
+                      value: 'sbp',
+                      label: 'СБП',
+                      icon: Icons.account_balance,
+                    ),
+                    _MethodRadio(
+                      value: 'cash',
+                      label: 'Наличные',
+                      icon: Icons.money,
+                    ),
+                    _MethodRadio(
+                      value: 'app',
+                      label: 'Через приложение',
+                      icon: Icons.phone_android,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -1011,24 +1013,22 @@ class _TipBottomSheetState extends State<TipBottomSheet> {
 
 class _MethodRadio extends StatelessWidget {
   final String value;
-  final String groupValue;
   final String label;
   final IconData icon;
-  final ValueChanged<String> onChanged;
 
   const _MethodRadio({
     required this.value,
-    required this.groupValue,
     required this.label,
     required this.icon,
-    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final groupValue = RadioGroup.maybeOf<String>(context)?.groupValue;
+    final onGroupChanged = RadioGroup.maybeOf<String>(context)?.onChanged;
     final selected = value == groupValue;
     return InkWell(
-      onTap: () => onChanged(value),
+      onTap: () => onGroupChanged?.call(value),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1063,8 +1063,6 @@ class _MethodRadio extends StatelessWidget {
             ),
             Radio<String>(
               value: value,
-              groupValue: groupValue,
-              onChanged: (v) => onChanged(v!),
               activeColor: AppStyles.primary,
             ),
           ],

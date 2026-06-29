@@ -134,7 +134,7 @@ class AppointmentDetailWidget extends StatelessWidget {
           _Row(Icons.pin, 'Номер', a.carNumber),
           _Row(Icons.local_car_wash, 'Услуга',
               catalogProvider.washTypeName(a.washTypeId)),
-          _Row(Icons.layers_rounded, 'Бокс', 'Бокс №${a.box_index + 1}'),
+          _Row(Icons.layers_rounded, 'Бокс', 'Бокс №${a.boxIndex + 1}'),
           _Row(Icons.payments, 'Итого',
               '${a.priceChanged ? a.paidPrice : a.calculateTotalPrice(catalogProvider.services, catalogProvider.washTypeById(a.washTypeId))} ₽'),
           if (a.additionalServices.isNotEmpty) ...[

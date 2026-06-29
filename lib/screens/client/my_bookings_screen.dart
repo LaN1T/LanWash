@@ -232,7 +232,7 @@ class _HistoryAppointmentCardState extends State<_HistoryAppointmentCard> {
             decoration: BoxDecoration(
                 color: AppStyles.adaptivePrimaryBg(context),
                 borderRadius: BorderRadius.circular(4)),
-            child: Text('Бокс №${widget.a.box_index + 1}',
+            child: Text('Бокс №${widget.a.boxIndex + 1}',
                 style: const TextStyle(
                     color: AppStyles.primary,
                     fontSize: 10,

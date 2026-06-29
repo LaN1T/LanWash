@@ -25,7 +25,7 @@ class Appointment {
   String? promoId; // внешний ключ → promos.id
   int? carId; // внешний ключ → cars.id
   int? subscriptionId; // внешний ключ → subscriptions.id
-  int box_index;
+  int boxIndex;
   int lateMinutes;
   String cancelReason;
 
@@ -51,7 +51,7 @@ class Appointment {
     this.promoId,
     this.carId,
     this.subscriptionId,
-    this.box_index = 0,
+    this.boxIndex = 0,
     this.lateMinutes = 0,
     this.cancelReason = '',
   }) : assignedWashers = assignedWashers ?? [];
@@ -78,7 +78,7 @@ class Appointment {
         'promoId': promoId,
         'carId': carId,
         'subscriptionId': subscriptionId,
-        'box_index': box_index,
+        'box_index': boxIndex,
         'late_minutes': lateMinutes,
         'cancel_reason': cancelReason,
       };
@@ -110,7 +110,7 @@ class Appointment {
         carId: m['carId'] != null ? (m['carId'] as num).toInt() : null,
         subscriptionId:
             m['subscriptionId'] != null ? (m['subscriptionId'] as num).toInt() : null,
-        box_index: (m['box_index'] as num?)?.toInt() ?? 0,
+        boxIndex: (m['box_index'] as num?)?.toInt() ?? 0,
         lateMinutes: (m['late_minutes'] as num?)?.toInt() ?? 0,
         cancelReason: m['cancel_reason']?.toString() ?? '',
       );
@@ -180,7 +180,7 @@ class Appointment {
     String? promoId,
     int? carId,
     int? subscriptionId,
-    int? box_index,
+    int? boxIndex,
     int? lateMinutes,
     String? cancelReason,
   }) =>
@@ -206,7 +206,7 @@ class Appointment {
         promoId: promoId ?? this.promoId,
         carId: carId ?? this.carId,
         subscriptionId: subscriptionId ?? this.subscriptionId,
-        box_index: box_index ?? this.box_index,
+        boxIndex: boxIndex ?? this.boxIndex,
         lateMinutes: lateMinutes ?? this.lateMinutes,
         cancelReason: cancelReason ?? this.cancelReason,
       );

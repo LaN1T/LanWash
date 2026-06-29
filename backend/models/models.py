@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Union
 
 from sqlalchemy import (
@@ -144,9 +144,12 @@ class SubscriptionPlan(Base):
     washTypePrices = Column(JSON, nullable=True)
     sortOrder = Column(Integer, nullable=False, default=0)
     isActive = Column(Boolean, nullable=False, default=True)
-    createdAt = Column(DateTime, nullable=False, default=datetime.utcnow)
+    createdAt = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updatedAt = Column(
-        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
 

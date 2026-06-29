@@ -136,7 +136,7 @@ class WasherAppointmentCard extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: AppStyles.adaptivePrimaryBg(context),
                       borderRadius: BorderRadius.circular(4)),
-                  child: Text('Бокс №${a.box_index + 1}',
+                  child: Text('Бокс №${a.boxIndex + 1}',
                       style: const TextStyle(
                           color: AppStyles.primary,
                           fontSize: 12,

@@ -110,19 +110,21 @@ class _State extends State<AddEditServiceScreen> {
           _label('Категория'),
           Container(
             decoration: AppStyles.cardDecoration,
-            child: Column(
-              children: _categories
-                  .map((cat) => RadioListTile<String>(
-                        value: cat,
-                        groupValue: _category,
-                        onChanged: (v) => setState(() => _category = v!),
-                        title: Text(cat, style: AppStyles.bodyLarge),
-                        activeColor: AppStyles.primary,
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 12),
-                        dense: true,
-                      ))
-                  .toList(),
+            child: RadioGroup<String>(
+              groupValue: _category,
+              onChanged: (v) => setState(() => _category = v!),
+              child: Column(
+                children: _categories
+                    .map((cat) => RadioListTile<String>(
+                          value: cat,
+                          title: Text(cat, style: AppStyles.bodyLarge),
+                          activeColor: AppStyles.primary,
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                          dense: true,
+                        ))
+                    .toList(),
+              ),
             ),
           ),
           const SizedBox(height: 24),

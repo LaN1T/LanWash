@@ -105,12 +105,15 @@ class _PersonalBuilderScreenState extends State<PersonalBuilderScreen> {
                     children: [
                       _sectionLabel(context, 'Тип мойки'),
                       const SizedBox(height: 12),
-                      ..._washTypes.map((wt) => _WashTypeTile(
-                            washType: wt,
-                            selected: _selectedWashTypeId == wt.id,
-                            onTap: () => setState(
-                                () => _selectedWashTypeId = wt.id),
-                          )),
+                      RadioGroup<String>(
+                        groupValue: _selectedWashTypeId,
+                        onChanged: (v) => setState(() => _selectedWashTypeId = v),
+                        child: Column(
+                          children: _washTypes
+                              .map((wt) => _WashTypeTile(washType: wt))
+                              .toList(),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       _sectionLabel(context, 'Дополнительные услуги'),
                       const SizedBox(height: 12),
@@ -211,17 +214,12 @@ class _PersonalBuilderScreenState extends State<PersonalBuilderScreen> {
 
 class _WashTypeTile extends StatelessWidget {
   final WashType washType;
-  final bool selected;
-  final VoidCallback onTap;
 
-  const _WashTypeTile({
-    required this.washType,
-    required this.selected,
-    required this.onTap,
-  });
+  const _WashTypeTile({required this.washType});
 
   @override
   Widget build(BuildContext context) {
+    final selected = RadioGroup.maybeOf<String>(context)?.groupValue == washType.id;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -235,8 +233,6 @@ class _WashTypeTile extends StatelessWidget {
       ),
       child: RadioListTile<String>(
         value: washType.id,
-        groupValue: selected ? washType.id : null,
-        onChanged: (_) => onTap(),
         activeColor: AppStyles.primary,
         title: Text(
           washType.name,

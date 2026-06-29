@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:html';
+import 'package:web/web.dart' as web;
 import 'dart:ui_web' as ui_web;
 
 class GrafanaIframeView extends StatelessWidget {
@@ -12,7 +12,7 @@ class GrafanaIframeView extends StatelessWidget {
     const viewType = 'grafana-iframe';
     ui_web.platformViewRegistry.registerViewFactory(
       viewType,
-      (int viewId) => IFrameElement()
+      (int viewId) => web.HTMLIFrameElement()
         ..src = url
         ..setAttribute('sandbox', 'allow-scripts allow-same-origin')
         ..style.border = 'none'
