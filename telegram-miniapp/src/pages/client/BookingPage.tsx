@@ -104,7 +104,6 @@ export default function BookingPage() {
   const [cars, setCars] = useState<Car[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [appliedPromo, setAppliedPromo] = useState<Promo | null>(null)
-  const [queryPromoCode, setQueryPromoCode] = useState('')
   const [washTypes, setWashTypes] = useState<WashType[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
@@ -131,7 +130,6 @@ export default function BookingPage() {
   useEffect(() => {
     let mounted = true
     const promoCode = searchParams.get('promo') || ''
-    setQueryPromoCode(promoCode)
     setLoadError(null)
     setLoading(true)
 
@@ -258,9 +256,18 @@ export default function BookingPage() {
     const totalMinutes = hour * 60 + minute + duration + 5
     if (totalMinutes > 22 * 60) return false
 
+    const slotStart = hour * 60 + minute
+    const BUSY_SLOT_DURATION = 30
+
     for (const slot of busySlots) {
       const { hour: busyHour, minute: busyMinute } = parseBusyTime(slot.time)
-      if (busyHour === hour && busyMinute === minute) {
+      const busyStart = busyHour * 60 + busyMinute
+      // Overlap-aware blocking: assume backend busy slots are 30-minute blocks.
+      // A candidate slot overlaps if it starts close enough to the busy window.
+      if (
+        slotStart >= busyStart - duration + 1 &&
+        slotStart <= busyStart + BUSY_SLOT_DURATION - 1
+      ) {
         return false
       }
     }
@@ -355,7 +362,7 @@ export default function BookingPage() {
         additionalServices: JSON.stringify(Array.from(extras)),
         status: 'scheduled',
         ownerUsername: user?.username || '',
-        promoCode: appliedPromo?.id || queryPromoCode || undefined,
+        promoCode: appliedPromo?.id || undefined,
       }
       await createAppointment(payload, controller.signal)
       if (controller.signal.aborted) return
@@ -642,8 +649,6 @@ function Step0Service({
     background: '#FFFFFF',
     color: '#0F172A',
     outline: 'none',
-    letterSpacing: plate ? 1.5 : 0,
-    fontWeight: plate ? 600 : 400,
   })
 
   const hasCars = cars.length > 0
@@ -701,7 +706,11 @@ function Step0Service({
 
       <div>
         <input
-          style={inputStyle(!!errors.plate)}
+          style={{
+            ...inputStyle(!!errors.plate),
+            letterSpacing: plate ? 1.5 : 0,
+            fontWeight: plate ? 600 : 400,
+          }}
           value={plate}
           onChange={(e) => setPlate(e.target.value)}
           placeholder="А 123 БВ 777"
@@ -838,7 +847,7 @@ function Step1DateTime({
     const duration = getDuration()
     const startMinutes = hour * 60 + minute
     const endMinutes = startMinutes + duration + 5
-    const overflow = endMinutes > 22 * 60 ? endMinutes - 22 * 60 : 0
+    const overflow = endMinutes > 24 * 60 ? endMinutes - 24 * 60 : 0
     const isTooLong = overflow > 480
     return { index: i, hour, minute, available, overflow, isTooLong }
   })
@@ -896,8 +905,9 @@ function Step1DateTime({
             const sel = selectedSlot === slot.index
             const canSelect = !slot.isTooLong && slot.available
             const timeStr = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`
-            const overflowHour = slot.overflow > 0 ? Math.floor((8 * 60 + slot.overflow) / 60) : 0
-            const overflowMin = slot.overflow > 0 ? (8 * 60 + slot.overflow) % 60 : 0
+            const overflowMinutes = slot.overflow > 0 ? slot.overflow : 0
+            const overflowHour = Math.floor(overflowMinutes / 60)
+            const overflowMin = overflowMinutes % 60
 
             return (
               <div
