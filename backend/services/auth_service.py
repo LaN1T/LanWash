@@ -13,7 +13,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError as JWTError
 from passlib.context import CryptContext
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cache import cache
@@ -426,42 +425,39 @@ class AuthService:
         self, target_user: User, telegram_id: str
     ) -> None:
         from sqlalchemy import update
-        from models import (
-            Appointment,
-            Car,
-            Review,
-            ShiftTemplate,
-            Subscription,
-            SupportChat,
-        )
+        from models import Appointment, Car, User
 
         old_user = await self._user_repo.get_by_telegram_id(telegram_id)
         if not old_user or old_user.id == target_user.id:
             return
 
-        # Models linked by userId FK
-        for model in (Car, Subscription, Review, SupportChat):
-            await self._db.execute(
-                update(model)
-                .where(model.userId == old_user.id)
-                .values(userId=target_user.id)
+        # Only legacy auto-created tg_<id> dummy accounts are merged.
+        if not old_user.isTelegramDummy:
+            raise TelegramAlreadyLinkedError(
+                "Этот Telegram уже привязан к другому аккаунту"
             )
 
-        # Models linked by ownerUsername
+        # Migrate only the data a Telegram dummy realistically contains.
         await self._db.execute(
             update(Appointment)
             .where(Appointment.ownerUsername == old_user.username)
             .values(ownerUsername=target_user.username, userId=target_user.id)
         )
         await self._db.execute(
-            update(ShiftTemplate)
-            .where(ShiftTemplate.ownerUsername == old_user.username)
-            .values(ownerUsername=target_user.username)
+            update(Car)
+            .where(Car.userId == old_user.id)
+            .values(userId=target_user.id)
         )
 
-        await self._db.delete(old_user)
-        await self._db.flush()
+        # Detach the dummy account immediately so the Telegram ID can be reused
+        # without tripping the unique index during the final flush.
+        await self._db.execute(
+            update(User)
+            .where(User.id == old_user.id)
+            .values(telegramId=None, isTelegramDummy=True)
+        )
 
+    @atomic
     async def link_telegram(
         self, init_data: str, username: str, password: str
     ) -> dict:
@@ -489,23 +485,11 @@ class AuthService:
             if existing_by_tg.id == user.id:
                 # Idempotent: already linked to this user
                 return self._issue_token_pair(user)
-            if not existing_by_tg.username.startswith("tg_"):
-                raise TelegramAlreadyLinkedError(
-                    "Этот Telegram уже привязан к другому аккаунту"
-                )
-            # Auto-created tg_<id> dummy account: merge data into the real account
+            # Auto-created tg_<id> dummy account: merge data into the real account.
+            # Non-dummy accounts (even with a tg_ username) raise instead.
             await self._merge_telegram_user_data(user, telegram_id)
 
         user.telegramId = telegram_id.strip()
-        try:
-            await self._db.commit()
-            await self._db.refresh(user)
-        except IntegrityError as exc:
-            await self._db.rollback()
-            raise TelegramAlreadyLinkedError(
-                "Этот Telegram уже привязан к другому аккаунту"
-            ) from exc
-
         return self._issue_token_pair(user)
 
     @atomic

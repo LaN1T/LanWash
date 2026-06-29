@@ -75,6 +75,7 @@ async def tg_dummy_user(db_session):
         displayName="TG Dummy",
         createdAt=datetime.now(),
         telegramId="12345",
+        isTelegramDummy=True,
     )
     db_session.add(user)
     await db_session.commit()
@@ -543,11 +544,12 @@ class TestLinkTelegram:
         db_session.add(car)
         await db_session.commit()
 
-        init_data = make_test_init_data(telegram_id=tg_dummy_user.telegramId)
+        dummy_telegram_id = tg_dummy_user.telegramId
+        init_data = make_test_init_data(telegram_id=dummy_telegram_id)
         result = await svc.link_telegram(
             init_data, test_user.username, "CorrectPassword123!"
         )
-        assert result["user"].telegramId == tg_dummy_user.telegramId
+        assert result["user"].telegramId == dummy_telegram_id
 
         merged_appointment = await db_session.get(Appointment, "appt-merge-1")
         assert merged_appointment.ownerUsername == test_user.username
@@ -557,7 +559,8 @@ class TestLinkTelegram:
         assert merged_car.userId == test_user.id
 
         old_user = await db_session.get(User, tg_dummy_user.id)
-        assert old_user is None
+        assert old_user.telegramId is None
+        assert old_user.isTelegramDummy is True
 
     @pytest.mark.asyncio
     async def test_link_telegram_wrong_password(self, db_session, test_user):
@@ -593,6 +596,36 @@ class TestLinkTelegram:
         init_data = make_test_init_data(telegram_id="shared_tg_id")
         with pytest.raises(TelegramAlreadyLinkedError):
             await svc.link_telegram(init_data, "second_tg", "TestPass123!")
+
+    @pytest.mark.asyncio
+    async def test_link_telegram_nondummy_tg_username_not_merged(
+        self, db_session, test_user
+    ):
+        """A regular account whose username happens to start with tg_ must not be merged."""
+        from services.auth_service import get_password_hash
+
+        # This account looks like a dummy but is not flagged as one.
+        legacy_lookalike = User(
+            username="tg_legacy_real",
+            passwordHash=get_password_hash("TestPass123!"),
+            role="client",
+            displayName="Legacy Lookalike",
+            createdAt=datetime.now(),
+            telegramId="legacy_tg_id",
+            isTelegramDummy=False,
+        )
+        db_session.add(legacy_lookalike)
+        await db_session.commit()
+
+        svc = AuthService(db_session)
+        init_data = make_test_init_data(telegram_id="legacy_tg_id")
+        with pytest.raises(TelegramAlreadyLinkedError):
+            await svc.link_telegram(init_data, test_user.username, "CorrectPassword123!")
+
+        # The lookalike account must remain untouched.
+        refreshed = await db_session.get(User, legacy_lookalike.id)
+        assert refreshed.telegramId == "legacy_tg_id"
+        assert refreshed.isTelegramDummy is False
 
     @pytest.mark.asyncio
     async def test_link_telegram_endpoint_returns_409_when_already_linked(

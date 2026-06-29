@@ -47,6 +47,7 @@ class User(Base):
     isFavoriteAdmin = Column(Integer, nullable=False, default=0)
     passwordVersion = Column(Integer, nullable=False, default=1)
     telegramId = Column(String, nullable=True, unique=True)
+    isTelegramDummy = Column(Boolean, nullable=False, default=False)
     referralCode = Column(String, nullable=True, unique=True, index=True)
 
     @validates("phone", "email", "carNumber")
