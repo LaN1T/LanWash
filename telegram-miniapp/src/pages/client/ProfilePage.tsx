@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import type { User } from '../../stores/authStore'
+import { api } from '../../services/api'
+import { logoutBackend } from '../../services/auth'
 import {
   getUserStats,
   updateProfile,
@@ -109,7 +111,18 @@ export default function ProfilePage() {
       }
 
       const updated: User = await updateProfile(user.id, payload)
-      await setAuth(updated, token)
+
+      if (form.newPassword) {
+        try {
+          const refreshRes = await api.post('/auth/refresh')
+          await setAuth(updated, refreshRes.data.access_token as string)
+        } catch {
+          await logout()
+        }
+      } else {
+        await setAuth(updated, token)
+      }
+
       resetEdit()
       setSuccess('Профиль обновлён')
     } catch (err) {
@@ -141,7 +154,13 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     if (!window.confirm('Вы уверены, что хотите выйти из аккаунта?')) return
-    await logout()
+    try {
+      await logoutBackend()
+    } catch {
+      // Backend logout may fail if token already expired; still clear local state.
+    } finally {
+      await logout()
+    }
   }
 
   const infoRow = (label: string, value: string) => (

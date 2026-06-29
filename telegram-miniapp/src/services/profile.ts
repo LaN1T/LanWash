@@ -1,4 +1,5 @@
 import { api } from './api'
+import { isValidUser } from './auth'
 import type { User } from '../stores/authStore'
 
 export interface ProfileUpdatePayload {
@@ -19,28 +20,6 @@ export interface UserStats {
   level: string
   levelProgress: number
   points: number
-}
-
-function isValidUser(obj: unknown): obj is User {
-  if (typeof obj !== 'object' || obj === null) {
-    return false
-  }
-  const u = obj as Record<string, unknown>
-
-  if (typeof u.id !== 'number') return false
-  if (typeof u.username !== 'string') return false
-  if (typeof u.role !== 'string') return false
-  if (!['client', 'washer', 'admin'].includes(u.role)) return false
-  if (typeof u.displayName !== 'string') return false
-  if (typeof u.phone !== 'string') return false
-  if (typeof u.carModel !== 'string') return false
-  if (typeof u.carNumber !== 'string') return false
-  if (typeof u.avatarUrl !== 'string') return false
-  if (typeof u.telegramLinked !== 'boolean' && typeof u.telegramLinked !== 'undefined') {
-    return false
-  }
-
-  return true
 }
 
 function isUserStats(obj: unknown): obj is UserStats {

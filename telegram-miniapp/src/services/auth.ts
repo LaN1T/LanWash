@@ -17,7 +17,7 @@ export interface RegisterData {
   referralCode?: string
 }
 
-function isValidUser(obj: unknown): obj is AuthResponse['user'] {
+export function isValidUser(obj: unknown): obj is AuthResponse['user'] {
   if (typeof obj !== 'object' || obj === null) {
     return false
   }
