@@ -23,6 +23,7 @@ export default function MyBookingsPage() {
       setLoading(false)
       return
     }
+    setLoading(true)
     api.get(`/appointments/by-owner/${encodeURIComponent(username)}`).then((res) => {
       // Sort by date descending
       const sorted = (res.data || []).sort((a: Appointment, b: Appointment) =>
@@ -34,7 +35,7 @@ export default function MyBookingsPage() {
       setAppointments([])
       setLoading(false)
     })
-  }, [])
+  }, [user?.username])
 
   if (loading) {
     return (

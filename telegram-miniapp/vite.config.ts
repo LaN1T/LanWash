@@ -18,13 +18,18 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'axios', 'zustand'],
+        manualChunks(id: string) {
+          const vendorDeps = ['react', 'react-dom', 'react-router-dom', 'axios', 'zustand']
+          if (vendorDeps.some((dep) => id.includes(`node_modules/${dep}`))) {
+            return 'vendor'
+          }
+          return null
         },
       },
     },
   },
-  esbuild: {
-    drop: ['console', 'debugger'],
+  oxc: {
+    drop_console: true,
+    drop_debugger: true,
   },
 })

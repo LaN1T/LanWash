@@ -21,10 +21,11 @@ export default function WasherHomePage() {
   useEffect(() => {
     if (!selectedDate) return
     setLoading(true)
-    api.get(`/appointments/by-washer/me?date=${selectedDate}`).then((res) => {
-      setAppointments(res.data)
-      setLoading(false)
-    })
+    api
+      .get(`/appointments/by-washer/me?date=${selectedDate}`)
+      .then((res) => setAppointments(res.data))
+      .catch(() => alert('Не удалось загрузить записи'))
+      .finally(() => setLoading(false))
   }, [selectedDate])
 
   const updateStatus = async (id: string, status: string) => {

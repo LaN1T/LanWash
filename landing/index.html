@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,7 +8,6 @@
     <meta name="keywords" content="автомойка, мойка машины, химчистка салона, полировка авто, Москва">
     <meta property="og:title" content="LanWash — Профессиональный уход за авто">
     <meta property="og:description" content="Запишись на мойку онлайн. Комплексная мойка, химчистка, полировка и защитные покрытия в Москве.">
-    <!-- Recommended: 1200×630px image -->
     <meta property="og:image" content="https://lanwash.ru/assets/logo.png">
     <meta property="og:url" content="https://lanwash.ru">
     <meta property="og:type" content="website">
@@ -18,7 +17,9 @@
     <meta name="twitter:title" content="LanWash — Профессиональный уход за авто">
     <meta name="twitter:description" content="Запишись на мойку онлайн. Комплексная мойка, химчистка, полировка и защитные покрытия в Москве.">
     <meta name="twitter:image" content="https://lanwash.ru/assets/logo.png">
+    <meta name="theme-color" content="#2563eb">
     <link rel="canonical" href="https://lanwash.ru">
+    <link rel="manifest" href="/manifest.json">
     <meta name="ga-id" content="">
     <meta name="ym-id" content="">
     <script>
@@ -50,10 +51,120 @@
       "priceRange": "₽₽"
     }
     </script>
+    <script src="./js/translations.js"></script>
     <script type="module" crossorigin src="./js/main.js"></script>
     <link rel="stylesheet" crossorigin href="./css/style.css">
   </head>
   <body>
-    <div id="root"></div>
+    <a href="#main" class="skip-link">Перейти к содержимому</a>
+
+    <header class="header">
+      <div class="container header__inner">
+        <a href="/" class="header__logo" aria-label="LanWash">LanWash</a>
+        <nav class="header__nav" aria-label="Главная навигация">
+          <a href="#services" class="header__link" data-i18n="nav.services">Услуги</a>
+          <a href="#why" class="header__link" data-i18n="nav.why">Почему мы</a>
+          <a href="#reviews" class="header__link" data-i18n="nav.reviews">Отзывы</a>
+          <a href="#contacts" class="header__link" data-i18n="nav.contacts">Контакты</a>
+        </nav>
+        <div class="header__actions">
+          <button id="themeToggle" class="icon-btn" type="button" aria-label="Переключить тему">
+            <span class="icon-btn__symbol">◐</span>
+          </button>
+          <button id="langToggle" class="lang-btn" type="button" aria-label="Переключить язык">RU</button>
+          <button id="menuToggle" class="header__menu-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobileMenu">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+      <div id="mobileMenu" class="mobile-menu" aria-hidden="true">
+        <a href="#services" data-i18n="nav.services">Услуги</a>
+        <a href="#why" data-i18n="nav.why">Почему мы</a>
+        <a href="#reviews" data-i18n="nav.reviews">Отзывы</a>
+        <a href="#contacts" data-i18n="nav.contacts">Контакты</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__bg" aria-hidden="true"></div>
+        <div class="container hero__inner">
+          <h1 id="hero-title" class="hero__title" data-i18n="hero.title">LanWash</h1>
+          <p class="hero__subtitle" data-i18n="hero.subtitle">Профессиональный уход за вашим авто</p>
+          <div class="hero__actions">
+            <a href="https://t.me/lanwash_bot" class="hero__cta button button--primary" data-i18n="hero.cta">Записаться</a>
+            <span class="hero__alt" data-i18n="hero.alt">или запишитесь через Telegram</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="services" class="section section--services" aria-labelledby="services-title">
+        <div class="container">
+          <h2 id="services-title" class="section__title" data-i18n="services.title">Наши услуги</h2>
+          <div id="servicesGrid" class="services-grid"></div>
+        </div>
+      </section>
+
+      <section id="why" class="section section--why" aria-labelledby="why-title">
+        <div class="container">
+          <h2 id="why-title" class="section__title" data-i18n="why.title">Почему мы</h2>
+          <div id="whyGrid" class="why-grid"></div>
+        </div>
+      </section>
+
+      <section id="reviews" class="section section--reviews" aria-labelledby="reviews-title">
+        <div class="container">
+          <h2 id="reviews-title" class="section__title" data-i18n="reviews.title">Отзывы клиентов</h2>
+          <div class="reviews">
+            <button id="reviewsPrev" class="reviews__arrow reviews__arrow--prev" type="button" aria-label="Предыдущий отзыв">‹</button>
+            <div id="reviewsTrack" class="reviews__track"></div>
+            <button id="reviewsNext" class="reviews__arrow reviews__arrow--next" type="button" aria-label="Следующий отзыв">›</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="contacts" class="section section--contacts" aria-labelledby="contacts-title">
+        <div class="container">
+          <h2 id="contacts-title" class="section__title" data-i18n="contacts.title">Контакты</h2>
+          <div class="contacts">
+            <p><span data-i18n="contacts.addressLabel">Адрес:</span> <span data-i18n="contacts.address">г. Москва, ул. Газопровод, 2А</span></p>
+            <p><span data-i18n="contacts.hoursLabel">Режим работы:</span> <span data-i18n="contacts.hours">Ежедневно 08:00 – 22:00</span></p>
+            <div class="contacts__actions">
+              <a href="tel:+79990000000" class="button button--secondary" data-i18n="contacts.phone">Позвонить</a>
+              <a href="https://t.me/lanwash_bot" class="button button--secondary" data-i18n="contacts.tg">Написать в Telegram</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <p data-i18n="footer.copy">© 2026 LanWash. Все права защищены.</p>
+        <div class="footer__links">
+          <a href="/privacy-policy.html">Политика конфиденциальности</a>
+          <a href="/terms-of-service.html">Условия использования</a>
+        </div>
+      </div>
+    </footer>
+
+    <div id="serviceModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+      <div id="modalOverlay" class="modal__overlay"></div>
+      <div class="modal__content">
+        <button id="modalClose" class="modal__close" type="button" aria-label="Закрыть" data-i18n="modal.close">Закрыть</button>
+        <div id="modalIcon" class="modal__icon"></div>
+        <h3 id="modalTitle" class="modal__title"></h3>
+        <p id="modalDesc" class="modal__desc"></p>
+        <h4 class="modal__list-title" data-i18n="modal.includes">Прайс-лист</h4>
+        <ul id="modalList" class="modal__list"></ul>
+        <p id="modalPrice" class="modal__price"></p>
+      </div>
+    </div>
+
+    <noscript>
+      <div class="container" style="padding-top: 80px;">
+        <p>Для корректного отображения сайта включите JavaScript.</p>
+      </div>
+    </noscript>
   </body>
 </html>

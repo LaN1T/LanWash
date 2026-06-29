@@ -190,7 +190,6 @@ export default function BookingPage() {
     setIsSaving(true)
     try {
       await api.post('/appointments/', {
-        id: crypto.randomUUID(),
         clientName: name.trim(),
         carModel: car.trim(),
         carNumber: plate.replace(/\s/g, '').toUpperCase(),
