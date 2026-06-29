@@ -4,6 +4,8 @@ import { useAuthStore } from '../../stores/authStore'
 import { useCatalogStore } from '../../stores/catalogStore'
 import { getGreeting } from '../../utils/validators'
 
+const MAX_DISPLAYED_SERVICES = 6
+
 const formatPrice = (price: number): string =>
   `${price.toLocaleString('ru-RU')} ₽`
 
@@ -11,18 +13,26 @@ export default function HomePage() {
   const { user } = useAuthStore()
   const { services, promos, loading, error, fetch } = useCatalogStore()
   const [refreshing, setRefreshing] = useState(false)
+  const [pullDistance, setPullDistance] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const touchStartY = useRef<number | null>(null)
-  const pullDistance = useRef<number>(0)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
+    mountedRef.current = true
     fetch()
+    return () => {
+      mountedRef.current = false
+    }
   }, [fetch])
 
   const handleRefresh = async () => {
     setRefreshing(true)
+    setPullDistance(0)
     await fetch()
-    setRefreshing(false)
+    if (mountedRef.current) {
+      setRefreshing(false)
+    }
   }
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -30,7 +40,7 @@ export default function HomePage() {
     if (!el) return
     if (el.scrollTop === 0) {
       touchStartY.current = e.touches[0].clientY
-      pullDistance.current = 0
+      setPullDistance(0)
     }
   }
 
@@ -39,19 +49,20 @@ export default function HomePage() {
     const y = e.touches[0].clientY
     const delta = y - touchStartY.current
     if (delta > 0 && containerRef.current?.scrollTop === 0) {
-      pullDistance.current = Math.min(delta, 80)
+      setPullDistance(Math.min(delta, 80))
     }
   }
 
   const onTouchEnd = () => {
-    if (pullDistance.current > 60) {
+    if (pullDistance > 60) {
       void handleRefresh()
+    } else {
+      setPullDistance(0)
     }
     touchStartY.current = null
-    pullDistance.current = 0
   }
 
-  const displayedServices = services.slice(0, 6)
+  const displayedServices = services.slice(0, MAX_DISPLAYED_SERVICES)
 
   return (
     <div
@@ -67,10 +78,10 @@ export default function HomePage() {
       }}
     >
       {/* Pull-to-refresh indicator */}
-      {(refreshing || pullDistance.current > 0) && (
+      {(refreshing || pullDistance > 0) && (
         <div
           style={{
-            height: refreshing ? 40 : pullDistance.current,
+            height: refreshing ? 40 : pullDistance,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -191,6 +202,7 @@ export default function HomePage() {
         >
           {error}
           <button
+            type="button"
             onClick={handleRefresh}
             style={{
               marginTop: 10,
@@ -216,7 +228,7 @@ export default function HomePage() {
             <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', margin: 0 }}>
               Акции и спецпредложения
             </h3>
-            <Link to="/promos" style={{ fontSize: 13, color: '#1A56DB', textDecoration: 'none', fontWeight: 600 }}>
+            <Link to="/promos" aria-label="Все акции" style={{ fontSize: 13, color: '#1A56DB', textDecoration: 'none', fontWeight: 600 }}>
               Все
             </Link>
           </div>
@@ -281,7 +293,7 @@ export default function HomePage() {
             <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', margin: 0 }}>
               Популярные услуги
             </h3>
-            <Link to="/services" style={{ fontSize: 13, color: '#1A56DB', textDecoration: 'none', fontWeight: 600 }}>
+            <Link to="/services" aria-label="Все услуги" style={{ fontSize: 13, color: '#1A56DB', textDecoration: 'none', fontWeight: 600 }}>
               Все
             </Link>
           </div>
