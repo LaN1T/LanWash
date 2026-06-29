@@ -458,6 +458,16 @@ class AuthService:
         )
 
     @atomic
+    async def unlink_telegram(self, current_user: User, password: str) -> dict:
+        if not current_user.telegramId:
+            raise ValueError("Telegram не привязан")
+        if not await async_verify_password(password, current_user.passwordHash):
+            raise InvalidCredentialsError("Неверный пароль")
+
+        current_user.telegramId = None
+        return {"status": "ok"}
+
+    @atomic
     async def link_telegram(
         self, init_data: str, username: str, password: str
     ) -> dict:

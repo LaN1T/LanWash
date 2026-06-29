@@ -31,6 +31,7 @@ from schemas import (
     TelegramAuthResponse,
     TelegramLinkRequest,
     TelegramRegisterRequest,
+    TelegramUnlinkRequest,
     UpdateProfileRequest,
     UserResponse,
     UserStatsResponse,
@@ -243,6 +244,26 @@ async def link_telegram(
     except RuntimeError:
         await record_failed_attempt(identifier)
         raise HTTPException(500, "Internal server error")
+
+
+@router.post(
+    "/unlink-telegram",
+    summary="Отвязка Telegram от аккаунта",
+)
+@limiter.limit("5/minute")
+async def unlink_telegram(
+    req: TelegramUnlinkRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    svc = AuthService(db)
+    try:
+        return await svc.unlink_telegram(current_user, req.password)
+    except InvalidCredentialsError as e:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(e))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
 
 
 @router.post(

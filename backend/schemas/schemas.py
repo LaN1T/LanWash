@@ -786,6 +786,12 @@ class TelegramRegisterRequest(BaseModel):
     referralCode: Optional[str] = Field(default=None, max_length=20)
 
 
+class TelegramUnlinkRequest(BaseModel):
+    password: str = Field(
+        ..., min_length=8, max_length=128, description="Текущий пароль аккаунта"
+    )
+
+
 class TelegramAuthResponse(BaseModel):
     user: UserResponse
     access_token: str

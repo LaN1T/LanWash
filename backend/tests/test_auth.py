@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import time
+import uuid
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
@@ -76,6 +77,24 @@ async def tg_dummy_user(db_session):
         createdAt=datetime.now(),
         telegramId="12345",
         isTelegramDummy=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_user_with_tg(db_session):
+    """Pre-created user with a linked Telegram ID."""
+    from services.auth_service import get_password_hash
+
+    user = User(
+        username="unlinktestuser",
+        passwordHash=get_password_hash("CorrectPassword123!"),
+        role="client",
+        displayName="Unlink Test",
+        createdAt=datetime.now(),
+        telegramId=f"unlink_tg_{uuid.uuid4().hex[:12]}",
     )
     db_session.add(user)
     await db_session.commit()
@@ -948,3 +967,88 @@ class TestTelegramRegister:
         )
         assert response.status_code == 409
         assert "Логин уже занят" in response.json()["detail"]
+
+
+class TestUnlinkTelegram:
+    @pytest.mark.asyncio
+    async def test_unlink_telegram(self, db_session, test_user_with_tg):
+        svc = AuthService(db_session)
+        result = await svc.unlink_telegram(test_user_with_tg, "CorrectPassword123!")
+        assert result["status"] == "ok"
+        assert test_user_with_tg.telegramId is None
+
+    @pytest.mark.asyncio
+    async def test_unlink_telegram_wrong_password(self, db_session, test_user_with_tg):
+        svc = AuthService(db_session)
+        with pytest.raises(InvalidCredentialsError):
+            await svc.unlink_telegram(test_user_with_tg, "WrongPassword123!")
+
+    @pytest.mark.asyncio
+    async def test_unlink_telegram_not_linked(self, db_session, test_user):
+        svc = AuthService(db_session)
+        with pytest.raises(ValueError):
+            await svc.unlink_telegram(test_user, "CorrectPassword123!")
+
+    @pytest.mark.asyncio
+    async def test_unlink_telegram_endpoint_success(
+        self, async_client, test_user_with_tg
+    ):
+        response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": test_user_with_tg.username,
+                "password": "CorrectPassword123!",
+            },
+        )
+        assert response.status_code == 200
+        token = response.json()["access_token"]
+
+        response = await async_client.post(
+            "/api/auth/unlink-telegram",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"password": "CorrectPassword123!"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_unlink_telegram_endpoint_wrong_password(
+        self, async_client, test_user_with_tg
+    ):
+        response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": test_user_with_tg.username,
+                "password": "CorrectPassword123!",
+            },
+        )
+        assert response.status_code == 200
+        token = response.json()["access_token"]
+
+        response = await async_client.post(
+            "/api/auth/unlink-telegram",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"password": "WrongPassword123!"},
+        )
+        assert response.status_code == 401
+        assert "пароль" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_unlink_telegram_endpoint_not_linked(self, async_client, test_user):
+        response = await async_client.post(
+            "/api/auth/login",
+            json={
+                "username": test_user.username,
+                "password": "CorrectPassword123!",
+            },
+        )
+        assert response.status_code == 200
+        token = response.json()["access_token"]
+
+        response = await async_client.post(
+            "/api/auth/unlink-telegram",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"password": "CorrectPassword123!"},
+        )
+        assert response.status_code == 400
+        assert "не привязан" in response.json()["detail"].lower()
