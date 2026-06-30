@@ -58,6 +58,14 @@ api.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${newToken}`
       return api(originalRequest)
     }
+    if (error.response?.status === 403) {
+      const msg = error.response?.data?.detail || 'Доступ запрещён'
+      if (window.Telegram?.WebApp?.showAlert) {
+        window.Telegram.WebApp.showAlert(msg)
+      } else {
+        alert(msg)
+      }
+    }
     return Promise.reject(error)
   }
 )

@@ -25,6 +25,8 @@ interface TelegramWebApp {
   themeParams: Record<string, string>
   setHeaderColor: (color: string) => void
   close: () => void
+  showAlert: (message: string, callback?: () => void) => void
+  showConfirm: (message: string, callback: (confirmed: boolean) => void) => void
 }
 
 declare global {
