@@ -779,7 +779,7 @@ async def create(
             )
 
         appt_data = {
-            "id": req.id if req.id else str(uuid.uuid4()),
+            "id": str(uuid.uuid4()),
             "userId": target_user_id,
             "clientName": req.clientName,
             "carModel": car_model,
@@ -981,6 +981,17 @@ async def update_appt(
         req.assignedWasher = original_assignedWasher
         req.subscriptionId = original_subscriptionId
         req.box_index = original_box_index
+
+        WASHER_ALLOWED_TRANSITIONS = {
+            "scheduled": {"confirmed", "in_progress", "cancelled"},
+            "confirmed": {"in_progress", "cancelled"},
+            "in_progress": {"completed", "cancelled"},
+        }
+        if req.status != original_status and req.status not in WASHER_ALLOWED_TRANSITIONS.get(original_status, set()):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Мойщик не может перевести запись из '{original_status}' в '{req.status}'.",
+            )
 
     # Clients (owners) can only update car details and notes; ignore privileged fields
     if is_owner and not is_admin and not is_washer:

@@ -20,8 +20,9 @@ class TestQrScanner:
         assigned_washer=None,
     ):
         """Хелпер для создания записи."""
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
         payload = {
-            "id": appt_id,
             "clientName": "Тест Клиент",
             "carModel": "Toyota Camry",
             "carNumber": "А123БВ77",
@@ -44,11 +45,18 @@ class TestQrScanner:
             "promoId": None,
             "box_index": 0,
         }
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {token}"},
-            json=payload,
-        )
+        set_next_uuid(appt_id)
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Request-ID": "test",
+                },
+                json=payload,
+            )
+        finally:
+            clear_next_uuid()
         return resp
 
     @pytest.mark.asyncio

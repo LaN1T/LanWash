@@ -9,7 +9,7 @@ export interface BusySlot {
 }
 
 export interface AppointmentCreatePayload {
-  id: string
+  id?: string
   clientName: string
   carModel: string
   carNumber: string

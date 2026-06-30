@@ -7,7 +7,6 @@ import { validateName, validateCarModel, validatePlate } from '../../utils/valid
 import { getMyCars, type Car } from '../../services/cars'
 import { getBusySlots, createAppointment, type BusySlot, type AppointmentCreatePayload } from '../../services/appointments'
 import { getMySubscriptions, type Subscription } from '../../services/subscriptions'
-import { generateAppointmentId } from '../../utils/id'
 import { getPromos, type Promo } from '../../services/catalog'
 import { PlateInput } from '../../components/PlateInput'
 
@@ -362,7 +361,6 @@ export default function BookingPage() {
 
     try {
       const payload: AppointmentCreatePayload = {
-        id: generateAppointmentId(),
         clientName: name.trim(),
         carModel: car.trim(),
         carNumber: plate.replace(/\s/g, '').toUpperCase(),

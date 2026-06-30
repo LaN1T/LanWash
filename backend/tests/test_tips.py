@@ -17,32 +17,40 @@ class TestTips:
         assigned_washer='["washer_test"]',
     ):
         """Хелпер для создания записи от имени админа с нужными параметрами."""
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {admin_token}"},
-            json={
-                "id": appt_id,
-                "clientName": "Тест Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": date_time,
-                "washTypeId": "w1",
-                "additionalServices": "[]",
-                "status": status,
-                "notes": "Тестовые заметки",
-                "isFavorite": False,
-                "ownerUsername": owner,
-                "promoPrice": 0,
-                "paidPrice": 1000,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 1000,
-                "assignedWasher": assigned_washer,
-                "promoId": None,
-                "box_index": 0,
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid(appt_id)
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {admin_token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "Тест Клиент",
+                    "carModel": "Toyota Camry",
+                    "carNumber": "А123БВ77",
+                    "dateTime": date_time,
+                    "washTypeId": "w1",
+                    "additionalServices": "[]",
+                    "status": status,
+                    "notes": "Тестовые заметки",
+                    "isFavorite": False,
+                    "ownerUsername": owner,
+                    "promoPrice": 0,
+                    "paidPrice": 1000,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 1000,
+                    "assignedWasher": assigned_washer,
+                    "promoId": None,
+                    "box_index": 0,
+                },
+            )
+        finally:
+            clear_next_uuid()
         return resp
 
     @pytest.mark.asyncio

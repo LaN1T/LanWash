@@ -16,32 +16,40 @@ class TestAppointments:
         owner="client_test",
     ):
         """Хелпер для создания записи."""
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {token}"},
-            json={
-                "id": appt_id,
-                "clientName": "Тест Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": date_time,
-                "washTypeId": "w1",
-                "additionalServices": "[]",
-                "status": status,
-                "notes": "Тестовые заметки",
-                "isFavorite": False,
-                "ownerUsername": owner,
-                "promoPrice": 0,
-                "paidPrice": 1000,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 1000,
-                "assignedWasher": "[]",
-                "promoId": None,
-                "box_index": 0,
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid(appt_id)
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "Тест Клиент",
+                    "carModel": "Toyota Camry",
+                    "carNumber": "А123БВ77",
+                    "dateTime": date_time,
+                    "washTypeId": "w1",
+                    "additionalServices": "[]",
+                    "status": status,
+                    "notes": "Тестовые заметки",
+                    "isFavorite": False,
+                    "ownerUsername": owner,
+                    "promoPrice": 0,
+                    "paidPrice": 1000,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 1000,
+                    "assignedWasher": "[]",
+                    "promoId": None,
+                    "box_index": 0,
+                },
+            )
+        finally:
+            clear_next_uuid()
         return resp
 
     @pytest.mark.asyncio
@@ -590,31 +598,39 @@ class TestAppointments:
         date_time = f"{saturday.isoformat()}T10:00:00"
 
         appt_id = "promo_client_appt"
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {client_token}"},
-            json={
-                "id": appt_id,
-                "clientName": "Тест Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": date_time,
-                "washTypeId": "w3",
-                "additionalServices": "[]",
-                "status": "scheduled",
-                "notes": "",
-                "isFavorite": False,
-                "ownerUsername": "client_test",
-                "promoPrice": 0,
-                "paidPrice": 0,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 0,
-                "assignedWasher": "[]",
-                "promoId": "promo_3",
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid(appt_id)
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {client_token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "Тест Клиент",
+                    "carModel": "Toyota Camry",
+                    "carNumber": "А123БВ77",
+                    "dateTime": date_time,
+                    "washTypeId": "w3",
+                    "additionalServices": "[]",
+                    "status": "scheduled",
+                    "notes": "",
+                    "isFavorite": False,
+                    "ownerUsername": "client_test",
+                    "promoPrice": 0,
+                    "paidPrice": 0,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 0,
+                    "assignedWasher": "[]",
+                    "promoId": "promo_3",
+                },
+            )
+        finally:
+            clear_next_uuid()
         assert resp.status_code == 200, resp.text
         data = resp.json()
         # w3 basePrice=1500, promo_3 -20% -> paidPrice=1200, originalPrice=1500

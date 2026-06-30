@@ -166,32 +166,40 @@ class TestConsumables:
         assert refill_resp.status_code == 200
 
         # Создаём завершённую запись, чтобы списать расходник (w1 использует c_shampoo)
-        appt_resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {admin_token}"},
-            json={
-                "id": "appt_history_test",
-                "clientName": "История Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": "2099-05-01T10:00:00",
-                "washTypeId": "w1",
-                "additionalServices": "[]",
-                "status": "completed",
-                "notes": "",
-                "isFavorite": False,
-                "ownerUsername": "client_test",
-                "promoPrice": 0,
-                "paidPrice": 1000,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 1000,
-                "assignedWasher": "[]",
-                "promoId": None,
-                "box_index": 0,
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid("appt_history_test")
+        try:
+            appt_resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {admin_token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "История Клиент",
+                    "carModel": "Toyota Camry",
+                    "carNumber": "А123БВ77",
+                    "dateTime": "2099-05-01T10:00:00",
+                    "washTypeId": "w1",
+                    "additionalServices": "[]",
+                    "status": "completed",
+                    "notes": "",
+                    "isFavorite": False,
+                    "ownerUsername": "client_test",
+                    "promoPrice": 0,
+                    "paidPrice": 1000,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 1000,
+                    "assignedWasher": "[]",
+                    "promoId": None,
+                    "box_index": 0,
+                },
+            )
+        finally:
+            clear_next_uuid()
         assert appt_resp.status_code == 200
 
         # Объединённая история

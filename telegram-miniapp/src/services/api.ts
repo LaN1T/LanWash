@@ -59,7 +59,7 @@ api.interceptors.response.use(
       return api(originalRequest)
     }
     if (error.response?.status === 403) {
-      const msg = error.response?.data?.detail || 'Доступ запрещён'
+      const msg = 'Доступ запрещён'
       if (window.Telegram?.WebApp?.showAlert) {
         window.Telegram.WebApp.showAlert(msg)
       } else {

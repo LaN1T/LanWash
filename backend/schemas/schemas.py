@@ -102,9 +102,8 @@ class UserResponse(BaseModel):
     avatarUrl: str = ""
     createdAt: dt_datetime
     isFavoriteAdmin: bool
-    passwordVersion: int = 1
     referralCode: Optional[str] = None
-    telegramId: Optional[str] = None
+    telegramId: Optional[str] = Field(default=None, exclude=True)
 
     @computed_field
     @property
@@ -358,7 +357,7 @@ class AppointmentStatus(str, Enum):
 
 
 class AppointmentRequest(BaseModel):
-    id: str = Field(..., max_length=36, description="Уникальный ID записи")
+    id: Optional[str] = Field(default=None, max_length=36, description="Уникальный ID записи")
     clientName: str = Field(..., max_length=100, description="Имя клиента")
     carModel: str = Field(..., max_length=50, description="Марка и модель авто")
     carNumber: str = Field(..., max_length=20, description="Госномер")

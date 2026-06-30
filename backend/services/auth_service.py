@@ -143,6 +143,15 @@ async def async_get_password_hash(password: str) -> str:
     return await asyncio.to_thread(get_password_hash, password)
 
 
+def _validate_avatar_url(url: str) -> str:
+    """Validate and normalize an avatar URL. Only HTTPS URLs or empty strings are allowed."""
+    if not url:
+        return ""
+    if len(url) > 2000 or not url.startswith("https://"):
+        return ""
+    return url
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     jti = str(uuid.uuid4())
@@ -548,7 +557,7 @@ class AuthService:
             phone=req.phone or "",
             carModel=req.carModel or "",
             carNumber=req.carNumber or "",
-            avatarUrl=user_data.get("photo_url") or "",
+            avatarUrl=_validate_avatar_url(user_data.get("photo_url") or ""),
             createdAt=datetime.now(timezone.utc),
             isFavoriteAdmin=0,
             telegramId=telegram_id,
@@ -617,7 +626,7 @@ class AuthService:
         if req.carNumber is not None:
             updates["carNumber"] = req.carNumber
         if req.avatarUrl is not None:
-            updates["avatarUrl"] = req.avatarUrl
+            updates["avatarUrl"] = _validate_avatar_url(req.avatarUrl)
         if req.newPassword is not None:
             if not req.currentPassword or not await async_verify_password(
                 req.currentPassword, user.passwordHash

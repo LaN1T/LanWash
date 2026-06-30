@@ -7,32 +7,40 @@ class TestByWasher:
         self, async_client, admin_token, client_token, washer_token
     ):
         # Client creates an appointment
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {client_token}"},
-            json={
-                "id": "appt_by_washer_1",
-                "clientName": "Тест Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": "2099-05-01T10:00:00",
-                "washTypeId": "w1",
-                "additionalServices": "[]",
-                "status": "scheduled",
-                "notes": "Тестовые заметки",
-                "isFavorite": False,
-                "ownerUsername": "client_test",
-                "promoPrice": 0,
-                "paidPrice": 1000,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 1000,
-                "assignedWasher": "[]",
-                "promoId": None,
-                "box_index": 0,
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid("appt_by_washer_1")
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {client_token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "Тест Клиент",
+                    "carModel": "Toyota Camry",
+                    "carNumber": "А123БВ77",
+                    "dateTime": "2099-05-01T10:00:00",
+                    "washTypeId": "w1",
+                    "additionalServices": "[]",
+                    "status": "scheduled",
+                    "notes": "Тестовые заметки",
+                    "isFavorite": False,
+                    "ownerUsername": "client_test",
+                    "promoPrice": 0,
+                    "paidPrice": 1000,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 1000,
+                    "assignedWasher": "[]",
+                    "promoId": None,
+                    "box_index": 0,
+                },
+            )
+        finally:
+            clear_next_uuid()
         assert resp.status_code == 200
 
         # Admin assigns washer
@@ -84,32 +92,40 @@ class TestByWasher:
         assert shift_resp.status_code == 201
 
         # Client creates an appointment inside the shift, no explicit washer assignment
-        appt_resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {client_token}"},
-            json={
-                "id": "appt_by_shift_1",
-                "clientName": "Тест Клиент",
-                "carModel": "Toyota Camry",
-                "carNumber": "А123БВ77",
-                "dateTime": "2099-06-15T10:00:00",
-                "washTypeId": "w1",
-                "additionalServices": "[]",
-                "status": "scheduled",
-                "notes": "Тестовые заметки",
-                "isFavorite": False,
-                "ownerUsername": "client_test",
-                "promoPrice": 0,
-                "paidPrice": 1000,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 1000,
-                "assignedWasher": "[]",
-                "promoId": None,
-                "box_index": 0,
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid("appt_by_shift_1")
+        try:
+            appt_resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {client_token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "Тест Клиент",
+                    "carModel": "Toyota Camry",
+                    "carNumber": "А123БВ77",
+                    "dateTime": "2099-06-15T10:00:00",
+                    "washTypeId": "w1",
+                    "additionalServices": "[]",
+                    "status": "scheduled",
+                    "notes": "Тестовые заметки",
+                    "isFavorite": False,
+                    "ownerUsername": "client_test",
+                    "promoPrice": 0,
+                    "paidPrice": 1000,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 1000,
+                    "assignedWasher": "[]",
+                    "promoId": None,
+                    "box_index": 0,
+                },
+            )
+        finally:
+            clear_next_uuid()
         assert appt_resp.status_code == 200
 
         # Washer fetches by-washer endpoint
@@ -128,32 +144,40 @@ class TestByWasher:
         self, async_client, washer_token
     ):
         # Washer creates an appointment themselves
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {washer_token}"},
-            json={
-                "id": "appt_washer_own_1",
-                "clientName": "Самозапись",
-                "carModel": "Kia Rio",
-                "carNumber": "О777ОО77",
-                "dateTime": "2099-07-01T12:00:00",
-                "washTypeId": "w1",
-                "additionalServices": "[]",
-                "status": "scheduled",
-                "notes": "",
-                "isFavorite": False,
-                "ownerUsername": "washer_test",
-                "promoPrice": 0,
-                "paidPrice": 1500,
-                "isModifiedByAdmin": False,
-                "isModifiedByWasher": False,
-                "isSeenByClient": True,
-                "originalPrice": 1500,
-                "assignedWasher": "[]",
-                "promoId": None,
-                "box_index": 0,
-            },
-        )
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
+        set_next_uuid("appt_washer_own_1")
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {washer_token}",
+                    "X-Request-ID": "test",
+                },
+                json={
+                    "clientName": "Самозапись",
+                    "carModel": "Kia Rio",
+                    "carNumber": "О777ОО77",
+                    "dateTime": "2099-07-01T12:00:00",
+                    "washTypeId": "w1",
+                    "additionalServices": "[]",
+                    "status": "scheduled",
+                    "notes": "",
+                    "isFavorite": False,
+                    "ownerUsername": "washer_test",
+                    "promoPrice": 0,
+                    "paidPrice": 1500,
+                    "isModifiedByAdmin": False,
+                    "isModifiedByWasher": False,
+                    "isSeenByClient": True,
+                    "originalPrice": 1500,
+                    "assignedWasher": "[]",
+                    "promoId": None,
+                    "box_index": 0,
+                },
+            )
+        finally:
+            clear_next_uuid()
         assert resp.status_code == 200
 
         # Washer fetches by-washer endpoint

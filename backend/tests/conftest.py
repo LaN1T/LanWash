@@ -143,7 +143,38 @@ def _safe_get_handler(self, request):
 PrometheusInstrumentatorMiddleware._get_handler = _safe_get_handler
 
 import asyncpg
+import uuid as _uuid_module
 from httpx import ASGITransport, AsyncClient
+
+from tests.helpers import _patched_uuid4, clear_next_uuid
+
+
+@pytest.fixture(autouse=True)
+def _patch_uuid4_for_tests(monkeypatch):
+    monkeypatch.setattr(_uuid_module, "uuid4", _patched_uuid4)
+    clear_next_uuid()
+    yield
+    clear_next_uuid()
+
+
+@pytest.fixture(autouse=True)
+def _patch_request_id_middleware(monkeypatch):
+    """Avoid consuming deterministic UUIDs in the request-id middleware."""
+    import core.request_id as _rid
+
+    async def _dispatch(self, request, call_next):
+        request_id = request.headers.get("X-Request-ID")
+        if not request_id:
+            request_id = str(_uuid_module.uuid4())
+        token = _rid._request_id.set(request_id)
+        try:
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = request_id
+            return response
+        finally:
+            _rid._request_id.reset(token)
+
+    monkeypatch.setattr(_rid.RequestIdMiddleware, "dispatch", _dispatch)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

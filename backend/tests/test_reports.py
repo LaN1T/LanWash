@@ -19,8 +19,9 @@ class TestReports:
         cancel_reason="",
     ):
         """Хелпер для создания записи с нужным статусом и параметрами."""
+        from tests.helpers import set_next_uuid, clear_next_uuid
+
         payload = {
-            "id": appt_id,
             "clientName": "Тест Клиент",
             "carModel": "Toyota Camry",
             "carNumber": "А123БВ77",
@@ -44,11 +45,18 @@ class TestReports:
         }
         if assigned_washer:
             payload["assignedWasher"] = f'["{assigned_washer}"]'
-        resp = await async_client.post(
-            "/api/appointments/",
-            headers={"Authorization": f"Bearer {token}"},
-            json=payload,
-        )
+        set_next_uuid(appt_id)
+        try:
+            resp = await async_client.post(
+                "/api/appointments/",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Request-ID": "test",
+                },
+                json=payload,
+            )
+        finally:
+            clear_next_uuid()
         return resp
 
     async def _create_completed_appointment(

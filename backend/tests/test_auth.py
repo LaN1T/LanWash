@@ -808,7 +808,7 @@ class TestTelegramRegister:
         assert response.status_code == 200
         data = response.json()
         assert data["user"]["username"] == "endpointtg"
-        assert data["user"]["telegramId"] == "333444"
+        assert data["user"]["telegramLinked"] is True
         assert "access_token" in data
 
     @pytest.mark.asyncio
